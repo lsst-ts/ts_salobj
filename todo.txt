@@ -1,0 +1,9 @@
+Track all command responses instead of discarding responses with unexpected command ID.
+    Is this necessary? Is it actually possible to have more than one instance
+    of a given command running at the same time?
+    If it is, then each time a command is issued, register interest in that cmd_id.
+    Then as a command is finished, remove the info from the registry (being sure
+    to first notify the user, as usual -- that part may be a bit tricky to get right).
+
+Get rid of the SAL libraries.
+    This will require a way of finding them elsewhere.

@@ -1,0 +1,9 @@
+.cache
+.pytest_cache
+.coverage*
+pytest_session.txt
+.scon*
+*.log
+__pycache__
+python/lsst
+tests/.tests
