@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["get_test_index", "set_random_lsst_dds_domain", "TestComponent"]
+__all__ = ["get_test_index", "set_random_lsst_dds_domain", "TestCsc"]
 
 import asyncio
 import os
@@ -34,9 +34,9 @@ import numpy as np
 try:
     import SALPY_Test
 except ImportError:
-    warnings.warn("Could not import SALPY_Test; TestComponent will not work")
+    warnings.warn("Could not import SALPY_Test; TestCsc will not work")
 from . import utils
-from . import controller
+from . import base_csc
 
 
 _LAST_TEST_INDEX = 0
@@ -65,7 +65,7 @@ def set_random_lsst_dds_domain():
     os.environ["LSST_DDS_DOMAIN"] = f"Test-{hostname}-{curr_time}-{random_int}"
 
 
-class TestComponent:
+class TestCsc(base_csc.BaseCsc):
     """A trivial Test component for unit testing
 
     This component responds to the setScalars and setArrays comments
@@ -84,21 +84,25 @@ class TestComponent:
     index : `int`
         Index of Test component; each unit test method
         should use a different index.
-    arrays_interval : `float`
+    initial_state : `salobj.State`
+        The initial state of the CSC. Typically one of:
+        - State.ENABLED if you want the CSC immediately usable.
+        - State.OFFLINE if you want full emulation of a CSC.
+    arrays_interval : `float` (optional)
         Interval between arrays telemetry outputs (sec).
-    scalars_interval : `float`
+    scalars_interval : `float` (optional)
         Interval between scalars telemetry outputs (sec).
 
     """
-    def __init__(self, index, arrays_interval, scalars_interval):
-        self.arrays_interval = arrays_interval
-        self.scalars_interval = scalars_interval
-        component_name = f"Test:{index}"
-        self.salinfo = utils.SalInfo(SALPY_Test, component_name)
-        self.controller = controller.Controller(SALPY_Test, component_name)
-        self.controller.cmd_setScalars.callback = self.do_setScalars
-        self.controller.cmd_setArrays.callback = self.do_setArrays
-        self.controller.cmd_wait.callback = self.do_wait
+    __test__ = False  # stop pytest from warning that this is not a test
+
+    def __init__(self, index, initial_state, arrays_interval=0.1, scalars_interval=0.06):
+        if initial_state not in base_csc.State:
+            raise ValueError(f"intial_state={initial_state} not a salobj.State enum")
+        super().__init__(SALPY_Test, f"Test:{index}")
+        self.state = initial_state
+        self.arrays_interval = float(arrays_interval)
+        self.scalars_interval = float(scalars_interval)
         self.evt_arrays = self.controller.evt_arrays.DataType()
         self.evt_scalars = self.controller.evt_scalars.DataType()
         self.tel_arrays = self.controller.tel_arrays.DataType()
@@ -120,6 +124,8 @@ class TestComponent:
 
     def do_setArrays(self, id_data):
         """Execute the setArrays command."""
+        if self.state != base_csc.State.ENABLED:
+            raise utils.ExpectedError(f"setArrays not allowed in {self.state} state")
         self.copy_arrays(id_data.data, self.evt_arrays)
         self.copy_arrays(id_data.data, self.tel_arrays)
         self.assert_arrays_equal(id_data.data, self.evt_arrays)
@@ -131,6 +137,8 @@ class TestComponent:
 
     def do_setScalars(self, id_data):
         """Execute the setScalars command."""
+        if self.state != base_csc.State.ENABLED:
+            raise utils.ExpectedError(f"setArrays not allowed in {self.state} state")
         self.copy_scalars(id_data.data, self.evt_scalars)
         self.copy_scalars(id_data.data, self.tel_scalars)
         self.controller.evt_scalars.put(self.evt_scalars, 1)
@@ -138,18 +146,28 @@ class TestComponent:
             self._enable_scalars_telemetry = True
             asyncio.ensure_future(self.run_scalars_telemetry())
 
-    def do_wait(self, id_data):
-        """Execute the wait command."""
-        async def end_wait(id_data):
-            await asyncio.sleep(id_data.data.duration)
-            ack = self.controller.cmd_wait.AckType()
-            ack.ack = id_data.data.ack
-            self.controller.cmd_wait.ack(id_data, ack.ack, 0, "")
+    def do_fault(self, id_data):
+        """Execute the fault command.
 
-        asyncio.ensure_future(end_wait(id_data))
+        Change the summary state to State.FAULT
+        """
+        self.fault()
+
+    def do_wait(self, id_data):
+        """Execute the wait command.
+
+        Wait for the specified time and then acknowledge the command
+        using the specified ack code.
+        """
+        asyncio.ensure_future(self._impl_wait(id_data))
         ack = self.controller.cmd_wait.AckType()
-        ack.ack = self.salinfo.lib.SAL__CMD_INPROGRESS
+        ack.ack = self.controller.salinfo.lib.SAL__CMD_INPROGRESS
         return ack
+
+    async def _impl_wait(self, id_data):
+        """Implement the wait command."""
+        await asyncio.sleep(id_data.data.duration)
+        self.controller.cmd_wait.ack(id_data, id_data.data.ack, 0, "Wait done")
 
     @property
     def arrays_fields(self):
