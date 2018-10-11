@@ -4,9 +4,9 @@ import SALPY_Test
 import salobj
 
 salinfo = salobj.utils.SalInfo(SALPY_Test, "Test:1")
-command_names = salobj.utils.get_command_names(salinfo.manager)
-event_names = salobj.utils.get_event_names(salinfo.manager)
-telemetry_names = salobj.utils.get_telemetry_names(salinfo.manager)
+command_names = salinfo.manager.getCommandNames()
+event_names = salinfo.manager.getEventNames()
+telemetry_names = salinfo.manager.getTelemetryNames()
 print(f"commands for {salinfo.name}:")
 for item in command_names:
     print(f"  {item}")

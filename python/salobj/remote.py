@@ -111,11 +111,11 @@ class Remote:
         salinfo = utils.SalInfo(sallib, component_name)
         self.salinfo = salinfo
 
-        for cmd_name in utils.get_command_names(salinfo.manager):
+        for cmd_name in salinfo.manager.getCommandNames():
             cmd = RemoteCommand(salinfo, cmd_name)
             setattr(self, "cmd_" + cmd_name, cmd)
 
-        for evt_name in utils.get_event_names(salinfo.manager):
+        for evt_name in salinfo.manager.getEventNames():
             if include_set and evt_name not in include_set:
                 continue
             elif exclude_set and evt_name in exclude_set:
@@ -123,7 +123,7 @@ class Remote:
             evt = RemoteEvent(salinfo, evt_name)
             setattr(self, "evt_" + evt_name, evt)
 
-        for tel_name in utils.get_telemetry_names(salinfo.manager):
+        for tel_name in salinfo.manager.getTelemetryNames():
             if include_set and tel_name not in include_set:
                 continue
             elif exclude_set and tel_name in exclude_set:

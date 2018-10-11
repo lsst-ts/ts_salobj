@@ -100,7 +100,7 @@ class BaseCsc:
         self.controller = Controller(sallib, name)
         self.state = State.STANDBY
         self.summary_state = self.controller.evt_summaryState.DataType()
-        command_names = utils.get_command_names(self.controller.salinfo.manager)
+        command_names = self.controller.salinfo.manager.getCommandNames()
         self._assert_do_methods_present(command_names)
         for name in command_names:
             cmd = getattr(self.controller, f"cmd_{name}")
@@ -292,7 +292,7 @@ class BaseCsc:
         ----------
         command_names : `list` of `str`
             List of command names, e.g. as provided by
-            `salobj.utils.get_command_names`
+            `salinfo.manager.getCommandNames`
         """
         do_names = [name for name in dir(self) if name.startswith("do_")]
         supported_command_names = [name[3:] for name in do_names]

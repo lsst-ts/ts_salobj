@@ -9,44 +9,6 @@ except ImportError:
 import salobj
 
 
-@unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
-class GetNamesTestCase(unittest.TestCase):
-
-    def setUp(self):
-        self.salinfo = salobj.utils.SalInfo(SALPY_Test, "Test:1")
-        self.manager = self.salinfo.manager
-
-    def test_get_commands(self):
-        command_names = salobj.utils.get_command_names(self.manager)
-        self.assertEqual(command_names, [
-            'disable',
-            'enable',
-            'exitControl',
-            'fault',
-            'setArrays',
-            'setScalars',
-            'standby',
-            'start',
-            'wait',
-        ])
-
-    def test_get_events(self):
-        event_names = salobj.utils.get_event_names(self.manager)
-        self.assertEqual(event_names, [
-            'appliedSettingsMatchStart',
-            'arrays',
-            'errorCode',
-            'heartbeat',
-            'scalars',
-            'settingVersions',
-            'summaryState',
-        ])
-
-    def test_get_telemetry(self):
-        telemetry_names = salobj.utils.get_telemetry_names(self.manager)
-        self.assertEqual(telemetry_names, ["arrays", "scalars"])
-
-
 class SplitComponentNameTestCase(unittest.TestCase):
     def test_split_component_name(self):
         for name, expected in (

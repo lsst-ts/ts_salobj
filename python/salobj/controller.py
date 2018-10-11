@@ -87,15 +87,15 @@ class Controller:
         self.salinfo = None
         self.salinfo = utils.SalInfo(sallib, component_name)
 
-        for cmd_name in utils.get_command_names(self.salinfo.manager):
+        for cmd_name in self.salinfo.manager.getCommandNames():
             cmd = ControllerCommand(self.salinfo, cmd_name)
             setattr(self, "cmd_" + cmd_name, cmd)
 
-        for evt_name in utils.get_event_names(self.salinfo.manager):
+        for evt_name in self.salinfo.manager.getEventNames():
             evt = ControllerEvent(self.salinfo, evt_name)
             setattr(self, "evt_" + evt_name, evt)
 
-        for tel_name in utils.get_telemetry_names(self.salinfo.manager):
+        for tel_name in self.salinfo.manager.getTelemetryNames():
             tel = ControllerTelemetry(self.salinfo, tel_name)
             setattr(self, "tel_" + tel_name, tel)
 

@@ -208,9 +208,9 @@ class RemoteConstructorTestCase(unittest.TestCase):
         manager = salinfo.manager
 
         # all possible expected topic names
-        all_command_topic_names = set(salobj.utils.get_command_names(manager))
-        all_event_topic_names = set(salobj.utils.get_event_names(manager))
-        all_telemetry_topic_names = set(salobj.utils.get_telemetry_names(manager))
+        all_command_topic_names = set(manager.getCommandNames())
+        all_event_topic_names = set(manager.getEventNames())
+        all_telemetry_topic_names = set(manager.getTelemetryNames())
 
         # the associated method names
         all_command_method_names = set(f"cmd_{name}" for name in all_command_topic_names)

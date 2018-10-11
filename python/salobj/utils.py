@@ -19,10 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["ExpectedError", "SalInfo", "get_command_names", "get_event_names", "get_telemetry_names",
-           "split_component_name"]
-
-import re
+__all__ = ["ExpectedError", "SalInfo", "split_component_name"]
 
 
 class ExpectedError(Exception):
@@ -51,47 +48,6 @@ class SalInfo:
         self.name, self.index = split_component_name(component_name)
         get_manager = getattr(self.lib, "SAL_" + self.name)
         self.manager = get_manager() if self.index is None else get_manager(self.index)
-
-
-def _get_names(regex, names):
-    """Return all names that match group 1 of a regular expression.
-    """
-    matched_names = []
-    for name in sorted(names):
-        match = regex.match(name)
-        if not match:
-            continue
-        matched_names.append(match.group(match.lastindex))
-    return matched_names
-
-
-def get_command_names(manager):
-    """Get a list of command names from a salpy manager.
-
-    Note
-    ----
-    A SAL functin is planned that will replace this.
-    """
-    command_re = re.compile(r"issueCommand_(.+)")
-    return _get_names(command_re, dir(manager))
-
-
-def get_event_names(manager):
-    """Get a list of command names from a salpy manager.
-
-    Note
-    ----
-    A SAL functin is planned that will replace this.
-    """
-    event_re = re.compile(r"logEvent_(.+)")
-    return _get_names(event_re, dir(manager))
-
-
-def get_telemetry_names(manager):
-    """Get a list of telemetry topic names from a salpy manager.
-    """
-    telemetry_names = re.compile(r"getSample_(?!(command_|logevent_))(.+)")
-    return _get_names(telemetry_names, dir(manager))
 
 
 def split_component_name(name):
