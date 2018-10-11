@@ -41,7 +41,7 @@ class State(enum.IntEnum):
     FAULT = 3
 
 
-class BaseCsc:
+class BaseCsc(Controller):
     """Base class for a Commandable SAL Component (CSC)
 
     To implement a CSC in Python define a subclass of this class.
@@ -50,9 +50,8 @@ class BaseCsc:
     ----------
     sallib : ``module``
         salpy component library generatedby SAL
-    component_name : `str`
-        Component name and optional index, separated by a colon, e.g.
-        "scheduler" or "Test:2".
+    index : `int` or `None`
+        SAL component index, or 0 or None if the component is not indexed.
 
     Notes
     -----
@@ -96,14 +95,14 @@ class BaseCsc:
       for each state transition command, as appropriate. For complex
       transitions subclasses may also override ``do_<name>``.
     """
-    def __init__(self, sallib, name):
-        self.controller = Controller(sallib, name)
+    def __init__(self, sallib, index=None):
+        super().__init__(sallib, index)
         self.state = State.STANDBY
-        self.summary_state = self.controller.evt_summaryState.DataType()
-        command_names = self.controller.salinfo.manager.getCommandNames()
+        self.summary_state = self.evt_summaryState.DataType()
+        command_names = self.salinfo.manager.getCommandNames()
         self._assert_do_methods_present(command_names)
         for name in command_names:
-            cmd = getattr(self.controller, f"cmd_{name}")
+            cmd = getattr(self, f"cmd_{name}")
             cmd.callback = getattr(self, f"do_{name}")
 
     def do_disable(self, id_data):
@@ -282,7 +281,7 @@ class BaseCsc:
         Subclasses must override if summaryState is not the standard type.
         """
         self.set_summary_state()
-        self.controller.evt_summaryState.put(self.summary_state, 1)
+        self.evt_summaryState.put(self.summary_state, 1)
 
     def _assert_do_methods_present(self, command_names):
         """Assert that all needed do_<name> methods are present,

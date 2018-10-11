@@ -171,7 +171,7 @@ class RemoteTelemetry:
         return self._callback_func is not None
 
     def __str__(self):
-        return f"{type(self).__name__}({self.salinfo.component_name}, {self.name})"
+        return f"{type(self).__name__}({self.salinfo}, {self.name})"
 
     def _run_callback(self, task):
         """Run the callback function and start another wait."""

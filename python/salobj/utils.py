@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["ExpectedError", "SalInfo", "split_component_name"]
+__all__ = ["ExpectedError", "SalInfo"]
 
 
 class ExpectedError(Exception):
@@ -38,26 +38,22 @@ class SalInfo:
     ----------
     sallib : `module`
         SALPY library for a SAL component
-    component_name : `str`
-        Component name and optional index, separated by a colon, e.g.
-        "scheduler" or "electrometer:2".
+    index : `int` or `None`
+        SAL component index, or 0 or None if the component is not indexed.
     """
-    def __init__(self, sallib, component_name):
+    def __init__(self, sallib, index=None):
         self.lib = sallib
-        self.component_name = component_name
-        self.name, self.index = split_component_name(component_name)
-        get_manager = getattr(self.lib, "SAL_" + self.name)
-        self.manager = get_manager() if self.index is None else get_manager(self.index)
+        self.name = sallib.componentName[4:]  # lop off leading SAL_
+        if sallib.componentIsMultiple:
+            if index is None:
+                raise RuntimeError(f"Component {self.name} is indexed, so index cannot be None")
+        else:
+            if index not in (0, None):
+                raise RuntimeError(f"Component {self.name} is not indexed so index={index} must be None or 0")
+            index = 0
+        self.index = index
+        Manager = getattr(self.lib, "SAL_" + self.name)
+        self.manager = Manager(self.index)
 
-
-def split_component_name(name):
-    """Split a component name of the form "foo:i" into (foo, int(i))
-    or "foo" into (foo, None).
-    """
-    nameind = name.split(":")
-    if len(nameind) == 1:
-        return name, None
-    elif len(nameind) == 2:
-        return nameind[0], int(nameind[1])
-    else:
-        raise ValueError(f"Could not split {name!r} into name, integer index")
+    def __str__(self):
+        return f"SalInfo({self.name}, {self.index})"

@@ -34,7 +34,7 @@ class ControllerEvent(ControllerTelemetry):
     name : `str`
         Event topic name
     """
-    def put(self, data, priority):
+    def put(self, data, priority=1):
         """Write a new value for this topic.
 
         Parameters
@@ -42,7 +42,8 @@ class ControllerEvent(ControllerTelemetry):
         data : ``self.DataType``
             Command parameters.
         priority : `int`
-            Priority.
+            Priority. ts_sal does not yet use this for anything;
+            in the meantime I provide a default that works.
         """
         if not isinstance(data, self.DataType):
             raise TypeError(f"data={data!r} must be an instance of {self.DataType}")

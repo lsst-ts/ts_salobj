@@ -130,7 +130,7 @@ class RemoteCommand:
     def __init__(self, salinfo, name):
         self.salinfo = salinfo
         self.name = str(name)
-        self.log = logging.getLogger(f"{salinfo.component_name}.RemoteCommand.{name}")
+        self.log = logging.getLogger(f"{salinfo}.RemoteCommand.{name}")
         self._running_cmds = dict()
         self._setup()
 
@@ -213,7 +213,7 @@ class RemoteCommand:
         return cmd_info.future
 
     def __str__(self):
-        return f"RemoteCommand({self.salinfo.component_name}, {self.name})"
+        return f"RemoteCommand({self.salinfo}, {self.name})"
 
     async def _get_next_ack(self):
         """Read command acks until self._running_cmds is empty.

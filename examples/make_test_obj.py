@@ -3,7 +3,7 @@
 import SALPY_Test
 import salobj
 
-salinfo = salobj.utils.SalInfo(SALPY_Test, "Test:1")
+salinfo = salobj.utils.SalInfo(SALPY_Test, 1)
 command_names = salinfo.manager.getCommandNames()
 event_names = salinfo.manager.getEventNames()
 telemetry_names = salinfo.manager.getTelemetryNames()
@@ -18,9 +18,9 @@ for item in telemetry_names:
     print(f"  {item}")
 
 print("\nmake remote")
-remote = salobj.Remote(SALPY_Test, "Test:1")
+remote = salobj.Remote(SALPY_Test, 1)
 print("make controller")
-controller = salobj.Controller(SALPY_Test, "Test:1")
+controller = salobj.Controller(SALPY_Test, 1)
 
 print(f"\ndata fields for arrays")
 print([item for item in dir(remote.cmd_setArrays.DataType()) if not item.startswith("__")])

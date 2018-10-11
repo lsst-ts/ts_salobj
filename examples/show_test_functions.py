@@ -3,7 +3,7 @@
 import SALPY_Test
 import salobj.utils
 
-salinfo = salobj.utils.SalInfo(SALPY_Test, "Test:1")
+salinfo = salobj.utils.SalInfo(SALPY_Test, 1)
 
 print("SALPY_Test contents:")
 for item in sorted(dir(SALPY_Test)):

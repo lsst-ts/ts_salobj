@@ -35,9 +35,8 @@ class Controller:
     ----------
     sallib : ``module``
         salpy component library generatedby SAL
-    component_name : `str`
-        Component name and optional index, separated by a colon, e.g.
-        "scheduler" or "Test:2".
+    index : `int` or `None`
+        SAL component index, or 0 or None if the component is not indexed.
 
     Notes
     -----
@@ -57,7 +56,7 @@ class Controller:
         # the index is arbitrary, but a remote must use the same index
         # to talk to this particular controller
         index = 5
-        test_controller = salobj.Controller(SALPY_Test, f"Test:{index}")
+        test_controller = salobj.Controller(SALPY_Test, index)
 
     ``test_controller`` will have the following attributes:
 
@@ -83,9 +82,9 @@ class Controller:
         * ``tel_scalars``
 
     """
-    def __init__(self, sallib, component_name):
+    def __init__(self, sallib, index):
         self.salinfo = None
-        self.salinfo = utils.SalInfo(sallib, component_name)
+        self.salinfo = utils.SalInfo(sallib, index)
 
         for cmd_name in self.salinfo.manager.getCommandNames():
             cmd = ControllerCommand(self.salinfo, cmd_name)

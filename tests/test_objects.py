@@ -19,7 +19,7 @@ class Harness:
         self.index = salobj.test_utils.get_test_index()
         salobj.test_utils.set_random_lsst_dds_domain()
         self.csc = salobj.test_utils.TestCsc(index=self.index, initial_state=initial_state)
-        self.remote = salobj.Remote(SALPY_Test, f"Test:{self.index}")
+        self.remote = salobj.Remote(SALPY_Test, self.index)
 
 
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
@@ -203,8 +203,7 @@ class RemoteConstructorTestCase(unittest.TestCase):
     def test_remote_include_exclude(self):
         """Test the include and exclude arguments for salobj.Remote"""
         index = salobj.test_utils.get_test_index()
-        component_name = f"Test:{index}"
-        salinfo = salobj.utils.SalInfo(SALPY_Test, component_name)
+        salinfo = salobj.utils.SalInfo(SALPY_Test, index)
         manager = salinfo.manager
 
         # all possible expected topic names
@@ -218,7 +217,7 @@ class RemoteConstructorTestCase(unittest.TestCase):
         all_telemetry_method_names = set(f"tel_{name}" for name in all_telemetry_topic_names)
 
         # remote0 specifies neither include nor exclude; it should have everything
-        remote0 = salobj.Remote(SALPY_Test, component_name)
+        remote0 = salobj.Remote(SALPY_Test, index)
         remote_command_names = set([name for name in dir(remote0) if name.startswith("cmd_")])
         self.assertEqual(remote_command_names, all_command_method_names)
         remote_event_names = set([name for name in dir(remote0) if name.startswith("evt_")])
@@ -228,7 +227,7 @@ class RemoteConstructorTestCase(unittest.TestCase):
 
         # remote1 uses the include argument
         include = ["errorCode", "scalars"]
-        remote1 = salobj.Remote(SALPY_Test, component_name, include=include)
+        remote1 = salobj.Remote(SALPY_Test, index=index, include=include)
         remote1_command_names = set([name for name in dir(remote1) if name.startswith("cmd_")])
         self.assertEqual(remote1_command_names, all_command_method_names)
         remote1_event_names = set([name for name in dir(remote1) if name.startswith("evt_")])
@@ -240,7 +239,7 @@ class RemoteConstructorTestCase(unittest.TestCase):
 
         # remote2 uses the exclude argument
         exclude = ["appliedSettingsMatchStart", "arrays"]
-        remote2 = salobj.Remote(SALPY_Test, component_name, exclude=exclude)
+        remote2 = salobj.Remote(SALPY_Test, index=index, exclude=exclude)
         remote2_command_names = set([name for name in dir(remote2) if name.startswith("cmd_")])
         self.assertEqual(remote2_command_names, all_command_method_names)
         remote2_event_names = set([name for name in dir(remote2) if name.startswith("evt_")])
@@ -252,7 +251,7 @@ class RemoteConstructorTestCase(unittest.TestCase):
 
         # make sure one cannot specify both include and exclude
         with self.assertRaises(ValueError):
-            salobj.Remote(SALPY_Test, component_name, include=include, exclude=exclude)
+            salobj.Remote(SALPY_Test, index=index, include=include, exclude=exclude)
 
 
 if __name__ == "__main__":
