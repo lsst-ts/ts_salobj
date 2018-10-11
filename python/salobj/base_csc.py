@@ -126,17 +126,6 @@ class BaseCsc:
         """
         self._do_change_state(id_data, "enable", [State.DISABLED], State.ENABLED)
 
-    def do_enterControl(self, id_data):
-        """Transition from `State.OFFLINE` or `State.FAULT`
-        to `State.STANDBY`.
-
-        Parameters
-        ----------
-        id_data : `salobj.CommandIdData`
-            Command ID and data
-        """
-        self._do_change_state(id_data, "enterControl", [State.OFFLINE, State.FAULT], State.STANDBY)
-
     def do_exitControl(self, id_data):
         """Transition from `State.STANDBY` to `State.OFFLINE` and quit.
 
@@ -154,14 +143,14 @@ class BaseCsc:
         asyncio.ensure_future(die())
 
     def do_standby(self, id_data):
-        """Transition from `State.ENABLED` to `State.STANDBY`.
+        """Transition from `State.ENABLED` or `State.FAULT` to `State.STANDBY`.
 
         Parameters
         ----------
         id_data : `salobj.CommandIdData`
             Command ID and data
         """
-        self._do_change_state(id_data, "standby", [State.DISABLED], State.STANDBY)
+        self._do_change_state(id_data, "standby", [State.DISABLED, State.FAULT], State.STANDBY)
 
     def do_start(self, id_data):
         """Transition to from `State.STANDBY` to `State.DISABLED`.
@@ -185,16 +174,6 @@ class BaseCsc:
 
     def begin_enable(self, id_data):
         """Begin do_enable; called before state changes.
-
-        Parameters
-        ----------
-        id_data : `salobj.CommandIdData`
-            Command ID and data
-        """
-        pass
-
-    def begin_enterControl(self, id_data):
-        """Begin do_enterControl; called before state changes.
 
         Parameters
         ----------
@@ -246,17 +225,6 @@ class BaseCsc:
 
     def end_enable(self, id_data):
         """End do_enable; called after state changes
-        but before command acknowledged.
-
-        Parameters
-        ----------
-        id_data : `salobj.CommandIdData`
-            Command ID and data
-        """
-        pass
-
-    def end_enterControl(self, id_data):
-        """End do_enterControl; called after state changes
         but before command acknowledged.
 
         Parameters
@@ -349,7 +317,7 @@ class BaseCsc:
         id_data : `salobj.CommandIdData`
             Command ID and data
         cmd_name : `str`
-            Name of command, e.g. "disable" or "enterControl".
+            Name of command, e.g. "disable" or "exitControl".
         allowed_curr_states : `list` of `State`
             Allowed current states
         new_state : `State`
