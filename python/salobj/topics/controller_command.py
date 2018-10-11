@@ -19,16 +19,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["CommandIdData", "ControllerCommand"]
+__all__ = ["ControllerCommand"]
 
 import asyncio
-
-
-class CommandIdData:
-    """Struct to hold a command ID and its associated data"""
-    def __init__(self, id, data):
-        self.id = id
-        self.data = data
+from ..base import CommandIdData
 
 
 class ControllerCommand:
@@ -36,7 +30,7 @@ class ControllerCommand:
 
     Parameters
     ----------
-    salinfo : `salobj.utils.SalInfo`
+    salinfo : `salobj.SalInfo`
         SAL component information
     name : `str`
         Command name
@@ -73,7 +67,7 @@ class ControllerCommand:
 
         Parameters
         ----------
-        id_data : `CommandIdData`
+        id_data : `salobj.CommandIdData`
             Command ID and data.
         ack : `int`
             Acknowledgement code; one of the ``self.salinfo.lib.SAL__CMD_``
@@ -83,14 +77,14 @@ class ControllerCommand:
         result : `str` (optional)
             Explanatory message; "" for no message.
         """
-        self._ack_func(id_data.id, ack, error, result)
+        self._ack_func(id_data.cmd_id, ack, error, result)
 
     def get(self):
         """Pop the oldest command from the queue and return it.
 
         Returns
         -------
-        cmd_info : `CommandIdData`
+        cmd_info : `salobj.CommandIdData`
             Command info, or None of no command is available.
         """
         if self._callback_func is not None:
@@ -114,7 +108,7 @@ class ControllerCommand:
         """Callback function, or None if there is not one.
 
         The callback function is called when new data is received;
-        it receives one argument: a `CommandIdData` containing
+        it receives one argument: a `salobj.CommandIdData` containing
         the command ID and the command data.
 
         Acknowledgement of the command is automatic:
@@ -171,7 +165,7 @@ class ControllerCommand:
         ----------
         task : `asyncio.Task`
             The task that completed. Its result must be an instance
-            of `CommandIdData`.
+            of `salobj.CommandIdData`.
         """
         if not self.callback:
             return
@@ -179,7 +173,7 @@ class ControllerCommand:
             id_data = task.result()
             # sanity check the return value,
             # to save the callback from getting garbage
-            assert id_data.id > 0
+            assert id_data.cmd_id > 0
             assert isinstance(id_data.data, self.DataType)
             ack = self._callback_func(id_data)
             if ack is None:

@@ -19,7 +19,32 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["ExpectedError", "SalInfo"]
+__all__ = ["CommandIdAck", "CommandIdData", "ExpectedError", "SalInfo"]
+
+
+class CommandIdAck:
+    """Struct to hold a command ID and its associated acknowledgement.
+
+    Parameters
+    ----------
+    cmd_id : `int`
+        Command ID.
+    ack : ``AckType``
+        Command acknowledgement.
+    """
+    def __init__(self, cmd_id, ack):
+        self.cmd_id = int(cmd_id)
+        self.ack = ack
+
+    def __str__(self):
+        return f"CommandIdAck(cmd_id={self.cmd_id}, ack.ack={self.ack})"
+
+
+class CommandIdData:
+    """Struct to hold a command ID and its associated data"""
+    def __init__(self, cmd_id, data):
+        self.cmd_id = cmd_id
+        self.data = data
 
 
 class ExpectedError(Exception):

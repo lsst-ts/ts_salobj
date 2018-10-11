@@ -35,7 +35,7 @@ try:
     import SALPY_Test
 except ImportError:
     warnings.warn("Could not import SALPY_Test; TestCsc will not work")
-from . import utils
+from . import base
 from . import base_csc
 
 
@@ -125,7 +125,7 @@ class TestCsc(base_csc.BaseCsc):
     def do_setArrays(self, id_data):
         """Execute the setArrays command."""
         if self.state != base_csc.State.ENABLED:
-            raise utils.ExpectedError(f"setArrays not allowed in {self.state} state")
+            raise base.ExpectedError(f"setArrays not allowed in {self.state} state")
         self.copy_arrays(id_data.data, self.evt_arrays_data)
         self.copy_arrays(id_data.data, self.tel_arrays_data)
         self.assert_arrays_equal(id_data.data, self.evt_arrays_data)
@@ -138,7 +138,7 @@ class TestCsc(base_csc.BaseCsc):
     def do_setScalars(self, id_data):
         """Execute the setScalars command."""
         if self.state != base_csc.State.ENABLED:
-            raise utils.ExpectedError(f"setArrays not allowed in {self.state} state")
+            raise base.ExpectedError(f"setArrays not allowed in {self.state} state")
         self.copy_scalars(id_data.data, self.evt_scalars_data)
         self.copy_scalars(id_data.data, self.tel_scalars_data)
         self.evt_scalars.put(self.evt_scalars_data, 1)

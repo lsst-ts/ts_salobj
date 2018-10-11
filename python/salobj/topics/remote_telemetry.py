@@ -31,7 +31,7 @@ class RemoteTelemetry:
 
     Parameters
     ----------
-    salinfo : `salobj.utils.SalInfo`
+    salinfo : `salobj.SalInfo`
         SAL component information
     name : `str`
         Telemetry topic name

@@ -3,7 +3,8 @@
 import SALPY_Test
 import salobj
 
-salinfo = salobj.utils.SalInfo(SALPY_Test, 1)
+salobj.test_utils.set_random_lsst_dds_domain()
+salinfo = salobj.SalInfo(SALPY_Test, 1)
 command_names = salinfo.manager.getCommandNames()
 event_names = salinfo.manager.getEventNames()
 telemetry_names = salinfo.manager.getTelemetryNames()

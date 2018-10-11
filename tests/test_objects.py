@@ -203,7 +203,7 @@ class RemoteConstructorTestCase(unittest.TestCase):
     def test_remote_include_exclude(self):
         """Test the include and exclude arguments for salobj.Remote"""
         index = salobj.test_utils.get_test_index()
-        salinfo = salobj.utils.SalInfo(SALPY_Test, index)
+        salinfo = salobj.SalInfo(SALPY_Test, index)
         manager = salinfo.manager
 
         # all possible expected topic names

@@ -21,7 +21,7 @@
 
 __all__ = ["Remote"]
 
-from . import utils
+from . import base
 from .topics import RemoteEvent, RemoteTelemetry, RemoteCommand
 
 
@@ -107,7 +107,7 @@ class Remote:
         include_set = set(include) if include is not None else None
         exclude_set = set(exclude) if exclude is not None else None
 
-        salinfo = utils.SalInfo(sallib, index)
+        salinfo = base.SalInfo(sallib, index)
         self.salinfo = salinfo
 
         for cmd_name in salinfo.manager.getCommandNames():

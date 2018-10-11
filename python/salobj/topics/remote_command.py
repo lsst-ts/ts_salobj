@@ -25,26 +25,9 @@ import asyncio
 import logging
 import warnings
 
+from ..base import CommandIdAck
 
 DEFAULT_TIMEOUT = 60*60  # default timeout, in seconds
-
-
-class CommandIdAck:
-    """Struct to hold a command ID and its associated acknowledgement.
-
-    Parameters
-    ----------
-    cmd_id : `int`
-        Command ID.
-    ack : ``AckType``
-        Command acknowledgement.
-    """
-    def __init__(self, cmd_id, ack):
-        self.cmd_id = int(cmd_id)
-        self.ack = ack
-
-    def __str__(self):
-        return f"CommandIdAck(cmd_id={self.cmd_id}, ack.ack={self.ack})"
 
 
 class _CommandInfo:
@@ -122,7 +105,7 @@ class RemoteCommand:
 
     Parameters
     ----------
-    salinfo : `salobj.utils.SalInfo`
+    salinfo : `salobj.SalInfo`
         SAL component information
     name : `str`
         Command name

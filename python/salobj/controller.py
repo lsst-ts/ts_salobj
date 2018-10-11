@@ -21,7 +21,7 @@
 
 __all__ = ["Controller"]
 
-from . import utils
+from . import base
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
 
 
@@ -84,7 +84,7 @@ class Controller:
     """
     def __init__(self, sallib, index):
         self.salinfo = None
-        self.salinfo = utils.SalInfo(sallib, index)
+        self.salinfo = base.SalInfo(sallib, index)
 
         for cmd_name in self.salinfo.manager.getCommandNames():
             cmd = ControllerCommand(self.salinfo, cmd_name)

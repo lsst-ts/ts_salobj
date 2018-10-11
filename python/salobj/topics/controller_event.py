@@ -29,7 +29,7 @@ class ControllerEvent(ControllerTelemetry):
 
     Parameters
     ----------
-    salinfo : `salobj.utils.SalInfo`
+    salinfo : `salobj.SalInfo`
         SAL component information
     name : `str`
         Event topic name

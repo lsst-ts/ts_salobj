@@ -24,7 +24,7 @@ __all__ = ["BaseCsc", "State"]
 import asyncio
 import enum
 
-from . import utils
+from . import base
 from .controller import Controller
 
 
@@ -324,7 +324,7 @@ class BaseCsc(Controller):
         """
         curr_state = self.state
         if self.state not in allowed_curr_states:
-            raise utils.ExpectedError(f"{cmd_name} not allowed in {self.state} state")
+            raise base.ExpectedError(f"{cmd_name} not allowed in {self.state} state")
         getattr(self, f"begin_{cmd_name}")(id_data)
         self.state = new_state
         try:

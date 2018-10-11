@@ -27,7 +27,7 @@ class ControllerTelemetry:
 
     Parameters
     ----------
-    salinfo : `salobj.utils.SalInfo`
+    salinfo : `salobj.SalInfo`
         SAL component information
     name : `str`
         Command name
