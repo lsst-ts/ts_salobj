@@ -39,7 +39,7 @@ class _CommandInfo:
         Remote command.
     cmd_id : `int`
         Command ID.
-    ack : ``AckType``
+    ack : `salobj.AckType`
         Command acknowledgement.
     wait_done : `bool`
         Wait until the command is done to finish the task?
@@ -47,7 +47,7 @@ class _CommandInfo:
     def __init__(self, remote_command, cmd_id, wait_done):
         self.remote_command = remote_command
         self.cmd_id = int(cmd_id)
-        self.ack = remote_command.AckType()
+        self.ack = remote_command.salinfo.AckType()
         self.wait_done = bool(wait_done)
         # future for next ack (or final ack if wait_done True),
         # or None if nothing is waiting
@@ -67,7 +67,7 @@ class _CommandInfo:
 
         Parameters
         ----------
-        ack : ``AckType``
+        ack : `salobj.AckType`
             Command acknowledgement
         cancel_timeout : `bool`
             If True then cancel the timeout_task
@@ -116,11 +116,6 @@ class RemoteCommand:
         self.log = logging.getLogger(f"{salinfo}.RemoteCommand.{name}")
         self._running_cmds = dict()
         self._setup()
-
-    @property
-    def AckType(self):
-        """The class of command acknowledgement."""
-        return self._AckType
 
     @property
     def DataType(self):
@@ -201,7 +196,7 @@ class RemoteCommand:
     async def _get_next_ack(self):
         """Read command acks until self._running_cmds is empty.
         """
-        ack = self.AckType()
+        ack = self.salinfo.AckType()
         while self._running_cmds:
             try:
                 response_id = self._response_func(ack)

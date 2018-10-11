@@ -79,6 +79,33 @@ class SalInfo:
         self.index = index
         Manager = getattr(self.lib, "SAL_" + self.name)
         self.manager = Manager(self.index)
+        self._AckType = getattr(self.lib, self.name + "_ackcmdC")
 
     def __str__(self):
         return f"SalInfo({self.name}, {self.index})"
+
+    @property
+    def AckType(self):
+        """The class of command acknowledgement.
+
+        It is contructed with the following parameters
+        and has these fields:
+
+        ack : `int`
+            Acknowledgement code; one of the ``self.lib.SAL__CMD_``
+            constants, such as ``self.lib.SAL__CMD_COMPLETE``.
+        error : `int`
+            Error code; 0 for no error.
+        result : `str`
+            Explanatory message, or "" for no message.
+        """
+        return self._AckType
+
+    def makeAck(self, ack, error=0, result=""):
+        """Make an AckType object from keyword arguments.
+        """
+        data = self.AckType()
+        data.ack = ack
+        data.error = error
+        data.result = result
+        return data

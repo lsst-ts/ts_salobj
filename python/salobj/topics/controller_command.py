@@ -41,43 +41,21 @@ class ControllerCommand:
         self._setup()
 
     @property
-    def AckType(self):
-        """The class of command acknowledgement.
-
-        It is contructed with the following parameters
-        and has these fields:
-
-        ack : `int`
-            Acknowledgement code; one of the ``self.salinfo.lib.SAL__CMD_``
-            constants, such as ``self.salinfo.lib.SAL__CMD_COMPLETE``.
-        error : `int`
-            Error code; 0 for no error.
-        result : `str`
-            Explanatory message, or "" for no message.
-        """
-        return self._AckType
-
-    @property
     def DataType(self):
         """The class of data for this command."""
         return self._DataType
 
-    def ack(self, id_data, ack, error=0, result=""):
+    def ack(self, id_data, ack):
         """Acknowledge a command by writing a new state.
 
         Parameters
         ----------
         id_data : `salobj.CommandIdData`
             Command ID and data.
-        ack : `int`
-            Acknowledgement code; one of the ``self.salinfo.lib.SAL__CMD_``
-            constants, such as ``self.salinfo.lib.SAL__CMD_COMPLETE``.
-        error : `int` (optional)
-            Error code; 0 for no error.
-        result : `str` (optional)
-            Explanatory message; "" for no message.
+        ack : `salobj.AckType`
+            Command acknowledgement.
         """
-        self._ack_func(id_data.cmd_id, ack, error, result)
+        self._ack_func(id_data.cmd_id, ack.ack, ack.error, ack.result)
 
     def get(self):
         """Pop the oldest command from the queue and return it.
@@ -117,7 +95,7 @@ class ControllerCommand:
           is acknowledged as failed.
         * If the callback returns None then the command is
           acknowledged as completed.
-        * If the callback returns an instance of `AckType`,
+        * If the callback returns an instance of `salobj.AckType`,
           then the command is acknowledged with that.
           If that ack is not final, then you must issue the final ack
           yourself, by calling `ack`.
@@ -177,11 +155,11 @@ class ControllerCommand:
             assert isinstance(id_data.data, self.DataType)
             ack = self._callback_func(id_data)
             if ack is None:
-                self.ack(id_data, self.salinfo.lib.SAL__CMD_COMPLETE, 0, "Done")
-            else:
-                self.ack(id_data, ack.ack, ack.error, ack.result)
+                ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_COMPLETE, result="Done")
+            self.ack(id_data, ack)
         except Exception as e:
-            self.ack(id_data, self.salinfo.lib.SAL__CMD_FAILED, 1, f"Failed: {e}")
+            ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1, result=f"Failed: {e}")
+            self.ack(id_data, ack)
         finally:
             self._queue_callback()
 
@@ -212,7 +190,6 @@ class ControllerCommand:
         self._callback_task = None  # task waiting to run callback, if any
         self._accept_func = getattr(self.salinfo.manager, 'acceptCommand_' + self.name)
         self._ack_func = getattr(self.salinfo.manager, 'ackCommand_' + self.name)
-        self._AckType = getattr(self.salinfo.lib, self.salinfo.name + "_ackcmdC")
         self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_command_" + self.name + "C")
 
         topic_name = self.salinfo.name + "_command_" + self.name

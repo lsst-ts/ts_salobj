@@ -160,14 +160,13 @@ class TestCsc(base_csc.BaseCsc):
         using the specified ack code.
         """
         asyncio.ensure_future(self._impl_wait(id_data))
-        ack = self.cmd_wait.AckType()
-        ack.ack = self.salinfo.lib.SAL__CMD_INPROGRESS
-        return ack
+        return self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_INPROGRESS)
 
     async def _impl_wait(self, id_data):
         """Implement the wait command."""
         await asyncio.sleep(id_data.data.duration)
-        self.cmd_wait.ack(id_data, id_data.data.ack, 0, "Wait done")
+        ack = self.salinfo.makeAck(ack=id_data.data.ack, result="Wait done")
+        self.cmd_wait.ack(id_data, ack)
 
     @property
     def arrays_fields(self):
