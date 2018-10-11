@@ -10,28 +10,33 @@ Object-oriented Python interface to `Service Abstraction Layer`_ (SAL) component
 
 .. _Service Abstraction Layer: https://docushare.lsstcorp.org/docushare/dsweb/Get/Document-21527
 
+The main class in salobj is `salobj.BaseCsc`.
+Create a subclass of this in order to make a Commandable SAL Component (CSC).
+This is described in more detail below and in the doc string for `salobj.BaseCsc`.
+
 A SAL component receives commands from other SAL components and outputs information as telemetry and log events.
-This capability is made available in `salobj.Controller`.
+This capability is made available in `salobj.Controller`, and `salobj.BaseCsc` provides one of these as attribute ``controller``.
 
 In addition, a SAL component may communication with one or more remote components by reading telemetry and log events from them and perhaps sending commands to them.
-This capability is made available in `salobj.Remote`.
+This capability is made available in `salobj.Remote`, and if your CSC needs this then you must construct these yourself.
 
-How to Make a SAL Component
-===========================
+How to Make a Standard Commandable SAL Component (CSC)
+======================================================
 
-Create a class containing one `salobj.Controller` attribute to receive the commands for that component and output telemetry and log events.
-If your component communicates with remote SAL components then add a `salobj.Remote` attribute for each remote component.
-Define a method to implement each command your component supports.
-Assign that method as a callback to the appropriate ``cmd_<command_name>`` of the controller.
+Create a subclass of `salobj.BaseCsc`.
+Follow the instructions in the doc string for that class, including adding a ``do_<name>`` method for each non-standard command your CSC supports.
+The ``do_<name>`` method is called automatically when the ``<name>`` command is seen, with one argument: a `salobj.topics.CommandIdData` object containing the command ID number and the command data.
+Each command is automatically acknowledged as successful if the ``do_<name>`` method succeeds, or as failed if the ``do_<name>`` method raises an exception.
 
-The controller will send a "command succeed" acknowledgement when the command method terminates normally, or a "command failed" acknowledgement if the command method raises an exception (as long as it is a subclass of ``Exception``).
-Each command method should return fairly quickly.
-If the command needs to start a slow or long-term operation (such as a telescope tracking) then you should implement that code in a coroutine (a method defined by `async def`) and start it from the command method by calling `asyncio.ensure_future(coroutine)`.
+If the command needs to start a slow or long-term operation (such as a telescope tracking) then you should implement that code in a coroutine (a method defined by ``async def``) and start it from the command method by calling ``asyncio.ensure_future(coroutine)``.
 The command will be reported as finished when the command method finishes, and the slow or long-term operation can continue at its own pace.
 
-See `salobj.test_utils.TestComponent` for an example.
+If your component communicates with remote SAL components then add a `salobj.Remote` attribute for each remote component.
+Use the remote attribute to listen to events and telemetry from that remote component and issue commands to it.
 
-Note that we plan to offer a high level class for SAL Components that handles some of the above for you, including the standard state transitions for "CSC"s.
+`salobj.test_utils.TestCSC` is an example of a simple SAL CSC.
+However, unlike a standard CSC, `salobj.test_utils.TestCSC` allows you to start up in any state, which can simplify testing.
+
 
 Python API reference
 ====================

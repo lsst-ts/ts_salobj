@@ -19,11 +19,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["SalInfo", "get_command_names", "get_event_names", "get_telemetry_names",
+__all__ = ["ExpectedError", "SalInfo", "get_command_names", "get_event_names", "get_telemetry_names",
            "split_component_name"]
 
-import enum
 import re
+
+
+class ExpectedError(Exception):
+    """Report an error that does not benefit from a traceback.
+
+    For example, a command is invalid in the current state.
+    """
+    pass
 
 
 class SalInfo:
@@ -44,17 +51,6 @@ class SalInfo:
         self.name, self.index = split_component_name(component_name)
         get_manager = getattr(self.lib, "SAL_" + self.name)
         self.manager = get_manager() if self.index is None else get_manager(self.index)
-        self.ReturnCodes = enum.IntEnum(
-            "ReturnCodes",
-            (
-                "DDS_RETCODE_OK", "DDS_RETCODE_ERROR", "DDS_RETCODE_UNSUPPORTED",
-                "DDS_RETCODE_BAD_PARAMETER", "DDS_RETCODE_PRECONDITION_NOT_MET",
-                "DDS_RETCODE_OUT_OF_RESOURCES", "DDS_RETCODE_NOT_ENABLED",
-                "DDS_RETCODE_IMMUTABLE_POLICY", "DDS_RETCODE_INCONSISTENT_POLICY",
-                "DDS_RETCODE_ALREADY_DELETED", "DDS_RETCODE_TIMEOUT", "DDS_RETCODE_NO_DATA",
-                "DDS_RETCODE_ILLEGAL_OPERATION",
-            ),
-            start=0)
 
 
 def _get_names(regex, names):

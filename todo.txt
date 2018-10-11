@@ -7,3 +7,7 @@ Track all command responses instead of discarding responses with unexpected comm
 
 Get rid of the SAL libraries.
     This will require a way of finding them elsewhere.
+
+Report replycodes as strings, not numbers, if a name can be matched.
+
+Print a traceback for exceptions unless the exception is an ExpectedError.

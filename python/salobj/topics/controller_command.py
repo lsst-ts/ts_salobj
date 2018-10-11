@@ -68,11 +68,13 @@ class ControllerCommand:
         """The class of data for this command."""
         return self._DataType
 
-    def ack(self, cmd, ack, error=0, result=""):
+    def ack(self, id_data, ack, error=0, result=""):
         """Acknowledge a command by writing a new state.
 
         Parameters
         ----------
+        id_data : `CommandIdData`
+            Command ID and data.
         ack : `int`
             Acknowledgement code; one of the ``self.salinfo.lib.SAL__CMD_``
             constants, such as ``self.salinfo.lib.SAL__CMD_COMPLETE``.
@@ -81,7 +83,7 @@ class ControllerCommand:
         result : `str` (optional)
             Explanatory message; "" for no message.
         """
-        self._ack_func(cmd.id, ack, error, result)
+        self._ack_func(id_data.id, ack, error, result)
 
     def get(self):
         """Pop the oldest command from the queue and return it.
@@ -185,7 +187,7 @@ class ControllerCommand:
             else:
                 self.ack(id_data, ack.ack, ack.error, ack.result)
         except Exception as e:
-            self.ack(id_data, self.salinfo.lib.SAL__CMD_FAILED, 1, msg=f"Failed: {e}")
+            self.ack(id_data, self.salinfo.lib.SAL__CMD_FAILED, 1, f"Failed: {e}")
         finally:
             self._queue_callback()
 

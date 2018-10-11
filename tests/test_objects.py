@@ -11,25 +11,22 @@ import salobj
 
 np.random.seed(47)
 
-if SALPY_Test:
-    class Harness:
-        index = 30
 
-        def __init__(self, arrays_interval=0.1, scalars_interval=0.03):
-            self.index = salobj.test_utils.get_test_index()
-            salobj.test_utils.set_random_lsst_dds_domain()
-            self.component = salobj.test_utils.TestComponent(index=self.index,
-                                                             arrays_interval=arrays_interval,
-                                                             scalars_interval=scalars_interval)
-            self.controller = self.component.controller  # convenience
-            self.remote = salobj.Remote(SALPY_Test, f"Test:{self.index}")
+class Harness:
+    index = 30
+
+    def __init__(self, initial_state):
+        self.index = salobj.test_utils.get_test_index()
+        salobj.test_utils.set_random_lsst_dds_domain()
+        self.csc = salobj.test_utils.TestCsc(index=self.index, initial_state=initial_state)
+        self.remote = salobj.Remote(SALPY_Test, f"Test:{self.index}")
 
 
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
 class CommunicateTestCase(unittest.TestCase):
     def test_setArrays_command(self):
         async def doit():
-            harness = Harness()
+            harness = Harness(initial_state=salobj.State.ENABLED)
             # until the controller gets its first setArrays
             # it will not send any arrays events or telemetry
             self.assertIsNone(harness.remote.evt_arrays.get())
@@ -38,20 +35,24 @@ class CommunicateTestCase(unittest.TestCase):
             # send the setArrays command with random data
             # but first start looking for the event that should be triggered
             evt_coro = harness.remote.evt_arrays.next(flush=True, timeout=1)
-            cmd_data_sent = harness.component.make_random_cmd_arrays()
+            cmd_data_sent = harness.csc.make_random_cmd_arrays()
             await harness.remote.cmd_setArrays.start(cmd_data_sent, timeout=1)
 
             # see if new data is being broadcast correctly
             evt_data = await evt_coro
-            harness.component.assert_arrays_equal(cmd_data_sent, evt_data)
+            harness.csc.assert_arrays_equal(cmd_data_sent, evt_data)
             tel_data = await harness.remote.tel_arrays.next(flush=True, timeout=1)
-            harness.component.assert_arrays_equal(cmd_data_sent, tel_data)
+            harness.csc.assert_arrays_equal(cmd_data_sent, tel_data)
+
+            # also test get
+            harness.csc.assert_arrays_equal(cmd_data_sent, harness.remote.tel_arrays.get())
+            harness.csc.assert_arrays_equal(cmd_data_sent, harness.remote.evt_arrays.get())
 
         asyncio.get_event_loop().run_until_complete(doit())
 
     def test_setScalars_command(self):
         async def doit():
-            harness = Harness()
+            harness = Harness(initial_state=salobj.State.ENABLED)
             # until the controller gets its first setArrays
             # it will not send any arrays events or telemetry
             self.assertIsNone(harness.remote.evt_scalars.get())
@@ -60,20 +61,24 @@ class CommunicateTestCase(unittest.TestCase):
             # send the setScalars command with random data
             # but first start looking for the event that should be triggered
             evt_coro = harness.remote.evt_scalars.next(flush=True, timeout=1)
-            cmd_data_sent = harness.component.make_random_cmd_scalars()
+            cmd_data_sent = harness.csc.make_random_cmd_scalars()
             await harness.remote.cmd_setScalars.start(cmd_data_sent, timeout=1)
 
             # see if new data is being broadcast correctly
             evt_data = await evt_coro
-            harness.component.assert_scalars_equal(cmd_data_sent, evt_data)
+            harness.csc.assert_scalars_equal(cmd_data_sent, evt_data)
             tel_data = await harness.remote.tel_scalars.next(flush=True, timeout=1)
-            harness.component.assert_scalars_equal(cmd_data_sent, tel_data)
+            harness.csc.assert_scalars_equal(cmd_data_sent, tel_data)
+
+            # also test get
+            harness.csc.assert_scalars_equal(cmd_data_sent, harness.remote.tel_scalars.get())
+            harness.csc.assert_scalars_equal(cmd_data_sent, harness.remote.evt_scalars.get())
 
         asyncio.get_event_loop().run_until_complete(doit())
 
     def test_command_timeout(self):
         async def doit():
-            harness = Harness()
+            harness = Harness(initial_state=salobj.State.ENABLED)
             sallib = harness.remote.salinfo.lib
             wait_data = harness.remote.cmd_wait.DataType()
             wait_data.duration = 5
@@ -85,10 +90,10 @@ class CommunicateTestCase(unittest.TestCase):
 
     def test_multiple_commands(self):
         """Test that we can have multiple instances of the same command
-        running at the same time.
-        """
+            running at the same time.
+            """
         async def doit():
-            harness = Harness()
+            harness = Harness(initial_state=salobj.State.ENABLED)
             sallib = harness.remote.salinfo.lib
             wait_data = harness.remote.cmd_wait.DataType()
             futures = []
@@ -102,6 +107,99 @@ class CommunicateTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
+    def test_state(self):
+        async def doit():
+            harness = Harness(initial_state=salobj.State.STANDBY)
+            commands = ("start", "enable", "disable", "exitControl", "standby",
+                        "setArrays", "setScalars")
+            # Standard CSC commands and associated state changes:
+            #
+            # start: STANDBY to DISABLED
+            # enable: DISABLED to ENABLED
+            #
+            # disable: ENABLED to DISABLED
+            # standby: DISABLED to STANDBY
+            # exitControl: STANDBY, FAULT to OFFLINE (quit)
+
+            # initial state is STANDBY
+            self.assertEqual(harness.csc.state, salobj.State.STANDBY)
+
+            for bad_command in commands:
+                if bad_command in ("start", "exitControl"):
+                    continue  # valid command in STANDBY state
+                with self.subTest(bad_command=bad_command):
+                    cmd_attr = getattr(harness.remote, f"cmd_{bad_command}")
+                    id_ack = await cmd_attr.start(cmd_attr.DataType())
+                    self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_FAILED)
+                    self.assertNotEqual(id_ack.ack.error, 0)
+                    self.assertNotEqual(id_ack.ack.result, "")
+
+            # send start; new state is DISABLED
+            cmd_attr = getattr(harness.remote, f"cmd_start")
+            state_coro = harness.remote.evt_summaryState.next()
+            id_ack = await cmd_attr.start(cmd_attr.DataType())
+            state = await state_coro
+            self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_COMPLETE)
+            self.assertEqual(id_ack.ack.error, 0)
+            self.assertEqual(harness.csc.state, salobj.State.DISABLED)
+            self.assertEqual(state.summaryState, salobj.State.DISABLED)
+
+            for bad_command in commands:
+                if bad_command in ("enable", "standby"):
+                    continue  # valid command in DISABLED state
+                with self.subTest(bad_command=bad_command):
+                    cmd_attr = getattr(harness.remote, f"cmd_{bad_command}")
+                    id_ack = await cmd_attr.start(cmd_attr.DataType())
+                    self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_FAILED)
+                    self.assertNotEqual(id_ack.ack.error, 0)
+                    self.assertNotEqual(id_ack.ack.result, "")
+
+            # send enable; new state is ENABLED
+            cmd_attr = getattr(harness.remote, f"cmd_enable")
+            state_coro = harness.remote.evt_summaryState.next()
+            id_ack = await cmd_attr.start(cmd_attr.DataType())
+            state = await state_coro
+            self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_COMPLETE)
+            self.assertEqual(id_ack.ack.error, 0)
+            self.assertEqual(harness.csc.state, salobj.State.ENABLED)
+            self.assertEqual(state.summaryState, salobj.State.ENABLED)
+
+            for bad_command in commands:
+                if bad_command in ("disable", "setArrays", "setScalars"):
+                    continue  # valid command in DISABLED state
+                with self.subTest(bad_command=bad_command):
+                    cmd_attr = getattr(harness.remote, f"cmd_{bad_command}")
+                    id_ack = await cmd_attr.start(cmd_attr.DataType())
+                    self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_FAILED)
+                    self.assertNotEqual(id_ack.ack.error, 0)
+                    self.assertNotEqual(id_ack.ack.result, "")
+
+            # send disable; new state is DISABLED
+            cmd_attr = getattr(harness.remote, f"cmd_disable")
+            id_ack = await cmd_attr.start(cmd_attr.DataType())
+            self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_COMPLETE)
+            self.assertEqual(id_ack.ack.error, 0)
+            self.assertEqual(harness.csc.state, salobj.State.DISABLED)
+
+            # send standby; new state is STANDBY
+            cmd_attr = getattr(harness.remote, f"cmd_standby")
+            id_ack = await cmd_attr.start(cmd_attr.DataType())
+            self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_COMPLETE)
+            self.assertEqual(id_ack.ack.error, 0)
+            self.assertEqual(harness.csc.state, salobj.State.STANDBY)
+
+            # send exitControl; new state is OFFLINE
+            cmd_attr = getattr(harness.remote, f"cmd_exitControl")
+            id_ack = await cmd_attr.start(cmd_attr.DataType())
+            self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_COMPLETE)
+            self.assertEqual(id_ack.ack.error, 0)
+            self.assertEqual(harness.csc.state, salobj.State.OFFLINE)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+
+@unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
+class RemoteConstructorTestCase(unittest.TestCase):
     def test_remote_include_exclude(self):
         """Test the include and exclude arguments for salobj.Remote"""
         index = salobj.test_utils.get_test_index()
