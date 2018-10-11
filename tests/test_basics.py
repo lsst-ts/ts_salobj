@@ -21,7 +21,6 @@ class GetNamesTestCase(unittest.TestCase):
         self.assertEqual(command_names, [
             'disable',
             'enable',
-            'enterControl',
             'exitControl',
             'fault',
             'setArrays',
