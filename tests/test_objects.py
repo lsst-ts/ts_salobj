@@ -13,13 +13,11 @@ np.random.seed(47)
 
 
 class Harness:
-    index = 30
-
     def __init__(self, initial_state):
-        self.index = salobj.test_utils.get_test_index()
+        index = salobj.test_utils.get_test_index()
         salobj.test_utils.set_random_lsst_dds_domain()
-        self.csc = salobj.test_utils.TestCsc(index=self.index, initial_state=initial_state)
-        self.remote = salobj.Remote(SALPY_Test, self.index)
+        self.csc = salobj.test_utils.TestCsc(index=index, initial_state=initial_state)
+        self.remote = salobj.Remote(SALPY_Test, index)
 
 
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
