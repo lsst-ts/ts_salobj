@@ -57,12 +57,11 @@ class BaseCsc(Controller):
     -----
     The constructor does the following:
 
-    * Create a controller for the component
     * For each command defined for the component, find a ``do_<name>`` method
-      (which must be present) and add it as a callback to the controller's
+      (which must be present) and add it as a callback to the
       ``cmd_<name>`` attribute.
-    * The base class provides ``do_<name>`` methods for the standard CSC
-      commands. The default implementation:
+    * The base class provides synchronous ``do_<name>`` methods for the
+      standard CSC commands. The default implementation:
 
         * Checks for validity of the requested state change;
             if the change is valid then:
@@ -82,18 +81,36 @@ class BaseCsc(Controller):
     * ``exitControl``: `State.STANDBY` to `State.OFFLINE` and then quit
     * ``standby``: `State.DISABLED` or `State.FAULT` to `State.STANDBY`
 
-    Rules for subclasses:
+    Writing a CSC:
 
-    * Subclasses must provide a ``do_<name>`` method for every command
+    * Make your CSC subclass of BaseCsc.
+    * Your subclass must provide a ``do_<name>`` method for every command
       that is not part of the standard CSC command set.
-    * Subclasses should also construct a `salobj.Remote` for any
-      remote SAL component they wish to listen to or command.
-    * Subclasses must override `report_summary_state` if the
-      summaryState type is not the standard type (with a single
-      value that is the state).
-    * Subclasses may override ``before_<name>`` and/or ``after_<name>``
-      for each state transition command, as appropriate. For complex
-      transitions subclasses may also override ``do_<name>``.
+    * Each ``do_<name>`` method can be synchronous (``def do_<name>...``)
+      or asynchronous (``async def do_<name>...``).
+    * Your CSC will report the command as failed if the ``do_<name>``
+      method raises an exception. The ``result`` field of that
+      acknowledgement will be the data in the exception.
+      Eventually the CSC may log a traceback, as well,
+      but never for ``salobj.ExpectedException``.
+    * By default your CSC will report the command as completed
+      when ``do_<name>`` finishes, but you can return a different
+      acknowledgement (instance of `SalInfo.AckType`) instead,
+      and that will be reportd as the final command state.
+    * If ``do<name>`` will take awhile, you should call
+      ``cmd_<name>.ackInProgress`` as the callback starts, after you have
+      validated the data and are pretty sure you can run the command.
+    * If you want only one instance of the command running at a time,
+      set ``cmd_<name>.allow_multiple_commands = False`` in your
+      CSC's constructor. See `ControllerCommand.allow_multiple_commands`
+      for details and limitations of this attribute.
+    * Your subclass should construct a `salobj.Remote` for any
+      remote SAL component it wishes to listen to or command.
+    * Your subclass may override ``before_<name>`` and/or ``after_<name>``
+      for each state transition command, as appropriate. For complex state
+      transitions your subclass may also override ``do_<name>``.
+    * ``do_`` is a reserved prefix: all ``do_<name>`` attributes must be
+      must match a command name and must be callable.
     """
     def __init__(self, sallib, index=None):
         super().__init__(sallib, index)

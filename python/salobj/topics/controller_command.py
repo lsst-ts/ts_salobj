@@ -22,6 +22,8 @@
 __all__ = ["ControllerCommand"]
 
 import asyncio
+import inspect
+
 from ..base import CommandIdData
 
 
@@ -38,6 +40,9 @@ class ControllerCommand:
     def __init__(self, salinfo, name):
         self.name = str(name)
         self.salinfo = salinfo
+        self._callback_func = None  # callback function, if any
+        self._callback_task = None  # task waiting to run callback, if any
+        self._allow_multiple_callbacks = False
         self._setup()
 
     @property
@@ -56,6 +61,39 @@ class ControllerCommand:
             Command acknowledgement.
         """
         self._ack_func(id_data.cmd_id, ack.ack, ack.error, ack.result)
+
+    def ackInProgress(self, id_data, result=""):
+        """Ackowledge this command as "in progress".
+        """
+        ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_INPROGRESS, result=result)
+        self.ack(id_data, ack)
+
+    @property
+    def allow_multiple_callbacks(self):
+        """Can mutiple callbacks run simultaneously?
+
+        False by default.
+
+        Notes
+        -----
+        This is handled automatically for the following cases:
+
+        * Awaitable callbacks that do all the work themselves
+          (meaning that they do not start additional tasks that
+          they don't wait for).
+        * Synchronous callbacks that do all the work themselves.
+          In this case the attribute is ignored, since only
+          one instance of the callback can ever run at one time.
+
+        If the callback function starts a task that it does not wait for,
+        you will have to handle prohibition of multiple callbacks manually,
+        e.g. by overriding `_run_callback`.
+        """
+        return self._allow_multiple_callbacks
+
+    @allow_multiple_callbacks.setter
+    def allow_multiple_callbacks(self, allow):
+        self._allow_multiple_callbacks = bool(allow)
 
     def get(self):
         """Pop the oldest command from the queue and return it.
@@ -89,6 +127,20 @@ class ControllerCommand:
         it receives one argument: a `salobj.CommandIdData` containing
         the command ID and the command data.
 
+        Raises
+        ------
+        TypeError
+            When setting a new value if the value is not None
+            and is not callable.
+
+        Notes
+        -----
+        The callback function can be synchronous or asynchronous
+        (e.g. defined with ``async def``).
+        If it is asynchronous then you should set the command property
+        `allow_multiple_callbacks` False if you wish to prohibit
+        more than one instance of the callback to be run at a time.
+
         Acknowledgement of the command is automatic:
 
         * If the callback raises an exception then the command
@@ -100,14 +152,6 @@ class ControllerCommand:
           If that ack is not final, then you must issue the final ack
           yourself, by calling `ack`.
 
-        Raises
-        ------
-        TypeError
-            When setting a new value if the value is not None
-            and is not callable.
-
-        Notes
-        -----
         `next` is prohibited while there is a callback function.
         """
         return self._callback_func
@@ -129,7 +173,10 @@ class ControllerCommand:
 
     @property
     def has_callback(self):
-        """Return True if there is a callback function"""
+        """Return True if there is a callback function.
+
+        This property is read-only.
+        """
         return self._callback_func is not None
 
     def __str__(self):
@@ -147,13 +194,42 @@ class ControllerCommand:
         """
         if not self.callback:
             return
+
         try:
+            is_awaitable = False
             id_data = task.result()
-            # sanity check the return value,
-            # to save the callback from getting garbage
             assert id_data.cmd_id > 0
             assert isinstance(id_data.data, self.DataType)
-            ack = self._callback_func(id_data)
+
+            result = self._callback_func(id_data)
+            if inspect.isawaitable(result):
+                is_awaitable = True
+                asyncio.ensure_future(self._finish_awaitable_callback(id_data, result))
+            else:
+                if result is None:
+                    ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_COMPLETE, result="Done")
+                else:
+                    ack = result
+                self.ack(id_data, ack)
+        except Exception as e:
+            ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1, result=f"Failed: {e}")
+            self.ack(id_data, ack)
+        finally:
+            if not is_awaitable or self.allow_multiple_callbacks:
+                self._queue_callback()
+
+    async def _finish_awaitable_callback(self, id_data, coro):
+        """Wait for the callback to finish and acknowledge the command.
+
+        Parameters
+        ----------
+        id_data : `salobj.CommandIdData`
+            Command ID and data.
+        coro : `asyncio.coroutine`
+            Awaitable returned by the callback function.
+        """
+        try:
+            ack = await coro
             if ack is None:
                 ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_COMPLETE, result="Done")
             self.ack(id_data, ack)
@@ -161,7 +237,8 @@ class ControllerCommand:
             ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1, result=f"Failed: {e}")
             self.ack(id_data, ack)
         finally:
-            self._queue_callback()
+            if not self.allow_multiple_callbacks:
+                self._queue_callback()
 
     def _queue_callback(self):
         self._callback_task = asyncio.ensure_future(self._next())
@@ -186,8 +263,6 @@ class ControllerCommand:
 
     def _setup(self):
         """Get SAL functions and tell SAL that I want to receive this command."""
-        self._callback_func = None  # callback function, if any
-        self._callback_task = None  # task waiting to run callback, if any
         self._accept_func = getattr(self.salinfo.manager, 'acceptCommand_' + self.name)
         self._ack_func = getattr(self.salinfo.manager, 'ackCommand_' + self.name)
         self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_command_" + self.name + "C")

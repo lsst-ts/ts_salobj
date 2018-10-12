@@ -109,6 +109,7 @@ class TestCsc(base_csc.BaseCsc):
         self.tel_scalars_data = self.tel_scalars.DataType()
         self._enable_arrays_telemetry = False
         self._enable_scalars_telemetry = False
+        self.cmd_wait.allow_multiple_callbacks = True
 
     async def run_arrays_telemetry(self):
         """Output arrays telemetry at regular intervals."""
@@ -153,20 +154,14 @@ class TestCsc(base_csc.BaseCsc):
         """
         self.fault()
 
-    def do_wait(self, id_data):
+    async def do_wait(self, id_data):
         """Execute the wait command.
 
         Wait for the specified time and then acknowledge the command
         using the specified ack code.
         """
-        asyncio.ensure_future(self._impl_wait(id_data))
-        return self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_INPROGRESS)
-
-    async def _impl_wait(self, id_data):
-        """Implement the wait command."""
+        self.cmd_wait.ackInProgress(id_data, f"Wait {id_data.data.duration} seconds begins")
         await asyncio.sleep(id_data.data.duration)
-        ack = self.salinfo.makeAck(ack=id_data.data.ack, result="Wait done")
-        self.cmd_wait.ack(id_data, ack)
 
     @property
     def arrays_fields(self):

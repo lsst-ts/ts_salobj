@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["CommandIdAck", "RemoteCommand"]
+__all__ = ["RemoteCommand"]
 
 import asyncio
 import logging
@@ -127,7 +127,7 @@ class RemoteCommand:
 
         Parameters
         ----------
-        cmd_id : `CommandIdAck`
+        cmd_id : `salobj.CommandIdAck`
             The command ID and acknowledgement returned by
             the previous wait (e.g. from `start`).
         timeout : `float` (optional)
@@ -176,7 +176,7 @@ class RemoteCommand:
         -------
         coro : `coroutine`
             A coroutine that waits for command acknowledgement
-            and returns a `CommandIdAck` instance.
+            and returns a `salobj.CommandIdAck` instance.
         """
         if not isinstance(data, self.DataType):
             raise TypeError(f"data={data!r} must be an instance of {self.DataType}")

@@ -1,4 +1,5 @@
 import asyncio
+import time
 import unittest
 
 import numpy as np
@@ -75,9 +76,10 @@ class CommunicateTestCase(unittest.TestCase):
         asyncio.get_event_loop().run_until_complete(doit())
 
     def test_command_timeout(self):
+        harness = Harness(initial_state=salobj.State.ENABLED)
+        sallib = harness.remote.salinfo.lib
+
         async def doit():
-            harness = Harness(initial_state=salobj.State.ENABLED)
-            sallib = harness.remote.salinfo.lib
             wait_data = harness.remote.cmd_wait.DataType()
             wait_data.duration = 5
             wait_data.ack = sallib.SAL__CMD_COMPLETE
@@ -90,12 +92,16 @@ class CommunicateTestCase(unittest.TestCase):
         """Test that we can have multiple instances of the same command
             running at the same time.
             """
+        harness = Harness(initial_state=salobj.State.ENABLED)
+        sallib = harness.remote.salinfo.lib
+        self.assertTrue(harness.csc.cmd_wait.has_callback)
+        self.assertTrue(harness.csc.cmd_wait.allow_multiple_callbacks)
+        wait_data = harness.remote.cmd_wait.DataType()
+        durations = (0.4, 0.3)  # seconds
+
         async def doit():
-            harness = Harness(initial_state=salobj.State.ENABLED)
-            sallib = harness.remote.salinfo.lib
-            wait_data = harness.remote.cmd_wait.DataType()
             futures = []
-            for duration in (0.4, 0.3):
+            for duration in durations:
                 wait_data.duration = duration
                 wait_data.ack = sallib.SAL__CMD_COMPLETE
                 futures.append(harness.remote.cmd_wait.start(wait_data, timeout=5))
@@ -103,23 +109,95 @@ class CommunicateTestCase(unittest.TestCase):
             for result in results:
                 self.assertEqual(result.ack.ack, sallib.SAL__CMD_COMPLETE)
 
+        start_time = time.time()
         asyncio.get_event_loop().run_until_complete(doit())
+        duration = time.time() - start_time
+        self.assertLess(duration, np.sum(durations))
 
-    def test_state(self):
+    def test_multiple_sequential_commands(self):
+        """Test that commands prohibig multiple callbacks are executed
+        one after the other.
+        """
+        harness = Harness(initial_state=salobj.State.ENABLED)
+        sallib = harness.remote.salinfo.lib
+        self.assertTrue(harness.csc.cmd_wait.has_callback)
+        # make the wait commands execute sequentially
+        harness.csc.cmd_wait.allow_multiple_callbacks = False
+        self.assertFalse(harness.csc.cmd_wait.allow_multiple_callbacks)
+        wait_data = harness.remote.cmd_wait.DataType()
+        durations = (0.4, 0.3)  # seconds
+
+        async def doit():
+            futures = []
+            for duration in durations:
+                wait_data.duration = duration
+                wait_data.ack = sallib.SAL__CMD_COMPLETE
+                futures.append(harness.remote.cmd_wait.start(wait_data, timeout=5))
+            results = await asyncio.gather(*futures)
+            for result in results:
+                self.assertEqual(result.ack.ack, sallib.SAL__CMD_COMPLETE)
+
+        start_time = time.time()
+        asyncio.get_event_loop().run_until_complete(doit())
+        duration = time.time() - start_time
+        self.assertGreaterEqual(duration, np.sum(durations))
+
+    def test_asynchronous_event_callback(self):
+        harness = Harness(initial_state=salobj.State.ENABLED)
+        cmd_scalars_data = harness.csc.make_random_cmd_scalars()
+        # just making it variable doesn't work;
+        # the callback can declare it global, but setting it
+        # still doesn't affect the value
+        self.event_seen = False
+
+        async def scalars_callback(scalars):
+            harness.csc.assert_scalars_equal(scalars, cmd_scalars_data)
+            self.event_seen = True
+
+        async def doit():
+            # send the setScalars command with random data
+            # but first start looking for the event that should be triggered
+            harness.remote.evt_scalars.callback = scalars_callback
+            await harness.remote.cmd_setScalars.start(cmd_scalars_data, timeout=1)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+        self.assertTrue(self.event_seen)
+
+    def test_ynchronous_event_callback(self):
+        harness = Harness(initial_state=salobj.State.ENABLED)
+        cmd_scalars_data = harness.csc.make_random_cmd_scalars()
+        self.event_seen = False
+
+        def scalars_callback(scalars):
+            harness.csc.assert_scalars_equal(scalars, cmd_scalars_data)
+            self.event_seen = True
+
+        async def doit():
+            # send the setScalars command with random data
+            # but first start looking for the event that should be triggered
+            harness.remote.evt_scalars.callback = scalars_callback
+            await harness.remote.cmd_setScalars.start(cmd_scalars_data, timeout=1)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+        self.assertTrue(self.event_seen)
+
+    def test_standard_state_transitions(self):
+        """Test standard CSC state transitions.
+
+        The initial state is STANDBY.
+        The standard commands and associated state transitions are:
+
+        * start: STANDBY to DISABLED
+        * enable: DISABLED to ENABLED
+
+        * disable: ENABLED to DISABLED
+        * standby: DISABLED to STANDBY
+        * exitControl: STANDBY, FAULT to OFFLINE (quit)
+        """
         async def doit():
             harness = Harness(initial_state=salobj.State.STANDBY)
             commands = ("start", "enable", "disable", "exitControl", "standby",
                         "setArrays", "setScalars")
-            # Standard CSC commands and associated state changes:
-            #
-            # start: STANDBY to DISABLED
-            # enable: DISABLED to ENABLED
-            #
-            # disable: ENABLED to DISABLED
-            # standby: DISABLED to STANDBY
-            # exitControl: STANDBY, FAULT to OFFLINE (quit)
-
-            # initial state is STANDBY
             self.assertEqual(harness.csc.state, salobj.State.STANDBY)
 
             for bad_command in commands:
