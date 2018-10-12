@@ -35,7 +35,6 @@ try:
     import SALPY_Test
 except ImportError:
     warnings.warn("Could not import SALPY_Test; TestCsc will not work")
-from . import base
 from . import base_csc
 
 
@@ -100,7 +99,7 @@ class TestCsc(base_csc.BaseCsc):
         if initial_state not in base_csc.State:
             raise ValueError(f"intial_state={initial_state} is not a salobj.State enum")
         super().__init__(SALPY_Test, index)
-        self.state = initial_state
+        self.summary_state = initial_state
         self.arrays_interval = float(arrays_interval)
         self.scalars_interval = float(scalars_interval)
         self.evt_arrays_data = self.evt_arrays.DataType()
@@ -125,8 +124,7 @@ class TestCsc(base_csc.BaseCsc):
 
     def do_setArrays(self, id_data):
         """Execute the setArrays command."""
-        if self.state != base_csc.State.ENABLED:
-            raise base.ExpectedError(f"setArrays not allowed in {self.state} state")
+        self.assert_enabled("setArrays")
         self.copy_arrays(id_data.data, self.evt_arrays_data)
         self.copy_arrays(id_data.data, self.tel_arrays_data)
         self.assert_arrays_equal(id_data.data, self.evt_arrays_data)
@@ -138,8 +136,7 @@ class TestCsc(base_csc.BaseCsc):
 
     def do_setScalars(self, id_data):
         """Execute the setScalars command."""
-        if self.state != base_csc.State.ENABLED:
-            raise base.ExpectedError(f"setArrays not allowed in {self.state} state")
+        self.assert_enabled("setScalars")
         self.copy_scalars(id_data.data, self.evt_scalars_data)
         self.copy_scalars(id_data.data, self.tel_scalars_data)
         self.evt_scalars.put(self.evt_scalars_data, 1)
@@ -160,6 +157,7 @@ class TestCsc(base_csc.BaseCsc):
         Wait for the specified time and then acknowledge the command
         using the specified ack code.
         """
+        self.assert_enabled("wait")
         self.cmd_wait.ackInProgress(id_data, f"Wait {id_data.data.duration} seconds begins")
         await asyncio.sleep(id_data.data.duration)
 

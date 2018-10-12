@@ -114,8 +114,7 @@ class BaseCsc(Controller):
     """
     def __init__(self, sallib, index=None):
         super().__init__(sallib, index)
-        self.state = State.STANDBY
-        self.summary_state = self.evt_summaryState.DataType()
+        self._summary_state = State.STANDBY
         command_names = self.salinfo.manager.getCommandNames()
         self._assert_do_methods_present(command_names)
         for name in command_names:
@@ -285,20 +284,42 @@ class BaseCsc(Controller):
 
     def fault(self):
         """Enter the fault state."""
-        self.state = State.FAULT
-        self.report_summary_state()
+        self.summary_state = State.FAULT
 
-    def set_summary_state(self):
-        """Set an updated value for summary_state."""
-        self.summary_state.summaryState = self.state
+    def assert_enabled(self, action):
+        """Assert that an action that requires ENABLED state can be run.
+        """
+        if self.summary_state != State.ENABLED:
+            raise base.ExpectedError(f"{action} not allowed in state {self.summaryState}")
+
+    @property
+    def summary_state(self):
+        """Set or get the summary state as a `State` enum.
+
+        If you set the state then it is reported as a summaryState event.
+
+        Raises
+        ------
+        ValueError
+            If the new summary state is not a `State`.
+        """
+        return self._summary_state
+
+    @summary_state.setter
+    def summary_state(self, summary_state):
+        if summary_state not in State:
+            raise ValueError(f"New summary_state={summary_state} not a valid State")
+        self._summary_state = summary_state
+        self.report_summary_state()
 
     def report_summary_state(self):
         """Report a new value for summary_state, including current state.
 
         Subclasses must override if summaryState is not the standard type.
         """
-        self.set_summary_state()
-        self.evt_summaryState.put(self.summary_state, 1)
+        evt_data = self.evt_summaryState.DataType()
+        evt_data.summaryState = self.summary_state
+        self.evt_summaryState.put(evt_data)
 
     def _assert_do_methods_present(self, command_names):
         """Assert that all needed do_<name> methods are present,
@@ -339,14 +360,14 @@ class BaseCsc(Controller):
         new_state : `State`
             Desired new state.
         """
-        curr_state = self.state
-        if self.state not in allowed_curr_states:
-            raise base.ExpectedError(f"{cmd_name} not allowed in {self.state} state")
+        curr_state = self.summary_state
+        if curr_state not in allowed_curr_states:
+            raise base.ExpectedError(f"{cmd_name} not allowed in {curr_state} state")
         getattr(self, f"begin_{cmd_name}")(id_data)
-        self.state = new_state
+        self._summary_state = new_state
         try:
             getattr(self, f"end_{cmd_name}")(id_data)
         except Exception:
-            self.state = curr_state
+            self._summary_state = curr_state
             raise
         self.report_summary_state()
