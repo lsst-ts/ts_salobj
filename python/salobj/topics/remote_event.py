@@ -34,31 +34,14 @@ class RemoteEvent(RemoteTelemetry):
     name : `str`
         Event topic name
     """
-    def flush(self):
-        # TODO TSS-3084 remove the "if" once this ticket is resolved
-        if self._flush_func is None:
-            return
-        super().flush()
-
     def _setup(self):
         """Get functions from salinfo and subscribe to the topic."""
         self._get_newest_func_name = "getEvent_" + self.name
         self._get_newest_func = getattr(self.salinfo.manager, self._get_newest_func_name)
         self._get_oldest_func_name = "getNextSample_logevent_" + self.name
-        # TODO TSS-3084: remove this workaround code and the similar code
-        # for flush above once salpy provides getNextSample and
-        # flushSamples functions for logevents, or we decide not to do so.
-        if hasattr(self.salinfo.manager, self._get_oldest_func_name):
-            self._get_oldest_func = getattr(self.salinfo.manager, self._get_oldest_func_name)
-        else:
-            self._get_oldest_func_name = self._get_newest_func_name
-            self._get_oldest_func = self._get_newest_func
+        self._get_oldest_func = getattr(self.salinfo.manager, self._get_oldest_func_name)
         self._flush_func_name = "flushSamples_logevent_" + self.name
-        if hasattr(self.salinfo.manager, self._flush_func_name):
-            self._flush_func = getattr(self.salinfo.manager, self._flush_func_name)
-        else:
-            self._flush_func_name = None
-            self._flush_func = None
+        self._flush_func = getattr(self.salinfo.manager, self._flush_func_name)
         self._DataType_name = self.salinfo.name + "_logevent_" + self.name + "C"
         self._DataType = getattr(self.salinfo.lib, self._DataType_name)
 
