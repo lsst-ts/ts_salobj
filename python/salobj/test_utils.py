@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["get_test_index", "set_random_lsst_dds_domain", "TestCsc"]
+__all__ = ["set_random_lsst_dds_domain", "TestCsc"]
 
 import asyncio
 import os
@@ -36,16 +36,6 @@ try:
 except ImportError:
     warnings.warn("Could not import SALPY_Test; TestCsc will not work")
 from . import base_csc
-
-
-_LAST_TEST_INDEX = 0
-
-
-def get_test_index():
-    """Return a new index for the Test component."""
-    global _LAST_TEST_INDEX
-    _LAST_TEST_INDEX += 1
-    return _LAST_TEST_INDEX
 
 
 def set_random_lsst_dds_domain():

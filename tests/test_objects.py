@@ -12,10 +12,12 @@ import salobj
 
 np.random.seed(47)
 
+index_gen = salobj.index_generator()
+
 
 class Harness:
     def __init__(self, initial_state):
-        index = salobj.test_utils.get_test_index()
+        index = next(index_gen)
         salobj.test_utils.set_random_lsst_dds_domain()
         self.csc = salobj.test_utils.TestCsc(index=index, initial_state=initial_state)
         self.remote = salobj.Remote(SALPY_Test, index)
@@ -278,7 +280,7 @@ class CommunicateTestCase(unittest.TestCase):
 class RemoteConstructorTestCase(unittest.TestCase):
     def test_remote_include_exclude(self):
         """Test the include and exclude arguments for salobj.Remote"""
-        index = salobj.test_utils.get_test_index()
+        index = next(index_gen)
         salinfo = salobj.SalInfo(SALPY_Test, index)
         manager = salinfo.manager
 

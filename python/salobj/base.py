@@ -19,7 +19,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["CommandIdAck", "CommandIdData", "ExpectedError", "SalInfo"]
+__all__ = ["CommandIdAck", "CommandIdData", "ExpectedError", "index_generator", "SalInfo"]
+
+
+MAX_SAL_INDEX = (2 << 30) - 1
 
 
 class CommandIdAck:
@@ -53,6 +56,40 @@ class ExpectedError(Exception):
     For example, a command is invalid in the current state.
     """
     pass
+
+
+def index_generator(imin=1, imax=MAX_SAL_INDEX):
+    """Sequential index generator, e.g. for SAL components.
+
+    Returns values min, min+1, ..., max, min, min + 1, ...
+
+    Parameters
+    ----------
+    imin : `int`
+        Minimum index (inclusive).
+    imax : `int`
+        Maximum index (inclusive).
+
+    Raises
+    ------
+    ValueError
+        If imin >= imax
+    """
+    if imax <= imin:
+        raise ValueError(f"imin={imin} must be less than imax={imax}")
+
+    # define an inner generator and return that
+    # in order to get immediate argument checking
+    def index_impl():
+        index = imin - 1
+        while True:
+            index += 1
+            if index > imax:
+                index = imin
+
+            yield index
+
+    return index_impl()
 
 
 class SalInfo:
