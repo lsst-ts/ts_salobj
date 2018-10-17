@@ -148,7 +148,6 @@ class TestCsc(base_csc.BaseCsc):
         using the specified ack code.
         """
         self.assert_enabled("wait")
-        self.cmd_wait.ackInProgress(id_data, f"Wait {id_data.data.duration} seconds begins")
         await asyncio.sleep(id_data.data.duration)
 
     @property

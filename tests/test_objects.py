@@ -327,6 +327,15 @@ class RemoteConstructorTestCase(unittest.TestCase):
         self.assertEqual(remote2_telemetry_names, set(f"tel_{name}" for name in all_telemetry_topic_names
                                                       if name not in exclude))
 
+        # remote3 omits commands
+        remote3 = salobj.Remote(SALPY_Test, index=index, readonly=True)
+        remote_command_names = set([name for name in dir(remote3) if name.startswith("cmd_")])
+        self.assertEqual(remote_command_names, set())
+        remote_event_names = set([name for name in dir(remote3) if name.startswith("evt_")])
+        self.assertEqual(remote_event_names, all_event_method_names)
+        remote_telemetry_names = set([name for name in dir(remote3) if name.startswith("tel_")])
+        self.assertEqual(remote_telemetry_names, all_telemetry_method_names)
+
         # make sure one cannot specify both include and exclude
         with self.assertRaises(ValueError):
             salobj.Remote(SALPY_Test, index=index, include=include, exclude=exclude)

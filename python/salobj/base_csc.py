@@ -113,13 +113,8 @@ class BaseCsc(Controller):
       must match a command name and must be callable.
     """
     def __init__(self, sallib, index=None):
-        super().__init__(sallib, index)
+        super().__init__(sallib, index, do_callbacks=True)
         self._summary_state = State.STANDBY
-        command_names = self.salinfo.manager.getCommandNames()
-        self._assert_do_methods_present(command_names)
-        for name in command_names:
-            cmd = getattr(self, f"cmd_{name}")
-            cmd.callback = getattr(self, f"do_{name}")
 
     def do_disable(self, id_data):
         """Transition to from `State.ENABLED` to `State.DISABLED`.
@@ -320,31 +315,6 @@ class BaseCsc(Controller):
         evt_data = self.evt_summaryState.DataType()
         evt_data.summaryState = self.summary_state
         self.evt_summaryState.put(evt_data)
-
-    def _assert_do_methods_present(self, command_names):
-        """Assert that all needed do_<name> methods are present,
-        and no extra such methods are present.
-
-        Parameters
-        ----------
-        command_names : `list` of `str`
-            List of command names, e.g. as provided by
-            `salinfo.manager.getCommandNames`
-        """
-        do_names = [name for name in dir(self) if name.startswith("do_")]
-        supported_command_names = [name[3:] for name in do_names]
-        if set(command_names) != set(supported_command_names):
-            err_msgs = []
-            unsupported_commands = set(command_names) - set(supported_command_names)
-            if unsupported_commands:
-                needed_do_str = ", ".join(f"do_{name}" for name in sorted(unsupported_commands))
-                err_msgs.append(f"must add {needed_do_str} methods")
-            extra_commands = sorted(set(supported_command_names) - set(command_names))
-            if extra_commands:
-                extra_do_str = ", ".join(f"do_{name}" for name in sorted(extra_commands))
-                err_msgs.append(f"must remove {extra_do_str} methods")
-            err_msg = " and ".join(err_msgs)
-            raise TypeError(f"This class {err_msg}")
 
     def _do_change_state(self, id_data, cmd_name, allowed_curr_states, new_state):
         """Change to the desired state.
