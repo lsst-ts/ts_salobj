@@ -21,7 +21,7 @@
 
 __all__ = ["Controller"]
 
-from . import utils
+from . import base
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
 
 
@@ -35,9 +35,13 @@ class Controller:
     ----------
     sallib : ``module``
         salpy component library generatedby SAL
-    component_name : `str`
-        Component name and optional index, separated by a colon, e.g.
-        "scheduler" or "Test:2".
+    index : `int` or `None` (optional)
+        SAL component index, or 0 or None if the component is not indexed.
+        A value is required if the component is indexed.
+    do_callbacks : `bool`
+        Set ``do_<name>`` methods as callbacks for commands?
+        If True then there must be exactly one ``do_<name>`` method
+        for each command.
 
     Notes
     -----
@@ -57,7 +61,7 @@ class Controller:
         # the index is arbitrary, but a remote must use the same index
         # to talk to this particular controller
         index = 5
-        test_controller = salobj.Controller(SALPY_Test, f"Test:{index}")
+        test_controller = salobj.Controller(SALPY_Test, index)
 
     ``test_controller`` will have the following attributes:
 
@@ -83,21 +87,51 @@ class Controller:
         * ``tel_scalars``
 
     """
-    def __init__(self, sallib, component_name):
+    def __init__(self, sallib, index=None, *, do_callbacks=False):
         self.salinfo = None
-        self.salinfo = utils.SalInfo(sallib, component_name)
+        self.salinfo = base.SalInfo(sallib, index)
 
-        for cmd_name in utils.get_command_names(self.salinfo.manager):
+        command_names = self.salinfo.manager.getCommandNames()
+        if do_callbacks:
+            self._assert_do_methods_present(command_names)
+        for cmd_name in command_names:
             cmd = ControllerCommand(self.salinfo, cmd_name)
             setattr(self, "cmd_" + cmd_name, cmd)
+            if do_callbacks:
+                cmd.callback = getattr(self, f"do_{cmd_name}")
 
-        for evt_name in utils.get_event_names(self.salinfo.manager):
+        for evt_name in self.salinfo.manager.getEventNames():
             evt = ControllerEvent(self.salinfo, evt_name)
             setattr(self, "evt_" + evt_name, evt)
 
-        for tel_name in utils.get_telemetry_names(self.salinfo.manager):
+        for tel_name in self.salinfo.manager.getTelemetryNames():
             tel = ControllerTelemetry(self.salinfo, tel_name)
             setattr(self, "tel_" + tel_name, tel)
+
+    def _assert_do_methods_present(self, command_names):
+        """Assert that all needed do_<name> methods are present,
+        and no extra such methods are present.
+
+        Parameters
+        ----------
+        command_names : `list` of `str`
+            List of command names, e.g. as provided by
+            `salinfo.manager.getCommandNames`
+        """
+        do_names = [name for name in dir(self) if name.startswith("do_")]
+        supported_command_names = [name[3:] for name in do_names]
+        if set(command_names) != set(supported_command_names):
+            err_msgs = []
+            unsupported_commands = set(command_names) - set(supported_command_names)
+            if unsupported_commands:
+                needed_do_str = ", ".join(f"do_{name}" for name in sorted(unsupported_commands))
+                err_msgs.append(f"must add {needed_do_str} methods")
+            extra_commands = sorted(set(supported_command_names) - set(command_names))
+            if extra_commands:
+                extra_do_str = ", ".join(f"do_{name}" for name in sorted(extra_commands))
+                err_msgs.append(f"must remove {extra_do_str} methods")
+            err_msg = " and ".join(err_msgs)
+            raise TypeError(f"This class {err_msg}")
 
     def __del__(self):
         if self.salinfo is not None:

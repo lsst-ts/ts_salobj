@@ -22,6 +22,7 @@
 __all__ = ["RemoteTelemetry"]
 
 import asyncio
+import inspect
 import time
 
 
@@ -31,7 +32,7 @@ class RemoteTelemetry:
 
     Parameters
     ----------
-    salinfo : `salobj.utils.SalInfo`
+    salinfo : `salobj.SalInfo`
         SAL component information
     name : `str`
         Telemetry topic name
@@ -49,6 +50,7 @@ class RemoteTelemetry:
         self.name = str(name)
         self._callback_func = None  # callback function, if any
         self._callback_task = None  # task waiting to run callback, if any
+        self._allow_multiple_callbacks = True
         self._setup()
         self._cached_data = self.DataType()
         self._cached_data_valid = False
@@ -133,6 +135,31 @@ class RemoteTelemetry:
         self._flush_func(null_data)
 
     @property
+    def allow_multiple_callbacks(self):
+        """Can mutiple callbacks run simultaneously?
+
+        Notes
+        -----
+        This is handled automatically for the following cases:
+
+        * Awaitable callbacks that do all the work themselves
+          (meaning that they do not start additional tasks that
+          they don't wait for).
+        * Synchronous callbacks that do all the work themselves.
+          In this case the attribute is ignored, since only
+          one instance of the callback can ever run at one time.
+
+        If the callback function starts a task that it does not wait for,
+        you will have to handle prohibition of multiple callbacks manually,
+        e.g. by overriding `_run_callback`.
+        """
+        return self._allow_multiple_callbacks
+
+    @allow_multiple_callbacks.setter
+    def allow_multiple_callbacks(self, allow):
+        self._allow_multiple_callbacks = bool(allow)
+
+    @property
     def callback(self):
         """Callback function, or None if there is not one.
 
@@ -147,6 +174,12 @@ class RemoteTelemetry:
 
         Notes
         -----
+        The callback function can be synchronous or asynchronous
+        (e.g. defined with ``async def``).
+        If it is asynchronous then you should set the command property
+        `allow_multiple_callbacks` False if you wish to prohibit
+        more than one instance of the callback to be run at a time.
+
         ``flush`` and ``next`` are prohibited while there is a callback
         function.
         """
@@ -171,20 +204,42 @@ class RemoteTelemetry:
         return self._callback_func is not None
 
     def __str__(self):
-        return f"{type(self).__name__}({self.salinfo.component_name}, {self.name})"
+        return f"{type(self).__name__}({self.salinfo}, {self.name})"
 
     def _run_callback(self, task):
         """Run the callback function and start another wait."""
         if not self.callback:
             return
+
         try:
-            self._callback_func(task.result())
+            is_awaitable = False
+            data = task.result()
+            result = self._callback_func(data)
+
+            if inspect.isawaitable(result):
+                is_awaitable = True
+                asyncio.ensure_future(self._finish_awaitable_callback(result))
         finally:
-            self._queue_callback()
+            if not is_awaitable or self.allow_multiple_callbacks:
+                self._queue_callback()
+
+    async def _finish_awaitable_callback(self, coro):
+        """Wait for the callback to finish.
+
+        Parameters
+        ----------
+        coro : `asyncio.coroutine`
+            Awaitable returned by the callback function.
+        """
+        try:
+            await coro
+        finally:
+            if not self.allow_multiple_callbacks:
+                self._queue_callback()
 
     def _queue_callback(self):
         self._callback_task = asyncio.ensure_future(self._next(timeout=None))
-        self._callback_task.add_done_callback(self.self._run_callback)
+        self._callback_task.add_done_callback(self._run_callback)
 
     def _next(self, timeout):
         """Implement next.

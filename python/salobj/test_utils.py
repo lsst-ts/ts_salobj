@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["get_test_index", "set_random_lsst_dds_domain", "TestCsc"]
+__all__ = ["set_random_lsst_dds_domain", "TestCsc"]
 
 import asyncio
 import os
@@ -35,18 +35,7 @@ try:
     import SALPY_Test
 except ImportError:
     warnings.warn("Could not import SALPY_Test; TestCsc will not work")
-from . import utils
 from . import base_csc
-
-
-_LAST_TEST_INDEX = 0
-
-
-def get_test_index():
-    """Return a new index for the Test component."""
-    global _LAST_TEST_INDEX
-    _LAST_TEST_INDEX += 1
-    return _LAST_TEST_INDEX
 
 
 def set_random_lsst_dds_domain():
@@ -98,50 +87,49 @@ class TestCsc(base_csc.BaseCsc):
 
     def __init__(self, index, initial_state, arrays_interval=0.1, scalars_interval=0.06):
         if initial_state not in base_csc.State:
-            raise ValueError(f"intial_state={initial_state} not a salobj.State enum")
-        super().__init__(SALPY_Test, f"Test:{index}")
-        self.state = initial_state
+            raise ValueError(f"intial_state={initial_state} is not a salobj.State enum")
+        super().__init__(SALPY_Test, index)
+        self.summary_state = initial_state
         self.arrays_interval = float(arrays_interval)
         self.scalars_interval = float(scalars_interval)
-        self.evt_arrays = self.controller.evt_arrays.DataType()
-        self.evt_scalars = self.controller.evt_scalars.DataType()
-        self.tel_arrays = self.controller.tel_arrays.DataType()
-        self.tel_scalars = self.controller.tel_scalars.DataType()
+        self.evt_arrays_data = self.evt_arrays.DataType()
+        self.evt_scalars_data = self.evt_scalars.DataType()
+        self.tel_arrays_data = self.tel_arrays.DataType()
+        self.tel_scalars_data = self.tel_scalars.DataType()
         self._enable_arrays_telemetry = False
         self._enable_scalars_telemetry = False
+        self.cmd_wait.allow_multiple_callbacks = True
 
     async def run_arrays_telemetry(self):
         """Output arrays telemetry at regular intervals."""
         while True:
-            self.controller.tel_arrays.put(self.tel_arrays)
+            self.tel_arrays.put(self.tel_arrays_data)
             await asyncio.sleep(self.arrays_interval)
 
     async def run_scalars_telemetry(self):
         """Output scalars telemetry at regular intervals."""
         while True:
-            self.controller.tel_scalars.put(self.tel_scalars)
+            self.tel_scalars.put(self.tel_scalars_data)
             await asyncio.sleep(self.arrays_interval)
 
     def do_setArrays(self, id_data):
         """Execute the setArrays command."""
-        if self.state != base_csc.State.ENABLED:
-            raise utils.ExpectedError(f"setArrays not allowed in {self.state} state")
-        self.copy_arrays(id_data.data, self.evt_arrays)
-        self.copy_arrays(id_data.data, self.tel_arrays)
-        self.assert_arrays_equal(id_data.data, self.evt_arrays)
-        self.assert_arrays_equal(id_data.data, self.tel_arrays)
-        self.controller.evt_arrays.put(self.evt_arrays, 1)
+        self.assert_enabled("setArrays")
+        self.copy_arrays(id_data.data, self.evt_arrays_data)
+        self.copy_arrays(id_data.data, self.tel_arrays_data)
+        self.assert_arrays_equal(id_data.data, self.evt_arrays_data)
+        self.assert_arrays_equal(id_data.data, self.tel_arrays_data)
+        self.evt_arrays.put(self.evt_arrays_data, 1)
         if not self._enable_arrays_telemetry:
             self._enable_arrays_telemetry = True
             asyncio.ensure_future(self.run_arrays_telemetry())
 
     def do_setScalars(self, id_data):
         """Execute the setScalars command."""
-        if self.state != base_csc.State.ENABLED:
-            raise utils.ExpectedError(f"setArrays not allowed in {self.state} state")
-        self.copy_scalars(id_data.data, self.evt_scalars)
-        self.copy_scalars(id_data.data, self.tel_scalars)
-        self.controller.evt_scalars.put(self.evt_scalars, 1)
+        self.assert_enabled("setScalars")
+        self.copy_scalars(id_data.data, self.evt_scalars_data)
+        self.copy_scalars(id_data.data, self.tel_scalars_data)
+        self.evt_scalars.put(self.evt_scalars_data, 1)
         if not self._enable_scalars_telemetry:
             self._enable_scalars_telemetry = True
             asyncio.ensure_future(self.run_scalars_telemetry())
@@ -153,21 +141,14 @@ class TestCsc(base_csc.BaseCsc):
         """
         self.fault()
 
-    def do_wait(self, id_data):
+    async def do_wait(self, id_data):
         """Execute the wait command.
 
         Wait for the specified time and then acknowledge the command
         using the specified ack code.
         """
-        asyncio.ensure_future(self._impl_wait(id_data))
-        ack = self.controller.cmd_wait.AckType()
-        ack.ack = self.controller.salinfo.lib.SAL__CMD_INPROGRESS
-        return ack
-
-    async def _impl_wait(self, id_data):
-        """Implement the wait command."""
+        self.assert_enabled("wait")
         await asyncio.sleep(id_data.data.duration)
-        self.controller.cmd_wait.ack(id_data, id_data.data.ack, 0, "Wait done")
 
     @property
     def arrays_fields(self):
@@ -234,7 +215,7 @@ class TestCsc(base_csc.BaseCsc):
     def make_random_cmd_arrays(self):
         """Make random data for cmd_setArrays using numpy.random."""
         nelts = 5
-        data = self.controller.cmd_setArrays.DataType()
+        data = self.cmd_setArrays.DataType()
         data.boolean_1[:] = np.random.choice([False, True], size=(nelts,))
         printable_chars = [c for c in string.ascii_letters + string.digits]
         data.char_1 = "".join(np.random.choice(printable_chars, size=(nelts,)))
@@ -257,10 +238,10 @@ class TestCsc(base_csc.BaseCsc):
 
     def make_random_cmd_scalars(self):
         """Make random data for cmd_setScalars using numpy.random."""
-        data = self.controller.cmd_setScalars.DataType()
+        data = self.cmd_setScalars.DataType()
         # also make an empty arrays struct to get dtype of int fields,
         # since that information is lost in the scalars pybind11 wrapper
-        empty_arrays = self.controller.cmd_setArrays.DataType()
+        empty_arrays = self.cmd_setArrays.DataType()
         data.boolean_1 = np.random.choice([False, True])
         printable_chars = [c for c in string.ascii_letters + string.digits]
         data.char_1 = np.random.choice(printable_chars)

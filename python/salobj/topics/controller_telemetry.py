@@ -27,7 +27,7 @@ class ControllerTelemetry:
 
     Parameters
     ----------
-    salinfo : `salobj.utils.SalInfo`
+    salinfo : `salobj.SalInfo`
         SAL component information
     name : `str`
         Command name
@@ -57,7 +57,7 @@ class ControllerTelemetry:
             raise RuntimeError(f"put failed with return code {retcode} from {self._put_func_name}")
 
     def __str__(self):
-        return f"{type(self).__name__}({self.salinfo.component_name}, {self.name})"
+        return f"{type(self).__name__}({self.salinfo}, {self.name})"
 
     def _setup(self):
         """Get functions from salinfo and publish this topic."""

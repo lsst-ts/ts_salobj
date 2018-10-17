@@ -24,7 +24,7 @@ __all__ = ["BaseCsc", "State"]
 import asyncio
 import enum
 
-from . import utils
+from . import base
 from .controller import Controller
 
 
@@ -41,7 +41,7 @@ class State(enum.IntEnum):
     FAULT = 3
 
 
-class BaseCsc:
+class BaseCsc(Controller):
     """Base class for a Commandable SAL Component (CSC)
 
     To implement a CSC in Python define a subclass of this class.
@@ -50,20 +50,18 @@ class BaseCsc:
     ----------
     sallib : ``module``
         salpy component library generatedby SAL
-    component_name : `str`
-        Component name and optional index, separated by a colon, e.g.
-        "scheduler" or "Test:2".
+    index : `int` or `None`
+        SAL component index, or 0 or None if the component is not indexed.
 
     Notes
     -----
     The constructor does the following:
 
-    * Create a controller for the component
     * For each command defined for the component, find a ``do_<name>`` method
-      (which must be present) and add it as a callback to the controller's
+      (which must be present) and add it as a callback to the
       ``cmd_<name>`` attribute.
-    * The base class provides ``do_<name>`` methods for the standard CSC
-      commands. The default implementation:
+    * The base class provides synchronous ``do_<name>`` methods for the
+      standard CSC commands. The default implementation:
 
         * Checks for validity of the requested state change;
             if the change is valid then:
@@ -83,28 +81,40 @@ class BaseCsc:
     * ``exitControl``: `State.STANDBY` to `State.OFFLINE` and then quit
     * ``standby``: `State.DISABLED` or `State.FAULT` to `State.STANDBY`
 
-    Rules for subclasses:
+    Writing a CSC:
 
-    * Subclasses must provide a ``do_<name>`` method for every command
+    * Make your CSC subclass of BaseCsc.
+    * Your subclass must provide a ``do_<name>`` method for every command
       that is not part of the standard CSC command set.
-    * Subclasses should also construct a `salobj.Remote` for any
-      remote SAL component they wish to listen to or command.
-    * Subclasses must override `report_summary_state` if the
-      summaryState type is not the standard type (with a single
-      value that is the state).
-    * Subclasses may override ``before_<name>`` and/or ``after_<name>``
-      for each state transition command, as appropriate. For complex
-      transitions subclasses may also override ``do_<name>``.
+    * Each ``do_<name>`` method can be synchronous (``def do_<name>...``)
+      or asynchronous (``async def do_<name>...``).
+    * Your CSC will report the command as failed if the ``do_<name>``
+      method raises an exception. The ``result`` field of that
+      acknowledgement will be the data in the exception.
+      Eventually the CSC may log a traceback, as well,
+      but never for ``salobj.ExpectedException``.
+    * By default your CSC will report the command as completed
+      when ``do_<name>`` finishes, but you can return a different
+      acknowledgement (instance of `SalInfo.AckType`) instead,
+      and that will be reportd as the final command state.
+    * If ``do<name>`` will take awhile, you should call
+      ``cmd_<name>.ackInProgress`` as the callback starts, after you have
+      validated the data and are pretty sure you can run the command.
+    * If you want only one instance of the command running at a time,
+      set ``cmd_<name>.allow_multiple_commands = False`` in your
+      CSC's constructor. See `ControllerCommand.allow_multiple_commands`
+      for details and limitations of this attribute.
+    * Your subclass should construct a `salobj.Remote` for any
+      remote SAL component it wishes to listen to or command.
+    * Your subclass may override ``before_<name>`` and/or ``after_<name>``
+      for each state transition command, as appropriate. For complex state
+      transitions your subclass may also override ``do_<name>``.
+    * ``do_`` is a reserved prefix: all ``do_<name>`` attributes must be
+      must match a command name and must be callable.
     """
-    def __init__(self, sallib, name):
-        self.controller = Controller(sallib, name)
-        self.state = State.STANDBY
-        self.summary_state = self.controller.evt_summaryState.DataType()
-        command_names = utils.get_command_names(self.controller.salinfo.manager)
-        self._assert_do_methods_present(command_names)
-        for name in command_names:
-            cmd = getattr(self.controller, f"cmd_{name}")
-            cmd.callback = getattr(self, f"do_{name}")
+    def __init__(self, sallib, index=None):
+        super().__init__(sallib, index, do_callbacks=True)
+        self._summary_state = State.STANDBY
 
     def do_disable(self, id_data):
         """Transition to from `State.ENABLED` to `State.DISABLED`.
@@ -269,45 +279,42 @@ class BaseCsc:
 
     def fault(self):
         """Enter the fault state."""
-        self.state = State.FAULT
-        self.report_summary_state()
+        self.summary_state = State.FAULT
 
-    def set_summary_state(self):
-        """Set an updated value for summary_state."""
-        self.summary_state.summaryState = self.state
+    def assert_enabled(self, action):
+        """Assert that an action that requires ENABLED state can be run.
+        """
+        if self.summary_state != State.ENABLED:
+            raise base.ExpectedError(f"{action} not allowed in state {self.summaryState}")
+
+    @property
+    def summary_state(self):
+        """Set or get the summary state as a `State` enum.
+
+        If you set the state then it is reported as a summaryState event.
+
+        Raises
+        ------
+        ValueError
+            If the new summary state is not a `State`.
+        """
+        return self._summary_state
+
+    @summary_state.setter
+    def summary_state(self, summary_state):
+        if summary_state not in State:
+            raise ValueError(f"New summary_state={summary_state} not a valid State")
+        self._summary_state = summary_state
+        self.report_summary_state()
 
     def report_summary_state(self):
         """Report a new value for summary_state, including current state.
 
         Subclasses must override if summaryState is not the standard type.
         """
-        self.set_summary_state()
-        self.controller.evt_summaryState.put(self.summary_state, 1)
-
-    def _assert_do_methods_present(self, command_names):
-        """Assert that all needed do_<name> methods are present,
-        and no extra such methods are present.
-
-        Parameters
-        ----------
-        command_names : `list` of `str`
-            List of command names, e.g. as provided by
-            `salobj.utils.get_command_names`
-        """
-        do_names = [name for name in dir(self) if name.startswith("do_")]
-        supported_command_names = [name[3:] for name in do_names]
-        if set(command_names) != set(supported_command_names):
-            err_msgs = []
-            unsupported_commands = set(command_names) - set(supported_command_names)
-            if unsupported_commands:
-                needed_do_str = ", ".join(f"do_{name}" for name in sorted(unsupported_commands))
-                err_msgs.append(f"must add {needed_do_str} methods")
-            extra_commands = sorted(set(supported_command_names) - set(command_names))
-            if extra_commands:
-                extra_do_str = ", ".join(f"do_{name}" for name in sorted(extra_commands))
-                err_msgs.append(f"must remove {extra_do_str} methods")
-            err_msg = " and ".join(err_msgs)
-            raise TypeError(f"This class {err_msg}")
+        evt_data = self.evt_summaryState.DataType()
+        evt_data.summaryState = self.summary_state
+        self.evt_summaryState.put(evt_data)
 
     def _do_change_state(self, id_data, cmd_name, allowed_curr_states, new_state):
         """Change to the desired state.
@@ -323,14 +330,14 @@ class BaseCsc:
         new_state : `State`
             Desired new state.
         """
-        curr_state = self.state
-        if self.state not in allowed_curr_states:
-            raise utils.ExpectedError(f"{cmd_name} not allowed in {self.state} state")
+        curr_state = self.summary_state
+        if curr_state not in allowed_curr_states:
+            raise base.ExpectedError(f"{cmd_name} not allowed in {curr_state} state")
         getattr(self, f"begin_{cmd_name}")(id_data)
-        self.state = new_state
+        self._summary_state = new_state
         try:
             getattr(self, f"end_{cmd_name}")(id_data)
         except Exception:
-            self.state = curr_state
+            self._summary_state = curr_state
             raise
         self.report_summary_state()
