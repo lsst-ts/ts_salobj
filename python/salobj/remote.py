@@ -105,7 +105,6 @@ class Remote:
         * ``tel_scalars``
     """
     def __init__(self, sallib, index=None, *, readonly=False, include=None, exclude=None):
-        self.salinfo = None
         if include is not None and exclude is not None:
             raise ValueError("Cannot specify both include and exclude")
         include_set = set(include) if include is not None else None
@@ -134,7 +133,3 @@ class Remote:
                 continue
             tel = RemoteTelemetry(salinfo, tel_name)
             setattr(self, "tel_" + tel_name, tel)
-
-    def __del__(self):
-        if self.salinfo is not None:
-            self.salinfo.manager.salShutdown()

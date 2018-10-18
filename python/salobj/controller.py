@@ -88,7 +88,6 @@ class Controller:
 
     """
     def __init__(self, sallib, index=None, *, do_callbacks=False):
-        self.salinfo = None
         self.salinfo = base.SalInfo(sallib, index)
 
         command_names = self.salinfo.manager.getCommandNames()
@@ -132,7 +131,3 @@ class Controller:
                 err_msgs.append(f"must remove {extra_do_str} methods")
             err_msg = " and ".join(err_msgs)
             raise TypeError(f"This class {err_msg}")
-
-    def __del__(self):
-        if self.salinfo is not None:
-            self.salinfo.manager.salShutdown()
