@@ -341,5 +341,58 @@ class RemoteConstructorTestCase(unittest.TestCase):
             salobj.Remote(SALPY_Test, index=index, include=include, exclude=exclude)
 
 
+class ControllerWithDoMethods(salobj.Controller):
+    """A Test controller with a trivial do_<name> method for each
+    specified command name.
+
+    Parameters
+    ----------
+    command_names : `iterable` of `str`
+        List of command names for which to make trivial ``do_<name>``
+        methods.
+    """
+    def __init__(self, command_names):
+        def amethod(self, *args, **kwargs):
+            pass
+
+        index = next(index_gen)
+        for name in command_names:
+            setattr(self, f"do_{name}", amethod)
+        super().__init__(SALPY_Test, index, do_callbacks=True)
+
+
+@unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
+class ControllerConstructorTestCase(unittest.TestCase):
+    def setUp(self):
+        salobj.test_utils.set_random_lsst_dds_domain()
+
+    def test_do_callbacks_false(self):
+        index = next(index_gen)
+        controller = salobj.Controller(SALPY_Test, index, do_callbacks=False)
+        command_names = controller.salinfo.manager.getCommandNames()
+        for name in command_names:
+            self.assertIsInstance(getattr(controller, f"cmd_{name}"),
+                                  salobj.topics.ControllerCommand)
+
+    def test_do_callbacks_true(self):
+        index = next(index_gen)
+        salinfo = salobj.SalInfo(SALPY_Test, index)
+        command_names = salinfo.manager.getCommandNames()
+
+        # make sure I can build one
+        good_controller = ControllerWithDoMethods(command_names)
+        for name in command_names:
+            self.assertTrue(callable(getattr(good_controller, f"do_{name}")))
+
+        for missing_name in command_names:
+            bad_names = [name for name in command_names if name != missing_name]
+            with self.assertRaises(TypeError):
+                ControllerWithDoMethods(bad_names)
+
+        extra_names = command_names + ["extra_command"]
+        with self.assertRaises(TypeError):
+            ControllerWithDoMethods(extra_names)
+
+
 if __name__ == "__main__":
     unittest.main()
