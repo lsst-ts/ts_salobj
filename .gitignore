@@ -5,5 +5,5 @@ pytest_session.txt
 .scon*
 *.log
 __pycache__
-python/lsst
 tests/.tests
+python/salobj/version.py
