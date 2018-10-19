@@ -77,40 +77,20 @@ class TestCsc(base_csc.BaseCsc):
         The initial state of the CSC. Typically one of:
         - State.ENABLED if you want the CSC immediately usable.
         - State.OFFLINE if you want full emulation of a CSC.
-    arrays_interval : `float` (optional)
-        Interval between arrays telemetry outputs (sec).
-    scalars_interval : `float` (optional)
-        Interval between scalars telemetry outputs (sec).
 
     """
     __test__ = False  # stop pytest from warning that this is not a test
 
-    def __init__(self, index, initial_state, arrays_interval=0.1, scalars_interval=0.06):
+    def __init__(self, index, initial_state):
         if initial_state not in base_csc.State:
             raise ValueError(f"intial_state={initial_state} is not a salobj.State enum")
         super().__init__(SALPY_Test, index)
         self.summary_state = initial_state
-        self.arrays_interval = float(arrays_interval)
-        self.scalars_interval = float(scalars_interval)
         self.evt_arrays_data = self.evt_arrays.DataType()
         self.evt_scalars_data = self.evt_scalars.DataType()
         self.tel_arrays_data = self.tel_arrays.DataType()
         self.tel_scalars_data = self.tel_scalars.DataType()
-        self._enable_arrays_telemetry = False
-        self._enable_scalars_telemetry = False
         self.cmd_wait.allow_multiple_callbacks = True
-
-    async def run_arrays_telemetry(self):
-        """Output arrays telemetry at regular intervals."""
-        while True:
-            self.tel_arrays.put(self.tel_arrays_data)
-            await asyncio.sleep(self.arrays_interval)
-
-    async def run_scalars_telemetry(self):
-        """Output scalars telemetry at regular intervals."""
-        while True:
-            self.tel_scalars.put(self.tel_scalars_data)
-            await asyncio.sleep(self.arrays_interval)
 
     def do_setArrays(self, id_data):
         """Execute the setArrays command."""
@@ -119,20 +99,16 @@ class TestCsc(base_csc.BaseCsc):
         self.copy_arrays(id_data.data, self.tel_arrays_data)
         self.assert_arrays_equal(id_data.data, self.evt_arrays_data)
         self.assert_arrays_equal(id_data.data, self.tel_arrays_data)
-        self.evt_arrays.put(self.evt_arrays_data, 1)
-        if not self._enable_arrays_telemetry:
-            self._enable_arrays_telemetry = True
-            asyncio.ensure_future(self.run_arrays_telemetry())
+        self.evt_arrays.put(self.evt_arrays_data)
+        self.tel_arrays.put(self.tel_arrays_data)
 
     def do_setScalars(self, id_data):
         """Execute the setScalars command."""
         self.assert_enabled("setScalars")
         self.copy_scalars(id_data.data, self.evt_scalars_data)
         self.copy_scalars(id_data.data, self.tel_scalars_data)
-        self.evt_scalars.put(self.evt_scalars_data, 1)
-        if not self._enable_scalars_telemetry:
-            self._enable_scalars_telemetry = True
-            asyncio.ensure_future(self.run_scalars_telemetry())
+        self.evt_scalars.put(self.evt_scalars_data)
+        self.tel_scalars.put(self.tel_scalars_data)
 
     def do_fault(self, id_data):
         """Execute the fault command.
@@ -174,7 +150,9 @@ class TestCsc(base_csc.BaseCsc):
         The types need not match; each struct can be command, event
         or telemetry data.
         """
-        for field in self.arrays_fields:
+        # use reversed so boolean_1 is not compared first,
+        # as a discrepancy there is harder to interpret
+        for field in reversed(self.arrays_fields):
             if np.any(getattr(arrays1, field) != getattr(arrays2, field)):
                 raise AssertionError("arrays1.{} = {} != {} = arrays2.{}".format(
                     field, getattr(arrays1, field), getattr(arrays2, field), field))
@@ -185,7 +163,9 @@ class TestCsc(base_csc.BaseCsc):
         The types need not match; each struct can be command, event
         or telemetry data.
         """
-        for field in self.scalars_fields:
+        # use reversed so boolean_1 is not compared first,
+        # as a discrepancy there is harder to interpret
+        for field in reversed(self.scalars_fields):
             if getattr(scalars1, field) != getattr(scalars2, field):
                 raise AssertionError("scalars1.{} = {} != {} = scalars2.{}".format(
                     field, getattr(scalars1, field), getattr(scalars2, field), field))

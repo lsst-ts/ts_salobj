@@ -51,9 +51,8 @@ class RemoteTelemetry:
         self._callback_func = None  # callback function, if any
         self._callback_task = None  # task waiting to run callback, if any
         self._allow_multiple_callbacks = True
+        self._cached_data = None
         self._setup()
-        self._cached_data = self.DataType()
-        self._cached_data_valid = False
 
     @property
     def DataType(self):
@@ -65,7 +64,10 @@ class RemoteTelemetry:
 
         If data has never been seen, then return None.
 
-        If there is a callback function then get_oldest will always
+        If there is no callback function (which is typical)
+        then this also flushes the queue.
+
+        If there is a callback function then get will always
         return the most recently cached data. If the callback function
         is working its way through queued data then this may not be
         the most recent data.
@@ -73,19 +75,42 @@ class RemoteTelemetry:
         if self.has_callback:
             return self._cached_data
 
-        retcode = self._get_newest_func(self._cached_data)
+        new_data = self.DataType()
+        retcode = self._get_newest_func(new_data)
         if retcode == self.salinfo.lib.SAL__OK:
-            self._cached_data_valid = True
+            self._cached_data = new_data
             return self._cached_data
         elif retcode == self.salinfo.lib.SAL__NO_UPDATES:
-            return self._cached_data if self.has_data else None
+            return self._cached_data
         else:
             raise RuntimeError(f"get failed with retcode={retcode} from {self._get_newest_func_name}")
+
+    def get_oldest(self):
+        """Pop and return the oldest data from the queue.
+
+        If there is no more data, then return None
+
+        Raises
+        ------
+        RuntimeError
+            If a callback function is present.
+        """
+        if self.has_callback:
+            raise RuntimeError("`get_oldest` not supported while there is a callback function")
+
+        data = self.DataType()
+        retcode = self._get_oldest_func(data)
+        if retcode == self.salinfo.lib.SAL__OK:
+            return data
+        elif retcode == self.salinfo.lib.SAL__NO_UPDATES:
+            return None
+        else:
+            raise RuntimeError(f"get failed with retcode={retcode} from {self._get_oldest_func_name}")
 
     @property
     def has_data(self):
         """Has data ever been read, e.g. by `get`?"""
-        return self._cached_data_valid
+        return self._cached_data is not None
 
     def next(self, flush=True, timeout=None):
         """Get the next data.
@@ -95,7 +120,7 @@ class RemoteTelemetry:
         flush : `bool`
             If True then flush the queue before starting a read.
             If False then pop and return the oldest item from the queue,
-            if any, else start reading new data.
+            if any, else wait for new data.
         timeout : `float` (optional)
             Time limit, in seconds. If None then no time limit.
 
@@ -180,8 +205,8 @@ class RemoteTelemetry:
         `allow_multiple_callbacks` False if you wish to prohibit
         more than one instance of the callback to be run at a time.
 
-        ``flush`` and ``next`` are prohibited while there is a callback
-        function.
+        ``flush``, ``get_oldest`` and ``next`` are prohibited
+        while there is a callback function.
         """
         return self._callback_func
 
@@ -264,9 +289,10 @@ class RemoteTelemetry:
         """
         end_time = time.time() + timeout if timeout else None
         while True:
-            retcode = self._get_oldest_func(self._cached_data)
+            new_data = self.DataType()
+            retcode = self._get_oldest_func(new_data)
             if retcode == self.salinfo.lib.SAL__OK:
-                self._cached_data_valid = True
+                self._cached_data = new_data
                 return self._cached_data
             elif retcode == self.salinfo.lib.SAL__NO_UPDATES:
                 if end_time and time.time() > end_time:
