@@ -221,7 +221,7 @@ class CommunicateTestCase(unittest.TestCase):
             wait_data.duration = 5
             wait_data.ack = sallib.SAL__CMD_COMPLETE
             result = await harness.remote.cmd_wait.start(wait_data, timeout=0.5)
-            self.assertEqual(result.ack.ack, sallib.SAL__CMD_TIMEOUT)
+            self.assertEqual(result.ack.ack, sallib.SAL__CMD_NOACK)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
