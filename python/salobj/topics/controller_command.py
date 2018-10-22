@@ -204,6 +204,7 @@ class ControllerCommand:
             result = self._callback_func(id_data)
             if inspect.isawaitable(result):
                 is_awaitable = True
+                self.ackInProgress(id_data)
                 asyncio.ensure_future(self._finish_awaitable_callback(id_data, result))
             else:
                 if result is None:

@@ -93,8 +93,9 @@ class _CommandInfo:
             timeout = DEFAULT_TIMEOUT
         await asyncio.sleep(timeout)
 
-        # Time out the command
-        self.ack.ack = self.remote_command.salinfo.lib.SAL__CMD_TIMEOUT
+        # Time out the command with NOACK (which is the correct code for
+        # the reader timing out; TIMEOUT is for timeout at the controller).
+        self.ack.ack = self.remote_command.salinfo.lib.SAL__CMD_NOACK
         if self.cmd_id in self.remote_command._running_cmds:
             self.remote_command._running_cmds.pop(self.cmd_id)
         self.end_wait(ack=self.ack, cancel_timeout=False)

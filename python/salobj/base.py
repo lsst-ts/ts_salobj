@@ -146,3 +146,7 @@ class SalInfo:
         data.error = error
         data.result = result
         return data
+
+    def __del__(self):
+        if self.manager:
+            self.manager.salShutdown()
