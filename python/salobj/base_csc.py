@@ -90,7 +90,9 @@ class BaseCsc(Controller):
     * Your subclass must provide a ``do_<name>`` method for every command
       that is not part of the standard CSC command set.
     * Each ``do_<name>`` method can be synchronous (``def do_<name>...``)
-      or asynchronous (``async def do_<name>...``).
+      or asynchronous (``async def do_<name>...``). If ``do_<name>``
+      is asynchronous then the command is automatically acknowledged
+      as in progress before the callback starts.
     * Your CSC will report the command as failed if the ``do_<name>``
       method raises an exception. The ``result`` field of that
       acknowledgement will be the data in the exception.
@@ -100,9 +102,6 @@ class BaseCsc(Controller):
       when ``do_<name>`` finishes, but you can return a different
       acknowledgement (instance of `SalInfo.AckType`) instead,
       and that will be reportd as the final command state.
-    * If ``do<name>`` will take awhile, you should call
-      ``cmd_<name>.ackInProgress`` as the callback starts, after you have
-      validated the data and are pretty sure you can run the command.
     * If you want only one instance of the command running at a time,
       set ``cmd_<name>.allow_multiple_commands = False`` in your
       CSC's constructor. See `ControllerCommand.allow_multiple_commands`

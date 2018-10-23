@@ -143,6 +143,8 @@ class ControllerCommand:
 
         Acknowledgement of the command is automatic:
 
+        * If the callback is asynchronous then the command is
+          acknowledged as InProgress before the callback begins.
         * If the callback raises an exception then the command
           is acknowledged as failed.
         * If the callback returns None then the command is
@@ -151,6 +153,7 @@ class ControllerCommand:
           then the command is acknowledged with that.
           If that ack is not final, then you must issue the final ack
           yourself, by calling `ack`.
+          This feature is deprecated and should not be used in new code.
 
         `next` is prohibited while there is a callback function.
         """
