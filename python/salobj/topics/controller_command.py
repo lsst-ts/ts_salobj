@@ -143,6 +143,8 @@ class ControllerCommand:
 
         Acknowledgement of the command is automatic:
 
+        * If the callback is asynchronous then the command is
+          acknowledged as InProgress before the callback begins.
         * If the callback raises an exception then the command
           is acknowledged as failed.
         * If the callback returns None then the command is
@@ -151,8 +153,14 @@ class ControllerCommand:
           then the command is acknowledged with that.
           If that ack is not final, then you must issue the final ack
           yourself, by calling `ack`.
+          This feature is deprecated and should not be used in new code.
 
         `next` is prohibited while there is a callback function.
+
+        If a callback must perform slow synchronous operations,
+        such as CPU-heavy tasks, make the method asynchronous
+        and call the synchronous operation in a thread using
+        the ``run_in_executor`` method of the event loop.
         """
         return self._callback_func
 

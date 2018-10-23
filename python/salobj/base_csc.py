@@ -23,9 +23,12 @@ __all__ = ["BaseCsc", "State"]
 
 import asyncio
 import enum
+import sys
 
 from . import base
 from .controller import Controller
+
+HEARTBEAT_INTERVAL = 1  # seconds
 
 
 class State(enum.IntEnum):
@@ -87,7 +90,13 @@ class BaseCsc(Controller):
     * Your subclass must provide a ``do_<name>`` method for every command
       that is not part of the standard CSC command set.
     * Each ``do_<name>`` method can be synchronous (``def do_<name>...``)
-      or asynchronous (``async def do_<name>...``).
+      or asynchronous (``async def do_<name>...``). If ``do_<name>``
+      is asynchronous then the command is automatically acknowledged
+      as in progress before the callback starts.
+    * If a ``do_<name>`` method must perform slow synchronous operations,
+      such as CPU-heavy tasks, make the method asynchronous
+      and call the synchronous operation in a thread using
+      the ``run_in_executor`` method of the event loop.
     * Your CSC will report the command as failed if the ``do_<name>``
       method raises an exception. The ``result`` field of that
       acknowledgement will be the data in the exception.
@@ -97,9 +106,6 @@ class BaseCsc(Controller):
       when ``do_<name>`` finishes, but you can return a different
       acknowledgement (instance of `SalInfo.AckType`) instead,
       and that will be reportd as the final command state.
-    * If ``do<name>`` will take awhile, you should call
-      ``cmd_<name>.ackInProgress`` as the callback starts, after you have
-      validated the data and are pretty sure you can run the command.
     * If you want only one instance of the command running at a time,
       set ``cmd_<name>.allow_multiple_commands = False`` in your
       CSC's constructor. See `ControllerCommand.allow_multiple_commands`
@@ -115,6 +121,7 @@ class BaseCsc(Controller):
     def __init__(self, sallib, index=None):
         super().__init__(sallib, index, do_callbacks=True)
         self._summary_state = State.STANDBY
+        self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
 
     def do_disable(self, id_data):
         """Transition to from `State.ENABLED` to `State.DISABLED`.
@@ -148,6 +155,7 @@ class BaseCsc(Controller):
 
         async def die():
             await asyncio.sleep(0.1)
+            self._heartbeat_task.cancel()
             asyncio.get_event_loop().close()
 
         asyncio.ensure_future(die())
@@ -341,3 +349,15 @@ class BaseCsc(Controller):
             self._summary_state = curr_state
             raise
         self.report_summary_state()
+
+    async def _heartbeat_loop(self):
+        """Output heartbeat at regular intervals.
+        """
+        while True:
+            try:
+                await asyncio.sleep(HEARTBEAT_INTERVAL)
+                self.evt_heartbeat.put(self.evt_heartbeat.DataType())
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                print(f"Heartbeat output failed: {e}", file=sys.stderr)
