@@ -122,7 +122,6 @@ class CommunicateTestCase(unittest.TestCase):
             # get should return the last value seen,
             # no matter now many times it is called
             evt_data_list = [harness.remote.evt_scalars.get() for i in range(5)]
-            print(f"evt_float1: {[c.float1 for c in evt_data_list]}")
             for evt_data in evt_data_list:
                 self.assertIsNotNone(evt_data)
                 harness.csc.assert_scalars_equal(cmd_data_list[-1], evt_data)
@@ -130,7 +129,6 @@ class CommunicateTestCase(unittest.TestCase):
             # get should return the last value seen,
             # no matter now many times it is called
             tel_data_list = [harness.remote.tel_scalars.get() for i in range(5)]
-            print(f"tel_float1: {[c.float1 for c in tel_data_list]}")
             for tel_data in tel_data_list:
                 self.assertIsNotNone(tel_data)
                 harness.csc.assert_scalars_equal(cmd_data_list[-1], tel_data)
