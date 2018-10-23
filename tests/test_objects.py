@@ -25,6 +25,17 @@ class Harness:
 
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
 class CommunicateTestCase(unittest.TestCase):
+    def test_heartbeat(self):
+        async def doit():
+            harness = Harness(initial_state=salobj.State.ENABLED)
+            start_time = time.time()
+            await harness.remote.evt_heartbeat.next(timeout=2)
+            await harness.remote.evt_heartbeat.next(timeout=2)
+            duration = time.time() - start_time
+            self.assertLess(abs(duration - 2), 0.5)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
     def test_setArrays_command(self):
         async def doit():
             harness = Harness(initial_state=salobj.State.ENABLED)

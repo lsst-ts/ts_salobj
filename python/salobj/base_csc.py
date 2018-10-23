@@ -23,9 +23,12 @@ __all__ = ["BaseCsc", "State"]
 
 import asyncio
 import enum
+import sys
 
 from . import base
 from .controller import Controller
+
+HEARTBEAT_INTERVAL = 1  # seconds
 
 
 class State(enum.IntEnum):
@@ -115,6 +118,7 @@ class BaseCsc(Controller):
     def __init__(self, sallib, index=None):
         super().__init__(sallib, index, do_callbacks=True)
         self._summary_state = State.STANDBY
+        self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
 
     def do_disable(self, id_data):
         """Transition to from `State.ENABLED` to `State.DISABLED`.
@@ -148,6 +152,7 @@ class BaseCsc(Controller):
 
         async def die():
             await asyncio.sleep(0.1)
+            self._heartbeat_task.cancel()
             asyncio.get_event_loop().close()
 
         asyncio.ensure_future(die())
@@ -341,3 +346,15 @@ class BaseCsc(Controller):
             self._summary_state = curr_state
             raise
         self.report_summary_state()
+
+    async def _heartbeat_loop(self):
+        """Output heartbeat at regular intervals.
+        """
+        while True:
+            try:
+                await asyncio.sleep(HEARTBEAT_INTERVAL)
+                self.evt_heartbeat.put(self.evt_heartbeat.DataType())
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                print(f"Heartbeat output failed: {e}", file=sys.stderr)
