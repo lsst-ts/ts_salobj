@@ -93,6 +93,10 @@ class BaseCsc(Controller):
       or asynchronous (``async def do_<name>...``). If ``do_<name>``
       is asynchronous then the command is automatically acknowledged
       as in progress before the callback starts.
+    * If a ``do_<name>`` method must perform slow synchronous operations,
+      such as CPU-heavy tasks, make the method asynchronous
+      and call the synchronous operation in a thread using
+      the ``run_in_executor`` method of the event loop.
     * Your CSC will report the command as failed if the ``do_<name>``
       method raises an exception. The ``result`` field of that
       acknowledgement will be the data in the exception.

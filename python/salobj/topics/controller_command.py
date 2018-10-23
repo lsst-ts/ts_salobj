@@ -156,6 +156,11 @@ class ControllerCommand:
           This feature is deprecated and should not be used in new code.
 
         `next` is prohibited while there is a callback function.
+
+        If a callback must perform slow synchronous operations,
+        such as CPU-heavy tasks, make the method asynchronous
+        and call the synchronous operation in a thread using
+        the ``run_in_executor`` method of the event loop.
         """
         return self._callback_func
 
