@@ -130,19 +130,19 @@ class TestCsc(base_csc.BaseCsc):
     def arrays_fields(self):
         """Get a tuple of the fields in an arrays struct."""
         return (
-            "boolean1", "byte1", "char1", "short1",
-            "int1", "long1", "longLong1", "octet1",
-            "unsignedShort1", "unsignedInt1", "unsignedLong1",
-            "float1", "double1")
+            "boolean0", "byte0", "char0", "short0",
+            "int0", "long0", "longLong0", "octet0",
+            "unsignedShort0", "unsignedInt0", "unsignedLong0",
+            "float0", "double0")
 
     @property
     def scalars_fields(self):
         """Get a tuple of the fields in a scalars struct."""
         return (
-            "boolean1", "byte1", "char1", "short1",
-            "int1", "long1", "longLong1", "octet1",
-            "unsignedShort1", "unsignedInt1", "unsignedLong1",
-            "float1", "double1", "string1")
+            "boolean0", "byte0", "char0", "short0",
+            "int0", "long0", "longLong0", "octet0",
+            "unsignedShort0", "unsignedInt0", "unsignedLong0",
+            "float0", "double0", "string0")
 
     def assert_arrays_equal(self, arrays1, arrays2):
         """Assert that two arrays data structs are equal.
@@ -150,7 +150,7 @@ class TestCsc(base_csc.BaseCsc):
         The types need not match; each struct can be command, event
         or telemetry data.
         """
-        # use reversed so boolean1 is not compared first,
+        # use reversed so boolean0 is not compared first,
         # as a discrepancy there is harder to interpret
         for field in reversed(self.arrays_fields):
             if np.any(getattr(arrays1, field) != getattr(arrays2, field)):
@@ -163,7 +163,7 @@ class TestCsc(base_csc.BaseCsc):
         The types need not match; each struct can be command, event
         or telemetry data.
         """
-        # use reversed so boolean1 is not compared first,
+        # use reversed so boolean0 is not compared first,
         # as a discrepancy there is harder to interpret
         for field in reversed(self.scalars_fields):
             if getattr(scalars1, field) != getattr(scalars2, field):
@@ -196,26 +196,26 @@ class TestCsc(base_csc.BaseCsc):
         """Make random data for cmd_setArrays using numpy.random."""
         nelts = 5
         data = self.cmd_setArrays.DataType()
-        data.boolean1[:] = np.random.choice([False, True], size=(nelts,))
+        data.boolean0[:] = np.random.choice([False, True], size=(nelts,))
         printable_chars = [c for c in string.ascii_letters + string.digits]
-        data.char1 = "".join(np.random.choice(printable_chars, size=(nelts,)))
+        data.char0 = "".join(np.random.choice(printable_chars, size=(nelts,)))
         for field_name in (
-            "byte1",
-            "octet1",
-            "short1",
-            "int1",
-            "long1",
-            "longLong1",
-            "unsignedShort1",
-            "unsignedInt1",
-            "unsignedLong1",
+            "byte0",
+            "octet0",
+            "short0",
+            "int0",
+            "long0",
+            "longLong0",
+            "unsignedShort0",
+            "unsignedInt0",
+            "unsignedLong0",
         ):
             field = getattr(data, field_name)
             iinfo = np.iinfo(field.dtype)
             print(f"{field_name} has type {field.dtype}")
             field[:] = np.random.randint(iinfo.min, iinfo.max, size=(nelts,), dtype=field.dtype)
-        data.float1[:] = np.random.uniform(-1e5, 1e5, size=(nelts,))
-        data.double1[:] = np.random.uniform(-1e5, 1e5, size=(nelts,))
+        data.float0[:] = np.random.uniform(-1e5, 1e5, size=(nelts,))
+        data.double0[:] = np.random.uniform(-1e5, 1e5, size=(nelts,))
         return data
 
     def make_random_cmd_scalars(self):
@@ -224,20 +224,20 @@ class TestCsc(base_csc.BaseCsc):
         # also make an empty arrays struct to get dtype of int fields,
         # since that information is lost in the scalars pybind11 wrapper
         empty_arrays = self.cmd_setArrays.DataType()
-        data.boolean1 = np.random.choice([False, True])
+        data.boolean0 = np.random.choice([False, True])
         printable_chars = [c for c in string.ascii_letters + string.digits]
-        data.char1 = np.random.choice(printable_chars)
-        data.string1 = "".join(np.random.choice(printable_chars, size=(20,)))
+        data.char0 = np.random.choice(printable_chars)
+        data.string0 = "".join(np.random.choice(printable_chars, size=(20,)))
         for field_name in (
-            "byte1",
-            "octet1",
-            "short1",
-            "int1",
-            "long1",
-            "longLong1",
-            "unsignedShort1",
-            "unsignedInt1",
-            "unsignedLong1",
+            "byte0",
+            "octet0",
+            "short0",
+            "int0",
+            "long0",
+            "longLong0",
+            "unsignedShort0",
+            "unsignedInt0",
+            "unsignedLong0",
         ):
             dtype = getattr(empty_arrays, field_name).dtype
             # work around a bug in numpy 1.14.5 that causes
@@ -246,6 +246,6 @@ class TestCsc(base_csc.BaseCsc):
                 dtype = np.int64
             iinfo = np.iinfo(dtype)
             setattr(data, field_name, np.random.randint(iinfo.min, iinfo.max, dtype=dtype))
-        data.float1 = np.random.uniform(-1e5, 1e5)
-        data.double1 = np.random.uniform(-1e5, 1e5)
+        data.float0 = np.random.uniform(-1e5, 1e5)
+        data.double0 = np.random.uniform(-1e5, 1e5)
         return data
