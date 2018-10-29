@@ -82,6 +82,10 @@ class _CommandInfo:
             self.timeout_task.cancel()
             self.timeout_task = None
 
+    def __del__(self):
+        if self.timeout_task and not self.timeout_task.done():
+            self.timeout_task.cancel()
+
     def __repr__(self):
         return f"_CommandInfo(remote_command={self.remote_command}, cmd_id={self.cmd_id}, " \
                f"wait_done={self.wait_done}, ack.ack={self.ack.ack})"

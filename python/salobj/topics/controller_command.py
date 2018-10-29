@@ -187,6 +187,10 @@ class ControllerCommand:
         """
         return self._callback_func is not None
 
+    def __del__(self):
+        if self._callback_task and not self._callback_task.done():
+            self._callback_task.cancel()
+
     def __repr__(self):
         return f"ControllerCommand({self.salinfo}, {self.name})"
 
