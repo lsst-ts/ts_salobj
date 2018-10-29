@@ -84,7 +84,7 @@ class _CommandInfo:
             self.timeout_task.cancel()
             self.timeout_task = None
 
-    def __str__(self):
+    def __repr__(self):
         return f"_CommandInfo(remote_command={self.remote_command}, cmd_id={self.cmd_id}, " \
                f"wait_done={self.wait_done}, ack.ack={self.ack.ack})"
 
@@ -191,7 +191,7 @@ class RemoteCommand:
         cmd_info.start_wait(timeout)
         return cmd_info.future
 
-    def __str__(self):
+    def __repr__(self):
         return f"RemoteCommand({self.salinfo}, {self.name})"
 
     async def _get_next_ack(self):

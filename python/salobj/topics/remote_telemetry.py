@@ -228,7 +228,7 @@ class RemoteTelemetry:
         """Return True if there is a callback function."""
         return self._callback_func is not None
 
-    def __str__(self):
+    def __repr__(self):
         return f"{type(self).__name__}({self.salinfo}, {self.name})"
 
     def _run_callback(self, task):

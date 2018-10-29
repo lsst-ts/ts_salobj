@@ -39,7 +39,7 @@ class CommandIdAck:
         self.cmd_id = int(cmd_id)
         self.ack = ack
 
-    def __str__(self):
+    def __repr__(self):
         return f"CommandIdAck(cmd_id={self.cmd_id}, ack.ack={self.ack})"
 
 
@@ -118,7 +118,7 @@ class SalInfo:
         self.manager = Manager(self.index)
         self._AckType = getattr(self.lib, self.name + "_ackcmdC")
 
-    def __str__(self):
+    def __repr__(self):
         return f"SalInfo({self.name}, {self.index})"
 
     @property

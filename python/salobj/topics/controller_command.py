@@ -187,7 +187,7 @@ class ControllerCommand:
         """
         return self._callback_func is not None
 
-    def __str__(self):
+    def __repr__(self):
         return f"ControllerCommand({self.salinfo}, {self.name})"
 
     def _run_callback(self, task):
