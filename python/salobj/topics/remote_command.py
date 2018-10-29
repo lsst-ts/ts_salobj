@@ -72,10 +72,8 @@ class _CommandInfo:
         cancel_timeout : `bool`
             If True then cancel the timeout_task
         """
-        if self.future is None:
-            raise RuntimeError("future is None")
-        if self.future.done():
-            raise RuntimeError("Cannot end_wait; future is already done")
+        if self.future is None or self.future.done():
+            return
         self.future.set_result(CommandIdAck(cmd_id=self.cmd_id, ack=ack))
         self.future = None
         if cancel_timeout:
