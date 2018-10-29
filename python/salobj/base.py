@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["CommandIdAck", "CommandIdData", "ExpectedError", "index_generator", "SalInfo"]
+__all__ = ["CommandIdAck", "CommandIdData", "ExpectedError", "index_generator", "SalInfo", "MAX_SAL_INDEX"]
 
 
 MAX_SAL_INDEX = (2 << 30) - 1
