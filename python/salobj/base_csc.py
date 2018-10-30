@@ -293,7 +293,7 @@ class BaseCsc(Controller):
         """Assert that an action that requires ENABLED state can be run.
         """
         if self.summary_state != State.ENABLED:
-            raise base.ExpectedError(f"{action} not allowed in state {self.summaryState}")
+            raise base.ExpectedError(f"{action} not allowed in state {self.summary_state}")
 
     @property
     def summary_state(self):
