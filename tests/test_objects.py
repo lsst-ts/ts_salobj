@@ -529,6 +529,8 @@ class ControllerConstructorTestCase(unittest.TestCase):
             self.assertTrue(callable(getattr(good_controller, f"do_{name}")))
 
         for missing_name in command_names:
+            if missing_name in salobj.OPTIONAL_COMMAND_NAMES:
+                continue
             bad_names = [name for name in command_names if name != missing_name]
             with self.assertRaises(TypeError):
                 ControllerWithDoMethods(bad_names)
