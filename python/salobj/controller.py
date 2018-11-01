@@ -19,10 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["Controller"]
+__all__ = ["Controller", "OPTIONAL_COMMAND_NAMES"]
 
 from . import base
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
+
+# This supports is a hack to allow support for ts_sal before and after
+# generics. TODO TSS-3259 remove this and the code that uses it.
+OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue"))
 
 
 class Controller:
@@ -97,7 +101,11 @@ class Controller:
             cmd = ControllerCommand(self.salinfo, cmd_name)
             setattr(self, "cmd_" + cmd_name, cmd)
             if do_callbacks:
-                cmd.callback = getattr(self, f"do_{cmd_name}")
+                func = getattr(self, f"do_{cmd_name}", None)
+                if func:
+                    cmd.callback = getattr(self, f"do_{cmd_name}")
+                elif cmd_name not in OPTIONAL_COMMAND_NAMES:
+                    raise RuntimeError(f"Can't find method do_{cmd_name}")
 
         for evt_name in self.salinfo.manager.getEventNames():
             evt = ControllerEvent(self.salinfo, evt_name)
@@ -121,7 +129,7 @@ class Controller:
         supported_command_names = [name[3:] for name in do_names]
         if set(command_names) != set(supported_command_names):
             err_msgs = []
-            unsupported_commands = set(command_names) - set(supported_command_names)
+            unsupported_commands = set(command_names) - set(supported_command_names) - OPTIONAL_COMMAND_NAMES
             if unsupported_commands:
                 needed_do_str = ", ".join(f"do_{name}" for name in sorted(unsupported_commands))
                 err_msgs.append(f"must add {needed_do_str} methods")
@@ -129,5 +137,7 @@ class Controller:
             if extra_commands:
                 extra_do_str = ", ".join(f"do_{name}" for name in sorted(extra_commands))
                 err_msgs.append(f"must remove {extra_do_str} methods")
+            if not err_msgs:
+                return
             err_msg = " and ".join(err_msgs)
             raise TypeError(f"This class {err_msg}")

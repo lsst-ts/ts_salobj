@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["CommandIdAck", "CommandIdData", "ExpectedError", "index_generator", "SalInfo"]
+__all__ = ["CommandIdAck", "CommandIdData", "ExpectedError", "index_generator", "SalInfo", "MAX_SAL_INDEX"]
 
 
 MAX_SAL_INDEX = (2 << 30) - 1
@@ -39,7 +39,7 @@ class CommandIdAck:
         self.cmd_id = int(cmd_id)
         self.ack = ack
 
-    def __str__(self):
+    def __repr__(self):
         return f"CommandIdAck(cmd_id={self.cmd_id}, ack.ack={self.ack})"
 
 
@@ -118,7 +118,7 @@ class SalInfo:
         self.manager = Manager(self.index)
         self._AckType = getattr(self.lib, self.name + "_ackcmdC")
 
-    def __str__(self):
+    def __repr__(self):
         return f"SalInfo({self.name}, {self.index})"
 
     @property
