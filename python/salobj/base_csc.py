@@ -143,29 +143,6 @@ class BaseCsc(Controller):
         """
         self._do_change_state(id_data, "enable", [State.DISABLED], State.ENABLED)
 
-    def do_abort(self, id_data):
-        """Subclasses may implement; otherwise this shouldn't be here
-        but we're stuck with it.
-
-        TODO TSS-3259: remove this if and when TSS-3257 is fixed
-        """
-        raise NotImplementedError()
-
-    def do_enterControl(self, id_data):
-        """Not relevant to this kind of CSC but we're stuck with it.
-
-        TODO TSS-3259: remove this if and when TSS-3257 is fixed
-        """
-        raise NotImplementedError()
-
-    def do_setValue(self, id_data):
-        """Subclasses may implement; otherwise this shouldn't be here
-        but we're stuck with it.
-
-        TODO TSS-3259: remove this if and when TSS-3257 is fixed
-        """
-        raise NotImplementedError()
-
     def do_exitControl(self, id_data):
         """Transition from `State.STANDBY` to `State.OFFLINE` and quit.
 
@@ -316,7 +293,7 @@ class BaseCsc(Controller):
         """Assert that an action that requires ENABLED state can be run.
         """
         if self.summary_state != State.ENABLED:
-            raise base.ExpectedError(f"{action} not allowed in state {self.summaryState}")
+            raise base.ExpectedError(f"{action} not allowed in state {self.summary_state}")
 
     @property
     def summary_state(self):

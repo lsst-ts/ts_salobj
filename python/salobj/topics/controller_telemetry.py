@@ -56,7 +56,7 @@ class ControllerTelemetry:
         if retcode != self.salinfo.lib.SAL__OK:
             raise RuntimeError(f"put failed with return code {retcode} from {self._put_func_name}")
 
-    def __str__(self):
+    def __repr__(self):
         return f"{type(self).__name__}({self.salinfo}, {self.name})"
 
     def _setup(self):

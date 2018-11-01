@@ -72,10 +72,8 @@ class _CommandInfo:
         cancel_timeout : `bool`
             If True then cancel the timeout_task
         """
-        if self.future is None:
-            raise RuntimeError("future is None")
-        if self.future.done():
-            raise RuntimeError("Cannot end_wait; future is already done")
+        if self.future is None or self.future.done():
+            return
         self.future.set_result(CommandIdAck(cmd_id=self.cmd_id, ack=ack))
         self.future = None
         if cancel_timeout:
@@ -84,7 +82,11 @@ class _CommandInfo:
             self.timeout_task.cancel()
             self.timeout_task = None
 
-    def __str__(self):
+    def __del__(self):
+        if self.timeout_task and not self.timeout_task.done():
+            self.timeout_task.cancel()
+
+    def __repr__(self):
         return f"_CommandInfo(remote_command={self.remote_command}, cmd_id={self.cmd_id}, " \
                f"wait_done={self.wait_done}, ack.ack={self.ack.ack})"
 
@@ -191,7 +193,7 @@ class RemoteCommand:
         cmd_info.start_wait(timeout)
         return cmd_info.future
 
-    def __str__(self):
+    def __repr__(self):
         return f"RemoteCommand({self.salinfo}, {self.name})"
 
     async def _get_next_ack(self):
