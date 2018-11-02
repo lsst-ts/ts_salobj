@@ -122,6 +122,10 @@ class BaseCsc(Controller):
         super().__init__(sallib, index, do_callbacks=True)
         self._summary_state = State.STANDBY
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+        self.done_task = asyncio.Future()
+        """This task is set done when the CSC is done, which is when
+        the ``exitControl`` command is received.
+        """
 
     def do_disable(self, id_data):
         """Transition to from `State.ENABLED` to `State.DISABLED`.
@@ -156,7 +160,7 @@ class BaseCsc(Controller):
         async def die():
             await asyncio.sleep(0.1)
             self._heartbeat_task.cancel()
-            asyncio.get_event_loop().close()
+            self.done_task.set_result(None)
 
         asyncio.ensure_future(die())
 
