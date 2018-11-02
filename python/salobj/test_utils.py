@@ -73,15 +73,15 @@ class TestCsc(base_csc.BaseCsc):
     index : `int`
         Index of Test component; each unit test method
         should use a different index.
-    initial_state : `salobj.State`
+    initial_state : `salobj.State` (optional)
         The initial state of the CSC. Typically one of:
         - State.ENABLED if you want the CSC immediately usable.
-        - State.OFFLINE if you want full emulation of a CSC.
+        - State.STANDBY if you want full emulation of a CSC.
 
     """
     __test__ = False  # stop pytest from warning that this is not a test
 
-    def __init__(self, index, initial_state):
+    def __init__(self, index, initial_state=base_csc.State.STANDBY):
         if initial_state not in base_csc.State:
             raise ValueError(f"intial_state={initial_state} is not a salobj.State enum")
         super().__init__(SALPY_Test, index)
