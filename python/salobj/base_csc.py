@@ -21,6 +21,7 @@
 
 __all__ = ["BaseCsc", "State"]
 
+import argparse
 import asyncio
 import enum
 import sys
@@ -117,6 +118,9 @@ class BaseCsc(Controller):
       transitions your subclass may also override ``do_<name>``.
     * ``do_`` is a reserved prefix: all ``do_<name>`` attributes must be
       must match a command name and must be callable.
+
+    To run your CSC call the `main` method. For an example see
+    ``bin.src/run_test_csc.py``.
     """
     def __init__(self, sallib, index=None):
         super().__init__(sallib, index, do_callbacks=True)
@@ -126,6 +130,41 @@ class BaseCsc(Controller):
         """This task is set done when the CSC is done, which is when
         the ``exitControl`` command is received.
         """
+
+    @classmethod
+    def main(cls, sallib, index, **kwargs):
+        """Start the CSC from the command line.
+
+        Parameter
+        ---------
+        sallib : ``module``
+            salpy component library generatedby SAL
+        index : `int`, `True`, `False` or `None`
+            If the CSC is indexed: specify `True` make index a required
+            command line argument, or a non-zero `int` to use a specified
+            index.
+            If the CSC is not indexed: specify any of `None`, `False` or 0.
+        **kwargs : `dict` (optional)
+            Additional keyword arguments for your CSC's constructor.
+
+        Note
+        ----
+        If you wish to allow additional command-line arguments
+        then it is probably simplest to put a version of this code
+        in your command-line executable.
+        """
+        if index is True:
+            parser = argparse.ArgumentParser(f"Run {cls.__name__}")
+            parser.add_argument("index", type=int,
+                                help="Script SAL Component index; must be unique among running Scripts")
+            args = parser.parse_args()
+            csc_index = int(args.index)
+        elif index in (None, False):
+            csc_index = 0
+        else:
+            csc_index = index
+        csc = cls(index=csc_index, **kwargs)
+        asyncio.get_event_loop().run_until_complete(csc.done_task)
 
     def do_disable(self, id_data):
         """Transition to from `State.ENABLED` to `State.DISABLED`.
