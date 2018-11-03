@@ -19,9 +19,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["set_random_lsst_dds_domain", "TestCsc"]
+__all__ = ["assertRaisesAckError", "set_random_lsst_dds_domain", "TestCsc"]
 
 import asyncio
+import contextlib
 import os
 import random
 import socket
@@ -35,7 +36,29 @@ try:
     import SALPY_Test
 except ImportError:
     warnings.warn("Could not import SALPY_Test; TestCsc will not work")
-from . import base_csc
+from . import AckError, base_csc
+
+
+@contextlib.contextmanager
+def assertRaisesAckError(ack=None, error=None):
+    """Assert that code raises a salobj.AckError
+
+    Parameters
+    ----------
+    ack : `int` (optional)
+        Ack code, typically a SAL__CMD_<x> constant.
+        If None then the ack code is not checked.
+    error : `int`
+        Error code. If None then the error value is not checked.
+    """
+    try:
+        yield
+        raise AssertionError("AckError not raised")
+    except AckError as e:
+        if ack is not None and e.ack.ack != ack:
+            raise AssertionError(f"ack.ack={e.ack.ack} instead of {ack}")
+        if error is not None and e.ack.error != error:
+            raise AssertionError(f"ack.error={e.ack.error} instead of {error}")
 
 
 def set_random_lsst_dds_domain():

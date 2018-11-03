@@ -25,7 +25,7 @@ import asyncio
 import logging
 import warnings
 
-from ..base import CommandIdAck
+from ..base import AckError, CommandIdAck
 
 DEFAULT_TIMEOUT = 60*60  # default timeout, in seconds
 
@@ -49,16 +49,18 @@ class _CommandInfo:
         self.cmd_id = int(cmd_id)
         self.ack = remote_command.salinfo.AckType()
         self.wait_done = bool(wait_done)
-        # future for next ack (or final ack if wait_done True),
-        # or None if nothing is waiting
-        self.future = asyncio.Future()
-        # task to time out the future, or None if nothing is waiting
-        self.timeout_task = None
+        self.done_task = asyncio.Future()
+        """A task that is set to the final CommandIdAck when the command
+        is done, or raises salobj.AckError if the command fails.
+        """
+        self._timeout_task = None
+        lib = self.remote_command.salinfo.lib
+        self.good_ack_codes = (lib.SAL__CMD_ACK, lib.SAL__CMD_INPROGRESS, lib.SAL__CMD_COMPLETE)
 
     def start_wait(self, timeout):
         """Start waiting for an ack."""
-        self.future = asyncio.Future()
-        self.timeout_task = asyncio.ensure_future(self._start_timeout(timeout))
+        self.done_task = asyncio.Future()
+        self._timeout_task = asyncio.ensure_future(self._start_timeout(timeout))
         if len(self.remote_command._running_cmds) == 1:
             asyncio.ensure_future(self.remote_command._get_next_ack())
 
@@ -72,19 +74,21 @@ class _CommandInfo:
         cancel_timeout : `bool`
             If True then cancel the timeout_task
         """
-        if self.future is None or self.future.done():
+        if self.done_task.done():
             return
-        self.future.set_result(CommandIdAck(cmd_id=self.cmd_id, ack=ack))
-        self.future = None
         if cancel_timeout:
-            if self.timeout_task.done():
-                warnings.warn(f"{self}.timeout_task is already done")
-            self.timeout_task.cancel()
-            self.timeout_task = None
+            if self._timeout_task is None or self._timeout_task.done():
+                warnings.warn(f"{self}._timeout_task is already done")
+            self._timeout_task.cancel()
+        if ack.ack in self.good_ack_codes:
+            self.done_task.set_result(CommandIdAck(cmd_id=self.cmd_id, ack=ack))
+        else:
+            self.done_task.set_exception(
+                AckError(f"Command failed with ack code {ack.ack}", cmd_id=self.cmd_id, ack=ack))
 
     def __del__(self):
-        if self.timeout_task and not self.timeout_task.done():
-            self.timeout_task.cancel()
+        if self._timeout_task and not self._timeout_task.done():
+            self._timeout_task.cancel()
 
     def __repr__(self):
         return f"_CommandInfo(remote_command={self.remote_command}, cmd_id={self.cmd_id}, " \
@@ -144,17 +148,26 @@ class RemoteCommand:
             is not final (the ack code is not in done_ack_codes),
             then you will almost certainly want to await `next_ack` again.
 
-        Raise
-        -----
+        Returns
+        -------
+        coro : `coroutine`
+            A coroutine that waits for command acknowledgement
+            and returns a `salobj.CommandIdAck` instance.
+
+        Raises
+        ------
+        salobj.AckError
+            If the command fails or times out.
         RuntimeError
-            If the command has already finished.
+            If the command specified by ``cmd_id`` is unknown
+            or has already finished.
         """
         cmd_info = self._running_cmds.get(cmd_id_ack.cmd_id, None)
         if cmd_info is None:
             raise RuntimeError(f"Command cmd_id={cmd_id_ack.cmd_id} is unknown or finished")
         cmd_info.wait_done = wait_done
         cmd_info.start_wait(timeout)
-        return cmd_info.future
+        return cmd_info.done_task
 
     def start(self, data, timeout=None, wait_done=True):
         """Start a command.
@@ -180,6 +193,11 @@ class RemoteCommand:
         coro : `coroutine`
             A coroutine that waits for command acknowledgement
             and returns a `salobj.CommandIdAck` instance.
+
+        Raises
+        ------
+        salobj.AckError
+            If the command fails or times out.
         """
         if not isinstance(data, self.DataType):
             raise TypeError(f"data={data!r} must be an instance of {self.DataType}")
@@ -191,7 +209,7 @@ class RemoteCommand:
         cmd_info = _CommandInfo(remote_command=self, cmd_id=cmd_id, wait_done=wait_done)
         self._running_cmds[cmd_id] = cmd_info
         cmd_info.start_wait(timeout)
-        return cmd_info.future
+        return cmd_info.done_task
 
     def __repr__(self):
         return f"RemoteCommand({self.salinfo}, {self.name})"
@@ -213,13 +231,12 @@ class RemoteCommand:
             elif response_id in self._running_cmds:
                 cmd_info = self._running_cmds[response_id]
                 cmd_info.ack = ack
-                if cmd_info.future:
+                if cmd_info.done_task:
                     is_done = ack.ack in self.done_ack_codes
                     do_end_task = is_done if cmd_info.wait_done else True
                     if is_done:
                         del self._running_cmds[response_id]
                     if do_end_task:
-                        cmd_info.timeout_task.cancel()
                         cmd_info.end_wait(ack=ack, cancel_timeout=True)
             await asyncio.sleep(0.05)
 

@@ -19,10 +19,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["CommandIdAck", "CommandIdData", "ExpectedError", "index_generator", "SalInfo", "MAX_SAL_INDEX"]
+__all__ = ["AckError", "CommandIdAck", "CommandIdData", "ExpectedError",
+           "index_generator", "SalInfo", "MAX_SAL_INDEX"]
 
 
 MAX_SAL_INDEX = (2 << 30) - 1
+
+
+class AckError(Exception):
+    """Exception raised if a command fails.
+
+    Parameters
+    ----------
+    msg : `str`
+        Error message
+    ack : ``AckType``
+        Command acknowledgement.
+    """
+    def __init__(self, msg, cmd_id, ack):
+        super().__init__(msg)
+        self.cmd_id = cmd_id
+        """Command ID."""
+        self.ack = ack
+        """Command acknowledgement."""
 
 
 class CommandIdAck:
