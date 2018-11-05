@@ -36,6 +36,29 @@ class CommunicateTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
+    def test_main(self):
+        async def doit():
+            index = next(index_gen)
+            salobj.test_utils.set_random_lsst_dds_domain()
+            process = await asyncio.create_subprocess_exec("run_test_csc.py", str(index))
+            try:
+                remote = salobj.Remote(SALPY_Test, index)
+                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=10)
+                self.assertEqual(summaryState_data.summaryState, salobj.State.STANDBY)
+
+                id_ack = await remote.cmd_exitControl.start(remote.cmd_exitControl.DataType(), timeout=2)
+                self.assertEqual(id_ack.ack.ack, remote.salinfo.lib.SAL__CMD_COMPLETE)
+                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=10)
+                self.assertEqual(summaryState_data.summaryState, salobj.State.OFFLINE)
+
+                await asyncio.wait_for(process.wait(), 2)
+            except Exception:
+                if process.returncode is None:
+                    process.terminate()
+                raise
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
     def test_setArrays_command(self):
         async def doit():
             harness = Harness(initial_state=salobj.State.ENABLED)
@@ -416,6 +439,8 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_COMPLETE)
             self.assertEqual(id_ack.ack.error, 0)
             self.assertEqual(harness.csc.summary_state, salobj.State.OFFLINE)
+
+            await asyncio.wait_for(harness.csc.done_task, 2)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
