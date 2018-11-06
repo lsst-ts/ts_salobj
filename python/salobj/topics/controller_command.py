@@ -166,12 +166,10 @@ class ControllerCommand:
 
     @callback.setter
     def callback(self, func):
-        self._callback_func = func
-
         if func is None:
+            self._callback_func = None
             if self._callback_task:
                 self._callback_task.cancel()
-            self._callback_func = None
             return
 
         if not callable(func):
