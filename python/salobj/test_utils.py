@@ -78,18 +78,22 @@ def set_random_lsst_dds_domain():
 
 
 class TestCsc(base_csc.BaseCsc):
-    """A trivial Test component for unit testing
+    """A simple CSC intended for unit testing.
 
-    This component responds to the setScalars and setArrays comments
-    by copying the provided values to the corresponding event and
-    telemetry topics. The event topic is output on change.
-    The telemetry topics are output at regular intervals
-    but only after the first command that sets the appropriate
-    values is received.
+    Supported commands:
 
-    It shuts down on receipt of the disable command.
-
-    Note that this component ignores all other commands.
+    * ``setScalars`` and ``setArrays``: output the provided data using the
+      corresponding event and telemetry topics. Note that this violates
+      the convention that telemetry is output at regular intervals,
+      but it makes unit tests much easier to write.
+    * ``wait``: wait for the specified amount of time, and, if requested,
+      raise an exception. One use for this is to test command timeout
+      by specifying a long wait and waiting a shorter time for the command
+      to finish. Another use is to test multiple simultaneous commands,
+      since `wait` supports this.
+    * The standard state transition commands do the usual thing
+      and output the ``summaryState`` event. The ``exitControl``
+      command shuts the CSC down.
 
     Parameters
     ----------
@@ -100,7 +104,6 @@ class TestCsc(base_csc.BaseCsc):
         The initial state of the CSC. Typically one of:
         - State.ENABLED if you want the CSC immediately usable.
         - State.STANDBY if you want full emulation of a CSC.
-
     """
     __test__ = False  # stop pytest from warning that this is not a test
 
