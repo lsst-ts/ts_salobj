@@ -107,8 +107,8 @@ class BaseCsc(Controller):
       when ``do_<name>`` finishes, but you can return a different
       acknowledgement (instance of `SalInfo.AckType`) instead,
       and that will be reportd as the final command state.
-    * If you want only one instance of the command running at a time,
-      set ``cmd_<name>.allow_multiple_commands = False`` in your
+    * If you want to allow more than one instance of the command running
+      at a time, set ``cmd_<name>.allow_multiple_commands = True`` in your
       CSC's constructor. See `ControllerCommand.allow_multiple_commands`
       for details and limitations of this attribute.
     * Your subclass should construct a `salobj.Remote` for any
@@ -135,8 +135,8 @@ class BaseCsc(Controller):
     def main(cls, sallib, index, **kwargs):
         """Start the CSC from the command line.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         sallib : ``module``
             salpy component library generatedby SAL
         index : `int`, `True`, `False` or `None`
@@ -147,8 +147,8 @@ class BaseCsc(Controller):
         **kwargs : `dict` (optional)
             Additional keyword arguments for your CSC's constructor.
 
-        Note
-        ----
+        Notes
+        -----
         If you wish to allow additional command-line arguments
         then it is probably simplest to put a version of this code
         in your command-line executable.
@@ -361,7 +361,9 @@ class BaseCsc(Controller):
     def report_summary_state(self):
         """Report a new value for summary_state, including current state.
 
-        Subclasses must override if summaryState is not the standard type.
+        Subclasses may wish to override for code that depends on
+        the current state (rather than the state transition command
+        that got it into that state).
         """
         evt_data = self.evt_summaryState.DataType()
         evt_data.summaryState = self.summary_state

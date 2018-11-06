@@ -244,6 +244,23 @@ class CommunicateTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
+    def test_bad_put(self):
+        """Try to put invalid data types.
+        """
+        harness = Harness(initial_state=salobj.State.ENABLED)
+
+        async def doit():
+            with self.assertRaises(TypeError):
+                # telemetry/event mismatch
+                harness.csc.evt_scalars.put(harness.csc.tel_scalars.DataType())
+            with self.assertRaises(TypeError):
+                # telemetry/event mismatch
+                harness.csc.tel_scalars.put(harness.csc.evt_scalars.DataType())
+            with self.assertRaises(TypeError):
+                await harness.remote.cmd_wait.start(harness.csc.cmd_setScalars.DataType())
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
     def test_command_timeout(self):
         harness = Harness(initial_state=salobj.State.ENABLED)
         sallib = harness.remote.salinfo.lib
@@ -252,8 +269,65 @@ class CommunicateTestCase(unittest.TestCase):
             wait_data = harness.remote.cmd_wait.DataType()
             wait_data.duration = 5
             wait_data.ack = sallib.SAL__CMD_COMPLETE
-            result = await harness.remote.cmd_wait.start(wait_data, timeout=0.5)
-            self.assertEqual(result.ack.ack, sallib.SAL__CMD_NOACK)
+            with salobj.test_utils.assertRaisesAckError(
+                    ack=harness.remote.salinfo.lib.SAL__CMD_NOACK):
+                await harness.remote.cmd_wait.start(wait_data, timeout=0.5)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_controller_command_get_next(self):
+        """Test ControllerCommand get and next methods.
+
+        This requires unsetting the callback function for a command.
+        """
+        harness = Harness(initial_state=salobj.State.ENABLED)
+
+        async def doit():
+            # get and next fail if there is a callback
+            with self.assertRaises(RuntimeError):
+                harness.csc.cmd_wait.get()
+            with self.assertRaises(RuntimeError):
+                harness.csc.cmd_wait.next()
+
+            harness.csc.cmd_wait.callback = None
+
+            wait_data = harness.remote.cmd_wait.DataType()
+            wait_data.duration = 1
+            task1 = asyncio.ensure_future(harness.remote.cmd_wait.start(wait_data))
+            await asyncio.sleep(0.5)
+            get_iddata = harness.csc.cmd_wait.get()
+            self.assertIsNotNone(get_iddata)
+            self.assertEqual(get_iddata.data.duration, wait_data.duration)
+
+            wait_data.duration = 2
+            task2 = asyncio.ensure_future(harness.remote.cmd_wait.start(wait_data))
+            next_iddata = await asyncio.wait_for(harness.csc.cmd_wait.next(), 2)
+            self.assertIsNotNone(next_iddata)
+            self.assertEqual(next_iddata.data.duration, wait_data.duration)
+
+            task1.cancel()
+            task2.cancel()
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_controller_command_callback(self):
+        """Test getting and setting a callback for a ControllerCommand.
+        """
+        harness = Harness(initial_state=salobj.State.ENABLED)
+
+        async def doit():
+            self.assertTrue(harness.csc.cmd_wait.has_callback)
+            self.assertEqual(harness.csc.cmd_wait.callback, harness.csc.do_wait)
+
+            # replace callback
+            with self.assertRaises(TypeError):
+                harness.csc.cmd_wait.callback = "not callable"
+            self.assertEqual(harness.csc.cmd_wait.callback, harness.csc.do_wait)
+
+            def foo():
+                pass
+            harness.csc.cmd_wait.callback = foo
+            self.assertEqual(harness.csc.cmd_wait.callback, foo)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
@@ -332,7 +406,29 @@ class CommunicateTestCase(unittest.TestCase):
         asyncio.get_event_loop().run_until_complete(doit())
         self.assertTrue(self.event_seen)
 
-    def test_ynchronous_event_callback(self):
+    def test_remote_command_next_ack(self):
+        harness = Harness(initial_state=salobj.State.ENABLED)
+
+        async def doit():
+            wait_data = harness.remote.cmd_wait.DataType()
+            wait_data.duration = 0.1
+            id_ack1 = await harness.remote.cmd_wait.start(wait_data, wait_done=False, timeout=2)
+            self.assertEqual(id_ack1.ack.ack, SALPY_Test.SAL__CMD_ACK)
+            id_ack2 = await harness.remote.cmd_wait.next_ack(id_ack1, wait_done=False, timeout=2)
+            self.assertEqual(id_ack2.ack.ack, SALPY_Test.SAL__CMD_INPROGRESS)
+            id_ack3 = await harness.remote.cmd_wait.next_ack(id_ack2, wait_done=True, timeout=2)
+            self.assertEqual(id_ack3.ack.ack, SALPY_Test.SAL__CMD_COMPLETE)
+
+            # now try a timeout
+            wait_data.duration = 5
+            id_ack1 = await harness.remote.cmd_wait.start(wait_data, wait_done=False, timeout=2)
+            self.assertEqual(id_ack1.ack.ack, SALPY_Test.SAL__CMD_ACK)
+            with salobj.test_utils.assertRaisesAckError(ack=SALPY_Test.SAL__CMD_NOACK):
+                await harness.remote.cmd_wait.next_ack(id_ack1, wait_done=True, timeout=0.1)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_synchronous_event_callback(self):
         harness = Harness(initial_state=salobj.State.ENABLED)
         cmd_scalars_data = harness.csc.make_random_cmd_scalars()
         self.event_seen = False
@@ -374,10 +470,9 @@ class CommunicateTestCase(unittest.TestCase):
                     continue  # valid command in STANDBY state
                 with self.subTest(bad_command=bad_command):
                     cmd_attr = getattr(harness.remote, f"cmd_{bad_command}")
-                    id_ack = await cmd_attr.start(cmd_attr.DataType())
-                    self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_FAILED)
-                    self.assertNotEqual(id_ack.ack.error, 0)
-                    self.assertNotEqual(id_ack.ack.result, "")
+                    with salobj.test_utils.assertRaisesAckError(
+                            ack=harness.remote.salinfo.lib.SAL__CMD_FAILED):
+                        await cmd_attr.start(cmd_attr.DataType())
 
             # send start; new state is DISABLED
             cmd_attr = getattr(harness.remote, f"cmd_start")
@@ -394,10 +489,9 @@ class CommunicateTestCase(unittest.TestCase):
                     continue  # valid command in DISABLED state
                 with self.subTest(bad_command=bad_command):
                     cmd_attr = getattr(harness.remote, f"cmd_{bad_command}")
-                    id_ack = await cmd_attr.start(cmd_attr.DataType())
-                    self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_FAILED)
-                    self.assertNotEqual(id_ack.ack.error, 0)
-                    self.assertNotEqual(id_ack.ack.result, "")
+                    with salobj.test_utils.assertRaisesAckError(
+                            ack=harness.remote.salinfo.lib.SAL__CMD_FAILED):
+                        await cmd_attr.start(cmd_attr.DataType())
 
             # send enable; new state is ENABLED
             cmd_attr = getattr(harness.remote, f"cmd_enable")
@@ -414,10 +508,9 @@ class CommunicateTestCase(unittest.TestCase):
                     continue  # valid command in DISABLED state
                 with self.subTest(bad_command=bad_command):
                     cmd_attr = getattr(harness.remote, f"cmd_{bad_command}")
-                    id_ack = await cmd_attr.start(cmd_attr.DataType())
-                    self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_FAILED)
-                    self.assertNotEqual(id_ack.ack.error, 0)
-                    self.assertNotEqual(id_ack.ack.result, "")
+                    with salobj.test_utils.assertRaisesAckError(
+                            ack=harness.remote.salinfo.lib.SAL__CMD_FAILED):
+                        await cmd_attr.start(cmd_attr.DataType())
 
             # send disable; new state is DISABLED
             cmd_attr = getattr(harness.remote, f"cmd_disable")
@@ -443,6 +536,34 @@ class CommunicateTestCase(unittest.TestCase):
             await asyncio.wait_for(harness.csc.done_task, 2)
 
         asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_topic_repr(self):
+        harness = Harness(initial_state=salobj.State.ENABLED)
+        salinfo = harness.remote.salinfo
+
+        for obj, classSuffix in (
+            (harness.csc, "Controller"),
+            (harness.remote, "Remote"),
+        ):
+            with self.subTest(obj=obj, classSuffix=classSuffix):
+                for cmd_name in salinfo.manager.getCommandNames():
+                    cmd = getattr(obj, "cmd_" + cmd_name)
+                    cmd_repr = repr(cmd)
+                    self.assertIn(cmd_name, cmd_repr)
+                    self.assertIn("Test", cmd_repr)
+                    self.assertIn(classSuffix + "Command", cmd_repr)
+                for evt_name in salinfo.manager.getEventNames():
+                    evt = getattr(obj, "evt_" + evt_name)
+                    evt_repr = repr(evt)
+                    self.assertIn(evt_name, evt_repr)
+                    self.assertIn("Test", evt_repr)
+                    self.assertIn(classSuffix + "Event", evt_repr)
+                for tel_name in salinfo.manager.getTelemetryNames():
+                    tel = getattr(obj, "tel_" + tel_name)
+                    tel_repr = repr(tel)
+                    self.assertIn(tel_name, tel_repr)
+                    self.assertIn("Test", tel_repr)
+                    self.assertIn(classSuffix + "Telemetry", tel_repr)
 
 
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
@@ -540,8 +661,8 @@ class ControllerConstructorTestCase(unittest.TestCase):
         controller = salobj.Controller(SALPY_Test, index, do_callbacks=False)
         command_names = controller.salinfo.manager.getCommandNames()
         for name in command_names:
-            self.assertIsInstance(getattr(controller, f"cmd_{name}"),
-                                  salobj.topics.ControllerCommand)
+            cmd = getattr(controller, "cmd_" + name)
+            self.assertFalse(cmd.has_callback)
 
     def test_do_callbacks_true(self):
         index = next(index_gen)
@@ -550,8 +671,9 @@ class ControllerConstructorTestCase(unittest.TestCase):
 
         # make sure I can build one
         good_controller = ControllerWithDoMethods(command_names)
-        for name in command_names:
-            self.assertTrue(callable(getattr(good_controller, f"do_{name}")))
+        for cmd_name in command_names:
+            cmd = getattr(good_controller, "cmd_" + cmd_name)
+            self.assertTrue(cmd.has_callback)
 
         for missing_name in command_names:
             if missing_name in salobj.OPTIONAL_COMMAND_NAMES:
