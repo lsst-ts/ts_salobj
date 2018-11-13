@@ -6,4 +6,5 @@ pytest_session.txt
 *.log
 __pycache__
 tests/.tests
-python/salobj/version.py
+bin/run_test_csc.py
+python/lsst/ts/salobj/version.py

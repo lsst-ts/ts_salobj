@@ -4,10 +4,10 @@ This configuration only affects single-package Sphinx documenation builds.
 """
 
 from documenteer.sphinxconfig.stackconf import build_package_configs
-import salobj.version
+from lsst.ts.salobj import version
 
 
 _g = globals()
 _g.update(build_package_configs(
-    project_name='salobj',
-    version=salobj.version.__version__))
+    project_name='ts_salobj',
+    version=version.__version__))

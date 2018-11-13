@@ -1,6 +1,6 @@
-####################
-salobj documentation
-####################
+#######################
+ts_salobj documentation
+#######################
 
 .. This page is for local development only. It isn't published to pipelines.lsst.io.
 
@@ -9,4 +9,4 @@ salobj documentation
 .. toctree::
    :maxdepth: 1
 
-   salobj/index
+   ts_salobj/index

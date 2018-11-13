@@ -1,4 +1,4 @@
-# This file is part of salobj.
+# This file is part of ts_salobj.
 #
 # Developed for the LSST Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -19,44 +19,52 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["ControllerEvent"]
-
-from .controller_telemetry import ControllerTelemetry
+__all__ = ["ControllerTelemetry"]
 
 
-class ControllerEvent(ControllerTelemetry):
-    """An object that writes a specific event topic.
+class ControllerTelemetry:
+    """An object that writes a specific telemetry topic.
 
     Parameters
     ----------
     salinfo : `salobj.SalInfo`
         SAL component information
     name : `str`
-        Event topic name
+        Command name
     """
-    def put(self, data, priority=1):
+    def __init__(self, salinfo, name):
+        self.salinfo = salinfo
+        self.name = str(name)
+        self._setup()
+
+    @property
+    def DataType(self):
+        """The class of data for this topic."""
+        return self._DataType
+
+    def put(self, data):
         """Write a new value for this topic.
 
         Parameters
         ----------
         data : ``self.DataType``
             Command parameters.
-        priority : `int`
-            Priority. ts_sal does not yet use this for anything;
-            in the meantime I provide a default that works.
         """
         if not isinstance(data, self.DataType):
             raise TypeError(f"data={data!r} must be an instance of {self.DataType}")
-        retcode = self._put_func(data, priority)
+        retcode = self._put_func(data)
         if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salProcessor({self.name}) failed with return code {retcode}")
+            raise RuntimeError(f"put failed with return code {retcode} from {self._put_func_name}")
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.salinfo}, {self.name})"
 
     def _setup(self):
         """Get functions from salinfo and publish this topic."""
-        self._put_func = getattr(self.salinfo.manager, "logEvent_" + self.name)
-        self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_logevent_" + self.name + "C")
+        self._put_func = getattr(self.salinfo.manager, "putSample_" + self.name)
+        self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_" + self.name + "C")
 
-        topic_name = self.salinfo.name + "_logevent_" + self.name
-        retcode = self.salinfo.manager.salEventPub(topic_name)
+        topic_name = self.salinfo.name + "_" + self.name
+        retcode = self.salinfo.manager.salTelemetryPub(topic_name)
         if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salEventPub({topic_name}) failed with return code {retcode}")
+            raise RuntimeError(f"salTelemetryPub({topic_name}) failed with return code {retcode}")

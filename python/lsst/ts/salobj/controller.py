@@ -1,4 +1,4 @@
-# This file is part of salobj.
+# This file is part of ts_salobj.
 #
 # Developed for the LSST Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -51,11 +51,11 @@ class Controller:
     -----
     Each `Controller` will have the following attributes:
 
-    - ``cmd_<command_name>``, a `salobj.topics.ControllerCommand`,
+    - ``cmd_<command_name>``, a `topics.ControllerCommand`,
       for each command supported by the component.
-    - ``evt_<event_name>``, a `salobj.topics.ControllerEvent`
+    - ``evt_<event_name>``, a `topics.ControllerEvent`
       for each log event topic supported by the component.
-    - ``tel_<telemetry_name>``, a `salobj.topics.ControllerTelemetry`
+    - ``tel_<telemetry_name>``, a `topics.ControllerTelemetry`
       for each telemetry topic supported by the component.
 
     Here is an example with the expected attributes::
@@ -69,7 +69,7 @@ class Controller:
 
     ``test_controller`` will have the following attributes:
 
-    * Commands, each an instance of `salobj.topics.ControllerCommand`:
+    * Commands, each an instance of `topics.ControllerCommand`:
 
         * ``cmd_standby``
         * ``cmd_start``
@@ -77,7 +77,7 @@ class Controller:
         * ``cmd_setArrays``
         * ``cmd_setScalars``
 
-    * Events, each an instance of `salobj.topics.ControllerEvent`:
+    * Events, each an instance of `topics.ControllerEvent`:
 
         * ``evt_appliedSettingsMatchStart``
         * ``evt_errorCode``
@@ -85,7 +85,7 @@ class Controller:
         * ``evt_arrays``
         * ``evt_scalars``
 
-    * Telemetry, each an instance of `salobj.topics.ControllerTelemetry`:
+    * Telemetry, each an instance of `topics.ControllerTelemetry`:
 
         * ``tel_arrays``
         * ``tel_scalars``
