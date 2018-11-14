@@ -1,5 +1,5 @@
 # -*- python -*-
 from lsst.sconsUtils import scripts
-scripts.BasicSConstruct("salobj",
+scripts.BasicSConstruct("ts_salobj",
                         disableCc=True,
-                        versionModuleName="python/salobj/version.py")
+                        versionModuleName="python/lsst/ts/salobj/version.py")

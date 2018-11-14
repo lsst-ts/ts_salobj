@@ -1,4 +1,4 @@
-# This file is part of salobj.
+# This file is part of ts_salobj.
 #
 # Developed for the LSST Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -49,26 +49,23 @@ class Remote:
         Names of topics (telemetry or events) to not support.
         If `None` or empty then no topics are excluded.
 
-    If ``include`` and ``exclude`` are both `None` then all topics
-    are supported.
-
     Raises
     ------
     ValueError
         If ``include`` and ``exclude`` are both iterables
-        (one or both must be None).
+        (one or both must be `None`).
 
     Notes
     -----
-    Each `Remote will` have the following attributes:
+    Each `Remote` will have the following attributes:
 
-    - ``cmd_<command_name>``, a `salobj.topics.RemoteCommand`,
+    - ``cmd_<command_name>``, a `topics.RemoteCommand`,
       for each command supported by the component.
       Omitted if ``readonly`` true.
-    - ``evt_<event_name>``, a `salobj.topics.RemoteEvent`
+    - ``evt_<event_name>``, a `topics.RemoteEvent`
       for each log event topic supported by the component
       and specified by ``include`` and the ``exclude`` arguments.
-    - ``tel_<telemetry_name>``, a `salobj.topics.RemoteTelemetry`
+    - ``tel_<telemetry_name>``, a `topics.RemoteTelemetry`
       for each telemetry topic supported by the component
       and specified by the ``include`` and ``exclude`` arguments.
 
@@ -83,7 +80,7 @@ class Remote:
 
     ``test_remote`` will have the following attributes:
 
-    * Commands, each an instance of `salobj.topics.RemoteCommand`:
+    * Commands, each an instance of `topics.RemoteCommand`:
 
         * ``cmd_standby``
         * ``cmd_start``
@@ -91,7 +88,7 @@ class Remote:
         * ``cmd_setArrays``
         * ``cmd_setScalars``
 
-    * Events, each an instance of `salobj.topics.RemoteEvent`:
+    * Events, each an instance of `topics.RemoteEvent`:
 
         * ``evt_appliedSettingsMatchStart``
         * ``evt_errorCode``
@@ -99,7 +96,7 @@ class Remote:
         * ``evt_arrays``
         * ``evt_scalars``
 
-    * Telemetry, each an instance of `salobj.topics.RemoteTelemetry`:
+    * Telemetry, each an instance of `topics.RemoteTelemetry`:
 
         * ``tel_arrays``
         * ``tel_scalars``

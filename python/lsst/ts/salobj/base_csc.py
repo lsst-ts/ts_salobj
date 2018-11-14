@@ -1,4 +1,4 @@
-# This file is part of salobj.
+# This file is part of ts_salobj.
 #
 # Developed for the LSST Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -68,12 +68,12 @@ class BaseCsc(Controller):
       standard CSC commands. The default implementation:
 
         * Checks for validity of the requested state change;
-            if the change is valid then:
+          if the change is valid then:
         * Calls ``before_<name>``. This is a no-op in the base class,
-            and is available for the subclass to override.
+          and is available for the subclass to override.
         * Changes the state and reports the new value.
         * Calls ``after_<name>``. Again, this is a no-op in the base class,
-            and is available for the subclass to override.
+          and is available for the subclass to override.
         * Report the command as complete
 
     Standard CSC commands and their associated summary state changes:
@@ -89,7 +89,10 @@ class BaseCsc(Controller):
 
     * Make your CSC subclass of BaseCsc.
     * Your subclass must provide a ``do_<name>`` method for every command
-      that is not part of the standard CSC command set.
+      that is not part of the standard CSC command set, as well as the
+      following optional standard commands, if you want to support them:
+      ``abort``, ``enterControl``, and ``setValue``.
+      `BaseCsc` implements the standard state transition commands.
     * Each ``do_<name>`` method can be synchronous (``def do_<name>...``)
       or asynchronous (``async def do_<name>...``). If ``do_<name>``
       is asynchronous then the command is automatically acknowledged
@@ -102,16 +105,17 @@ class BaseCsc(Controller):
       method raises an exception. The ``result`` field of that
       acknowledgement will be the data in the exception.
       Eventually the CSC may log a traceback, as well,
-      but never for ``salobj.ExpectedException``.
+      but never for `ExpectedError`.
     * By default your CSC will report the command as completed
       when ``do_<name>`` finishes, but you can return a different
       acknowledgement (instance of `SalInfo.AckType`) instead,
-      and that will be reportd as the final command state.
+      and that will be reported as the final command state.
     * If you want to allow more than one instance of the command running
       at a time, set ``cmd_<name>.allow_multiple_commands = True`` in your
-      CSC's constructor. See `ControllerCommand.allow_multiple_commands`
+      CSC's constructor. See
+      `topics.ControllerCommand`.allow_multiple_commands
       for details and limitations of this attribute.
-    * Your subclass should construct a `salobj.Remote` for any
+    * Your subclass should construct a `Remote` for any
       remote SAL component it wishes to listen to or command.
     * Your subclass may override ``before_<name>`` and/or ``after_<name>``
       for each state transition command, as appropriate. For complex state
@@ -141,9 +145,10 @@ class BaseCsc(Controller):
             salpy component library generatedby SAL
         index : `int`, `True`, `False` or `None`
             If the CSC is indexed: specify `True` make index a required
-            command line argument, or a non-zero `int` to use a specified
-            index.
-            If the CSC is not indexed: specify any of `None`, `False` or 0.
+            command line argument, or specify a non-zero `int` to use
+            that index.
+            If the CSC is not indexed: specify any of `None`, `False`
+            or ``0``.
         **kwargs : `dict` (optional)
             Additional keyword arguments for your CSC's constructor.
 
@@ -171,7 +176,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         self._do_change_state(id_data, "disable", [State.ENABLED], State.DISABLED)
@@ -181,7 +186,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         self._do_change_state(id_data, "enable", [State.DISABLED], State.ENABLED)
@@ -191,7 +196,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         self._do_change_state(id_data, "exitControl", [State.STANDBY], State.OFFLINE)
@@ -208,7 +213,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         self._do_change_state(id_data, "standby", [State.DISABLED, State.FAULT], State.STANDBY)
@@ -218,7 +223,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         self._do_change_state(id_data, "start", [State.STANDBY], State.DISABLED)
@@ -228,7 +233,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         pass
@@ -238,7 +243,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         pass
@@ -248,7 +253,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         pass
@@ -258,7 +263,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         pass
@@ -268,7 +273,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         pass
@@ -279,7 +284,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         pass
@@ -290,7 +295,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         pass
@@ -301,7 +306,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         pass
@@ -312,7 +317,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         pass
@@ -323,7 +328,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         """
         pass
@@ -374,7 +379,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Command ID and data
         cmd_name : `str`
             Name of command, e.g. "disable" or "exitControl".

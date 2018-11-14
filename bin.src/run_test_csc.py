@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# This file is part of salobj.
+# This file is part of ts_salobj.
 #
 # Developed for the LSST Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -23,6 +23,6 @@
 """An example of how to run a CSC"""
 
 import SALPY_Test
-import salobj
+from lsst.ts.salobj.test_utils import TestCsc
 
-salobj.test_utils.TestCsc.main(sallib=SALPY_Test, index=True)
+TestCsc.main(sallib=SALPY_Test, index=True)

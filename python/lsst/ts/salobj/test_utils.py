@@ -1,4 +1,4 @@
-# This file is part of salobj.
+# This file is part of ts_salobj.
 #
 # Developed for the LSST Telescope and Site Systems.
 # This product includes software developed by the LSST Project
@@ -102,8 +102,9 @@ class TestCsc(base_csc.BaseCsc):
         should use a different index.
     initial_state : `salobj.State` (optional)
         The initial state of the CSC. Typically one of:
-        - State.ENABLED if you want the CSC immediately usable.
-        - State.STANDBY if you want full emulation of a CSC.
+
+        * `salobj.State.ENABLED` if you want the CSC immediately usable.
+        * `salobj.State.STANDBY` if you want full emulation of a CSC.
     """
     __test__ = False  # stop pytest from warning that this is not a test
 
