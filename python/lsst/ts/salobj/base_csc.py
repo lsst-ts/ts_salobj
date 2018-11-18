@@ -163,12 +163,12 @@ class BaseCsc(Controller):
             parser.add_argument("index", type=int,
                                 help="Script SAL Component index; must be unique among running Scripts")
             args = parser.parse_args()
-            csc_index = int(args.index)
+            kwargs["index"] = args.index
         elif index in (None, False):
-            csc_index = 0
+            pass
         else:
-            csc_index = index
-        csc = cls(index=csc_index, **kwargs)
+            kwargs["index"] = index
+        csc = cls(**kwargs)
         asyncio.get_event_loop().run_until_complete(csc.done_task)
 
     def do_disable(self, id_data):
