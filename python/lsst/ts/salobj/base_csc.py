@@ -136,21 +136,26 @@ class BaseCsc(Controller):
         """
 
     @classmethod
-    def main(cls, sallib, index, **kwargs):
+    def main(cls, index, run_loop=True, **kwargs):
         """Start the CSC from the command line.
 
         Parameters
         ----------
-        sallib : ``module``
-            salpy component library generatedby SAL
         index : `int`, `True`, `False` or `None`
             If the CSC is indexed: specify `True` make index a required
             command line argument, or specify a non-zero `int` to use
             that index.
-            If the CSC is not indexed: specify any of `None`, `False`
-            or ``0``.
+            If the CSC is not indexed: specify `None` or `False`.
+        run_loop : `bool` (optional)
+            Start an event loop? Set True for normal CSC operation.
+            False is convenient for some kinds of testing.
         **kwargs : `dict` (optional)
             Additional keyword arguments for your CSC's constructor.
+
+        Returns
+        -------
+        csc : ``cls``
+            The CSC.
 
         Notes
         -----
@@ -169,7 +174,9 @@ class BaseCsc(Controller):
         else:
             kwargs["index"] = index
         csc = cls(**kwargs)
-        asyncio.get_event_loop().run_until_complete(csc.done_task)
+        if run_loop:
+            asyncio.get_event_loop().run_until_complete(csc.done_task)
+        return csc
 
     def do_disable(self, id_data):
         """Transition to from `State.ENABLED` to `State.DISABLED`.
