@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import time
 import unittest
 
@@ -685,6 +686,58 @@ class ControllerConstructorTestCase(unittest.TestCase):
         extra_names = command_names + ["extra_command"]
         with self.assertRaises(TypeError):
             ControllerWithDoMethods(extra_names)
+
+
+class NoIndexCsc(salobj.test_utils.TestCsc):
+    def __init__(self, arg1, arg2):
+        super().__init__(index=next(index_gen))
+        self.arg1 = arg1
+        self.arg2 = arg2
+
+
+@unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
+class BaseCscMainTestCase(unittest.TestCase):
+    def setUp(self):
+        salobj.test_utils.set_random_lsst_dds_domain()
+
+    def test_no_index(self):
+        async def doit(index):
+            arg1 = "astring"
+            arg2 = 2.75
+            csc = NoIndexCsc.main(index=index, arg1=arg1, arg2=arg2, run_loop=False)
+            self.assertEqual(csc.arg1, arg1)
+            self.assertEqual(csc.arg2, arg2)
+            csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
+            await csc.done_task
+
+        for index in (False, None):
+            with self.subTest(index=index):
+                asyncio.get_event_loop().run_until_complete(doit(index=index))
+
+    def test_specified_index(self):
+        async def doit():
+            index = next(index_gen)
+            csc = salobj.test_utils.TestCsc.main(index=index, run_loop=False)
+            self.assertEqual(csc.salinfo.index, index)
+            csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
+            await csc.done_task
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_index_from_argument(self):
+        async def doit():
+            index = next(index_gen)
+            original_argv = sys.argv[:]
+            try:
+                sys.argv[:] = [sys.argv[0], str(index)]
+                csc = salobj.test_utils.TestCsc.main(index=True, run_loop=False)
+                self.assertEqual(csc.salinfo.index, index)
+                csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
+                await csc.done_task
+            finally:
+                sys.argv[:] = original_argv
+
+        asyncio.get_event_loop().run_until_complete(doit())
 
 
 if __name__ == "__main__":
