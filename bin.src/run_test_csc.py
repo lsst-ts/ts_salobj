@@ -22,7 +22,6 @@
 
 """An example of how to run a CSC"""
 
-import SALPY_Test
 from lsst.ts.salobj.test_utils import TestCsc
 
-TestCsc.main(sallib=SALPY_Test, index=True)
+TestCsc.main(index=True)
