@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import sys
 import time
 import unittest
@@ -72,6 +73,10 @@ class CommunicateTestCase(unittest.TestCase):
             cmd_data_sent = harness.csc.make_random_cmd_arrays()
             await harness.remote.cmd_setArrays.start(cmd_data_sent, timeout=1)
 
+            # by default log level does not include INFO messages, so expect nothing
+            log_message = harness.remote.evt_logMessage.get()
+            self.assertIsNone(log_message)
+
             # see if new data was broadcast correctly
             evt_data = await harness.remote.evt_arrays.next(flush=False, timeout=1)
             harness.csc.assert_arrays_equal(cmd_data_sent, evt_data)
@@ -92,9 +97,18 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertIsNone(harness.remote.evt_scalars.get())
             self.assertIsNone(harness.remote.tel_scalars.get())
 
+            # enable info level messages
+            set_logging_data = harness.remote.cmd_setLogging.DataType()
+            set_logging_data.level = logging.INFO
+            await harness.remote.cmd_setLogging.start(set_logging_data, timeout=2)
+
             # send the setScalars command with random data
             cmd_data_sent = harness.csc.make_random_cmd_scalars()
             await harness.remote.cmd_setScalars.start(cmd_data_sent, timeout=1)
+            log_message = harness.remote.evt_logMessage.get()
+            self.assertIsNotNone(log_message)
+            self.assertEqual(log_message.level, logging.INFO)
+            self.assertIn("setscalars", log_message.message.lower())
 
             # see if new data is being broadcast correctly
             evt_data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
@@ -447,6 +461,50 @@ class CommunicateTestCase(unittest.TestCase):
         asyncio.get_event_loop().run_until_complete(doit())
         self.assertTrue(self.event_seen)
 
+    def test_fault_state_transitions(self):
+        """Test CSC state transitions into fault and out again.
+
+        The initial state is STANDBY.
+        The standard commands and associated state transitions are:
+
+        * start: STANDBY to DISABLED
+        * enable: DISABLED to ENABLED
+
+        * disable: ENABLED to DISABLED
+        * standby: DISABLED or FAULT to STANDBY
+        * exitControl: STANDBY or FAULT to OFFLINE (quit)
+        """
+        async def doit():
+            harness = Harness(initial_state=salobj.State.STANDBY)
+            fault_data = harness.csc.cmd_fault.DataType()
+            standby_data = harness.csc.cmd_standby.DataType()
+            exitControl_data = harness.csc.cmd_exitControl.DataType()
+
+            for state in salobj.State:
+                if state == salobj.State.OFFLINE:
+                    continue
+                harness.csc._summary_state = state
+                self.assertEqual(harness.csc.summary_state, state)
+
+                # make sure we can go from any non-OFFLINE state to FAULT
+                await harness.remote.cmd_fault.start(fault_data, timeout=2)
+                self.assertEqual(harness.csc.summary_state, salobj.State.FAULT)
+                log_message = harness.remote.evt_logMessage.get()
+                self.assertIsNotNone(log_message)
+                self.assertEqual(log_message.level, logging.WARNING)
+                self.assertIn("fault", log_message.message.lower())
+
+                await harness.remote.cmd_standby.start(standby_data, timeout=2)
+                self.assertEqual(harness.csc.summary_state, salobj.State.STANDBY)
+
+            # send exitControl; new state is OFFLINE
+            await harness.remote.cmd_exitControl.start(exitControl_data, timeout=2)
+            self.assertEqual(harness.csc.summary_state, salobj.State.OFFLINE)
+
+            await asyncio.wait_for(harness.csc.done_task, 2)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
     def test_standard_state_transitions(self):
         """Test standard CSC state transitions.
 
@@ -457,8 +515,8 @@ class CommunicateTestCase(unittest.TestCase):
         * enable: DISABLED to ENABLED
 
         * disable: ENABLED to DISABLED
-        * standby: DISABLED to STANDBY
-        * exitControl: STANDBY, FAULT to OFFLINE (quit)
+        * standby: DISABLED or FAULT to STANDBY
+        * exitControl: STANDBY to OFFLINE (quit)
         """
         async def doit():
             harness = Harness(initial_state=salobj.State.STANDBY)
