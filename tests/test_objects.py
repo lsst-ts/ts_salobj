@@ -31,8 +31,8 @@ class CommunicateTestCase(unittest.TestCase):
         async def doit():
             harness = Harness(initial_state=salobj.State.ENABLED)
             start_time = time.time()
-            await harness.remote.evt_heartbeat.next(timeout=2)
-            await harness.remote.evt_heartbeat.next(timeout=2)
+            await harness.remote.evt_heartbeat.next(flush=True, timeout=2)
+            await harness.remote.evt_heartbeat.next(flush=True, timeout=2)
             duration = time.time() - start_time
             self.assertLess(abs(duration - 2), 0.5)
 
@@ -242,9 +242,9 @@ class CommunicateTestCase(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 harness.remote.tel_scalars.flush()
             with self.assertRaises(RuntimeError):
-                await harness.remote.evt_scalars.next()
+                await harness.remote.evt_scalars.next(flush=False)
             with self.assertRaises(RuntimeError):
-                await harness.remote.tel_scalars.next()
+                await harness.remote.tel_scalars.next(flush=False)
 
             cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
             await asyncio.sleep(0.2)  # give the wait loops time to finish
@@ -535,7 +535,7 @@ class CommunicateTestCase(unittest.TestCase):
 
             # send start; new state is DISABLED
             cmd_attr = getattr(harness.remote, f"cmd_start")
-            state_coro = harness.remote.evt_summaryState.next()
+            state_coro = harness.remote.evt_summaryState.next(flush=True)
             id_ack = await cmd_attr.start(cmd_attr.DataType())
             state = await state_coro
             self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_COMPLETE)
@@ -554,7 +554,7 @@ class CommunicateTestCase(unittest.TestCase):
 
             # send enable; new state is ENABLED
             cmd_attr = getattr(harness.remote, f"cmd_enable")
-            state_coro = harness.remote.evt_summaryState.next()
+            state_coro = harness.remote.evt_summaryState.next(flush=True)
             id_ack = await cmd_attr.start(cmd_attr.DataType())
             state = await state_coro
             self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_COMPLETE)
