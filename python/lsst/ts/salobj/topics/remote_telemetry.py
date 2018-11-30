@@ -112,7 +112,7 @@ class RemoteTelemetry:
         """Has data ever been read, e.g. by `get`?"""
         return self._cached_data is not None
 
-    def next(self, flush=True, timeout=None):
+    def next(self, *, flush, timeout=None):
         """Get the next data.
 
         Parameters

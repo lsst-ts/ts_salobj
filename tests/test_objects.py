@@ -31,8 +31,8 @@ class CommunicateTestCase(unittest.TestCase):
         async def doit():
             harness = Harness(initial_state=salobj.State.ENABLED)
             start_time = time.time()
-            await harness.remote.evt_heartbeat.next(timeout=2)
-            await harness.remote.evt_heartbeat.next(timeout=2)
+            await harness.remote.evt_heartbeat.next(flush=True, timeout=2)
+            await harness.remote.evt_heartbeat.next(flush=True, timeout=2)
             duration = time.time() - start_time
             self.assertLess(abs(duration - 2), 0.5)
 
@@ -242,9 +242,9 @@ class CommunicateTestCase(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 harness.remote.tel_scalars.flush()
             with self.assertRaises(RuntimeError):
-                await harness.remote.evt_scalars.next()
+                await harness.remote.evt_scalars.next(flush=False)
             with self.assertRaises(RuntimeError):
-                await harness.remote.tel_scalars.next()
+                await harness.remote.tel_scalars.next(flush=False)
 
             cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
             await asyncio.sleep(0.2)  # give the wait loops time to finish
@@ -535,7 +535,7 @@ class CommunicateTestCase(unittest.TestCase):
 
             # send start; new state is DISABLED
             cmd_attr = getattr(harness.remote, f"cmd_start")
-            state_coro = harness.remote.evt_summaryState.next()
+            state_coro = harness.remote.evt_summaryState.next(flush=True)
             id_ack = await cmd_attr.start(cmd_attr.DataType())
             state = await state_coro
             self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_COMPLETE)
@@ -554,7 +554,7 @@ class CommunicateTestCase(unittest.TestCase):
 
             # send enable; new state is ENABLED
             cmd_attr = getattr(harness.remote, f"cmd_enable")
-            state_coro = harness.remote.evt_summaryState.next()
+            state_coro = harness.remote.evt_summaryState.next(flush=True)
             id_ack = await cmd_attr.start(cmd_attr.DataType())
             state = await state_coro
             self.assertEqual(id_ack.ack.ack, harness.remote.salinfo.lib.SAL__CMD_COMPLETE)
@@ -747,10 +747,33 @@ class ControllerConstructorTestCase(unittest.TestCase):
 
 
 class NoIndexCsc(salobj.test_utils.TestCsc):
+    """A CSC whose constructor has no index argument"""
     def __init__(self, arg1, arg2):
         super().__init__(index=next(index_gen))
         self.arg1 = arg1
         self.arg2 = arg2
+
+
+@unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
+class TestCscConstructorTestCase(unittest.TestCase):
+    def setUp(self):
+        salobj.test_utils.set_random_lsst_dds_domain()
+
+    def test_integer_initial_state(self):
+        """Test that initial_state can be an integer."""
+        for state in (min(salobj.State), max(salobj.State)):
+            int_state = int(state)
+            with self.subTest(initial_state=int_state):
+                csc = salobj.test_utils.TestCsc(index=next(index_gen), initial_state=int_state)
+                self.assertEqual(csc.summary_state, state)
+
+    def test_invalid_initial_state(self):
+        """Test that invalid integer initial_state is rejected."""
+        for invalid_state in (min(salobj.State) - 1,
+                              max(salobj.State) + 1):
+            with self.subTest(invalid_state=invalid_state):
+                with self.assertRaises(ValueError):
+                    salobj.test_utils.TestCsc(index=next(index_gen), initial_state=invalid_state)
 
 
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
