@@ -56,6 +56,9 @@ class BaseCsc(Controller):
         salpy component library generatedby SAL
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
+    initial_state : `salobj.State` or `int` (optional)
+        The initial state of the CSC. This is provided for unit testing,
+        as real CSCs should start up in `State.STANDBY`, the default.
 
     Notes
     -----
@@ -126,9 +129,12 @@ class BaseCsc(Controller):
     To run your CSC call the `main` method. For an example see
     ``bin.src/run_test_csc.py``.
     """
-    def __init__(self, sallib, index=None):
+    def __init__(self, sallib, index=None, initial_state=State.STANDBY):
+        # cast initial_state from an int or State to a State,
+        # and reject invalid int values with ValueError
+        initial_state = State(initial_state)
         super().__init__(sallib, index, do_callbacks=True)
-        self._summary_state = State.STANDBY
+        self.summary_state = initial_state
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
         self.done_task = asyncio.Future()
         """This task is set done when the CSC is done, which is when
@@ -348,26 +354,28 @@ class BaseCsc(Controller):
         """Assert that an action that requires ENABLED state can be run.
         """
         if self.summary_state != State.ENABLED:
-            raise base.ExpectedError(f"{action} not allowed in state {self.summary_state}")
+            raise base.ExpectedError(f"{action} not allowed in state {self.summary_state!r}")
 
     @property
     def summary_state(self):
         """Set or get the summary state as a `State` enum.
 
         If you set the state then it is reported as a summaryState event.
+        You can set summary_state to a `State` constant or to
+        the integer equivalent.
 
         Raises
         ------
         ValueError
-            If the new summary state is not a `State`.
+            If the new summary state is an invalid integer.
         """
         return self._summary_state
 
     @summary_state.setter
     def summary_state(self, summary_state):
-        if summary_state not in State:
-            raise ValueError(f"New summary_state={summary_state} not a valid State")
-        self._summary_state = summary_state
+        # cast summary_state from an int or State to a State,
+        # and reject invalid int values with ValueError
+        self._summary_state = State(summary_state)
         self.report_summary_state()
 
     def report_summary_state(self):
@@ -397,7 +405,7 @@ class BaseCsc(Controller):
         """
         curr_state = self.summary_state
         if curr_state not in allowed_curr_states:
-            raise base.ExpectedError(f"{cmd_name} not allowed in {curr_state} state")
+            raise base.ExpectedError(f"{cmd_name} not allowed in state {curr_state!r}")
         getattr(self, f"begin_{cmd_name}")(id_data)
         self._summary_state = new_state
         try:
