@@ -111,11 +111,8 @@ class TestCsc(base_csc.BaseCsc, LogMixin):
     __test__ = False  # stop pytest from warning that this is not a test
 
     def __init__(self, index, initial_state=base_csc.State.STANDBY):
-        if initial_state not in base_csc.State:
-            raise ValueError(f"intial_state={initial_state} is not a salobj.State enum")
-        super().__init__(SALPY_Test, index)
+        super().__init__(SALPY_Test, index=index, initial_state=initial_state)
         LogMixin.__init__(self)
-        self.summary_state = initial_state
         self.evt_arrays_data = self.evt_arrays.DataType()
         self.evt_scalars_data = self.evt_scalars.DataType()
         self.tel_arrays_data = self.tel_arrays.DataType()
