@@ -354,7 +354,7 @@ class BaseCsc(Controller):
         """Assert that an action that requires ENABLED state can be run.
         """
         if self.summary_state != State.ENABLED:
-            raise base.ExpectedError(f"{action} not allowed in state {self.summary_state}")
+            raise base.ExpectedError(f"{action} not allowed in state {self.summary_state!r}")
 
     @property
     def summary_state(self):
@@ -405,7 +405,7 @@ class BaseCsc(Controller):
         """
         curr_state = self.summary_state
         if curr_state not in allowed_curr_states:
-            raise base.ExpectedError(f"{cmd_name} not allowed in {curr_state} state")
+            raise base.ExpectedError(f"{cmd_name} not allowed in state {curr_state!r}")
         getattr(self, f"begin_{cmd_name}")(id_data)
         self._summary_state = new_state
         try:
