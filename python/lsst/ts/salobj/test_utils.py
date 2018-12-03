@@ -37,7 +37,6 @@ try:
 except ImportError:
     warnings.warn("Could not import SALPY_Test; TestCsc will not work")
 from .base import AckError
-from .log_mixin import LogMixin
 from . import base_csc
 
 
@@ -79,7 +78,7 @@ def set_random_lsst_dds_domain():
     os.environ["LSST_DDS_DOMAIN"] = f"Test-{hostname}-{curr_time}-{random_int}"
 
 
-class TestCsc(base_csc.BaseCsc, LogMixin):
+class TestCsc(base_csc.BaseCsc):
     """A simple CSC intended for unit testing.
 
     Supported commands:
@@ -112,7 +111,6 @@ class TestCsc(base_csc.BaseCsc, LogMixin):
 
     def __init__(self, index, initial_state=base_csc.State.STANDBY):
         super().__init__(SALPY_Test, index=index, initial_state=initial_state)
-        LogMixin.__init__(self)
         self.evt_arrays_data = self.evt_arrays.DataType()
         self.evt_scalars_data = self.evt_scalars.DataType()
         self.tel_arrays_data = self.tel_arrays.DataType()

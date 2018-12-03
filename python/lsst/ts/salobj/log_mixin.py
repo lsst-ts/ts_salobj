@@ -33,7 +33,7 @@ class LogMixin:
     """Logging mixin class for Controller.
 
     All classes that use this mixin must support one required command
-    and one required topic. See `Notes` for details.
+    and two required logevent topics. See `Notes` for details.
 
     Parameters
     ----------
@@ -49,18 +49,17 @@ class LogMixin:
 
     Notes
     -----
-    Do the following to support logging in your subclass of
-    `Controller` or `BaseCsc`:
+    Logging is standard in `BaseCsc` and the appropriate command
+    and logevent topics are defined in `SALGenerics.xml` in `ts_xml`.
+    However, to use logging in other subclasses of `Controller`
+    you must do the following:
 
-    * Inherit from `LogMixin` as well as `Controller` or `BaseCsc`
+    * Inherit from `LogMixin` as well as `Controller`
     * Call `LogMixin.__init__` in your class's ``__init__`` method.
-    * Add command `setLogLevel` with one parameter:
-
-      * ``level``: log level; an integer; see Python logging for levels.
-    * Add event `logMessage` with two parameters:
-
-      * ``level``: log level; an integer; see Python logging for levels.
-      * ``message`` the log message; a variable-length string.
+    * Add the following events, copied from `SALGenerics.xml` in `ts_xml`:
+        * command `setLogLevel`
+        * logevent `logLevel`
+        * logevent `logMessage`
     * Override `log_name` if you want the logger name to be something
       other than the class name.
     * When shutting down call `await self.stop_logging()`

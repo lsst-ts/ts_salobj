@@ -28,6 +28,7 @@ import sys
 
 from . import base
 from .controller import Controller
+from .log_mixin import LogMixin
 
 HEARTBEAT_INTERVAL = 1  # seconds
 
@@ -45,7 +46,7 @@ class State(enum.IntEnum):
     FAULT = 3
 
 
-class BaseCsc(Controller):
+class BaseCsc(Controller, LogMixin):
     """Base class for a Commandable SAL Component (CSC)
 
     To implement a CSC in Python define a subclass of this class.
@@ -135,6 +136,7 @@ class BaseCsc(Controller):
         initial_state = State(initial_state)
         super().__init__(sallib, index, do_callbacks=True)
         self.summary_state = initial_state
+        LogMixin.__init__(self)
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
         self.done_task = asyncio.Future()
         """This task is set done when the CSC is done, which is when
@@ -217,6 +219,7 @@ class BaseCsc(Controller):
         async def die():
             await asyncio.sleep(0.1)
             self._heartbeat_task.cancel()
+            self.stop_logging()
             self.done_task.set_result(None)
 
         asyncio.ensure_future(die())
