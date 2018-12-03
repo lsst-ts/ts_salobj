@@ -54,7 +54,7 @@ class LogMixin:
 
     * Inherit from `LogMixin` as well as `Controller` or `BaseCsc`
     * Call `LogMixin.__init__` in your class's ``__init__`` method.
-    * Add command `setLogging` with one parameter:
+    * Add command `setLogLevel` with one parameter:
 
       * ``level``: log level; an integer; see Python logging for levels.
     * Add event `logMessage` with two parameters:
@@ -85,7 +85,7 @@ class LogMixin:
         """
         return type(self).__name__
 
-    def do_setLogging(self, id_data):
+    def do_setLogLevel(self, id_data):
         """Set logging level.
 
         Parameters

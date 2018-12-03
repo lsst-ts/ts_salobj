@@ -100,9 +100,9 @@ class CommunicateTestCase(unittest.TestCase):
             # enable info level messages
             logLevel = harness.remote.evt_logLevel.get()
             self.assertEqual(logLevel.level, logging.WARNING)
-            set_logging_data = harness.remote.cmd_setLogging.DataType()
+            set_logging_data = harness.remote.cmd_setLogLevel.DataType()
             set_logging_data.level = logging.INFO
-            await harness.remote.cmd_setLogging.start(set_logging_data, timeout=2)
+            await harness.remote.cmd_setLogLevel.start(set_logging_data, timeout=2)
             logLevel = harness.remote.evt_logLevel.get()
             self.assertEqual(logLevel.level, logging.INFO)
 
