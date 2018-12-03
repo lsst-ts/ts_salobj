@@ -74,6 +74,7 @@ class LogMixin:
         self.log.addHandler(logging.handlers.QueueHandler(self._log_queue))
         self._log_messages_task = asyncio.ensure_future(self._log_messages_loop())
         self._enable_logging = True
+        self.put_log_level()
 
     @property
     def log_name(self):
@@ -93,6 +94,14 @@ class LogMixin:
             Logging level.
         """
         self.log.setLevel(id_data.data.level)
+        self.put_log_level()
+
+    def put_log_level(self):
+        """Output the logLevel event.
+        """
+        data = self.evt_logLevel.DataType()
+        data.level = self.log.getEffectiveLevel()
+        self.evt_logLevel.put(data)
 
     async def _log_messages_loop(self):
         """Output log messages.

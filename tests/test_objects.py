@@ -98,9 +98,13 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertIsNone(harness.remote.tel_scalars.get())
 
             # enable info level messages
+            logLevel = harness.remote.evt_logLevel.get()
+            self.assertEqual(logLevel.level, logging.WARNING)
             set_logging_data = harness.remote.cmd_setLogging.DataType()
             set_logging_data.level = logging.INFO
             await harness.remote.cmd_setLogging.start(set_logging_data, timeout=2)
+            logLevel = harness.remote.evt_logLevel.get()
+            self.assertEqual(logLevel.level, logging.INFO)
 
             # send the setScalars command with random data
             cmd_data_sent = harness.csc.make_random_cmd_scalars()
