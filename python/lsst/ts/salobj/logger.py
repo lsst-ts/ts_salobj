@@ -46,19 +46,23 @@ class Logger:
 
     Notes
     -----
-    Logger uses the following SAL topics:
-    * command `setLogLevel`
-    * logevent `logLevel`
-    * logevent `logMessage`
+    .. _logger_sal_topics:
 
-    These topics are automatically provided to any SAL comopnent
+    Logger uses the following SAL topics:
+
+    * command ``setLogLevel``
+    * logevent ``logLevel``
+    * logevent ``logMessage``
+
+    These topics are automatically provided to any SAL component
     that uses generics, but for other SAL components you must provide
-    them yourself. See `SALGenerics.xml` in `ts_xml` for details.
+    them yourself. See ``SALGenerics.xml`` in ``ts_xml`` for the format
+    of these topics.
 
     Override `log_name` if you want the logger name to be something
     other than the class name.
 
-    When shutting down call `await self.stop_logging()`.
+    When shutting down call ``await self.stop_logging()``.
     `BaseCsc` does this, so subclasses need not worry about it.
     """
     def __init__(self, initial_level=logging.WARNING):

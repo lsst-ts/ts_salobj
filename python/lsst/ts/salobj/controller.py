@@ -34,7 +34,9 @@ class Controller(logger.Logger):
     """A class that receives commands for a SAL component
     and sends telemetry and events from that component.
 
-    Each SAL component will have one Controller.
+    This class provides much of the behavior for `BaseCsc`,
+    basically everything except the standard summary states
+    and associated transition commands.
 
     Parameters
     ----------
@@ -50,7 +52,24 @@ class Controller(logger.Logger):
 
     Notes
     -----
-    Each `Controller` will have the following attributes:
+    .. _writing_a_controller:
+
+    Writing a Controller:
+
+    (To write a CSC see :ref:`Writing a CSC<writing_a_csc>`, instead)
+
+    To write a controller that is not a CSC (one that does not provide
+    the standard summary states and associated state transition commands):
+
+    * Inherit from this class.
+    * Your subclass must call ``await self.stop_logging()`` at exit.
+    * The SAL XML for your subclass's must provide all
+      :ref:`Logger SAL topics<logger_sal_topics>`.
+
+    Attributes:
+
+    Each `Controller` will have the following attributes
+    (in addition to the ``log`` provided by `Logger`):
 
     - ``cmd_<command_name>``, a `topics.ControllerCommand`,
       for each command supported by the component.
