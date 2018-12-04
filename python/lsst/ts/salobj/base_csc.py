@@ -28,7 +28,6 @@ import sys
 
 from . import base
 from .controller import Controller
-from .log_mixin import LogMixin
 
 HEARTBEAT_INTERVAL = 1  # seconds
 
@@ -46,7 +45,7 @@ class State(enum.IntEnum):
     FAULT = 3
 
 
-class BaseCsc(Controller, LogMixin):
+class BaseCsc(Controller):
     """Base class for a Commandable SAL Component (CSC)
 
     To implement a CSC in Python define a subclass of this class.
@@ -89,9 +88,11 @@ class BaseCsc(Controller, LogMixin):
     * ``exitControl``: `State.STANDBY` to `State.OFFLINE` and then quit
     * ``standby``: `State.DISABLED` or `State.FAULT` to `State.STANDBY`
 
+    .. _writing_a_csc:
+
     Writing a CSC:
 
-    * Make your CSC subclass of BaseCsc.
+    * Make your CSC a subclass of `BaseCsc`.
     * Your subclass must provide a ``do_<name>`` method for every command
       that is not part of the standard CSC command set, as well as the
       following optional standard commands, if you want to support them:
@@ -120,7 +121,8 @@ class BaseCsc(Controller, LogMixin):
       `topics.ControllerCommand`.allow_multiple_commands
       for details and limitations of this attribute.
     * Your subclass should construct a `Remote` for any
-      remote SAL component it wishes to listen to or command.
+      remote SAL component it wishes to listen to or command. For example:
+      ``self.electrometer1 = salobj.Remote(SALPY_Electrometer, index=1)``.
     * Your subclass may override ``before_<name>`` and/or ``after_<name>``
       for each state transition command, as appropriate. For complex state
       transitions your subclass may also override ``do_<name>``.
@@ -128,7 +130,9 @@ class BaseCsc(Controller, LogMixin):
       must match a command name and must be callable.
 
     To run your CSC call the `main` method. For an example see
-    ``bin.src/run_test_csc.py``.
+    ``bin.src/run_test_csc.py``. If you wish to provide additional
+    command line arguments then it is probably simplest to copy the
+    contents of `main` into your script and adapt as required.
     """
     def __init__(self, sallib, index=None, initial_state=State.STANDBY):
         # cast initial_state from an int or State to a State,
@@ -136,7 +140,6 @@ class BaseCsc(Controller, LogMixin):
         initial_state = State(initial_state)
         super().__init__(sallib, index, do_callbacks=True)
         self.summary_state = initial_state
-        LogMixin.__init__(self)
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
         self.done_task = asyncio.Future()
         """This task is set done when the CSC is done, which is when
@@ -219,7 +222,7 @@ class BaseCsc(Controller, LogMixin):
         async def die():
             await asyncio.sleep(0.1)
             self._heartbeat_task.cancel()
-            self.stop_logging()
+            await self.stop_logging()
             self.done_task.set_result(None)
 
         asyncio.ensure_future(die())
@@ -410,11 +413,16 @@ class BaseCsc(Controller, LogMixin):
         if curr_state not in allowed_curr_states:
             raise base.ExpectedError(f"{cmd_name} not allowed in state {curr_state!r}")
         getattr(self, f"begin_{cmd_name}")(id_data)
-        self._summary_state = new_state
+        try:
+            self._summary_state = new_state
+        except Exception as e:
+            self.log.warning(f"beg_{cmd_name} failed with error: {e!r}; remaining in state {curr_state}")
+            raise
         try:
             getattr(self, f"end_{cmd_name}")(id_data)
-        except Exception:
+        except Exception as e:
             self._summary_state = curr_state
+            self.log.warning(f"end_{cmd_name} failed with error: {e!r}; remaining in state {curr_state}")
             raise
         self.report_summary_state()
 

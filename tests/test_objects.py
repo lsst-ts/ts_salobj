@@ -724,8 +724,9 @@ class ControllerConstructorTestCase(unittest.TestCase):
         controller = salobj.Controller(SALPY_Test, index, do_callbacks=False)
         command_names = controller.salinfo.manager.getCommandNames()
         for name in command_names:
-            cmd = getattr(controller, "cmd_" + name)
-            self.assertFalse(cmd.has_callback)
+            with self.subTest(name=name):
+                cmd = getattr(controller, "cmd_" + name)
+                self.assertFalse(cmd.has_callback)
 
     def test_do_callbacks_true(self):
         index = next(index_gen)
@@ -735,15 +736,20 @@ class ControllerConstructorTestCase(unittest.TestCase):
         # make sure I can build one
         good_controller = ControllerWithDoMethods(command_names)
         for cmd_name in command_names:
-            cmd = getattr(good_controller, "cmd_" + cmd_name)
-            self.assertTrue(cmd.has_callback)
+            with self.subTest(cmd_name=cmd_name):
+                cmd = getattr(good_controller, "cmd_" + cmd_name)
+                self.assertTrue(cmd.has_callback)
 
+        skip_names = salobj.OPTIONAL_COMMAND_NAMES.copy()
+        # do_setLogLevel is provided by Controller
+        skip_names.add("setLogLevel")
         for missing_name in command_names:
-            if missing_name in salobj.OPTIONAL_COMMAND_NAMES:
+            if missing_name in skip_names:
                 continue
-            bad_names = [name for name in command_names if name != missing_name]
-            with self.assertRaises(TypeError):
-                ControllerWithDoMethods(bad_names)
+            with self.subTest(missing_name=missing_name):
+                bad_names = [name for name in command_names if name != missing_name]
+                with self.assertRaises(TypeError):
+                    ControllerWithDoMethods(bad_names)
 
         extra_names = command_names + ["extra_command"]
         with self.assertRaises(TypeError):

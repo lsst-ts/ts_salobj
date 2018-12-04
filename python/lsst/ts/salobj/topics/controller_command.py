@@ -24,7 +24,7 @@ __all__ = ["ControllerCommand"]
 import asyncio
 import inspect
 
-from ..base import CommandIdData
+from ..base import CommandIdData, ExpectedError
 
 
 class ControllerCommand:
@@ -36,10 +36,14 @@ class ControllerCommand:
         SAL component information
     name : `str`
         Command name
+    log : `logging.Logger`
+        Logger to which to log messages, including exceptions
+        in callback functions.
     """
-    def __init__(self, salinfo, name):
+    def __init__(self, salinfo, name, log):
         self.name = str(name)
         self.salinfo = salinfo
+        self.log = log
         self._callback_func = None  # callback function, if any
         self._callback_task = None  # task waiting to run callback, if any
         self._allow_multiple_callbacks = False
@@ -224,6 +228,8 @@ class ControllerCommand:
                 self.ack(id_data, ack)
         except Exception as e:
             ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1, result=f"Failed: {e}")
+            if not isinstance(e, ExpectedError):
+                self.log.warning(f"cmd_{self.name} callback failed", exc_info=e)
             self.ack(id_data, ack)
         finally:
             if not is_awaitable or self.allow_multiple_callbacks:
@@ -246,6 +252,8 @@ class ControllerCommand:
             self.ack(id_data, ack)
         except Exception as e:
             ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1, result=f"Failed: {e}")
+            if not isinstance(e, ExpectedError):
+                self.log.warning(f"cmd_{self.name} callback failed", exc_info=e)
             self.ack(id_data, ack)
         finally:
             if not self.allow_multiple_callbacks:

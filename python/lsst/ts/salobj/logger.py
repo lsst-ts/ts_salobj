@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["LogMixin"]
+__all__ = ["Logger"]
 
 import asyncio
 import logging
@@ -29,11 +29,8 @@ import queue
 LOG_MESSAGES_INTERVAL = 0.05  # seconds
 
 
-class LogMixin:
-    """Logging mixin class for Controller.
-
-    All classes that use this mixin must support one required command
-    and two required logevent topics. See `Notes` for details.
+class Logger:
+    """Support logging to SAL.
 
     Parameters
     ----------
@@ -49,22 +46,22 @@ class LogMixin:
 
     Notes
     -----
-    Logging is standard in `BaseCsc` and the appropriate command
-    and logevent topics are defined in `SALGenerics.xml` in `ts_xml`.
-    However, to use logging in other subclasses of `Controller`
-    you must do the following:
+    Logger uses the following SAL topics:
+    * command `setLogLevel`
+    * logevent `logLevel`
+    * logevent `logMessage`
 
-    * Inherit from `LogMixin` as well as `Controller`
-    * Call `LogMixin.__init__` in your class's ``__init__`` method.
-    * Add the following events, copied from `SALGenerics.xml` in `ts_xml`:
-        * command `setLogLevel`
-        * logevent `logLevel`
-        * logevent `logMessage`
-    * Override `log_name` if you want the logger name to be something
-      other than the class name.
-    * When shutting down call `await self.stop_logging()`
+    These topics are automatically provided to any SAL comopnent
+    that uses generics, but for other SAL components you must provide
+    them yourself. See `SALGenerics.xml` in `ts_xml` for details.
+
+    Override `log_name` if you want the logger name to be something
+    other than the class name.
+
+    When shutting down call `await self.stop_logging()`.
+    `BaseCsc` does this, so subclasses need not worry about it.
     """
-    def __init__(self):
+    def __init__(self, initial_level=logging.WARNING):
         self.log = logging.getLogger(self.log_name)
         """A Python `logging.Logger`. You can safely log to it from
         different threads. Note that it can take up to
@@ -73,7 +70,6 @@ class LogMixin:
         self.log.addHandler(logging.handlers.QueueHandler(self._log_queue))
         self._log_messages_task = asyncio.ensure_future(self._log_messages_loop())
         self._enable_logging = True
-        self.put_log_level()
 
     @property
     def log_name(self):

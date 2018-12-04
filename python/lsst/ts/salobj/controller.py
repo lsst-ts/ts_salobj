@@ -23,13 +23,14 @@ __all__ = ["Controller", "OPTIONAL_COMMAND_NAMES"]
 
 from . import base
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
+from . import logger
 
 # This supports is a hack to allow support for ts_sal before and after
 # generics. TODO TSS-3259 remove this and the code that uses it.
 OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue"))
 
 
-class Controller:
+class Controller(logger.Logger):
     """A class that receives commands for a SAL component
     and sends telemetry and events from that component.
 
@@ -90,15 +91,17 @@ class Controller:
         * ``tel_arrays``
         * ``tel_scalars``
 
+    See also the notes for `Logger`
     """
     def __init__(self, sallib, index=None, *, do_callbacks=False):
+        super().__init__()
         self.salinfo = base.SalInfo(sallib, index)
 
         command_names = self.salinfo.manager.getCommandNames()
         if do_callbacks:
             self._assert_do_methods_present(command_names)
         for cmd_name in command_names:
-            cmd = ControllerCommand(self.salinfo, cmd_name)
+            cmd = ControllerCommand(self.salinfo, cmd_name, log=self.log)
             setattr(self, "cmd_" + cmd_name, cmd)
             if do_callbacks:
                 func = getattr(self, f"do_{cmd_name}", None)
@@ -114,6 +117,8 @@ class Controller:
         for tel_name in self.salinfo.manager.getTelemetryNames():
             tel = ControllerTelemetry(self.salinfo, tel_name)
             setattr(self, "tel_" + tel_name, tel)
+
+        self.put_log_level()
 
     def _assert_do_methods_present(self, command_names):
         """Assert that all needed do_<name> methods are present,
