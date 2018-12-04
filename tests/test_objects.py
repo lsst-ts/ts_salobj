@@ -786,6 +786,40 @@ class TestCscConstructorTestCase(unittest.TestCase):
                     salobj.test_utils.TestCsc(index=next(index_gen), initial_state=invalid_state)
 
 
+class FailedCallbackCsc(salobj.test_utils.TestCsc):
+    """A CSC whose do_wait command raises a RuntimeError"""
+    def __init__(self, index, initial_state):
+        super().__init__(index=index, initial_state=initial_state)
+        self.exc_msg = "do_wait raised an exception on purpose"
+
+    async def do_wait(self, id_data):
+        raise RuntimeError(self.exc_msg)
+
+
+@unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
+class ControllerCommandLoggingTestCase(unittest.TestCase):
+    def setUp(self):
+        index = next(index_gen)
+        salobj.test_utils.set_random_lsst_dds_domain()
+        self.csc = FailedCallbackCsc(index=index, initial_state=salobj.State.ENABLED)
+        self.remote = salobj.Remote(SALPY_Test, index)
+
+    def test_logging(self):
+        async def doit():
+            wait_data = self.remote.cmd_wait.DataType()
+            wait_data.duration = 5
+            with salobj.test_utils.assertRaisesAckError():
+                await self.remote.cmd_wait.start(wait_data, timeout=2)
+
+            msg = await self.remote.evt_logMessage.next(flush=False, timeout=1)
+            self.assertIn(self.csc.exc_msg, msg.message)
+            self.assertIn("Traceback", msg.message)
+            self.assertIn("RuntimeError", msg.message)
+            self.assertEqual(msg.level, logging.WARNING)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
 class BaseCscMainTestCase(unittest.TestCase):
     def setUp(self):
