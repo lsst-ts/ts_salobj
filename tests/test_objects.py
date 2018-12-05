@@ -74,8 +74,8 @@ class CommunicateTestCase(unittest.TestCase):
             await harness.remote.cmd_setArrays.start(cmd_data_sent, timeout=1)
 
             # by default log level does not include INFO messages, so expect nothing
-            log_message = harness.remote.evt_logMessage.get()
-            self.assertIsNone(log_message)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.evt_logMessage.next(flush=False, timeout=0.2)
 
             # see if new data was broadcast correctly
             evt_data = await harness.remote.evt_arrays.next(flush=False, timeout=1)
@@ -109,7 +109,7 @@ class CommunicateTestCase(unittest.TestCase):
             # send the setScalars command with random data
             cmd_data_sent = harness.csc.make_random_cmd_scalars()
             await harness.remote.cmd_setScalars.start(cmd_data_sent, timeout=1)
-            log_message = harness.remote.evt_logMessage.get()
+            log_message = await harness.remote.evt_logMessage.next(flush=False, timeout=1)
             self.assertIsNotNone(log_message)
             self.assertEqual(log_message.level, logging.INFO)
             self.assertIn("setscalars", log_message.message.lower())
@@ -493,7 +493,7 @@ class CommunicateTestCase(unittest.TestCase):
                 # make sure we can go from any non-OFFLINE state to FAULT
                 await harness.remote.cmd_fault.start(fault_data, timeout=2)
                 self.assertEqual(harness.csc.summary_state, salobj.State.FAULT)
-                log_message = harness.remote.evt_logMessage.get()
+                log_message = await harness.remote.evt_logMessage.next(flush=False, timeout=1)
                 self.assertIsNotNone(log_message)
                 self.assertEqual(log_message.level, logging.WARNING)
                 self.assertIn("fault", log_message.message.lower())
@@ -812,9 +812,10 @@ class ControllerCommandLoggingTestCase(unittest.TestCase):
                 await self.remote.cmd_wait.start(wait_data, timeout=2)
 
             msg = await self.remote.evt_logMessage.next(flush=False, timeout=1)
-            self.assertIn(self.csc.exc_msg, msg.message)
-            self.assertIn("Traceback", msg.message)
-            self.assertIn("RuntimeError", msg.message)
+            self.assertEqual("coro cmd_wait callback failed", msg.message)
+            self.assertIn(self.csc.exc_msg, msg.traceback)
+            self.assertIn("Traceback", msg.traceback)
+            self.assertIn("RuntimeError", msg.traceback)
             self.assertEqual(msg.level, logging.ERROR)
 
         asyncio.get_event_loop().run_until_complete(doit())

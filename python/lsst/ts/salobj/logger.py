@@ -109,12 +109,10 @@ class Logger:
             try:
                 if not self._log_queue.empty():
                     msg = self._log_queue.get_nowait()
-                    msg_text = msg.message
-                    if msg.exc_text:
-                        msg_text = msg_text + "\n" + msg.exc_text
                     data = self.evt_logMessage.DataType()
                     data.level = msg.levelno
-                    data.message = msg_text
+                    data.message = msg.message
+                    data.traceback = msg.exc_text or ""
                     self.evt_logMessage.put(data)
                 await asyncio.sleep(LOG_MESSAGES_INTERVAL)
             except asyncio.CancelledError:
