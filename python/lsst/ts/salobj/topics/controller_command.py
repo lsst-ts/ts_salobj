@@ -228,9 +228,9 @@ class ControllerCommand:
                 self.ack(id_data, ack)
         except Exception as e:
             ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1, result=f"Failed: {e}")
-            if not isinstance(e, ExpectedError):
-                self.log.warning(f"cmd_{self.name} callback failed", exc_info=e)
             self.ack(id_data, ack)
+            if not isinstance(e, ExpectedError):
+                self.log.exception(f"cmd_{self.name} callback failed")
         finally:
             if not is_awaitable or self.allow_multiple_callbacks:
                 self._queue_callback()
@@ -252,9 +252,9 @@ class ControllerCommand:
             self.ack(id_data, ack)
         except Exception as e:
             ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1, result=f"Failed: {e}")
-            if not isinstance(e, ExpectedError):
-                self.log.warning(f"cmd_{self.name} callback failed", exc_info=e)
             self.ack(id_data, ack)
+            if not isinstance(e, ExpectedError):
+                self.log.exception(f"coro cmd_{self.name} callback failed")
         finally:
             if not self.allow_multiple_callbacks:
                 self._queue_callback()

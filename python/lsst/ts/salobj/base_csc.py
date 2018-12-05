@@ -412,17 +412,17 @@ class BaseCsc(Controller):
         curr_state = self.summary_state
         if curr_state not in allowed_curr_states:
             raise base.ExpectedError(f"{cmd_name} not allowed in state {curr_state!r}")
-        getattr(self, f"begin_{cmd_name}")(id_data)
         try:
-            self._summary_state = new_state
-        except Exception as e:
-            self.log.warning(f"beg_{cmd_name} failed with error: {e!r}; remaining in state {curr_state}")
+            getattr(self, f"begin_{cmd_name}")(id_data)
+        except Exception:
+            self.log.exception(f"beg_{cmd_name} failed; remaining in state {curr_state!r}")
             raise
+        self._summary_state = new_state
         try:
             getattr(self, f"end_{cmd_name}")(id_data)
-        except Exception as e:
+        except Exception:
             self._summary_state = curr_state
-            self.log.warning(f"end_{cmd_name} failed with error: {e!r}; remaining in state {curr_state}")
+            self.log.exception(f"end_{cmd_name} failed; reverting to state {curr_state!r}")
             raise
         self.report_summary_state()
 

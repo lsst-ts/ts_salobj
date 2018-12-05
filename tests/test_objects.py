@@ -815,7 +815,7 @@ class ControllerCommandLoggingTestCase(unittest.TestCase):
             self.assertIn(self.csc.exc_msg, msg.message)
             self.assertIn("Traceback", msg.message)
             self.assertIn("RuntimeError", msg.message)
-            self.assertEqual(msg.level, logging.WARNING)
+            self.assertEqual(msg.level, logging.ERROR)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
