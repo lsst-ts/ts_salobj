@@ -25,6 +25,7 @@ import asyncio
 import logging
 import logging.handlers
 import queue
+import sys
 
 LOG_MESSAGES_INTERVAL = 0.05  # seconds
 
@@ -117,8 +118,9 @@ class Logger:
                 await asyncio.sleep(LOG_MESSAGES_INTERVAL)
             except asyncio.CancelledError:
                 break
-            except Exception:
-                pass  # no point trying to log this since logging failed
+            except Exception as e:
+                print(f"Logger._log_messages_loop failed on message {msg.message!r} with error {e!r}",
+                      file=sys.stderr)
 
     async def stop_logging(self):
         """Call this to stop logging.
