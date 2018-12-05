@@ -120,7 +120,7 @@ class TestCsc(base_csc.BaseCsc):
     def do_setArrays(self, id_data):
         """Execute the setArrays command."""
         self.assert_enabled("setArrays")
-        self.log.info("excecuting setScalars")
+        self.log.info("executing setScalars")
         self.copy_arrays(id_data.data, self.evt_arrays_data)
         self.copy_arrays(id_data.data, self.tel_arrays_data)
         self.assert_arrays_equal(id_data.data, self.evt_arrays_data)
@@ -131,7 +131,7 @@ class TestCsc(base_csc.BaseCsc):
     def do_setScalars(self, id_data):
         """Execute the setScalars command."""
         self.assert_enabled("setScalars")
-        self.log.info("excecuting setScalars")
+        self.log.info("executing setScalars")
         self.copy_scalars(id_data.data, self.evt_scalars_data)
         self.copy_scalars(id_data.data, self.tel_scalars_data)
         self.evt_scalars.put(self.evt_scalars_data)
@@ -142,7 +142,7 @@ class TestCsc(base_csc.BaseCsc):
 
         Change the summary state to State.FAULT
         """
-        self.log.warning("excecuting fault")
+        self.log.warning("executing fault")
         self.fault()
 
     async def do_wait(self, id_data):
