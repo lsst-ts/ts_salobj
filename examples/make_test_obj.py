@@ -1,7 +1,7 @@
 """Make a Controller and Remote for the Test device
 """
 import SALPY_Test
-import lsst.ts.salobj as salobj
+from lsst.ts import salobj
 
 salobj.test_utils.set_random_lsst_dds_domain()
 salinfo = salobj.SalInfo(SALPY_Test, 1)

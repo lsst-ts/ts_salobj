@@ -37,7 +37,6 @@ try:
 except ImportError:
     warnings.warn("Could not import SALPY_Test; TestCsc will not work")
 from .base import AckError
-from .log_mixin import LogMixin
 from . import base_csc
 
 
@@ -79,7 +78,7 @@ def set_random_lsst_dds_domain():
     os.environ["LSST_DDS_DOMAIN"] = f"Test-{hostname}-{curr_time}-{random_int}"
 
 
-class TestCsc(base_csc.BaseCsc, LogMixin):
+class TestCsc(base_csc.BaseCsc):
     """A simple CSC intended for unit testing.
 
     Supported commands:
@@ -112,7 +111,6 @@ class TestCsc(base_csc.BaseCsc, LogMixin):
 
     def __init__(self, index, initial_state=base_csc.State.STANDBY):
         super().__init__(SALPY_Test, index=index, initial_state=initial_state)
-        LogMixin.__init__(self)
         self.evt_arrays_data = self.evt_arrays.DataType()
         self.evt_scalars_data = self.evt_scalars.DataType()
         self.tel_arrays_data = self.tel_arrays.DataType()
@@ -122,7 +120,7 @@ class TestCsc(base_csc.BaseCsc, LogMixin):
     def do_setArrays(self, id_data):
         """Execute the setArrays command."""
         self.assert_enabled("setArrays")
-        self.log.info("excecuting setScalars")
+        self.log.info("executing setScalars")
         self.copy_arrays(id_data.data, self.evt_arrays_data)
         self.copy_arrays(id_data.data, self.tel_arrays_data)
         self.assert_arrays_equal(id_data.data, self.evt_arrays_data)
@@ -133,7 +131,7 @@ class TestCsc(base_csc.BaseCsc, LogMixin):
     def do_setScalars(self, id_data):
         """Execute the setScalars command."""
         self.assert_enabled("setScalars")
-        self.log.info("excecuting setScalars")
+        self.log.info("executing setScalars")
         self.copy_scalars(id_data.data, self.evt_scalars_data)
         self.copy_scalars(id_data.data, self.tel_scalars_data)
         self.evt_scalars.put(self.evt_scalars_data)
@@ -144,7 +142,7 @@ class TestCsc(base_csc.BaseCsc, LogMixin):
 
         Change the summary state to State.FAULT
         """
-        self.log.warning("excecuting fault")
+        self.log.warning("executing fault")
         self.fault()
 
     async def do_wait(self, id_data):

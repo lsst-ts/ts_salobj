@@ -10,7 +10,7 @@ try:
     import SALPY_Test
 except ImportError:
     SALPY_Test = None
-import lsst.ts.salobj as salobj
+from lsst.ts import salobj
 
 np.random.seed(47)
 
@@ -74,8 +74,8 @@ class CommunicateTestCase(unittest.TestCase):
             await harness.remote.cmd_setArrays.start(cmd_data_sent, timeout=1)
 
             # by default log level does not include INFO messages, so expect nothing
-            log_message = harness.remote.evt_logMessage.get()
-            self.assertIsNone(log_message)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.evt_logMessage.next(flush=False, timeout=0.2)
 
             # see if new data was broadcast correctly
             evt_data = await harness.remote.evt_arrays.next(flush=False, timeout=1)
@@ -98,14 +98,18 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertIsNone(harness.remote.tel_scalars.get())
 
             # enable info level messages
-            set_logging_data = harness.remote.cmd_setLogging.DataType()
+            logLevel = harness.remote.evt_logLevel.get()
+            self.assertEqual(logLevel.level, logging.WARNING)
+            set_logging_data = harness.remote.cmd_setLogLevel.DataType()
             set_logging_data.level = logging.INFO
-            await harness.remote.cmd_setLogging.start(set_logging_data, timeout=2)
+            await harness.remote.cmd_setLogLevel.start(set_logging_data, timeout=2)
+            logLevel = harness.remote.evt_logLevel.get()
+            self.assertEqual(logLevel.level, logging.INFO)
 
             # send the setScalars command with random data
             cmd_data_sent = harness.csc.make_random_cmd_scalars()
             await harness.remote.cmd_setScalars.start(cmd_data_sent, timeout=1)
-            log_message = harness.remote.evt_logMessage.get()
+            log_message = await harness.remote.evt_logMessage.next(flush=False, timeout=1)
             self.assertIsNotNone(log_message)
             self.assertEqual(log_message.level, logging.INFO)
             self.assertIn("setscalars", log_message.message.lower())
@@ -489,7 +493,7 @@ class CommunicateTestCase(unittest.TestCase):
                 # make sure we can go from any non-OFFLINE state to FAULT
                 await harness.remote.cmd_fault.start(fault_data, timeout=2)
                 self.assertEqual(harness.csc.summary_state, salobj.State.FAULT)
-                log_message = harness.remote.evt_logMessage.get()
+                log_message = await harness.remote.evt_logMessage.next(flush=False, timeout=1)
                 self.assertIsNotNone(log_message)
                 self.assertEqual(log_message.level, logging.WARNING)
                 self.assertIn("fault", log_message.message.lower())
@@ -720,8 +724,9 @@ class ControllerConstructorTestCase(unittest.TestCase):
         controller = salobj.Controller(SALPY_Test, index, do_callbacks=False)
         command_names = controller.salinfo.manager.getCommandNames()
         for name in command_names:
-            cmd = getattr(controller, "cmd_" + name)
-            self.assertFalse(cmd.has_callback)
+            with self.subTest(name=name):
+                cmd = getattr(controller, "cmd_" + name)
+                self.assertFalse(cmd.has_callback)
 
     def test_do_callbacks_true(self):
         index = next(index_gen)
@@ -731,15 +736,20 @@ class ControllerConstructorTestCase(unittest.TestCase):
         # make sure I can build one
         good_controller = ControllerWithDoMethods(command_names)
         for cmd_name in command_names:
-            cmd = getattr(good_controller, "cmd_" + cmd_name)
-            self.assertTrue(cmd.has_callback)
+            with self.subTest(cmd_name=cmd_name):
+                cmd = getattr(good_controller, "cmd_" + cmd_name)
+                self.assertTrue(cmd.has_callback)
 
+        skip_names = salobj.OPTIONAL_COMMAND_NAMES.copy()
+        # do_setLogLevel is provided by Controller
+        skip_names.add("setLogLevel")
         for missing_name in command_names:
-            if missing_name in salobj.OPTIONAL_COMMAND_NAMES:
+            if missing_name in skip_names:
                 continue
-            bad_names = [name for name in command_names if name != missing_name]
-            with self.assertRaises(TypeError):
-                ControllerWithDoMethods(bad_names)
+            with self.subTest(missing_name=missing_name):
+                bad_names = [name for name in command_names if name != missing_name]
+                with self.assertRaises(TypeError):
+                    ControllerWithDoMethods(bad_names)
 
         extra_names = command_names + ["extra_command"]
         with self.assertRaises(TypeError):
@@ -774,6 +784,41 @@ class TestCscConstructorTestCase(unittest.TestCase):
             with self.subTest(invalid_state=invalid_state):
                 with self.assertRaises(ValueError):
                     salobj.test_utils.TestCsc(index=next(index_gen), initial_state=invalid_state)
+
+
+class FailedCallbackCsc(salobj.test_utils.TestCsc):
+    """A CSC whose do_wait command raises a RuntimeError"""
+    def __init__(self, index, initial_state):
+        super().__init__(index=index, initial_state=initial_state)
+        self.exc_msg = "do_wait raised an exception on purpose"
+
+    async def do_wait(self, id_data):
+        raise RuntimeError(self.exc_msg)
+
+
+@unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
+class ControllerCommandLoggingTestCase(unittest.TestCase):
+    def setUp(self):
+        index = next(index_gen)
+        salobj.test_utils.set_random_lsst_dds_domain()
+        self.csc = FailedCallbackCsc(index=index, initial_state=salobj.State.ENABLED)
+        self.remote = salobj.Remote(SALPY_Test, index)
+
+    def test_logging(self):
+        async def doit():
+            wait_data = self.remote.cmd_wait.DataType()
+            wait_data.duration = 5
+            with salobj.test_utils.assertRaisesAckError():
+                await self.remote.cmd_wait.start(wait_data, timeout=2)
+
+            msg = await self.remote.evt_logMessage.next(flush=False, timeout=1)
+            self.assertEqual("coro cmd_wait callback failed", msg.message)
+            self.assertIn(self.csc.exc_msg, msg.traceback)
+            self.assertIn("Traceback", msg.traceback)
+            self.assertIn("RuntimeError", msg.traceback)
+            self.assertEqual(msg.level, logging.ERROR)
+
+        asyncio.get_event_loop().run_until_complete(doit())
 
 
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
