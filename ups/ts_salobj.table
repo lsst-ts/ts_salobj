@@ -1,4 +1,5 @@
 setupRequired(sconsUtils)
+setupRequired(ts_sal)  # for SALPY libs
 
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
 

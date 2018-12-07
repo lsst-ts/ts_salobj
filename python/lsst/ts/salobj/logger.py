@@ -108,6 +108,7 @@ class Logger:
         """
         while self._enable_logging:
             try:
+                msg = None
                 if not self._log_queue.empty():
                     msg = self._log_queue.get_nowait()
                     data = self.evt_logMessage.DataType()
@@ -119,7 +120,8 @@ class Logger:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print(f"Logger._log_messages_loop failed on message {msg.message!r} with error {e!r}",
+                what = f"on message {msg.message!r}" if msg else "before getting msg"
+                print(f"Logger._log_messages_loop failed {what} with error {e!r}",
                       file=sys.stderr)
 
     async def stop_logging(self):
