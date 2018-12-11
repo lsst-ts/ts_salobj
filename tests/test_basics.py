@@ -6,7 +6,7 @@ try:
     import SALPY_Test
 except ImportError:
     SALPY_Test = None
-import lsst.ts.salobj as salobj
+from lsst.ts import salobj
 
 
 class BasicsTestCase(unittest.TestCase):

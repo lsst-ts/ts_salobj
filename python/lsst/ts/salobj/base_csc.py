@@ -88,9 +88,11 @@ class BaseCsc(Controller):
     * ``exitControl``: `State.STANDBY` to `State.OFFLINE` and then quit
     * ``standby``: `State.DISABLED` or `State.FAULT` to `State.STANDBY`
 
+    .. _writing_a_csc:
+
     Writing a CSC:
 
-    * Make your CSC subclass of BaseCsc.
+    * Make your CSC a subclass of `BaseCsc`.
     * Your subclass must provide a ``do_<name>`` method for every command
       that is not part of the standard CSC command set, as well as the
       following optional standard commands, if you want to support them:
@@ -119,7 +121,8 @@ class BaseCsc(Controller):
       `topics.ControllerCommand`.allow_multiple_commands
       for details and limitations of this attribute.
     * Your subclass should construct a `Remote` for any
-      remote SAL component it wishes to listen to or command.
+      remote SAL component it wishes to listen to or command. For example:
+      ``self.electrometer1 = salobj.Remote(SALPY_Electrometer, index=1)``.
     * Your subclass may override ``before_<name>`` and/or ``after_<name>``
       for each state transition command, as appropriate. For complex state
       transitions your subclass may also override ``do_<name>``.
@@ -127,7 +130,9 @@ class BaseCsc(Controller):
       must match a command name and must be callable.
 
     To run your CSC call the `main` method. For an example see
-    ``bin.src/run_test_csc.py``.
+    ``bin.src/run_test_csc.py``. If you wish to provide additional
+    command line arguments then it is probably simplest to copy the
+    contents of `main` into your script and adapt as required.
     """
     def __init__(self, sallib, index=None, initial_state=State.STANDBY):
         # cast initial_state from an int or State to a State,
@@ -217,6 +222,7 @@ class BaseCsc(Controller):
         async def die():
             await asyncio.sleep(0.1)
             self._heartbeat_task.cancel()
+            await self.stop_logging()
             self.done_task.set_result(None)
 
         asyncio.ensure_future(die())
@@ -406,12 +412,17 @@ class BaseCsc(Controller):
         curr_state = self.summary_state
         if curr_state not in allowed_curr_states:
             raise base.ExpectedError(f"{cmd_name} not allowed in state {curr_state!r}")
-        getattr(self, f"begin_{cmd_name}")(id_data)
+        try:
+            getattr(self, f"begin_{cmd_name}")(id_data)
+        except Exception:
+            self.log.exception(f"beg_{cmd_name} failed; remaining in state {curr_state!r}")
+            raise
         self._summary_state = new_state
         try:
             getattr(self, f"end_{cmd_name}")(id_data)
         except Exception:
             self._summary_state = curr_state
+            self.log.exception(f"end_{cmd_name} failed; reverting to state {curr_state!r}")
             raise
         self.report_summary_state()
 

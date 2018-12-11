@@ -19,21 +19,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["LogMixin"]
+__all__ = ["Logger"]
 
 import asyncio
 import logging
 import logging.handlers
 import queue
+import sys
 
 LOG_MESSAGES_INTERVAL = 0.05  # seconds
 
 
-class LogMixin:
-    """Logging mixin class for Controller.
-
-    All classes that use this mixin must support one required command
-    and one required topic. See `Notes` for details.
+class Logger:
+    """Support logging to SAL.
 
     Parameters
     ----------
@@ -49,23 +47,26 @@ class LogMixin:
 
     Notes
     -----
-    Do the following to support logging in your subclass of
-    `Controller` or `BaseCsc`:
+    .. _logger_sal_topics:
 
-    * Inherit from `LogMixin` as well as `Controller` or `BaseCsc`
-    * Call `LogMixin.__init__` in your class's ``__init__`` method.
-    * Add command `setLogging` with one parameter:
+    Logger uses the following SAL topics:
 
-      * ``level``: log level; an integer; see Python logging for levels.
-    * Add event `logMessage` with two parameters:
+    * command ``setLogLevel``
+    * logevent ``logLevel``
+    * logevent ``logMessage``
 
-      * ``level``: log level; an integer; see Python logging for levels.
-      * ``message`` the log message; a variable-length string.
-    * Override `log_name` if you want the logger name to be something
-      other than the class name.
-    * When shutting down call `await self.stop_logging()`
+    These topics are automatically provided to any SAL component
+    that uses generics, but for other SAL components you must provide
+    them yourself. See ``SALGenerics.xml`` in ``ts_xml`` for the format
+    of these topics.
+
+    Override `log_name` if you want the logger name to be something
+    other than the class name.
+
+    When shutting down call ``await self.stop_logging()``.
+    `BaseCsc` does this, so subclasses need not worry about it.
     """
-    def __init__(self):
+    def __init__(self, initial_level=logging.WARNING):
         self.log = logging.getLogger(self.log_name)
         """A Python `logging.Logger`. You can safely log to it from
         different threads. Note that it can take up to
@@ -84,7 +85,7 @@ class LogMixin:
         """
         return type(self).__name__
 
-    def do_setLogging(self, id_data):
+    def do_setLogLevel(self, id_data):
         """Set logging level.
 
         Parameters
@@ -93,23 +94,35 @@ class LogMixin:
             Logging level.
         """
         self.log.setLevel(id_data.data.level)
+        self.put_log_level()
+
+    def put_log_level(self):
+        """Output the logLevel event.
+        """
+        data = self.evt_logLevel.DataType()
+        data.level = self.log.getEffectiveLevel()
+        self.evt_logLevel.put(data)
 
     async def _log_messages_loop(self):
         """Output log messages.
         """
         while self._enable_logging:
             try:
+                msg = None
                 if not self._log_queue.empty():
                     msg = self._log_queue.get_nowait()
                     data = self.evt_logMessage.DataType()
                     data.level = msg.levelno
                     data.message = msg.message
+                    data.traceback = msg.exc_text or ""
                     self.evt_logMessage.put(data)
                 await asyncio.sleep(LOG_MESSAGES_INTERVAL)
             except asyncio.CancelledError:
                 break
-            except Exception:
-                pass  # no point trying to log this since logging failed
+            except Exception as e:
+                what = f"on message {msg.message!r}" if msg else "before getting msg"
+                print(f"Logger._log_messages_loop failed {what} with error {e!r}",
+                      file=sys.stderr)
 
     async def stop_logging(self):
         """Call this to stop logging.
