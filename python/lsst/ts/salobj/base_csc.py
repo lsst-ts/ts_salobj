@@ -59,6 +59,14 @@ class BaseCsc(Controller):
     initial_state : `salobj.State` or `int` (optional)
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
+    initial_simulation_mode : `int` (optional)
+        Initial simulation mode. This is provided for unit testing,
+        as real CSCs should start up not simulating, the default.
+
+    Raises
+    ------
+    salobj.ExpectedException
+        If initial_state or initial_simulation_mode is invalid.
 
     Notes
     -----
@@ -154,14 +162,14 @@ class BaseCsc(Controller):
     The default implementation of `implement_simulation_mode` is to reject
     all non-zero values for ``simulation_mode``.
     """
-    def __init__(self, sallib, index=None, initial_state=State.STANDBY):
+    def __init__(self, sallib, index=None, initial_state=State.STANDBY, initial_simulation_mode=0):
         # cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
         initial_state = State(initial_state)
         super().__init__(sallib, index, do_callbacks=True)
         self.summary_state = initial_state
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
-        self.simulation_mode = 0
+        self.simulation_mode = initial_simulation_mode
         self.done_task = asyncio.Future()
         """This task is set done when the CSC is done, which is when
         the ``exitControl`` command is received.

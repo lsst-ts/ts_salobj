@@ -662,6 +662,16 @@ class CommunicateTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
+    def test_initial_simulation_mode(self):
+        """Test initial_simulation_mode argument of TestCsc constructor."""
+        salobj.test_utils.set_random_lsst_dds_domain()
+        for initial_simulation_mode in (1, 3, 4):
+            with self.assertRaises(salobj.ExpectedError):
+                salobj.test_utils.TestCsc(index=1, initial_simulation_mode=initial_simulation_mode)
+
+        csc = salobj.test_utils.TestCsc(index=1, initial_simulation_mode=0)
+        self.assertEqual(csc.simulation_mode, 0)
+
     async def check_simulate_mode_ok(self, harness):
         """Check that we can set simulation mode to 0 but not other values."""
         setsm_data = harness.remote.cmd_setSimulationMode.DataType()
