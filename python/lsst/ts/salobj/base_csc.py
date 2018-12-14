@@ -59,6 +59,14 @@ class BaseCsc(Controller):
     initial_state : `salobj.State` or `int` (optional)
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
+    initial_simulation_mode : `int` (optional)
+        Initial simulation mode. This is provided for unit testing,
+        as real CSCs should start up not simulating, the default.
+
+    Raises
+    ------
+    salobj.ExpectedException
+        If initial_state or initial_simulation_mode is invalid.
 
     Notes
     -----
@@ -128,19 +136,40 @@ class BaseCsc(Controller):
       transitions your subclass may also override ``do_<name>``.
     * ``do_`` is a reserved prefix: all ``do_<name>`` attributes must be
       must match a command name and must be callable.
+    * Implement :ref:`simulation mode<simulation_mode>`, if practical.
+      If your CSC talks to hardware then this is especially important.
 
     To run your CSC call the `main` method. For an example see
     ``bin.src/run_test_csc.py``. If you wish to provide additional
     command line arguments then it is probably simplest to copy the
     contents of `main` into your script and adapt as required.
+
+    .. _simulation_mode:
+
+    Simulation Mode:
+
+    CSCs should support a simulation mode it practical; this is especially
+    important it the CSC talks to hardware.
+
+    To implement a simulation mode, first pick one or more non-zero values
+    for the ``simulation_mode`` property (0 is reserved for normal operation)
+    and document what they mean. For example you might use a a bit mask
+    to supporting independently simulating multiple different subsystems.
+
+    Then override `implement_simulation_mode` implement the specified
+    simulation mode, if supported, or raise an exception if not.
+    Note that this method is called during construction of the CSC.
+    The default implementation of `implement_simulation_mode` is to reject
+    all non-zero values for ``simulation_mode``.
     """
-    def __init__(self, sallib, index=None, initial_state=State.STANDBY):
+    def __init__(self, sallib, index=None, initial_state=State.STANDBY, initial_simulation_mode=0):
         # cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
         initial_state = State(initial_state)
         super().__init__(sallib, index, do_callbacks=True)
         self.summary_state = initial_state
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+        self.simulation_mode = initial_simulation_mode
         self.done_task = asyncio.Future()
         """This task is set done when the CSC is done, which is when
         the ``exitControl`` command is received.
@@ -246,6 +275,78 @@ class BaseCsc(Controller):
             Command ID and data
         """
         self._do_change_state(id_data, "start", [State.STANDBY], State.DISABLED)
+
+    def do_setSimulationMode(self, id_data):
+        """Enter or leave simulation mode.
+
+        The CSC must be in `State.STANDBY` or `State.DISABLED` state.
+
+        Parameters
+        ----------
+        id_data : `CommandIdData`
+            Command ID and data
+
+        Notes
+        -----
+        To implement simulation mode: override `implement_simulation_mode`.
+        """
+        if self.summary_state not in (State.STANDBY, State.DISABLED):
+            raise base.ExpectedError(f"Cannot set simulation_mode in state {self.summary_state!r}")
+        self.simulation_mode = id_data.data.mode
+
+    @property
+    def simulation_mode(self):
+        """Get or set the current simulation mode.
+
+        0 means normal operation (no simulation).
+
+        Raises
+        ------
+        ExpectedError
+            If the new simulation mode is not a supported value.
+
+        """
+        return self._simulation_mode
+
+    @simulation_mode.setter
+    def simulation_mode(self, simulation_mode):
+        self.implement_simulation_mode(simulation_mode)
+        self._simulation_mode = simulation_mode
+
+        simulation_mode_data = self.evt_simulationMode.DataType()
+        simulation_mode_data.mode = self.simulation_mode
+        self.evt_simulationMode.put(simulation_mode_data)
+
+    def implement_simulation_mode(self, simulation_mode):
+        """Implement going into or out of simulation mode.
+
+        Parameters
+        ----------
+        simulation_mode : `int`
+            Requested simulation mode; 0 for normal operation.
+
+        Raises
+        ------
+        ExpectedError
+            If ``simulation_mode`` is not a supported value.
+
+        Notes
+        -----
+        Subclasses should override this method to implement simulation
+        mode. The implementation should:
+        - Check the value of ``simulation_mode`` and raise
+          `ExpectedError` if not supported.
+        - If ``simulation_mode`` is 0 then go out of simulation mode.
+        - If ``simulation_mode`` is nonzero then enter the requested
+          simulation mode.
+
+        Do not check the current summary state, nor set the
+        ``simulation_mode`` property nor report the new mode.
+        All of that is handled `do_setSimulationMode`.
+        """
+        if simulation_mode != 0:
+            raise base.ExpectedError(
+                f"This CSC does not support simulation; simulation_mode={simulation_mode} but must be 0")
 
     def begin_disable(self, id_data):
         """Begin do_disable; called before state changes.

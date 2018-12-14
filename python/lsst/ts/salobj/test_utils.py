@@ -106,11 +106,14 @@ class TestCsc(base_csc.BaseCsc):
 
         * `salobj.State.ENABLED` if you want the CSC immediately usable.
         * `salobj.State.STANDBY` if you want full emulation of a CSC.
+    initial_simulation_mode : `int` (optional)
+        Initial simulation mode. The only allowed value is 0.
     """
     __test__ = False  # stop pytest from warning that this is not a test
 
-    def __init__(self, index, initial_state=base_csc.State.STANDBY):
-        super().__init__(SALPY_Test, index=index, initial_state=initial_state)
+    def __init__(self, index, initial_state=base_csc.State.STANDBY, initial_simulation_mode=0):
+        super().__init__(SALPY_Test, index=index, initial_state=initial_state,
+                         initial_simulation_mode=initial_simulation_mode)
         self.evt_arrays_data = self.evt_arrays.DataType()
         self.evt_scalars_data = self.evt_scalars.DataType()
         self.tel_arrays_data = self.tel_arrays.DataType()
