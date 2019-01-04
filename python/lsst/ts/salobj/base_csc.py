@@ -76,16 +76,24 @@ class BaseCsc(Controller):
       (which must be present) and add it as a callback to the
       ``cmd_<name>`` attribute.
     * The base class provides synchronous ``do_<name>`` methods for the
-      standard CSC commands. The default implementation:
+      standard CSC commands. The default implementation is as follows
+      (if any step fails then the remaining steps are not performed):
 
-        * Checks for validity of the requested state change;
+        * Check for validity of the requested state change;
           if the change is valid then:
-        * Calls ``before_<name>``. This is a no-op in the base class,
+        * Call ``begin_<name>``. This is a no-op in the base class,
+          and is available for the subclass to override. If this fails,
+          then log an error and acknowledge the command as failed.
+        * Change self.summary_state.
+        * Call ``end_<name>``. Again, this is a no-op in the base class,
           and is available for the subclass to override.
-        * Changes the state and reports the new value.
-        * Calls ``after_<name>``. Again, this is a no-op in the base class,
-          and is available for the subclass to override.
-        * Report the command as complete
+          If this fails then revert ``self.summary_state``, log an error,
+          and acknowledge the command as failed.
+        * Call `report_summary_state` to report the new summary state.
+          If this fails then leave the summary state updated
+          (since the new value *may* have been reported),
+          but acknowledge the command as failed.
+        * Acknowledge the command as complete.
 
     Standard CSC commands and their associated summary state changes:
 
@@ -122,27 +130,57 @@ class BaseCsc(Controller):
     * By default your CSC will report the command as completed
       when ``do_<name>`` finishes, but you can return a different
       acknowledgement (instance of `SalInfo.AckType`) instead,
-      and that will be reported as the final command state.
+      and that will be used as the final command acknowledgement.
     * If you want to allow more than one instance of the command running
-      at a time, set ``cmd_<name>.allow_multiple_commands = True`` in your
-      CSC's constructor. See
+      at a time, set ``self.cmd_<name>.allow_multiple_commands = True``
+      in your CSC's constructor. See
       `topics.ControllerCommand`.allow_multiple_commands
       for details and limitations of this attribute.
     * Your subclass should construct a `Remote` for any
       remote SAL component it wishes to listen to or command. For example:
       ``self.electrometer1 = salobj.Remote(SALPY_Electrometer, index=1)``.
-    * Your subclass may override ``before_<name>`` and/or ``after_<name>``
-      for each state transition command, as appropriate. For complex state
-      transitions your subclass may also override ``do_<name>``.
+      You may wish to construct these when you go into the `State.DISABLED`
+      state (e.g. order to output telemetry based on input from a remote)
+      or `State.ENABLED` state (to command the remote).
+    * Summary state:
+
+        * `BaseCsc` provides a default implementation for all summary state
+          transition commands that might suffice. However, it does not yet
+          handle configuration. See ``ATDomeTrajectory`` for a CSC
+          that handles configuration.
+        * Most commands should only be allowed to run when the summary state
+          is `State.ENABLED`. To check this, put the following as the first
+          line of your ``do_<name>`` method: ``self.assert_enabled()``
+        * Your subclass may override ``begin_<name>`` and/or ``end_<name>``
+          for each state transition command, as appropriate. For complex state
+          transitions your subclass may also override ``do_<name>``.
+          If any of these methods fail then the state change operation
+          is aborted, the summary state does not change, and the command
+          is acknowledged as failed.
+        * Your subclass may override `report_summary_state` if you wish to
+          perform actions based the current summary state.
+        * Output the ``errorCode`` event when your CSC goes into the
+          `State.FAULT` summary state.
+
+    * Detailed state (optional):
+
+        * The ``detailedState`` event is unique to each CSC.
+        * ``detailedState`` is optional, but strongly recommended for
+          CSCs that are complex enough to have interesting internal state.
+        * Report all information that seem relevant to detailed state
+          and is not covered by summary state.
+        * Detailed state should be *orthogonal* to summary state.
+          You may provide an enum field in your detailedState event, but it
+          is not required and, if present, should not include summary states.
     * ``do_`` is a reserved prefix: all ``do_<name>`` attributes must be
       must match a command name and must be callable.
     * Implement :ref:`simulation mode<simulation_mode>`, if practical.
       If your CSC talks to hardware then this is especially important.
 
-    To run your CSC call the `main` method. For an example see
-    ``bin.src/run_test_csc.py``. If you wish to provide additional
-    command line arguments then it is probably simplest to copy the
-    contents of `main` into your script and adapt as required.
+    To run your CSC call the `main` method or equivalent code.
+    For an example see ``bin.src/run_test_csc.py``. If you wish to
+    provide additional command line arguments then it is probably simplest
+    to copy the contents of `main` into your script and adapt it as required.
 
     .. _simulation_mode:
 
@@ -334,10 +372,11 @@ class BaseCsc(Controller):
         -----
         Subclasses should override this method to implement simulation
         mode. The implementation should:
-        - Check the value of ``simulation_mode`` and raise
+
+        * Check the value of ``simulation_mode`` and raise
           `ExpectedError` if not supported.
-        - If ``simulation_mode`` is 0 then go out of simulation mode.
-        - If ``simulation_mode`` is nonzero then enter the requested
+        * If ``simulation_mode`` is 0 then go out of simulation mode.
+        * If ``simulation_mode`` is nonzero then enter the requested
           simulation mode.
 
         Do not check the current summary state, nor set the
