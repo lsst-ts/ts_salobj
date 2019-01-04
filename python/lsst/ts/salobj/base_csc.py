@@ -94,6 +94,13 @@ class BaseCsc(Controller):
           (since the new value *may* have been reported),
           but acknowledge the command as failed.
         * Acknowledge the command as complete.
+    * Run the `start` method asynchronously. `start` sets the
+      initial simulation mode, and, if that is successful,
+      outputs the initial summaryState event and sets attribute
+      ``start_task`` done. At this point the CSC is running.
+      If setting the initial simulation mode fails then `start`
+      sets ``self.start_task`` to an exception and calls `stop`,
+      making the CSC unusable.
 
     Standard CSC commands and their associated summary state changes:
 
@@ -106,7 +113,7 @@ class BaseCsc(Controller):
 
     .. _writing_a_csc:
 
-    Writing a CSC:
+    **Writing a CSC**
 
     * Make your CSC a subclass of `BaseCsc`.
     * Your subclass must provide a ``do_<name>`` method for every command
@@ -177,24 +184,31 @@ class BaseCsc(Controller):
     * Implement :ref:`simulation mode<simulation_mode>`, if practical.
       If your CSC talks to hardware then this is especially important.
 
+    .. _running_a_csc:
+
+    **Running a CSC**
+
     To run your CSC call the `main` method or equivalent code.
     For an example see ``bin.src/run_test_csc.py``. If you wish to
     provide additional command line arguments then it is probably simplest
     to copy the contents of `main` into your script and adapt it as required.
 
+    In unit tests, wait for `start_task` to be done, or for the initial
+    summaryState event, before expecting the CSC to be responsive.
+
     .. _simulation_mode:
 
-    Simulation Mode:
+    **Simulation Mode**
 
-    CSCs should support a simulation mode it practical; this is especially
-    important it the CSC talks to hardware.
+    CSCs should support a simulation mode if practical; this is especially
+    important if the CSC talks to hardware.
 
     To implement a simulation mode, first pick one or more non-zero values
     for the ``simulation_mode`` property (0 is reserved for normal operation)
     and document what they mean. For example you might use a a bit mask
     to supporting independently simulating multiple different subsystems.
 
-    Then override `implement_simulation_mode` implement the specified
+    Then override `implement_simulation_mode` to implement the specified
     simulation mode, if supported, or raise an exception if not.
     Note that this method is called during construction of the CSC.
     The default implementation of `implement_simulation_mode` is to reject
@@ -205,13 +219,52 @@ class BaseCsc(Controller):
         # and reject invalid int values with ValueError
         initial_state = State(initial_state)
         super().__init__(sallib, index, do_callbacks=True)
-        self.summary_state = initial_state
+        self._summary_state = State(initial_state)
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
-        self.simulation_mode = initial_simulation_mode
+        self.start_task = asyncio.Future()
+        """This task is set done when the CSC is fully started.
+
+        If `start` fails then the task has an exception set
+        and the CSC is not usable.
+        """
         self.done_task = asyncio.Future()
         """This task is set done when the CSC is done, which is when
         the ``exitControl`` command is received.
         """
+        self._simulation_mode = 0  # make sure there is a value
+        asyncio.ensure_future(self.start(initial_simulation_mode))
+
+    async def start(self, initial_simulation_mode):
+        """Start the CSC.
+
+        Set the initial simulation mode, report the initial summary state,
+        and set ``self.start_task`` done.
+
+        Parameters
+        ----------
+        initial_simulation_mode : `int` (optional)
+            Initial simulation mode. If invalid then set an exception on
+            ``self.start_task`` and call `stop` to stop the CSC.
+        """
+        try:
+            await self.set_simulation_mode(initial_simulation_mode)
+        except Exception as e:
+            self.start_task.set_exception(e)
+            await self.stop()
+            return
+
+        self.report_summary_state()
+        self.start_task.set_result(None)
+
+    async def stop(self):
+        """Stop the CSC.
+
+        Stop background tasks and set ``self.done_task`` done.
+        """
+        await asyncio.sleep(0.1)
+        self._heartbeat_task.cancel()
+        await self.stop_logging()
+        self.done_task.set_result(None)
 
     @classmethod
     def main(cls, index, run_loop=True, **kwargs):
@@ -286,13 +339,7 @@ class BaseCsc(Controller):
         """
         self._do_change_state(id_data, "exitControl", [State.STANDBY], State.OFFLINE)
 
-        async def die():
-            await asyncio.sleep(0.1)
-            self._heartbeat_task.cancel()
-            await self.stop_logging()
-            self.done_task.set_result(None)
-
-        asyncio.ensure_future(die())
+        asyncio.ensure_future(self.stop())
 
     def do_standby(self, id_data):
         """Transition from `State.DISABLED` or `State.FAULT` to `State.STANDBY`.
@@ -314,7 +361,7 @@ class BaseCsc(Controller):
         """
         self._do_change_state(id_data, "start", [State.STANDBY], State.DISABLED)
 
-    def do_setSimulationMode(self, id_data):
+    async def do_setSimulationMode(self, id_data):
         """Enter or leave simulation mode.
 
         The CSC must be in `State.STANDBY` or `State.DISABLED` state.
@@ -330,7 +377,7 @@ class BaseCsc(Controller):
         """
         if self.summary_state not in (State.STANDBY, State.DISABLED):
             raise base.ExpectedError(f"Cannot set simulation_mode in state {self.summary_state!r}")
-        self.simulation_mode = id_data.data.mode
+        await self.set_simulation_mode(id_data.data.mode)
 
     @property
     def simulation_mode(self):
@@ -346,16 +393,25 @@ class BaseCsc(Controller):
         """
         return self._simulation_mode
 
-    @simulation_mode.setter
-    def simulation_mode(self, simulation_mode):
-        self.implement_simulation_mode(simulation_mode)
+    async def set_simulation_mode(self, simulation_mode):
+        """Set the simulation mode.
+
+        Await implement_simulation_mode, update the simulation mode
+        property and report the new value.
+
+        Parameters
+        ----------
+        simulation_mode : `int`
+            Requested simulation mode; 0 for normal operation.
+        """
+        await self.implement_simulation_mode(simulation_mode)
         self._simulation_mode = simulation_mode
 
         simulation_mode_data = self.evt_simulationMode.DataType()
         simulation_mode_data.mode = self.simulation_mode
         self.evt_simulationMode.put(simulation_mode_data)
 
-    def implement_simulation_mode(self, simulation_mode):
+    async def implement_simulation_mode(self, simulation_mode):
         """Implement going into or out of simulation mode.
 
         Parameters

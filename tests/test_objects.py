@@ -527,6 +527,9 @@ class CommunicateTestCase(unittest.TestCase):
             commands = ("start", "enable", "disable", "exitControl", "standby",
                         "setArrays", "setScalars")
             self.assertEqual(harness.csc.summary_state, salobj.State.STANDBY)
+            # make sure start_task completes
+            await asyncio.wait_for(harness.csc.start_task, timeout=2)
+
             state = await harness.remote.evt_summaryState.next(flush=False, timeout=2)
             self.assertEqual(state.summaryState, salobj.State.STANDBY)
 
@@ -664,13 +667,18 @@ class CommunicateTestCase(unittest.TestCase):
 
     def test_initial_simulation_mode(self):
         """Test initial_simulation_mode argument of TestCsc constructor."""
-        salobj.test_utils.set_random_lsst_dds_domain()
-        for initial_simulation_mode in (1, 3, 4):
-            with self.assertRaises(salobj.ExpectedError):
-                salobj.test_utils.TestCsc(index=1, initial_simulation_mode=initial_simulation_mode)
+        async def doit():
+            salobj.test_utils.set_random_lsst_dds_domain()
+            for initial_simulation_mode in (1, 3, 4):
+                csc = salobj.test_utils.TestCsc(index=1, initial_simulation_mode=initial_simulation_mode)
+                with self.assertRaises(salobj.ExpectedError):
+                    await csc.start_task
 
-        csc = salobj.test_utils.TestCsc(index=1, initial_simulation_mode=0)
-        self.assertEqual(csc.simulation_mode, 0)
+            csc = salobj.test_utils.TestCsc(index=1, initial_simulation_mode=0)
+            await csc.start_task
+            self.assertEqual(csc.simulation_mode, 0)
+
+        asyncio.get_event_loop().run_until_complete(doit())
 
     async def check_simulate_mode_ok(self, harness):
         """Check that we can set simulation mode to 0 but not other values."""
