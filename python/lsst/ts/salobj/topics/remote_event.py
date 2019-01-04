@@ -37,8 +37,7 @@ class RemoteEvent(RemoteTelemetry):
     def _setup(self):
         """Get functions from salinfo and subscribe to the topic."""
         self._get_newest_func_name = "getSample_logevent_" + self.name
-        # TODO TSS-3196: remove the None from this getattr:
-        self._get_newest_func = getattr(self.salinfo.manager, self._get_newest_func_name, None)
+        self._get_newest_func = getattr(self.salinfo.manager, self._get_newest_func_name)
         self._get_oldest_func_name = "getEvent_" + self.name
         self._get_oldest_func = getattr(self.salinfo.manager, self._get_oldest_func_name)
         self._flush_func_name = "flushSamples_logevent_" + self.name
@@ -50,30 +49,3 @@ class RemoteEvent(RemoteTelemetry):
         retcode = self.salinfo.manager.salEventSub(topic_name)
         if retcode != self.salinfo.lib.SAL__OK:
             raise RuntimeError(f"salEventSub({topic_name}) failed with return code {retcode}")
-
-    def get(self):
-        """Read the most recent data.
-
-        If data has never been seen, then return None.
-
-        If there is no callback function (which is typical)
-        then this also flushes the queue.
-
-        If there is a callback function then get will always
-        return the most recently cached data. If the callback function
-        is working its way through queued data then this may not be
-        the most recent data.
-        """
-        # TODO TSS-3196: remove this implementation
-        if self.has_callback:
-            return self._cached_data
-
-        while True:
-            new_data = self.DataType()
-            retcode = self._get_oldest_func(new_data)
-            if retcode == self.salinfo.lib.SAL__OK:
-                self._cached_data = new_data
-            elif retcode == self.salinfo.lib.SAL__NO_UPDATES:
-                return self._cached_data
-            else:
-                raise RuntimeError(f"get failed with retcode={retcode} from {self._get_oldest_func_name}")
