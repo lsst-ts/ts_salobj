@@ -14,7 +14,7 @@ library_name = f"SALPY_{args.component}"
 salobj.test_utils.set_random_lsst_dds_domain()
 sallib = importlib.import_module(library_name)
 
-salinfo = salobj.SalInfo(sallib, 1)
+salinfo = salobj.SalInfo(sallib, 0)
 print(f"{library_name} contents:")
 for item in sorted(dir(sallib)):
     if item.startswith("__"):
