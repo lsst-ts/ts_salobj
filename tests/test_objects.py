@@ -20,8 +20,8 @@ index_gen = salobj.index_generator()
 class Harness:
     def __init__(self, initial_state):
         index = next(index_gen)
-        salobj.test_utils.set_random_lsst_dds_domain()
-        self.csc = salobj.test_utils.TestCsc(index=index, initial_state=initial_state)
+        salobj.set_random_lsst_dds_domain()
+        self.csc = salobj.TestCsc(index=index, initial_state=initial_state)
         self.remote = salobj.Remote(SALPY_Test, index)
 
 
@@ -41,7 +41,7 @@ class CommunicateTestCase(unittest.TestCase):
     def test_main(self):
         async def doit():
             index = next(index_gen)
-            salobj.test_utils.set_random_lsst_dds_domain()
+            salobj.set_random_lsst_dds_domain()
             process = await asyncio.create_subprocess_exec("run_test_csc.py", str(index))
             try:
                 remote = salobj.Remote(SALPY_Test, index)
@@ -288,7 +288,7 @@ class CommunicateTestCase(unittest.TestCase):
             wait_data = harness.remote.cmd_wait.DataType()
             wait_data.duration = 5
             wait_data.ack = sallib.SAL__CMD_COMPLETE
-            with salobj.test_utils.assertRaisesAckError(
+            with salobj.assertRaisesAckError(
                     ack=harness.remote.salinfo.lib.SAL__CMD_NOACK):
                 await harness.remote.cmd_wait.start(wait_data, timeout=0.5)
 
@@ -442,7 +442,7 @@ class CommunicateTestCase(unittest.TestCase):
             wait_data.duration = 5
             id_ack1 = await harness.remote.cmd_wait.start(wait_data, wait_done=False, timeout=2)
             self.assertEqual(id_ack1.ack.ack, SALPY_Test.SAL__CMD_ACK)
-            with salobj.test_utils.assertRaisesAckError(ack=SALPY_Test.SAL__CMD_NOACK):
+            with salobj.assertRaisesAckError(ack=SALPY_Test.SAL__CMD_NOACK):
                 await harness.remote.cmd_wait.next_ack(id_ack1, wait_done=True, timeout=0.1)
 
         asyncio.get_event_loop().run_until_complete(doit())
@@ -538,7 +538,7 @@ class CommunicateTestCase(unittest.TestCase):
                     continue  # valid command in STANDBY state
                 with self.subTest(bad_command=bad_command):
                     cmd_attr = getattr(harness.remote, f"cmd_{bad_command}")
-                    with salobj.test_utils.assertRaisesAckError(
+                    with salobj.assertRaisesAckError(
                             ack=harness.remote.salinfo.lib.SAL__CMD_FAILED):
                         await cmd_attr.start(cmd_attr.DataType())
 
@@ -556,7 +556,7 @@ class CommunicateTestCase(unittest.TestCase):
                     continue  # valid command in DISABLED state
                 with self.subTest(bad_command=bad_command):
                     cmd_attr = getattr(harness.remote, f"cmd_{bad_command}")
-                    with salobj.test_utils.assertRaisesAckError(
+                    with salobj.assertRaisesAckError(
                             ack=harness.remote.salinfo.lib.SAL__CMD_FAILED):
                         await cmd_attr.start(cmd_attr.DataType())
 
@@ -574,7 +574,7 @@ class CommunicateTestCase(unittest.TestCase):
                     continue  # valid command in DISABLED state
                 with self.subTest(bad_command=bad_command):
                     cmd_attr = getattr(harness.remote, f"cmd_{bad_command}")
-                    with salobj.test_utils.assertRaisesAckError(
+                    with salobj.assertRaisesAckError(
                             ack=harness.remote.salinfo.lib.SAL__CMD_FAILED):
                         await cmd_attr.start(cmd_attr.DataType())
 
@@ -668,13 +668,13 @@ class CommunicateTestCase(unittest.TestCase):
     def test_initial_simulation_mode(self):
         """Test initial_simulation_mode argument of TestCsc constructor."""
         async def doit():
-            salobj.test_utils.set_random_lsst_dds_domain()
+            salobj.set_random_lsst_dds_domain()
             for initial_simulation_mode in (1, 3, 4):
-                csc = salobj.test_utils.TestCsc(index=1, initial_simulation_mode=initial_simulation_mode)
+                csc = salobj.TestCsc(index=1, initial_simulation_mode=initial_simulation_mode)
                 with self.assertRaises(salobj.ExpectedError):
                     await csc.start_task
 
-            csc = salobj.test_utils.TestCsc(index=1, initial_simulation_mode=0)
+            csc = salobj.TestCsc(index=1, initial_simulation_mode=0)
             await csc.start_task
             self.assertEqual(csc.simulation_mode, 0)
 
@@ -692,7 +692,7 @@ class CommunicateTestCase(unittest.TestCase):
         for bad_mode in (1, 10, -1):
             setsm_data.mode = 1
             with self.subTest(bad_mode=bad_mode):
-                with salobj.test_utils.assertRaisesAckError():
+                with salobj.assertRaisesAckError():
                     await harness.remote.cmd_setSimulationMode.start(setsm_data, timeout=2)
 
     async def check_simulate_mode_bad(self, harness):
@@ -702,7 +702,7 @@ class CommunicateTestCase(unittest.TestCase):
         for bad_mode in (0, 1, 10, -1):
             setsm_data.mode = 1
             with self.subTest(bad_mode=bad_mode):
-                with salobj.test_utils.assertRaisesAckError():
+                with salobj.assertRaisesAckError():
                     await harness.remote.cmd_setSimulationMode.start(setsm_data, timeout=2)
 
 
@@ -794,7 +794,7 @@ class ControllerWithDoMethods(salobj.Controller):
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
 class ControllerConstructorTestCase(unittest.TestCase):
     def setUp(self):
-        salobj.test_utils.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_domain()
 
     def test_do_callbacks_false(self):
         index = next(index_gen)
@@ -833,7 +833,7 @@ class ControllerConstructorTestCase(unittest.TestCase):
             ControllerWithDoMethods(extra_names)
 
 
-class NoIndexCsc(salobj.test_utils.TestCsc):
+class NoIndexCsc(salobj.TestCsc):
     """A CSC whose constructor has no index argument"""
     def __init__(self, arg1, arg2):
         super().__init__(index=next(index_gen))
@@ -844,14 +844,14 @@ class NoIndexCsc(salobj.test_utils.TestCsc):
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
 class TestCscConstructorTestCase(unittest.TestCase):
     def setUp(self):
-        salobj.test_utils.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_domain()
 
     def test_integer_initial_state(self):
         """Test that initial_state can be an integer."""
         for state in (min(salobj.State), max(salobj.State)):
             int_state = int(state)
             with self.subTest(initial_state=int_state):
-                csc = salobj.test_utils.TestCsc(index=next(index_gen), initial_state=int_state)
+                csc = salobj.TestCsc(index=next(index_gen), initial_state=int_state)
                 self.assertEqual(csc.summary_state, state)
 
     def test_invalid_initial_state(self):
@@ -860,10 +860,10 @@ class TestCscConstructorTestCase(unittest.TestCase):
                               max(salobj.State) + 1):
             with self.subTest(invalid_state=invalid_state):
                 with self.assertRaises(ValueError):
-                    salobj.test_utils.TestCsc(index=next(index_gen), initial_state=invalid_state)
+                    salobj.TestCsc(index=next(index_gen), initial_state=invalid_state)
 
 
-class FailedCallbackCsc(salobj.test_utils.TestCsc):
+class FailedCallbackCsc(salobj.TestCsc):
     """A CSC whose do_wait command raises a RuntimeError"""
     def __init__(self, index, initial_state):
         super().__init__(index=index, initial_state=initial_state)
@@ -877,7 +877,7 @@ class FailedCallbackCsc(salobj.test_utils.TestCsc):
 class ControllerCommandLoggingTestCase(unittest.TestCase):
     def setUp(self):
         index = next(index_gen)
-        salobj.test_utils.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_domain()
         self.csc = FailedCallbackCsc(index=index, initial_state=salobj.State.ENABLED)
         self.remote = salobj.Remote(SALPY_Test, index)
 
@@ -885,7 +885,7 @@ class ControllerCommandLoggingTestCase(unittest.TestCase):
         async def doit():
             wait_data = self.remote.cmd_wait.DataType()
             wait_data.duration = 5
-            with salobj.test_utils.assertRaisesAckError():
+            with salobj.assertRaisesAckError():
                 await self.remote.cmd_wait.start(wait_data, timeout=2)
 
             msg = await self.remote.evt_logMessage.next(flush=False, timeout=1)
@@ -901,7 +901,7 @@ class ControllerCommandLoggingTestCase(unittest.TestCase):
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
 class BaseCscMainTestCase(unittest.TestCase):
     def setUp(self):
-        salobj.test_utils.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_domain()
 
     def test_no_index(self):
         async def doit(index):
@@ -920,7 +920,7 @@ class BaseCscMainTestCase(unittest.TestCase):
     def test_specified_index(self):
         async def doit():
             index = next(index_gen)
-            csc = salobj.test_utils.TestCsc.main(index=index, run_loop=False)
+            csc = salobj.TestCsc.main(index=index, run_loop=False)
             self.assertEqual(csc.salinfo.index, index)
             csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
             await csc.done_task
@@ -933,7 +933,7 @@ class BaseCscMainTestCase(unittest.TestCase):
             original_argv = sys.argv[:]
             try:
                 sys.argv[:] = [sys.argv[0], str(index)]
-                csc = salobj.test_utils.TestCsc.main(index=True, run_loop=False)
+                csc = salobj.TestCsc.main(index=True, run_loop=False)
                 self.assertEqual(csc.salinfo.index, index)
                 csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
                 await csc.done_task
