@@ -212,9 +212,27 @@ class TestCsc(base_csc.BaseCsc):
                     field, getattr(scalars1, field), getattr(scalars2, field), field))
 
     def make_random_cmd_arrays(self):
-        """Make random data for cmd_setArrays using numpy.random."""
+        return self._make_random_arrays(dtype=self.cmd_setArrays.DataType)
+
+    def make_random_evt_arrays(self):
+        return self._make_random_arrays(dtype=self.evt_arrays.DataType)
+
+    def make_random_tel_arrays(self):
+        return self._make_random_arrays(dtype=self.tel_arrays.DataType)
+
+    def make_random_cmd_scalars(self):
+        return self._make_random_scalars(dtype=self.cmd_setScalars.DataType)
+
+    def make_random_evt_scalars(self):
+        return self._make_random_scalars(dtype=self.evt_scalars.DataType)
+
+    def make_random_tel_scalars(self):
+        return self._make_random_scalars(dtype=self.tel_scalars.DataType)
+
+    def _make_random_arrays(self, dtype):
+        """Make random arrays data using numpy.random."""
         nelts = 5
-        data = self.cmd_setArrays.DataType()
+        data = dtype()
         data.boolean0[:] = np.random.choice([False, True], size=(nelts,))
         printable_chars = [c for c in string.ascii_letters + string.digits]
         data.char0 = "".join(np.random.choice(printable_chars, size=(nelts,)))
@@ -237,9 +255,9 @@ class TestCsc(base_csc.BaseCsc):
         data.double0[:] = np.random.uniform(-1e5, 1e5, size=(nelts,))
         return data
 
-    def make_random_cmd_scalars(self):
+    def _make_random_scalars(self, dtype):
         """Make random data for cmd_setScalars using numpy.random."""
-        data = self.cmd_setScalars.DataType()
+        data = dtype()
         # also make an empty arrays struct to get dtype of int fields,
         # since that information is lost in the scalars pybind11 wrapper
         empty_arrays = self.cmd_setArrays.DataType()

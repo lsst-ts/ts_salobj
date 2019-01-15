@@ -63,8 +63,13 @@ class ControllerEvent(ControllerTelemetry):
 
         The data is put if it has never been set (`has_data` False)
         or if this call changes any field.
+
+        Returns
+        -------
+        did_put : `bool`
+            True if the data was output, False otherwise
         """
-        do_output = not self.set_called
+        do_output = not self.has_data
         for field_name, value in kwargs.items():
             old_value = getattr(self.data, field_name)
             field_is_array = isinstance(old_value, np.ndarray)
