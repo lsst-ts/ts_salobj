@@ -36,6 +36,12 @@ class CommunicateTestCase(unittest.TestCase):
             duration = time.time() - start_time
             self.assertLess(abs(duration - 2), 0.5)
 
+            harness.csc.heartbeat_interval = 0.1
+            await harness.remote.evt_heartbeat.next(flush=True, timeout=2)
+            await harness.remote.evt_heartbeat.next(flush=True, timeout=0.2)
+            await harness.remote.evt_heartbeat.next(flush=True, timeout=0.2)
+            await harness.remote.evt_heartbeat.next(flush=True, timeout=0.2)
+
         asyncio.get_event_loop().run_until_complete(doit())
 
     def test_main(self):
