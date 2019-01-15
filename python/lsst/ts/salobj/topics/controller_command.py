@@ -24,10 +24,11 @@ __all__ = ["ControllerCommand"]
 import asyncio
 import inspect
 
+from .base_topic import BaseTopic
 from ..base import CommandIdData, ExpectedError
 
 
-class ControllerCommand:
+class ControllerCommand(BaseTopic):
     """An object that receives a specific command for a SAL component
 
     Parameters
@@ -41,18 +42,11 @@ class ControllerCommand:
         in callback functions.
     """
     def __init__(self, salinfo, name, log):
-        self.name = str(name)
-        self.salinfo = salinfo
+        super().__init__(salinfo=salinfo, name=name)
         self.log = log
         self._callback_func = None  # callback function, if any
         self._callback_task = None  # task waiting to run callback, if any
         self._allow_multiple_callbacks = False
-        self._setup()
-
-    @property
-    def DataType(self):
-        """The class of data for this command."""
-        return self._DataType
 
     def ack(self, id_data, ack):
         """Acknowledge a command by writing a new state.
@@ -192,9 +186,6 @@ class ControllerCommand:
     def __del__(self):
         if self._callback_task and not self._callback_task.done():
             self._callback_task.cancel()
-
-    def __repr__(self):
-        return f"ControllerCommand({self.salinfo}, {self.name})"
 
     def _run_callback(self, task):
         """Run the callback function, acknowledge the command,

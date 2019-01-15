@@ -21,8 +21,10 @@
 
 __all__ = ["ControllerTelemetry"]
 
+from .base_topic import BaseOutputTopic
 
-class ControllerTelemetry:
+
+class ControllerTelemetry(BaseOutputTopic):
     """An object that writes a specific telemetry topic.
 
     Parameters
@@ -32,32 +34,29 @@ class ControllerTelemetry:
     name : `str`
         Command name
     """
-    def __init__(self, salinfo, name):
-        self.salinfo = salinfo
-        self.name = str(name)
-        self._setup()
-
-    @property
-    def DataType(self):
-        """The class of data for this topic."""
-        return self._DataType
-
-    def put(self, data):
-        """Write a new value for this topic.
+    def put(self, data=None):
+        """Output this topic.
 
         Parameters
         ----------
-        data : ``self.DataType``
-            Command parameters.
+        data : ``self.DataType`` (optional)
+            New data to replace ``self.data``, if any.
+
+        Raises
+        ------
+        TypeError
+            If ``data`` is not None and not an instance of `DataType`.
         """
-        if not isinstance(data, self.DataType):
-            raise TypeError(f"data={data!r} must be an instance of {self.DataType}")
-        retcode = self._put_func(data)
+        if data is not None:
+            self.data = data
+        retcode = self._put_func(self.data)
         if retcode != self.salinfo.lib.SAL__OK:
             raise RuntimeError(f"put failed with return code {retcode} from {self._put_func_name}")
 
-    def __repr__(self):
-        return f"{type(self).__name__}({self.salinfo}, {self.name})"
+    def set_put(self, **kwargs):
+        """Set one or more fields of ``self.data`` and put the result."""
+        self.set(**kwargs)
+        self.put()
 
     def _setup(self):
         """Get functions from salinfo and publish this topic."""

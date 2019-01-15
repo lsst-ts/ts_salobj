@@ -26,6 +26,7 @@ import logging
 import warnings
 
 from ..base import AckError, CommandIdAck
+from .base_topic import BaseOutputTopic
 
 DEFAULT_TIMEOUT = 60*60  # default timeout, in seconds
 
@@ -107,7 +108,7 @@ class _CommandInfo:
         self.end_wait(ack=self.ack, cancel_timeout=False)
 
 
-class RemoteCommand:
+class RemoteCommand(BaseOutputTopic):
     """An object that issues a specific command to a SAL component.
 
     Parameters
@@ -118,16 +119,9 @@ class RemoteCommand:
         Command name
     """
     def __init__(self, salinfo, name):
-        self.salinfo = salinfo
-        self.name = str(name)
+        super().__init__(salinfo=salinfo, name=name)
         self.log = logging.getLogger(f"{salinfo}.RemoteCommand.{name}")
         self._running_cmds = dict()
-        self._setup()
-
-    @property
-    def DataType(self):
-        """The class of data for this command."""
-        return self._DataType
 
     def next_ack(self, cmd_id_ack, timeout=None, wait_done=True):
         """Wait for the next acknowledement for the command
@@ -169,13 +163,13 @@ class RemoteCommand:
         cmd_info.start_wait(timeout)
         return cmd_info.done_task
 
-    def start(self, data, timeout=None, wait_done=True):
+    def start(self, data=None, timeout=None, wait_done=True):
         """Start a command.
 
         Parameters
         ----------
-        data : ``self.DataType``
-            Command parameters.
+        data : ``self.DataType`` (optional)
+            New command data to replace ``self.data`` if any.
         timeout : `float` (optional)
             Time limit, in seconds. If None then no time limit.
             This time limit is for the entire command if wait_done
@@ -198,10 +192,12 @@ class RemoteCommand:
         ------
         salobj.AckError
             If the command fails or times out.
+        TypeError
+            If ``data`` is not None and not an instance of `DataType`.
         """
-        if not isinstance(data, self.DataType):
-            raise TypeError(f"data={data!r} must be an instance of {self.DataType}")
-        cmd_id = self._issue_func(data)
+        if data is not None:
+            self.data = data
+        cmd_id = self._issue_func(self.data)
         if cmd_id <= 0:
             raise RuntimeError(f"{self.name} command with data={data} could not be started")
         if cmd_id in self._running_cmds:
@@ -210,9 +206,6 @@ class RemoteCommand:
         self._running_cmds[cmd_id] = cmd_info
         cmd_info.start_wait(timeout)
         return cmd_info.done_task
-
-    def __repr__(self):
-        return f"RemoteCommand({self.salinfo}, {self.name})"
 
     async def _get_next_ack(self):
         """Read command acks until self._running_cmds is empty.
