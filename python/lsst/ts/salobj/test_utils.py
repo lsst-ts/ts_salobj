@@ -114,31 +114,41 @@ class TestCsc(base_csc.BaseCsc):
     def __init__(self, index, initial_state=base_csc.State.STANDBY, initial_simulation_mode=0):
         super().__init__(SALPY_Test, index=index, initial_state=initial_state,
                          initial_simulation_mode=initial_simulation_mode)
-        self.evt_arrays_data = self.evt_arrays.DataType()
-        self.evt_scalars_data = self.evt_scalars.DataType()
-        self.tel_arrays_data = self.tel_arrays.DataType()
-        self.tel_scalars_data = self.tel_scalars.DataType()
         self.cmd_wait.allow_multiple_callbacks = True
 
     def do_setArrays(self, id_data):
         """Execute the setArrays command."""
         self.assert_enabled("setArrays")
-        self.log.info("executing setScalars")
-        self.copy_arrays(id_data.data, self.evt_arrays_data)
-        self.copy_arrays(id_data.data, self.tel_arrays_data)
-        self.assert_arrays_equal(id_data.data, self.evt_arrays_data)
-        self.assert_arrays_equal(id_data.data, self.tel_arrays_data)
-        self.evt_arrays.put(self.evt_arrays_data)
-        self.tel_arrays.put(self.tel_arrays_data)
+        data_dict = self.as_dict(id_data.data, self.arrays_fields)
+        self.evt_arrays.set(**data_dict)
+        self.tel_arrays.set(**data_dict)
+        self.evt_arrays.put()
+        self.tel_arrays.put()
 
     def do_setScalars(self, id_data):
         """Execute the setScalars command."""
         self.assert_enabled("setScalars")
         self.log.info("executing setScalars")
-        self.copy_scalars(id_data.data, self.evt_scalars_data)
-        self.copy_scalars(id_data.data, self.tel_scalars_data)
-        self.evt_scalars.put(self.evt_scalars_data)
-        self.tel_scalars.put(self.tel_scalars_data)
+        data_dict = self.as_dict(id_data.data, self.scalars_fields)
+        self.evt_scalars.set(**data_dict)
+        self.tel_scalars.set(**data_dict)
+        self.evt_scalars.put()
+        self.tel_scalars.put()
+
+    def as_dict(self, data, fields):
+        """Return the specified fields from a data struct as a dict.
+
+        Parameters
+        ----------
+        data : `any`
+            The data to copy.
+        fields : `list` [`str`]
+            The names of the fields of ``data`` to copy.
+        """
+        ret = dict()
+        for field in fields:
+            ret[field] = getattr(data, field)
+        return ret
 
     def do_fault(self, id_data):
         """Execute the fault command.
@@ -201,32 +211,28 @@ class TestCsc(base_csc.BaseCsc):
                 raise AssertionError("scalars1.{} = {} != {} = scalars2.{}".format(
                     field, getattr(scalars1, field), getattr(scalars2, field), field))
 
-    def copy_arrays(self, src_arrays, dest_arrays):
-        """Copy arrays data from one struct to another.
-
-        The types need not match; each struct can be command, event
-        or telemetry data.
-        """
-        for field_name in self.arrays_fields:
-            data = getattr(src_arrays, field_name)
-            if isinstance(data, np.ndarray):
-                getattr(dest_arrays, field_name)[:] = data
-            else:
-                setattr(dest_arrays, field_name, data)
-
-    def copy_scalars(self, src_scalars, dest_scalars):
-        """Copy scalars data from one struct to another.
-
-        The types need not match; each struct can be command, event
-        or telemetry data.
-        """
-        for field_name in self.scalars_fields:
-            setattr(dest_scalars, field_name, getattr(src_scalars, field_name))
-
     def make_random_cmd_arrays(self):
-        """Make random data for cmd_setArrays using numpy.random."""
+        return self._make_random_arrays(dtype=self.cmd_setArrays.DataType)
+
+    def make_random_evt_arrays(self):
+        return self._make_random_arrays(dtype=self.evt_arrays.DataType)
+
+    def make_random_tel_arrays(self):
+        return self._make_random_arrays(dtype=self.tel_arrays.DataType)
+
+    def make_random_cmd_scalars(self):
+        return self._make_random_scalars(dtype=self.cmd_setScalars.DataType)
+
+    def make_random_evt_scalars(self):
+        return self._make_random_scalars(dtype=self.evt_scalars.DataType)
+
+    def make_random_tel_scalars(self):
+        return self._make_random_scalars(dtype=self.tel_scalars.DataType)
+
+    def _make_random_arrays(self, dtype):
+        """Make random arrays data using numpy.random."""
         nelts = 5
-        data = self.cmd_setArrays.DataType()
+        data = dtype()
         data.boolean0[:] = np.random.choice([False, True], size=(nelts,))
         printable_chars = [c for c in string.ascii_letters + string.digits]
         data.char0 = "".join(np.random.choice(printable_chars, size=(nelts,)))
@@ -249,9 +255,9 @@ class TestCsc(base_csc.BaseCsc):
         data.double0[:] = np.random.uniform(-1e5, 1e5, size=(nelts,))
         return data
 
-    def make_random_cmd_scalars(self):
+    def _make_random_scalars(self, dtype):
         """Make random data for cmd_setScalars using numpy.random."""
-        data = self.cmd_setScalars.DataType()
+        data = dtype()
         # also make an empty arrays struct to get dtype of int fields,
         # since that information is lost in the scalars pybind11 wrapper
         empty_arrays = self.cmd_setArrays.DataType()

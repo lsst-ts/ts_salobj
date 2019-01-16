@@ -3,4 +3,4 @@ from .base_csc import *
 from .controller import *
 from .logger import *
 from .remote import *
-from . import test_utils
+from .test_utils import *

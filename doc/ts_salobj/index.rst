@@ -37,6 +37,6 @@ Python API reference
 .. automodapi:: lsst.ts.salobj.topics
     :no-main-docstr:
     :no-inheritance-diagram:
-.. automodapi:: lsst.ts.salobj.test_utils
+.. automodapi:: lsst.ts.salobj.topics.base_topic
     :no-main-docstr:
     :no-inheritance-diagram:
