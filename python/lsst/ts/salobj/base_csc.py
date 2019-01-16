@@ -221,6 +221,8 @@ class BaseCsc(Controller):
         super().__init__(sallib, index, do_callbacks=True)
         self._summary_state = State(initial_state)
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+        self.heartbeat_interval = HEARTBEAT_INTERVAL
+        """Interval between heartbeat events (sec)."""
         self.start_task = asyncio.Future()
         """This task is set done when the CSC is fully started.
 
@@ -627,7 +629,7 @@ class BaseCsc(Controller):
         """
         while True:
             try:
-                await asyncio.sleep(HEARTBEAT_INTERVAL)
+                await asyncio.sleep(self.heartbeat_interval)
                 self.evt_heartbeat.put(self.evt_heartbeat.DataType())
             except asyncio.CancelledError:
                 break

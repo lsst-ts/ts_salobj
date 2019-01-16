@@ -21,6 +21,8 @@
 
 __all__ = ["ControllerEvent"]
 
+import numpy as np
+
 from .controller_telemetry import ControllerTelemetry
 
 
@@ -34,22 +36,56 @@ class ControllerEvent(ControllerTelemetry):
     name : `str`
         Event topic name
     """
-    def put(self, data, priority=1):
-        """Write a new value for this topic.
+    def put(self, data=None, priority=1):
+        """Output this topic.
 
         Parameters
         ----------
-        data : ``self.DataType``
-            Command parameters.
-        priority : `int`
+        data : ``self.DataType`` (optional)
+            New data to replace ``self.data``, if any.
+        priority : `int` (optional)
             Priority. ts_sal does not yet use this for anything;
             in the meantime I provide a default that works.
+
+        Raises
+        ------
+        TypeError
+            If ``data`` is not None and not an instance of `DataType`.
         """
-        if not isinstance(data, self.DataType):
-            raise TypeError(f"data={data!r} must be an instance of {self.DataType}")
-        retcode = self._put_func(data, priority)
+        if data is not None:
+            self.data = data
+        retcode = self._put_func(self.data, priority)
         if retcode != self.salinfo.lib.SAL__OK:
             raise RuntimeError(f"salProcessor({self.name}) failed with return code {retcode}")
+
+    def set_put(self, **kwargs):
+        """Set one or more fields of ``self.data`` and put *if changed*.
+
+        The data is put if it has never been set (`has_data` False)
+        or if this call changes any field.
+
+        Returns
+        -------
+        did_put : `bool`
+            True if the data was output, False otherwise
+        """
+        do_output = not self.has_data
+        for field_name, value in kwargs.items():
+            old_value = getattr(self.data, field_name)
+            field_is_array = isinstance(old_value, np.ndarray)
+            if not do_output:
+                is_different = old_value != value
+                if field_is_array:
+                    do_output |= is_different.any()
+                else:
+                    do_output |= is_different
+            if field_is_array:
+                getattr(self.data, field_name)[:] = value
+            else:
+                setattr(self.data, field_name, value)
+        if do_output:
+            self.put(self.data)
+        return do_output
 
     def _setup(self):
         """Get functions from salinfo and publish this topic."""

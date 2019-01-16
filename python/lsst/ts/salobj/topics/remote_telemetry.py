@@ -25,8 +25,10 @@ import asyncio
 import inspect
 import time
 
+from .base_topic import BaseTopic
 
-class RemoteTelemetry:
+
+class RemoteTelemetry(BaseTopic):
     """An object that reads a specific telemetry topic
     from a SAL component.
 
@@ -39,61 +41,61 @@ class RemoteTelemetry:
 
     Notes
     -----
-    Please try to avoid excessive use of callbacks. However, they have
-    their place. In particular, if you have data that is computed
-    based on one one or more events or telemetry topics, you can easily
-    keep that data current by creating a method to compute it and
-    subscribing that method to the appropriate topics.
+    All functions that return data return the internal cache ``self.data``.
+    This cached value is replaced by all read operations, so as long as
+    no other code modifies the data, the returned data will not change.
     """
     def __init__(self, salinfo, name):
-        self.salinfo = salinfo
-        self.name = str(name)
+        super().__init__(salinfo=salinfo, name=name)
         self._callback_func = None  # callback function, if any
         self._callback_task = None  # task waiting to run callback, if any
         self._allow_multiple_callbacks = True
-        self._cached_data = None
-        self._setup()
-
-    @property
-    def DataType(self):
-        """The class of data for this topic."""
-        return self._DataType
 
     def get(self):
         """Read the most recent data.
 
-        If data has never been seen, then return None.
+        Returns
+        -------
+        data : ``self.DataType`` or `None`
+            Read data, or `None` if unavailable.
 
+        Notes
+        -----
         If there is no callback function (which is typical)
-        then this also flushes the queue.
+        then this replaces ``self.data``, if data is read,
+        and flushes the queue.
 
-        If there is a callback function then get will always
-        return the most recently cached data. If the callback function
-        is working its way through queued data then this may not be
-        the most recent data.
+        If there is a callback function then `get` simply returns
+        ``self.data``. If the callback function is working its way
+        through queued data then this may not be the most recent data.
         """
-        if self.has_callback:
-            return self._cached_data
-
-        new_data = self.DataType()
-        retcode = self._get_newest_func(new_data)
-        if retcode == self.salinfo.lib.SAL__OK:
-            self._cached_data = new_data
-            return self._cached_data
-        elif retcode == self.salinfo.lib.SAL__NO_UPDATES:
-            return self._cached_data
-        else:
-            raise RuntimeError(f"get failed with retcode={retcode} from {self._get_newest_func_name}")
+        if not self.has_callback:
+            data = self.DataType()
+            retcode = self._get_newest_func(data)
+            if retcode == self.salinfo.lib.SAL__OK:
+                self.data = data
+            elif retcode == self.salinfo.lib.SAL__NO_UPDATES:
+                pass
+            else:
+                raise RuntimeError(f"get failed with retcode={retcode} from {self._get_newest_func_name}")
+        return self.data if self.has_data else None
 
     def get_oldest(self):
         """Pop and return the oldest data from the queue.
 
-        If there is no more data, then return None
+        Returns
+        -------
+        data : ``self.DataType`` or `None`
+            Return ``self.data`` if data was found on the queue, else ``None``.
 
         Raises
         ------
         RuntimeError
             If a callback function is present.
+
+        Notes
+        -----
+        Replaces ``self.data`` if data was read.
         """
         if self.has_callback:
             raise RuntimeError("`get_oldest` not supported while there is a callback function")
@@ -101,16 +103,12 @@ class RemoteTelemetry:
         data = self.DataType()
         retcode = self._get_oldest_func(data)
         if retcode == self.salinfo.lib.SAL__OK:
+            self.data = data
             return data
         elif retcode == self.salinfo.lib.SAL__NO_UPDATES:
             return None
         else:
             raise RuntimeError(f"get failed with retcode={retcode} from {self._get_oldest_func_name}")
-
-    @property
-    def has_data(self):
-        """Has data ever been read, e.g. by `get`?"""
-        return self._cached_data is not None
 
     def next(self, *, flush, timeout=None):
         """Get the next data.
@@ -127,13 +125,18 @@ class RemoteTelemetry:
         Returns
         -------
         coro : `coroutine`
-            A coroutine that waits for the next data to be seen
-            and returns that data.
+            A coroutine that waits for the next data to be seen,
+            and replaces and returns ``self.data``.
 
         Raises
         ------
         RuntimeError
             If a callback function is present.
+
+        Notes
+        -----
+        Do not modify the data or assume that it will be static.
+        If you need a private copy, then copy it yourself.
         """
         if self.has_callback:
             raise RuntimeError("`next` not supported while there is a callback function")
@@ -145,8 +148,7 @@ class RemoteTelemetry:
     def flush(self):
         """Flush the queue.
 
-        This affects the value returned by `next`,
-        but not affect the value returned by `get`.
+        This affects the value returned by `next`.
 
         Raises
         ------
@@ -232,9 +234,6 @@ class RemoteTelemetry:
         if self._callback_task and not self._callback_task.done():
             self._callback_task.cancel()
 
-    def __repr__(self):
-        return f"{type(self).__name__}({self.salinfo}, {self.name})"
-
     def _run_callback(self, task):
         """Run the callback function and start another wait."""
         if not self.callback:
@@ -289,15 +288,15 @@ class RemoteTelemetry:
         -------
         coro : `coroutine`
             A coroutine that waits for the next data to be seen
-            and returns that data.
+            and replaces and returns ``self.data``.
         """
         end_time = time.time() + timeout if timeout else None
         while True:
-            new_data = self.DataType()
-            retcode = self._get_oldest_func(new_data)
+            data = self.DataType()
+            retcode = self._get_oldest_func(data)
             if retcode == self.salinfo.lib.SAL__OK:
-                self._cached_data = new_data
-                return self._cached_data
+                self.data = data
+                return data
             elif retcode == self.salinfo.lib.SAL__NO_UPDATES:
                 if end_time and time.time() > end_time:
                     raise asyncio.TimeoutError()

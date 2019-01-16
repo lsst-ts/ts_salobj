@@ -29,21 +29,21 @@ class BasicsTestCase(unittest.TestCase):
 
         for ExceptionClass in (Exception, TypeError, KeyError, RuntimeError, AssertionError):
             with self.assertRaises(ExceptionClass):
-                with salobj.test_utils.assertRaisesAckError():
+                with salobj.assertRaisesAckError():
                     raise ExceptionClass("assertRaisesAckError should ignore other exception types")
 
         with self.assertRaises(AssertionError):
-            with salobj.test_utils.assertRaisesAckError(ack=5):
+            with salobj.assertRaisesAckError(ack=5):
                 raise salobj.AckError("mismatched ack", cmd_id=1, ack=makeAck(ack=1))
 
         with self.assertRaises(AssertionError):
-            with salobj.test_utils.assertRaisesAckError(error=47):
+            with salobj.assertRaisesAckError(error=47):
                 raise salobj.AckError("mismatched error", cmd_id=2, ack=makeAck(ack=25, error=2))
 
-        with salobj.test_utils.assertRaisesAckError():
+        with salobj.assertRaisesAckError():
             raise salobj.AckError("no ack or error specified", cmd_id=3, ack=makeAck(ack=1, error=2))
 
-        with salobj.test_utils.assertRaisesAckError(ack=1, error=2):
+        with salobj.assertRaisesAckError(ack=1, error=2):
             raise salobj.AckError("matching ack and error", cmd_id=4, ack=makeAck(ack=1, error=2))
 
     def test_set_random_lsst_dds_domain(self):
@@ -51,7 +51,7 @@ class BasicsTestCase(unittest.TestCase):
         NumToTest = 1000
         names = set()
         for i in range(NumToTest):
-            salobj.test_utils.set_random_lsst_dds_domain()
+            salobj.set_random_lsst_dds_domain()
             name = os.environ.get("LSST_DDS_DOMAIN")
             self.assertTrue(name)
             names.add(name)
