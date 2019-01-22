@@ -102,10 +102,13 @@ class BaseOutputTopic(BaseTopic):
             Dict of field name: new value for that field
         """
         for field_name, value in kwargs.items():
-            old_value = getattr(self.data, field_name)
-            is_array = isinstance(old_value, np.ndarray)
-            if is_array:
-                getattr(self.data, field_name)[:] = value
-            else:
-                setattr(self.data, field_name, value)
+            try:
+                old_value = getattr(self.data, field_name)
+                is_array = isinstance(old_value, np.ndarray)
+                if is_array:
+                    getattr(self.data, field_name)[:] = value
+                else:
+                    setattr(self.data, field_name, value)
+            except Exception as e:
+                raise ValueError(f"Could not set {field_name} to {value!r}") from e
         self._has_data = True
