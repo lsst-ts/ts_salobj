@@ -71,18 +71,21 @@ class ControllerEvent(ControllerTelemetry):
         """
         do_output = not self.has_data
         for field_name, value in kwargs.items():
-            old_value = getattr(self.data, field_name)
-            field_is_array = isinstance(old_value, np.ndarray)
-            if not do_output:
-                is_different = old_value != value
+            try:
+                old_value = getattr(self.data, field_name)
+                field_is_array = isinstance(old_value, np.ndarray)
+                if not do_output:
+                    is_different = old_value != value
+                    if field_is_array:
+                        do_output |= is_different.any()
+                    else:
+                        do_output |= is_different
                 if field_is_array:
-                    do_output |= is_different.any()
+                    getattr(self.data, field_name)[:] = value
                 else:
-                    do_output |= is_different
-            if field_is_array:
-                getattr(self.data, field_name)[:] = value
-            else:
-                setattr(self.data, field_name, value)
+                    setattr(self.data, field_name, value)
+            except Exception as e:
+                raise ValueError(f"Could not set {field_name} to {value!r}") from e
         if do_output:
             self.put(self.data)
         return do_output
