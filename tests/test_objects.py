@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import shutil
 import sys
 import time
 import unittest
@@ -45,10 +46,15 @@ class CommunicateTestCase(unittest.TestCase):
         asyncio.get_event_loop().run_until_complete(doit())
 
     def test_main(self):
+        exe_name = "run_test_csc.py"
+        exe_path = shutil.which(exe_name)
+        if exe_path is None:
+            self.fail(f"Could not find bin script {exe_name}; did you setup and scons this package?")
+
         async def doit():
             index = next(index_gen)
             salobj.set_random_lsst_dds_domain()
-            process = await asyncio.create_subprocess_exec("run_test_csc.py", str(index))
+            process = await asyncio.create_subprocess_exec(exe_name, str(index))
             try:
                 remote = salobj.Remote(SALPY_Test, index)
                 summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=10)

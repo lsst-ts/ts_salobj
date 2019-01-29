@@ -168,5 +168,6 @@ class SalInfo:
 
     def __del__(self):
         # use getattr in case this is called during failed construction
-        if hasattr(self, "manager"):
-            self.manager.salShutdown()
+        manager = getattr(self, "manager", None)
+        if manager is not None:
+            manager.salShutdown()
