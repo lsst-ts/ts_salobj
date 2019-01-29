@@ -88,8 +88,9 @@ class _CommandInfo:
                 AckError(f"Command failed with ack code {ack.ack}", cmd_id=self.cmd_id, ack=ack))
 
     def __del__(self):
-        if self._timeout_task and not self._timeout_task.done():
-            self._timeout_task.cancel()
+        timeout_task = getattr(self, "_timeout_task", None)
+        if timeout_task is not None and not timeout_task.done():
+            timeout_task.cancel()
 
     def __repr__(self):
         return f"_CommandInfo(remote_command={self.remote_command}, cmd_id={self.cmd_id}, " \

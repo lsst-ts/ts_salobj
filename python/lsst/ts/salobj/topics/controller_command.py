@@ -184,7 +184,8 @@ class ControllerCommand(BaseTopic):
         return self._callback_func is not None
 
     def __del__(self):
-        if self._callback_task and not self._callback_task.done():
+        callback_task = getattr(self, "_callback_task", None)
+        if callback_task is not None and not self._callback_task.done():
             self._callback_task.cancel()
 
     def _run_callback(self, task):
