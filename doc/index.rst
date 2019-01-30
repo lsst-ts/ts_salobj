@@ -1,12 +1,56 @@
-#######################
-ts_salobj documentation
-#######################
+.. py:currentmodule:: lsst.ts.salobj
 
-.. This page is for local development only. It isn't published to pipelines.lsst.io.
+.. _lsst.ts.salobj:
 
-.. Link the index pages of package and module documentation directions (listed in manifest.yaml).
+##############
+lsst.ts.salobj
+##############
 
-.. toctree::
-   :maxdepth: 1
+Object-oriented Python interface to `Service Abstraction Layer`_ (SAL) components that uses asyncio for asynchronous communication.
 
-   ts_salobj/index
+.. _Service Abstraction Layer: https://docushare.lsstcorp.org/docushare/dsweb/Get/Document-21527
+
+.. _lsst.ts.salobj-using:
+
+Using lsst.ts.salobj
+====================
+
+Important classes:
+
+* `BaseCsc` is a subclass of `Controller` that supports the standard CSC summary states and state transition commands.
+  See :ref:`Writing a CSC<writing_a_csc>` for more information.
+* `Controller` provides the capability to output SAL telemetry and event topics and receive SAL commands.
+  Every Python SAL component that is not a Commandable SAL Component (CSC) should be a subclass of `Controller`.
+  See :ref:`Writing a Controller<writing_a_controller>` for more information.
+* `Logger` supports writing to a standard Python logger and outputting the result as a `logMessage` SAL event.
+  `Controller` is a subclass of `Logger` so all controllers have logging capability.
+  For example: ``self.log.warning("example warning message")``.
+* `Remote` supports listening to other SAL components; it can receive events and telemetry and issue commands.
+  If your SAL component needs to do this then it should create one `Remote` for each SAL component it wants to interact with.
+  For example: ``self.electrometer1 = salobj.Remote(SALPY_Electrometer, index=1)``
+
+`TestCsc` is an example of a fairly simple SAL CSC, though it is slightly unusual because it is intended for use in unit tests.
+In particular, it does not output telemetry at regular intervals.
+
+.. _lsst.ts.salobj-contributing:
+
+Contributing
+============
+
+``lsst.ts.salobj`` is developed at https://github.com/lsst-ts/ts_salobj.
+You can find Jira issues for this module under the `ts_salobj <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20component%20%3D%20ts_salobj>`_ component.
+
+.. _lsst.ts.salobj-pyapi:
+
+Python API reference
+====================
+
+.. automodapi:: lsst.ts.salobj
+    :no-main-docstr:
+    :no-inheritance-diagram:
+.. automodapi:: lsst.ts.salobj.topics
+    :no-main-docstr:
+    :no-inheritance-diagram:
+.. automodapi:: lsst.ts.salobj.topics.base_topic
+    :no-main-docstr:
+    :no-inheritance-diagram:
