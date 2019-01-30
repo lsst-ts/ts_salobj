@@ -119,10 +119,12 @@ class SalInfo:
     ----------
     sallib : `module`
         SALPY library for a SAL component
-    index : `int` or `None`
-        SAL component index, or 0 or None if the component is not indexed.
+    index : `int` (optional)
+        SAL component index, or 0 or `None` if the component is not indexed.
+    debug : `int` (optional)
+        SAL debug level; 0 to not print SAL debug statements.
     """
-    def __init__(self, sallib, index=None):
+    def __init__(self, sallib, index=None, debug=0):
         self.lib = sallib
         self.name = sallib.componentName[4:]  # lop off leading SAL_
         if sallib.componentIsMultiple:
@@ -135,6 +137,7 @@ class SalInfo:
         self.index = index
         Manager = getattr(self.lib, "SAL_" + self.name)
         self.manager = Manager(self.index)
+        self.manager.setDebugLevel(debug)
         self._AckType = getattr(self.lib, self.name + "_ackcmdC")
 
     def __repr__(self):
