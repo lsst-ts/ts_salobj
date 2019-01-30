@@ -252,21 +252,29 @@ class BaseCsc(Controller):
             await self.set_simulation_mode(initial_simulation_mode)
         except Exception as e:
             self.start_task.set_exception(e)
-            await self.stop()
+            await self.stop(exception=e)
             return
 
         self.report_summary_state()
         self.start_task.set_result(None)
 
-    async def stop(self):
+    async def stop(self, exception=None):
         """Stop the CSC.
 
         Stop background tasks and set ``self.done_task`` done.
+
+        Parameters
+        ----------
+        exception : `Exception` (optional)
+            The exception that caused stopping, if any, else `None`.
         """
         await asyncio.sleep(0.1)
         self._heartbeat_task.cancel()
         await self.stop_logging()
-        self.done_task.set_result(None)
+        if exception:
+            self.done_task.set_exception(exception)
+        else:
+            self.done_task.set_result(None)
 
     @classmethod
     def main(cls, index, run_loop=True, **kwargs):
