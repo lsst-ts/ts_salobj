@@ -54,9 +54,29 @@ class ControllerTelemetry(BaseOutputTopic):
             raise RuntimeError(f"put failed with return code {retcode} from {self._put_func_name}")
 
     def set_put(self, **kwargs):
-        """Set one or more fields of ``self.data`` and put the result."""
-        self.set(**kwargs)
+        """Set one or more fields of ``self.data`` and put the result.
+
+        Parameters
+        ----------
+        **kwargs : `dict` [`str`, ``any``]
+            Dict of field name: new value for that field.
+            See `set` for more information about values.
+
+        Returns
+        -------
+        did_change : `bool`
+            True if data was changed or if this was the first call to `set`.
+
+        Raises
+        ------
+        AttributeError
+            If the topic does not have the specified field.
+        ValueError
+            If the field cannot be set to the specified value.
+        """
+        did_change = self.set(**kwargs)
         self.put()
+        return did_change
 
     def _setup(self):
         """Get functions from salinfo and publish this topic."""

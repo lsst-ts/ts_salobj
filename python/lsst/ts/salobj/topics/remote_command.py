@@ -170,7 +170,7 @@ class RemoteCommand(BaseOutputTopic):
         Parameters
         ----------
         data : ``self.DataType`` (optional)
-            New command data to replace ``self.data`` if any.
+            Command data. If None then send the current data.
         timeout : `float` (optional)
             Time limit, in seconds. If None then no time limit.
             This time limit is for the entire command if wait_done
