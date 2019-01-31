@@ -99,9 +99,8 @@ class Logger:
     def put_log_level(self):
         """Output the logLevel event.
         """
-        data = self.evt_logLevel.DataType()
-        data.level = self.log.getEffectiveLevel()
-        self.evt_logLevel.put(data)
+        self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(),
+                                  force_output=True)
 
     async def _log_messages_loop(self):
         """Output log messages.
@@ -111,11 +110,12 @@ class Logger:
                 msg = None
                 if not self._log_queue.empty():
                     msg = self._log_queue.get_nowait()
-                    data = self.evt_logMessage.DataType()
-                    data.level = msg.levelno
-                    data.message = msg.message
-                    data.traceback = msg.exc_text or ""
-                    self.evt_logMessage.put(data)
+                    self.evt_logMessage.set_put(
+                        level=msg.levelno,
+                        message=msg.message,
+                        traceback=msg.exc_text or "",
+                        force_output=True,
+                    )
                 await asyncio.sleep(LOG_MESSAGES_INTERVAL)
             except asyncio.CancelledError:
                 break

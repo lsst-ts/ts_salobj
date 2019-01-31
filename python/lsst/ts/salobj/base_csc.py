@@ -233,7 +233,6 @@ class BaseCsc(Controller):
         """This task is set done when the CSC is done, which is when
         the ``exitControl`` command is received.
         """
-        self._simulation_mode = 0  # make sure there is a value
         asyncio.ensure_future(self.start(initial_simulation_mode))
 
     async def start(self, initial_simulation_mode):
@@ -401,7 +400,7 @@ class BaseCsc(Controller):
             If the new simulation mode is not a supported value.
 
         """
-        return self._simulation_mode
+        return self.evt_simulationMode.data.mode
 
     async def set_simulation_mode(self, simulation_mode):
         """Set the simulation mode.
@@ -415,11 +414,8 @@ class BaseCsc(Controller):
             Requested simulation mode; 0 for normal operation.
         """
         await self.implement_simulation_mode(simulation_mode)
-        self._simulation_mode = simulation_mode
 
-        simulation_mode_data = self.evt_simulationMode.DataType()
-        simulation_mode_data.mode = self.simulation_mode
-        self.evt_simulationMode.put(simulation_mode_data)
+        self.evt_simulationMode.set_put(mode=simulation_mode, force_output=True)
 
     async def implement_simulation_mode(self, simulation_mode):
         """Implement going into or out of simulation mode.
@@ -597,9 +593,7 @@ class BaseCsc(Controller):
         the current state (rather than the state transition command
         that got it into that state).
         """
-        evt_data = self.evt_summaryState.DataType()
-        evt_data.summaryState = self.summary_state
-        self.evt_summaryState.put(evt_data)
+        self.evt_summaryState.set_put(summaryState=self.summary_state)
 
     def _do_change_state(self, id_data, cmd_name, allowed_curr_states, new_state):
         """Change to the desired state.
@@ -638,7 +632,7 @@ class BaseCsc(Controller):
         while True:
             try:
                 await asyncio.sleep(self.heartbeat_interval)
-                self.evt_heartbeat.put(self.evt_heartbeat.DataType())
+                self.evt_heartbeat.put()
             except asyncio.CancelledError:
                 break
             except Exception as e:
