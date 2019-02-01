@@ -21,8 +21,6 @@
 
 __all__ = ["ControllerEvent"]
 
-import numpy as np
-
 from .controller_telemetry import ControllerTelemetry
 
 
@@ -58,34 +56,34 @@ class ControllerEvent(ControllerTelemetry):
         if retcode != self.salinfo.lib.SAL__OK:
             raise RuntimeError(f"salProcessor({self.name}) failed with return code {retcode}")
 
-    def set_put(self, **kwargs):
+    def set_put(self, force_output=False, **kwargs):
         """Set one or more fields of ``self.data`` and put *if changed*.
 
-        The data is put if it has never been set (`has_data` False)
-        or if this call changes any field.
+        The data is put if it has never been set (`has_data` False), or this
+        call changes the value of any field, or ``force_output`` is true.
+
+        Parameters
+        ----------
+        force_output : `bool` (optional)
+            If True then output the event, even if not changed.
+        **kwargs : `dict` [`str`, ``any``]
+            Dict of field name: new value for that field.
+            See `set` for more information about values.
 
         Returns
         -------
         did_put : `bool`
             True if the data was output, False otherwise
+
+        Raises
+        ------
+        AttributeError
+            If the topic does not have the specified field.
+        ValueError
+            If the field cannot be set to the specified value.
         """
-        do_output = not self.has_data
-        for field_name, value in kwargs.items():
-            try:
-                old_value = getattr(self.data, field_name)
-                field_is_array = isinstance(old_value, np.ndarray)
-                if not do_output:
-                    is_different = old_value != value
-                    if field_is_array:
-                        do_output |= is_different.any()
-                    else:
-                        do_output |= is_different
-                if field_is_array:
-                    getattr(self.data, field_name)[:] = value
-                else:
-                    setattr(self.data, field_name, value)
-            except Exception as e:
-                raise ValueError(f"Could not set {field_name} to {value!r}") from e
+        did_change = self.set(**kwargs)
+        do_output = did_change or force_output
         if do_output:
             self.put(self.data)
         return do_output
