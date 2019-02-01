@@ -238,10 +238,11 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertFalse(harness.remote.tel_scalars.has_data)
             self.assertIsNone(harness.remote.tel_scalars.get())
 
-            # put random telemetry data using set_put
+            # put random telemetry data using set and set_put
             tel_data1 = harness.csc.make_random_tel_scalars()
             dict_data1 = harness.csc.as_dict(tel_data1, harness.csc.scalars_fields)
-            harness.csc.tel_scalars.set_put(**dict_data1)
+            harness.csc.tel_scalars.set(**dict_data1)
+            harness.csc.tel_scalars.put()
             self.assertTrue(harness.csc.tel_scalars.has_data)
             harness.csc.assert_scalars_equal(tel_data1, harness.csc.tel_scalars.data)
             data = await harness.remote.tel_scalars.next(flush=False, timeout=1)
@@ -260,6 +261,49 @@ class CommunicateTestCase(unittest.TestCase):
             harness.csc.assert_scalars_equal(data, tel_data1)
             harness.csc.assert_scalars_equal(data, harness.remote.tel_scalars.data)
 
+            # use None for values to set_put; the same telemetry should be sent
+            none_dict = dict((key, None) for key in dict_data1)
+            harness.csc.tel_scalars.set_put(**none_dict)
+            self.assertTrue(harness.csc.tel_scalars.has_data)
+            harness.csc.assert_scalars_equal(tel_data1, harness.csc.tel_scalars.data)
+            data = await harness.remote.tel_scalars.next(flush=False, timeout=1)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.tel_scalars.next(flush=False, timeout=0.1)
+            harness.csc.assert_scalars_equal(data, tel_data1)
+            harness.csc.assert_scalars_equal(data, harness.remote.tel_scalars.data)
+
+            # try an invalid key
+            with self.assertRaises(AttributeError):
+                harness.csc.tel_scalars.set_put(no_such_attribute=None)
+
+            # try an invalid value
+            with self.assertRaises(ValueError):
+                harness.csc.evt_scalars.set_put(int0="not an int")
+            with self.assertRaises(ValueError):
+                harness.csc.evt_scalars.set_put(int0="not an int", force_output=True)
+
+            # set an array to a scalar; this should work
+            nint0 = len(harness.csc.evt_arrays.data.int0)
+            did_put = harness.csc.tel_arrays.set_put(int0=5)
+            self.assertTrue(did_put)
+            self.assertEqual(list(harness.csc.tel_arrays.data.int0), [5]*nint0)
+
+            # set an array to an array of the correct length
+            good_int0 = np.arange(nint0, dtype=int)
+            did_put = harness.csc.tel_arrays.set_put(int0=good_int0)
+            self.assertTrue(did_put)
+            self.assertEqual(list(harness.csc.tel_arrays.data.int0), list(good_int0))
+
+            # try an array that is too short
+            bad_int0 = np.arange(nint0-1, dtype=int)
+            with self.assertRaises(ValueError):
+                harness.csc.tel_arrays.set_put(int0=bad_int0)
+
+            # try an array that is too long
+            bad_int0 = np.arange(nint0+1, dtype=int)
+            with self.assertRaises(ValueError):
+                harness.csc.tel_arrays.set_put(int0=bad_int0)
+
         asyncio.get_event_loop().run_until_complete(doit())
 
     def test_controller_event_set_set_put(self):
@@ -274,37 +318,99 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertIsNone(harness.remote.tel_scalars.get())
 
             # set_put random event data
-            evt_data2 = harness.csc.make_random_evt_scalars()
-            dict_data2 = harness.csc.as_dict(evt_data2, harness.csc.scalars_fields)
-            did_put = harness.csc.evt_scalars.set_put(**dict_data2)
+            evt_data1 = harness.csc.make_random_evt_scalars()
+            dict_data1 = harness.csc.as_dict(evt_data1, harness.csc.scalars_fields)
+            did_put = harness.csc.evt_scalars.set_put(**dict_data1)
             self.assertTrue(harness.csc.evt_scalars.has_data)
             self.assertTrue(did_put)
-            harness.csc.assert_scalars_equal(evt_data2, harness.csc.evt_scalars.data)
+            harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
             data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
-            harness.csc.assert_scalars_equal(data, evt_data2)
+            harness.csc.assert_scalars_equal(data, evt_data1)
             harness.csc.assert_scalars_equal(data, harness.remote.evt_scalars.data)
 
-            # set_put the same data gain; the event should *not* be sent
-            did_put = harness.csc.evt_scalars.set_put(**dict_data2)
+            # set_put with None values; the event should *not* be sent
+            none_dict = dict((key, None) for key in dict_data1)
+            did_put = harness.csc.evt_scalars.set_put(**none_dict)
             self.assertFalse(did_put)
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
 
-            # change one field of the data and set_put again
-            dict_data2["int0"] = dict_data2["int0"] + 1
-            did_put = harness.csc.evt_scalars.set_put(**dict_data2)
+            # set_put with None values and force_output=True
+            none_dict = dict((key, None) for key in dict_data1)
+            did_put = harness.csc.evt_scalars.set_put(**none_dict, force_output=True)
             self.assertTrue(did_put)
-            with self.assertRaises(AssertionError):
-                harness.csc.assert_scalars_equal(evt_data2, harness.csc.evt_scalars.data)
-            evt_data2.int0 += 1
-            harness.csc.assert_scalars_equal(evt_data2, harness.csc.evt_scalars.data)
+            harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
             data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
-            harness.csc.assert_scalars_equal(data, evt_data2)
+            harness.csc.assert_scalars_equal(data, evt_data1)
             harness.csc.assert_scalars_equal(data, harness.remote.evt_scalars.data)
+
+            # set_put the same data again; the event should *not* be sent
+            did_put = harness.csc.evt_scalars.set_put(**dict_data1)
+            self.assertFalse(did_put)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
+
+            # set_put the same data again with force_output=True
+            did_put = harness.csc.evt_scalars.set_put(**dict_data1, force_output=True)
+            self.assertTrue(did_put)
+            harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
+            data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
+            harness.csc.assert_scalars_equal(data, evt_data1)
+            harness.csc.assert_scalars_equal(data, harness.remote.evt_scalars.data)
+
+            # change one field of the data and set_put again
+            dict_data1["int0"] = dict_data1["int0"] + 1
+            did_put = harness.csc.evt_scalars.set_put(**dict_data1)
+            self.assertTrue(did_put)
+            with self.assertRaises(AssertionError):
+                harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
+            evt_data1.int0 += 1
+            harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
+            data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
+            harness.csc.assert_scalars_equal(data, evt_data1)
+            harness.csc.assert_scalars_equal(data, harness.remote.evt_scalars.data)
+
+            # try an invalid key
+            with self.assertRaises(AttributeError):
+                harness.csc.evt_scalars.set_put(no_such_attribute=None)
+            with self.assertRaises(AttributeError):
+                harness.csc.evt_scalars.set_put(no_such_attribute=None, force_output=True)
+
+            # try an invalid value
+            with self.assertRaises(ValueError):
+                harness.csc.evt_scalars.set_put(int0="not an int")
+            with self.assertRaises(ValueError):
+                harness.csc.evt_scalars.set_put(int0="not an int", force_output=True)
+
+            # set an array to a scalar; this should work
+            nint0 = len(harness.csc.evt_arrays.data.int0)
+            did_put = harness.csc.evt_arrays.set_put(int0=5)
+            self.assertTrue(did_put)
+            self.assertEqual(list(harness.csc.evt_arrays.data.int0), [5]*nint0)
+
+            # set an array to an array of the correct length
+            good_int0 = np.arange(nint0, dtype=int)
+            did_put = harness.csc.evt_arrays.set_put(int0=good_int0)
+            self.assertTrue(did_put)
+            self.assertEqual(list(harness.csc.evt_arrays.data.int0), list(good_int0))
+
+            # try an array that is too short
+            bad_int0 = np.arange(nint0-1, dtype=int)
+            with self.assertRaises(ValueError):
+                harness.csc.evt_arrays.set_put(int0=bad_int0)
+
+            # try an array that is too long
+            bad_int0 = np.arange(nint0+1, dtype=int)
+            with self.assertRaises(ValueError):
+                harness.csc.evt_arrays.set_put(int0=bad_int0)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
@@ -595,7 +701,27 @@ class CommunicateTestCase(unittest.TestCase):
 
         async def doit():
             # send the setScalars command with random data
-            # but first start looking for the event that should be triggered
+            # but first set a callback for the event that should be triggered
+            harness.remote.evt_scalars.callback = scalars_callback
+            await harness.remote.cmd_setScalars.start(cmd_scalars_data, timeout=1)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+        self.assertTrue(self.event_seen)
+
+    def test_synchronous_event_callback(self):
+        """Like test_asynchronous_event_callback but the callback function
+        is synchronous"""
+        harness = Harness(initial_state=salobj.State.ENABLED)
+        cmd_scalars_data = harness.csc.make_random_cmd_scalars()
+        self.event_seen = False
+
+        def scalars_callback(scalars):
+            harness.csc.assert_scalars_equal(scalars, cmd_scalars_data)
+            self.event_seen = True
+
+        async def doit():
+            # send the setScalars command with random data
+            # but first set a callback for the event that should be triggered
             harness.remote.evt_scalars.callback = scalars_callback
             await harness.remote.cmd_setScalars.start(cmd_scalars_data, timeout=1)
 
@@ -622,24 +748,6 @@ class CommunicateTestCase(unittest.TestCase):
                 await harness.remote.cmd_wait.next_ack(id_ack1, wait_done=True, timeout=0.1)
 
         asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_synchronous_event_callback(self):
-        harness = Harness(initial_state=salobj.State.ENABLED)
-        cmd_scalars_data = harness.csc.make_random_cmd_scalars()
-        self.event_seen = False
-
-        def scalars_callback(scalars):
-            harness.csc.assert_scalars_equal(scalars, cmd_scalars_data)
-            self.event_seen = True
-
-        async def doit():
-            # send the setScalars command with random data
-            # but first start looking for the event that should be triggered
-            harness.remote.evt_scalars.callback = scalars_callback
-            await harness.remote.cmd_setScalars.start(cmd_scalars_data, timeout=1)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-        self.assertTrue(self.event_seen)
 
     def test_fault_state_transitions(self):
         """Test CSC state transitions into fault and out again.

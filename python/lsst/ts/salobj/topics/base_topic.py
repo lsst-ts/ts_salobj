@@ -99,16 +99,52 @@ class BaseOutputTopic(BaseTopic):
         Parameters
         ----------
         **kwargs : `dict` [`str`, ``any``]
-            Dict of field name: new value for that field
+            Dict of field name: new value for that field:
+
+            * Any key whose value is `None` is checked for existence,
+              but the value of the field is not changed.
+            * If the field being set is an array then the value must either
+              be an array of the same length or a scalar (which replaces
+              every element of the array).
+
+        Returns
+        -------
+        did_change : `bool`
+            True if data was changed or if this was the first call to `set`.
+
+        Raises
+        ------
+        AttributeError
+            If the topic does not have the specified field.
+        ValueError
+            If the field cannot be set to the specified value.
+
+        Notes
+        -----
+        If one or more fields cannot be set, the data may be partially updated.
+        This is not ideal, but is pragmatic because it is difficult to copy
+        SAL topics (see TSS-3195).
         """
+        did_change = not self.has_data
         for field_name, value in kwargs.items():
+            if value is None:
+                if not hasattr(self.data, field_name):
+                    raise AttributeError(f"{self.data} has no attribute {field_name}")
+                continue
+            old_value = getattr(self.data, field_name)
             try:
-                old_value = getattr(self.data, field_name)
-                is_array = isinstance(old_value, np.ndarray)
-                if is_array:
-                    getattr(self.data, field_name)[:] = value
+                if isinstance(old_value, np.ndarray):
+                    if not did_change:
+                        # numpy.array_equiv performs the desired check
+                        # even if value is a scalar
+                        did_change |= not np.array_equiv(old_value, value)
+                    old_value[:] = value
                 else:
+                    if not did_change:
+                        is_different = old_value != value
+                        did_change |= is_different
                     setattr(self.data, field_name, value)
             except Exception as e:
-                raise ValueError(f"Could not set {field_name} to {value!r}") from e
+                raise ValueError(f"Could not set {self.data}.{field_name} to {value!r}") from e
         self._has_data = True
+        return did_change
