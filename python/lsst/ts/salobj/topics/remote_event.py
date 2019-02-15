@@ -46,4 +46,7 @@ class RemoteEvent(RemoteTelemetry):
         self._DataType = getattr(self.salinfo.lib, self._DataType_name)
 
         topic_name = self.salinfo.name + "_logevent_" + self.name
-        self.salinfo.manager.salEventSub(topic_name)
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salEventSub(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to telemetry {self.name}") from e

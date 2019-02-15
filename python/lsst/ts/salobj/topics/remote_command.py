@@ -253,4 +253,7 @@ class RemoteCommand(BaseOutputTopic):
         ))
 
         topic_name = self.salinfo.name + "_command_" + self.name
-        self.salinfo.manager.salCommand(topic_name)
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salCommand(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to command {self.name}") from e

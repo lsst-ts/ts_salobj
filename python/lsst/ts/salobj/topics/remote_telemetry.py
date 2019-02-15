@@ -319,4 +319,7 @@ class RemoteTelemetry(BaseTopic):
         self._DataType = getattr(self.salinfo.lib, self._DataType_name)
 
         topic_name = self.salinfo.name + "_" + self.name
-        self.salinfo.manager.salTelemetrySub(topic_name)
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salTelemetrySub(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to telemetry {self.name}") from e

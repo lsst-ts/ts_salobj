@@ -84,4 +84,7 @@ class ControllerTelemetry(BaseOutputTopic):
         self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_" + self.name + "C")
 
         topic_name = self.salinfo.name + "_" + self.name
-        self.salinfo.manager.salTelemetryPub(topic_name)
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salTelemetryPub(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to telemetry {self.name}") from e

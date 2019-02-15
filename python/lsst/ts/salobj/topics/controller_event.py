@@ -94,4 +94,7 @@ class ControllerEvent(ControllerTelemetry):
         self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_logevent_" + self.name + "C")
 
         topic_name = self.salinfo.name + "_logevent_" + self.name
-        self.salinfo.manager.salEventPub(topic_name)
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salEventPub(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to event {self.name}") from e
