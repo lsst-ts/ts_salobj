@@ -319,6 +319,4 @@ class RemoteTelemetry(BaseTopic):
         self._DataType = getattr(self.salinfo.lib, self._DataType_name)
 
         topic_name = self.salinfo.name + "_" + self.name
-        retcode = self.salinfo.manager.salTelemetrySub(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salTelemetrySub({topic_name}) failed with return code {retcode}")
+        self.salinfo.manager.salTelemetrySub(topic_name)

@@ -94,6 +94,4 @@ class ControllerEvent(ControllerTelemetry):
         self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_logevent_" + self.name + "C")
 
         topic_name = self.salinfo.name + "_logevent_" + self.name
-        retcode = self.salinfo.manager.salEventPub(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salEventPub({topic_name}) failed with return code {retcode}")
+        self.salinfo.manager.salEventPub(topic_name)

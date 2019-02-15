@@ -279,6 +279,4 @@ class ControllerCommand(BaseTopic):
         self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_command_" + self.name + "C")
 
         topic_name = self.salinfo.name + "_command_" + self.name
-        retcode = self.salinfo.manager.salProcessor(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salProcessor({topic_name}) failed with return code {retcode}")
+        self.salinfo.manager.salProcessor(topic_name)

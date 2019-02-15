@@ -253,6 +253,4 @@ class RemoteCommand(BaseOutputTopic):
         ))
 
         topic_name = self.salinfo.name + "_command_" + self.name
-        retcode = self.salinfo.manager.salCommand(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salCommand({topic_name}) failed with return code {retcode}")
+        self.salinfo.manager.salCommand(topic_name)

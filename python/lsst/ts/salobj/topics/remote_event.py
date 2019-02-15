@@ -46,6 +46,4 @@ class RemoteEvent(RemoteTelemetry):
         self._DataType = getattr(self.salinfo.lib, self._DataType_name)
 
         topic_name = self.salinfo.name + "_logevent_" + self.name
-        retcode = self.salinfo.manager.salEventSub(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salEventSub({topic_name}) failed with return code {retcode}")
+        self.salinfo.manager.salEventSub(topic_name)
