@@ -554,8 +554,19 @@ class BaseCsc(Controller):
         """
         pass
 
-    def fault(self):
-        """Enter the fault state."""
+    def fault(self, code=None, report=""):
+        """Enter the fault state.
+
+        Parameters
+        ----------
+        code : `int` (optional)
+            Error code for the ``errorCode`` event; if None then ``errorCode``
+            is not output and you should output it yourself.
+        report : `str` (optional)
+            Text description of the error.
+        """
+        if code is not None:
+            self.evt_errorCode.set_put(errorCode=code, errorReport=report, force_output=True)
         self.summary_state = State.FAULT
 
     def assert_enabled(self, action):
