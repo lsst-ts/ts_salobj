@@ -269,7 +269,6 @@ class BaseCsc(Controller):
         """
         await asyncio.sleep(0.1)
         self._heartbeat_task.cancel()
-        await self.stop_logging()
         if exception:
             self.done_task.set_exception(exception)
         else:

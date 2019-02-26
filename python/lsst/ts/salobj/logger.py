@@ -21,13 +21,37 @@
 
 __all__ = ["Logger"]
 
-import asyncio
 import logging
-import logging.handlers
-import queue
-import sys
+import warnings
 
-LOG_MESSAGES_INTERVAL = 0.05  # seconds
+
+class SalLogHandler(logging.Handler):
+    def __init__(self, controller):
+        """Log handler that outputs to an event topic.
+
+        Parameters
+        ----------
+        controller : `Controller`
+            Controller containing atrribute evt_logEvent, a `ControllerEvent`
+            with the standard CSC `logEvent` fields.
+        """
+        self.controller = controller
+        super().__init__()
+
+    def emit(self, record):
+        self.format(record)
+        try:
+            self.controller.evt_logMessage.set_put(
+                level=record.levelno,
+                message=record.message,
+                traceback=record.exc_text or "",
+                force_output=True,
+            )
+        finally:
+            # The Python formatter documentation suggests clearing ``exc_text``
+            # after calling ``format`` to avoid problems with
+            # multiple formatters that have different exception formats.
+            record.exc_text = ""
 
 
 class Logger:
@@ -62,19 +86,12 @@ class Logger:
 
     Override `log_name` if you want the logger name to be something
     other than the class name.
-
-    When shutting down call ``await self.stop_logging()``.
-    `BaseCsc` does this, so subclasses need not worry about it.
     """
     def __init__(self, initial_level=logging.WARNING):
         self.log = logging.getLogger(self.log_name)
         """A Python `logging.Logger`. You can safely log to it from
-        different threads. Note that it can take up to
-        ``LOG_MESSAGES_INTERVAL`` seconds before a log message is sent."""
-        self._log_queue = queue.Queue()
-        self.log.addHandler(logging.handlers.QueueHandler(self._log_queue))
-        self._log_messages_task = asyncio.ensure_future(self._log_messages_loop())
-        self._enable_logging = True
+        different threads."""
+        self.log.addHandler(SalLogHandler(controller=self))
 
     @property
     def log_name(self):
@@ -102,32 +119,7 @@ class Logger:
         self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(),
                                   force_output=True)
 
-    async def _log_messages_loop(self):
-        """Output log messages.
-        """
-        while self._enable_logging:
-            try:
-                msg = None
-                if not self._log_queue.empty():
-                    msg = self._log_queue.get_nowait()
-                    self.evt_logMessage.set_put(
-                        level=msg.levelno,
-                        message=msg.message,
-                        traceback=msg.exc_text or "",
-                        force_output=True,
-                    )
-                await asyncio.sleep(LOG_MESSAGES_INTERVAL)
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                what = f"on message {msg.message!r}" if msg else "before getting msg"
-                print(f"Logger._log_messages_loop failed {what} with error {e!r}",
-                      file=sys.stderr)
-
     async def stop_logging(self):
         """Call this to stop logging.
-
-        It allows one pending log messages to be sent.
         """
-        self._enable_logging = False
-        await asyncio.wait_for(self._log_messages_task, LOG_MESSAGES_INTERVAL*5)
+        warnings.warn("stop_logging is no longer needed", DeprecationWarning)

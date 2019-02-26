@@ -62,7 +62,6 @@ class Controller(logger.Logger):
     the standard summary states and associated state transition commands):
 
     * Inherit from this class.
-    * Your subclass must call ``await self.stop_logging()`` at exit.
     * The SAL XML for your subclass's must provide all
       :ref:`Logger SAL topics<logger_sal_topics>`.
 
