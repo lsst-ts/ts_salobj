@@ -30,7 +30,7 @@ async def enable_csc(remote, settingsToApply="", force_config=False, timeout=1):
 
     Parameters
     ----------
-    remote : `ts.salobj.Remote`
+    remote : `Remote`
         Remote for the CSC to be enabled
     settingsToApply : `str`
         SettingsToApply argument for the ``start`` command.
@@ -46,7 +46,8 @@ async def enable_csc(remote, settingsToApply="", force_config=False, timeout=1):
     -----
     This function assumes the CSC is listening to SAL commands. If the CSC
     is not running then this function will time out (unless the last reported
-    summary state was `State.ENABLED` and ``force_config`` is False).
+    summary state has been cached and was `State.ENABLED` and ``force_config``
+    is False).
     """
     state = remote.evt_summaryState.get().summaryState
     remote.cmd_start.set(settingsToApply=settingsToApply)

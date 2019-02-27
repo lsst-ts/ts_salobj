@@ -29,7 +29,7 @@ class RemoteEvent(RemoteTelemetry):
 
     Parameters
     ----------
-    salinfo : `salobj.SalInfo`
+    salinfo : `lsst.ts.salobj.SalInfo`
         SAL component information
     name : `str`
         Event topic name

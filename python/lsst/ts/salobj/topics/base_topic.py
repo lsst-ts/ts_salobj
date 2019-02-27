@@ -31,7 +31,7 @@ class BaseTopic(abc.ABC):
 
     Parameters
     ----------
-    salinfo : `salobj.SalInfo`
+    salinfo : `SalInfo`
         SAL component information
     name : `str`
         Command name
@@ -59,7 +59,8 @@ class BaseTopic(abc.ABC):
 
         Raises
         ------
-        TypeError if ``data`` is not an instance of `DataType`
+        TypeError
+            If ``data`` is not an instance of `DataType`
 
         Notes
         -----

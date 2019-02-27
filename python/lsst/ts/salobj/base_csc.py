@@ -56,7 +56,7 @@ class BaseCsc(Controller):
         salpy component library generatedby SAL
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
-    initial_state : `salobj.State` or `int` (optional)
+    initial_state : `State` or `int` (optional)
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
     initial_simulation_mode : `int` (optional)
@@ -96,8 +96,8 @@ class BaseCsc(Controller):
         * Acknowledge the command as complete.
     * Run the `start` method asynchronously. `start` sets the
       initial simulation mode, and, if that is successful,
-      outputs the initial summaryState event and sets attribute
-      ``start_task`` done. At this point the CSC is running.
+      outputs the initial summaryState event and sets
+      ``self.start_task`` done. At this point the CSC is running.
       If setting the initial simulation mode fails then `start`
       sets ``self.start_task`` to an exception and calls `stop`,
       making the CSC unusable.
@@ -193,8 +193,8 @@ class BaseCsc(Controller):
     provide additional command line arguments then it is probably simplest
     to copy the contents of `main` into your script and adapt it as required.
 
-    In unit tests, wait for `start_task` to be done, or for the initial
-    summaryState event, before expecting the CSC to be responsive.
+    In unit tests, wait for ``self.start_task`` to be done, or for the initial
+    ``summaryState`` event, before expecting the CSC to be responsive.
 
     .. _simulation_mode:
 

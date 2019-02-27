@@ -32,8 +32,9 @@ class SalLogHandler(logging.Handler):
         Parameters
         ----------
         controller : `Controller`
-            Controller containing atrribute evt_logEvent, a `ControllerEvent`
-            with the standard CSC `logEvent` fields.
+            Controller with
+            :ref:`Required Logger Attribute<required_logger_attributes>`
+            ``evt_logEvent``.
         """
         self.controller = controller
         super().__init__()
@@ -57,6 +58,8 @@ class SalLogHandler(logging.Handler):
 class Logger:
     """Support logging to SAL.
 
+    Designed as a base class for `Controller`.
+
     Parameters
     ----------
     index : `int`
@@ -64,28 +67,26 @@ class Logger:
         SAL scripts that are currently running.
     descr : `str`
         Short description of what the script does, for operator display.
-    remotes_dict : `dict` of `str` : `salobj.Remote` (optional)
-        Dict of attribute name: `salobj.Remote`, or `None` if no remotes.
+    remotes_dict : `dict` of `str` : `Remote` (optional)
+        Dict of attribute name: `Remote`, or `None` if no remotes.
         These remotes are added as attributes of ``self`` and are also
         used to generate a list of remote names for script metadata.
 
     Notes
     -----
-    .. _logger_sal_topics:
+    .. _required_logger_attributes:
 
-    Logger uses the following SAL topics:
+    **Required Logger Attributes**
 
-    * command ``setLogLevel``
-    * logevent ``logLevel``
-    * logevent ``logMessage``
+    Logger requires the following attributes, all standard for CSCs:
 
-    These topics are automatically provided to any SAL component
-    that uses generics, but for other SAL components you must provide
-    them yourself. See ``SALGenerics.xml`` in ``ts_xml`` for the format
-    of these topics.
+    * ``cmd_setLogLevel``: a `topics.ControllerCommand`
+    * ``evt_logLevel``: a `topics.ControllerEvent`
+    * ``evt_logMessage``: a `topics.ControllerEvent`
 
-    Override `log_name` if you want the logger name to be something
-    other than the class name.
+    These attributes are automatically provided to any CSC, but for a non-CSC
+    `Controller` you must provide them yourself. See ``SALGenerics.xml``
+    in ``ts_xml`` for the required format of these topics.
     """
     def __init__(self, initial_level=logging.WARNING):
         self.log = logging.getLogger(self.log_name)
@@ -97,7 +98,7 @@ class Logger:
     def log_name(self):
         """Get a name used for the logger.
 
-        This default implementation returns teh class name.
+        This default implementation returns the class name.
         Override to return something else.
         """
         return type(self).__name__
@@ -107,7 +108,7 @@ class Logger:
 
         Parameters
         ----------
-        id_data : `salobj.CommandIdData`
+        id_data : `CommandIdData`
             Logging level.
         """
         self.log.setLevel(id_data.data.level)

@@ -41,11 +41,11 @@ class Remote:
         A value is required if the component is indexed.
     readonly : `bool`
         If True then do not provide commands.
-    include : `iterable` of `str` (optional)
+    include : ``iterable`` of `str` (optional)
         Names of topics (telemetry or events) to support,
         for example ["FilterChangeInPosition", "TrackingTarget"]
         If `None` then all are included except those in `exclude`.
-    exclude : `iterable` of `str` (optional)
+    exclude : ``iterable`` of `str` (optional)
         Names of topics (telemetry or events) to not support.
         If `None` or empty then no topics are excluded.
 
