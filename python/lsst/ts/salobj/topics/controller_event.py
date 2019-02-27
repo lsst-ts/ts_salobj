@@ -29,7 +29,7 @@ class ControllerEvent(ControllerTelemetry):
 
     Parameters
     ----------
-    salinfo : `salobj.SalInfo`
+    salinfo : `lsst.ts.salobj.SalInfo`
         SAL component information
     name : `str`
         Event topic name
@@ -94,6 +94,7 @@ class ControllerEvent(ControllerTelemetry):
         self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_logevent_" + self.name + "C")
 
         topic_name = self.salinfo.name + "_logevent_" + self.name
-        retcode = self.salinfo.manager.salEventPub(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salEventPub({topic_name}) failed with return code {retcode}")
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salEventPub(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to event {self.name}") from e

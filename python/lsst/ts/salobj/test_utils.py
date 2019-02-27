@@ -91,7 +91,7 @@ class TestCsc(base_csc.BaseCsc):
       raise an exception. One use for this is to test command timeout
       by specifying a long wait and waiting a shorter time for the command
       to finish. Another use is to test multiple simultaneous commands,
-      since `wait` supports this.
+      since ``wait`` supports this.
     * The standard state transition commands do the usual thing
       and output the ``summaryState`` event. The ``exitControl``
       command shuts the CSC down.

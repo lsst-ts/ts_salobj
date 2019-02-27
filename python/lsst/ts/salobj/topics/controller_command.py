@@ -33,7 +33,7 @@ class ControllerCommand(BaseTopic):
 
     Parameters
     ----------
-    salinfo : `salobj.SalInfo`
+    salinfo : `lsst.ts.salobj.SalInfo`
         SAL component information
     name : `str`
         Command name
@@ -279,6 +279,7 @@ class ControllerCommand(BaseTopic):
         self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_command_" + self.name + "C")
 
         topic_name = self.salinfo.name + "_command_" + self.name
-        retcode = self.salinfo.manager.salProcessor(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salProcessor({topic_name}) failed with return code {retcode}")
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salProcessor(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to command {self.name}") from e

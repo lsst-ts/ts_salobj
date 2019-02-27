@@ -29,7 +29,7 @@ class RemoteEvent(RemoteTelemetry):
 
     Parameters
     ----------
-    salinfo : `salobj.SalInfo`
+    salinfo : `lsst.ts.salobj.SalInfo`
         SAL component information
     name : `str`
         Event topic name
@@ -46,6 +46,7 @@ class RemoteEvent(RemoteTelemetry):
         self._DataType = getattr(self.salinfo.lib, self._DataType_name)
 
         topic_name = self.salinfo.name + "_logevent_" + self.name
-        retcode = self.salinfo.manager.salEventSub(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salEventSub({topic_name}) failed with return code {retcode}")
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salEventSub(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to telemetry {self.name}") from e

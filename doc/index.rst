@@ -22,7 +22,7 @@ Important classes:
 * `Controller` provides the capability to output SAL telemetry and event topics and receive SAL commands.
   Every Python SAL component that is not a Commandable SAL Component (CSC) should be a subclass of `Controller`.
   See :ref:`Writing a Controller<writing_a_controller>` for more information.
-* `Logger` supports writing to a standard Python logger and outputting the result as a `logMessage` SAL event.
+* `Logger` supports writing to a standard Python logger and outputting the result as a ``logMessage`` SAL event.
   `Controller` is a subclass of `Logger` so all controllers have logging capability.
   For example: ``self.log.warning("example warning message")``.
 * `Remote` supports listening to other SAL components; it can receive events and telemetry and issue commands.
