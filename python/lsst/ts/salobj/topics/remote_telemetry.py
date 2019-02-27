@@ -34,7 +34,7 @@ class RemoteTelemetry(BaseTopic):
 
     Parameters
     ----------
-    salinfo : `salobj.SalInfo`
+    salinfo : `lsst.ts.salobj.SalInfo`
         SAL component information
     name : `str`
         Telemetry topic name
@@ -319,6 +319,7 @@ class RemoteTelemetry(BaseTopic):
         self._DataType = getattr(self.salinfo.lib, self._DataType_name)
 
         topic_name = self.salinfo.name + "_" + self.name
-        retcode = self.salinfo.manager.salTelemetrySub(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salTelemetrySub({topic_name}) failed with return code {retcode}")
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salTelemetrySub(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to telemetry {self.name}") from e

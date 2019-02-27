@@ -29,7 +29,7 @@ class ControllerTelemetry(BaseOutputTopic):
 
     Parameters
     ----------
-    salinfo : `salobj.SalInfo`
+    salinfo : `lsst.ts.salobj.SalInfo`
         SAL component information
     name : `str`
         Command name
@@ -84,6 +84,7 @@ class ControllerTelemetry(BaseOutputTopic):
         self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_" + self.name + "C")
 
         topic_name = self.salinfo.name + "_" + self.name
-        retcode = self.salinfo.manager.salTelemetryPub(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salTelemetryPub({topic_name}) failed with return code {retcode}")
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salTelemetryPub(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to telemetry {self.name}") from e

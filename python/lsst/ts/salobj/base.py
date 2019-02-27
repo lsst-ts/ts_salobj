@@ -117,7 +117,7 @@ class SalInfo:
 
     Parameters
     ----------
-    sallib : `module`
+    sallib : ``module``
         SALPY library for a SAL component
     index : `int` (optional)
         SAL component index, or 0 or `None` if the component is not indexed.

@@ -114,7 +114,7 @@ class RemoteCommand(BaseOutputTopic):
 
     Parameters
     ----------
-    salinfo : `salobj.SalInfo`
+    salinfo : `lsst.ts.salobj.SalInfo`
         SAL component information
     name : `str`
         Command name
@@ -129,7 +129,7 @@ class RemoteCommand(BaseOutputTopic):
 
         Parameters
         ----------
-        cmd_id : `salobj.CommandIdAck`
+        cmd_id : `lsst.ts.salobj.CommandIdAck`
             The command ID and acknowledgement returned by
             the previous wait (e.g. from `start`).
         timeout : `float` (optional)
@@ -147,7 +147,7 @@ class RemoteCommand(BaseOutputTopic):
         -------
         coro : `coroutine`
             A coroutine that waits for command acknowledgement
-            and returns a `salobj.CommandIdAck` instance.
+            and returns a `lsst.ts.salobj.CommandIdAck` instance.
 
         Raises
         ------
@@ -187,7 +187,7 @@ class RemoteCommand(BaseOutputTopic):
         -------
         coro : `coroutine`
             A coroutine that waits for command acknowledgement
-            and returns a `salobj.CommandIdAck` instance.
+            and returns a `lsst.ts.salobj.CommandIdAck` instance.
 
         Raises
         ------
@@ -253,6 +253,7 @@ class RemoteCommand(BaseOutputTopic):
         ))
 
         topic_name = self.salinfo.name + "_command_" + self.name
-        retcode = self.salinfo.manager.salCommand(topic_name)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salCommand({topic_name}) failed with return code {retcode}")
+        try:  # work around lack of topic name in SAL's exception message
+            self.salinfo.manager.salCommand(topic_name)
+        except Exception as e:
+            raise RuntimeError(f"Could not subscribe to command {self.name}") from e

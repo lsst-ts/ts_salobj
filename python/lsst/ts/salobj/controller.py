@@ -62,30 +62,30 @@ class Controller(logger.Logger):
     the standard summary states and associated state transition commands):
 
     * Inherit from this class.
-    * Your subclass must call ``await self.stop_logging()`` at exit.
-    * The SAL XML for your subclass's must provide all
-      :ref:`Logger SAL topics<logger_sal_topics>`.
+    * Provide all :ref:`Required Logger Attribute<required_logger_attributes>`;
+      these are automatically provided to CSCs, but not other controllers.
 
     Attributes:
 
-    Each `Controller` will have the following attributes
-    (in addition to the ``log`` provided by `Logger`):
+    Each `Controller` will have the following attributes,
+    in addition to the ``log`` provided by `Logger`:
 
     - ``cmd_<command_name>``, a `topics.ControllerCommand`,
-      for each command supported by the component.
+      for each command supported by the SAL component.
     - ``evt_<event_name>``, a `topics.ControllerEvent`
-      for each log event topic supported by the component.
+      for each log event topic supported by the SAL component.
     - ``tel_<telemetry_name>``, a `topics.ControllerTelemetry`
-      for each telemetry topic supported by the component.
+      for each telemetry topic supported by the SAL component.
 
-    Here is an example with the expected attributes::
+    Here is an example that shows the expected attributes (but does not do
+    anything useful, such as handle commands and write events and telemetry;
+    see `TestCsc` for that)::
 
         include SALPY_Test
         include salobj
         # the index is arbitrary, but a remote must use the same index
         # to talk to this particular controller
-        index = 5
-        test_controller = salobj.Controller(SALPY_Test, index)
+        test_controller = salobj.Controller(SALPY_Test, index=5)
 
     ``test_controller`` will have the following attributes:
 
@@ -101,16 +101,15 @@ class Controller(logger.Logger):
 
         * ``evt_appliedSettingsMatchStart``
         * ``evt_errorCode``
-        * ... and so on for all other standard CSC log events
+        * ... and so on for all other standard CSC events
         * ``evt_arrays``
         * ``evt_scalars``
 
-    * Telemetry, each an instance of `topics.ControllerTelemetry`:
+    * Telemetry, each an instance of `topics.ControllerTelemetry`
+      (note that there are no standard CSC telemetry topics):
 
         * ``tel_arrays``
         * ``tel_scalars``
-
-    See also the notes for `Logger`
     """
     def __init__(self, sallib, index=None, *, do_callbacks=False):
         super().__init__()
