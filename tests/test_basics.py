@@ -9,23 +9,23 @@ except ImportError:
 from lsst.ts import salobj
 
 
+def makeAck(ack, error=0, result=""):
+    """Make an AckType object from keyword arguments.
+    """
+    data = SALPY_Test.Test_ackcmdC()
+    data.ack = ack
+    data.error = error
+    data.result = result
+    return data
+
+
 class BasicsTestCase(unittest.TestCase):
     def test_assert_ack_error(self):
-
-        def makeAck(ack, error=0, result=""):
-            """Make an AckType object from keyword arguments.
-            """
-            data = SALPY_Test.Test_ackcmdC()
-            data.ack = ack
-            data.error = error
-            data.result = result
-            return data
-
-        ackError = salobj.AckError("a message", cmd_id=5, ack=makeAck(ack=23, error=-6, result="a result"))
-        self.assertEqual(ackError.cmd_id, 5)
-        self.assertEqual(ackError.ack.ack, 23)
-        self.assertEqual(ackError.ack.error, -6)
-        self.assertEqual(ackError.ack.result, "a result")
+        err = salobj.AckError("a message", cmd_id=5, ack=makeAck(ack=23, error=-6, result="a result"))
+        self.assertEqual(err.cmd_id, 5)
+        self.assertEqual(err.ack.ack, 23)
+        self.assertEqual(err.ack.error, -6)
+        self.assertEqual(err.ack.result, "a result")
 
         for ExceptionClass in (Exception, TypeError, KeyError, RuntimeError, AssertionError):
             with self.assertRaises(ExceptionClass):
@@ -45,6 +45,37 @@ class BasicsTestCase(unittest.TestCase):
 
         with salobj.assertRaisesAckError(ack=1, error=2):
             raise salobj.AckError("matching ack and error", cmd_id=4, ack=makeAck(ack=1, error=2))
+
+    def test_ack_error_repr(self):
+        """Test AckError.__str__ and AckError.__repr__"""
+        msg = "a message"
+        cmd_id = 5
+        ack_code = 23
+        error = -6
+        result = "a result"
+        err = salobj.AckError(msg, cmd_id=cmd_id, ack=makeAck(ack=ack_code, error=error, result=result))
+        str_err = str(err)
+        for item in (msg, cmd_id, ack_code, error, result):
+            self.assertIn(str(item), str_err)
+        self.assertNotIn("AckError", str_err)
+        repr_err = repr(err)
+        for item in ("AckError", msg, cmd_id, ack_code, error, result):
+            self.assertIn(str(item), repr_err)
+
+    def test_cmd_id_ack_repr(self):
+        """Test CommandIdAck.__str__ and AckError.__repr__"""
+        cmd_id = 5
+        ack_code = 23
+        error = -6
+        result = "a result"
+        idack = salobj.CommandIdAck(cmd_id=cmd_id, ack=makeAck(ack=ack_code, error=error, result=result))
+        str_idack = str(idack)
+        for item in (cmd_id, ack_code, error, result):
+            self.assertIn(str(item), str_idack)
+        self.assertNotIn("CommandIdAck", str_idack)
+        repr_idack = repr(idack)
+        for item in ("CommandIdAck", cmd_id, ack_code, error, result):
+            self.assertIn(str(item), repr_idack)
 
     def test_set_random_lsst_dds_domain(self):
         random.seed(42)

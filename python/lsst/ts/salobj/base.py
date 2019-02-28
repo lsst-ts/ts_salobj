@@ -26,6 +26,11 @@ __all__ = ["AckError", "CommandIdAck", "CommandIdData", "ExpectedError",
 MAX_SAL_INDEX = (2 << 30) - 1
 
 
+def _ack_str(ack):
+    """Format an Ack as a string"""
+    return f"(ack={ack.ack}, error={ack.error}, result={ack.result!r})"
+
+
 class AckError(Exception):
     """Exception raised if a command fails.
 
@@ -43,6 +48,12 @@ class AckError(Exception):
         self.ack = ack
         """Command acknowledgement."""
 
+    def __str__(self):
+        return f"msg={self.args[0]!r}, cmd_id={self.cmd_id}, ack={_ack_str(self.ack)}"
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self!s})"
+
 
 class CommandIdAck:
     """Struct to hold a command ID and its associated acknowledgement.
@@ -58,8 +69,11 @@ class CommandIdAck:
         self.cmd_id = int(cmd_id)
         self.ack = ack
 
+    def __str__(self):
+        return f"cmd_id={self.cmd_id}, ack={_ack_str(self.ack)}"
+
     def __repr__(self):
-        return f"CommandIdAck(cmd_id={self.cmd_id}, ack.ack={self.ack})"
+        return f"CommandIdAck({self!s})"
 
 
 class CommandIdData:
