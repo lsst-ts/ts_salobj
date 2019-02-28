@@ -182,9 +182,3 @@ class SalInfo:
         data.error = error
         data.result = result
         return data
-
-    def __del__(self):
-        # use getattr in case this is called during failed construction
-        manager = getattr(self, "manager", None)
-        if manager is not None:
-            manager.salShutdown()
