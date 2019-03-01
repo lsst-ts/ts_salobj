@@ -57,7 +57,7 @@ class CommunicateTestCase(unittest.TestCase):
             process = await asyncio.create_subprocess_exec(exe_name, str(index))
             try:
                 remote = salobj.Remote(SALPY_Test, index)
-                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=10)
+                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=20)
                 self.assertEqual(summaryState_data.summaryState, salobj.State.STANDBY)
 
                 id_ack = await remote.cmd_exitControl.start(timeout=2)
