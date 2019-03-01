@@ -58,14 +58,13 @@ class _CommandInfo:
         lib = self.remote_command.salinfo.lib
         self.good_ack_codes = (lib.SAL__CMD_ACK, lib.SAL__CMD_INPROGRESS, lib.SAL__CMD_COMPLETE)
 
-    def start_wait(self, timeout):
+    def start_timeout(self, timeout):
         """Start waiting for an ack."""
+        # reset done_task in case we are starting a new wait with `next_ack`.
         self.done_task = asyncio.Future()
         self._timeout_task = asyncio.ensure_future(self._start_timeout(timeout))
-        if len(self.remote_command._running_cmds) == 1:
-            asyncio.ensure_future(self.remote_command._get_next_ack())
 
-    def end_wait(self, ack, cancel_timeout):
+    def set_final_ack(self, ack, cancel_timeout):
         """End waiting for an ack.
 
         Parameters
@@ -73,7 +72,8 @@ class _CommandInfo:
         ack : `salobj.AckType`
             Command acknowledgement
         cancel_timeout : `bool`
-            If True then cancel the timeout_task
+            If True then cancel the timeout_task.
+            If False then report timeout.
         """
         if self.done_task.done():
             return
@@ -101,12 +101,12 @@ class _CommandInfo:
             timeout = DEFAULT_TIMEOUT
         await asyncio.sleep(timeout)
 
-        # Time out the command with NOACK (which is the correct code for
-        # the reader timing out; TIMEOUT is for timeout at the controller).
+        # Set the final ack to NOACK, which is the correct code for the reader
+        # timing out (TIMEOUT is for timing out at the controller).
         self.ack.ack = self.remote_command.salinfo.lib.SAL__CMD_NOACK
         if self.cmd_id in self.remote_command._running_cmds:
             self.remote_command._running_cmds.pop(self.cmd_id)
-        self.end_wait(ack=self.ack, cancel_timeout=False)
+        self.set_final_ack(ack=self.ack, cancel_timeout=False)
 
 
 class RemoteCommand(BaseOutputTopic):
@@ -123,6 +123,7 @@ class RemoteCommand(BaseOutputTopic):
         super().__init__(salinfo=salinfo, name=name)
         self.log = logging.getLogger(f"{salinfo}.RemoteCommand.{name}")
         self._running_cmds = dict()
+        self._next_ack_task = None
 
     def next_ack(self, cmd_id_ack, timeout=None, wait_done=True):
         """Wait for the next acknowledement for the command
@@ -161,7 +162,7 @@ class RemoteCommand(BaseOutputTopic):
         if cmd_info is None:
             raise RuntimeError(f"Command cmd_id={cmd_id_ack.cmd_id} is unknown or finished")
         cmd_info.wait_done = wait_done
-        cmd_info.start_wait(timeout)
+        self._start_wait_for_ack(cmd_info=cmd_info, timeout=timeout)
         return cmd_info.done_task
 
     def start(self, data=None, timeout=None, wait_done=True):
@@ -205,14 +206,19 @@ class RemoteCommand(BaseOutputTopic):
             raise RuntimeError(f"{self.name} bug: a command with cmd_id={cmd_id} is already running")
         cmd_info = _CommandInfo(remote_command=self, cmd_id=cmd_id, wait_done=wait_done)
         self._running_cmds[cmd_id] = cmd_info
-        cmd_info.start_wait(timeout)
+        self._start_wait_for_ack(cmd_info=cmd_info, timeout=timeout)
         return cmd_info.done_task
 
-    async def _get_next_ack(self):
+    def _start_wait_for_ack(self, cmd_info, timeout):
+        cmd_info.start_timeout(timeout)
+        if self._next_ack_task is None or self._next_ack_task.done():
+            self._next_ack_task = asyncio.ensure_future(self._next_ack_loop())
+
+    async def _next_ack_loop(self):
         """Read command acks until self._running_cmds is empty.
         """
         ack = self.salinfo.AckType()
-        while self._running_cmds:
+        while True:
             try:
                 response_id = self._response_func(ack)
             except Exception as e:
@@ -231,8 +237,12 @@ class RemoteCommand(BaseOutputTopic):
                     if is_done:
                         del self._running_cmds[response_id]
                     if do_end_task:
-                        cmd_info.end_wait(ack=ack, cancel_timeout=True)
-            await asyncio.sleep(0.05)
+                        cmd_info.set_final_ack(ack=ack, cancel_timeout=True)
+
+            if self._running_cmds:
+                await asyncio.sleep(0.05)
+            else:
+                return
 
     def _setup(self):
         """Get SAL functions."""
