@@ -662,7 +662,7 @@ class CommunicateTestCase(unittest.TestCase):
         self.assertLess(duration, np.sum(durations))
 
     def test_multiple_sequential_commands(self):
-        """Test that commands prohibig multiple callbacks are executed
+        """Test that commands prohibiting multiple callbacks are executed
         one after the other.
         """
         harness = Harness(initial_state=salobj.State.ENABLED)
