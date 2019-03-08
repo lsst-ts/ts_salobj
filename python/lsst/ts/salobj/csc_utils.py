@@ -21,8 +21,18 @@
 
 __all__ = ["enable_csc"]
 
+import asyncio
+import re
 
 from lsst.ts import salobj
+
+
+def _state_from_ack_error(result):
+    """Get summary state from failed state change AckError result."""
+    match = re.search(r"State\.[a-zA-Z]+: (\d+)", result)
+    if match is None:
+        raise RuntimeError(f"Could not find state in {result}")
+    return int(match.group(1))
 
 
 async def enable_csc(remote, settingsToApply="", force_config=False, timeout=1):
@@ -40,7 +50,8 @@ async def enable_csc(remote, settingsToApply="", force_config=False, timeout=1):
         If true then go to `State.STANDBY` state, then `State.ENABLED` state;
         otherwise take the shortest path to `State.ENABLED` state.
     timeut : `float`
-        Timeout for each state transition command (sec).
+        Timeout for each state transition command and a possible initial
+        summaryState read (sec).
 
     Notes
     -----
@@ -49,7 +60,41 @@ async def enable_csc(remote, settingsToApply="", force_config=False, timeout=1):
     summary state has been cached and was `State.ENABLED` and ``force_config``
     is False).
     """
-    state = remote.evt_summaryState.get().summaryState
+    # get current summary state
+    state = None
+    # try a simple get
+    state_data = remote.evt_summaryState.get()
+    if state_data is None:
+        # get failed; try waiting for it, in case the CSC is starting up
+        try:
+            state_data = await remote.evt_summaryState.next(flush=False, timeout=timeout)
+        except asyncio.TimeoutError:
+            # Either the CSC is not running or this is SAL bug DM-18035
+            # late joiners do not reliably get topic data,
+            # so try a state change command:
+            # * If it succeeds then we know the state
+            # * If it fails then the error message should contain the state
+            # * If it times out (NOACK) then the CSC is dead
+            # TODO DM-18168: remove the code that tries to send a command
+            # once DM-18035 is fixed.
+            try:
+                if force_config:
+                    await remote.cmd_disable.start(timeout=timeout)
+                    state = salobj.State.DISABLED
+                else:
+                    await remote.cmd_enable.start(timeout=timeout)
+                    state = salobj.State.ENABLED
+            except salobj.AckError as e:
+                if e.ack.ack == remote.salinfo.lib.SAL__CMD_FAILED:
+                    state = _state_from_ack_error(e.ack.result)
+                elif e.ack.ack != remote.salinfo.lib.SAL__CMD_NOACK:
+                    raise salobj.ExpectedError(f"CSC {remote.name} is not responding")
+                else:
+                    raise
+    if state is None:
+        assert state_data is not None
+        state = state_data.summaryState
+
     remote.cmd_start.set(settingsToApply=settingsToApply)
 
     async def standby_to_enabled():

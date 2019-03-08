@@ -350,7 +350,8 @@ class BaseCsc(Controller):
         asyncio.ensure_future(self.stop())
 
     def do_standby(self, id_data):
-        """Transition from `State.DISABLED` or `State.FAULT` to `State.STANDBY`.
+        """Transition from `State.DISABLED` or `State.FAULT` to
+        `State.STANDBY`.
 
         Parameters
         ----------
