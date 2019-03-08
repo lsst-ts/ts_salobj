@@ -57,7 +57,7 @@ class CommunicateTestCase(unittest.TestCase):
             process = await asyncio.create_subprocess_exec(exe_name, str(index))
             try:
                 remote = salobj.Remote(SALPY_Test, index)
-                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=10)
+                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=20)
                 self.assertEqual(summaryState_data.summaryState, salobj.State.STANDBY)
 
                 id_ack = await remote.cmd_exitControl.start(timeout=2)
@@ -89,7 +89,8 @@ class CommunicateTestCase(unittest.TestCase):
             cmd_data_sent = harness.csc.make_random_cmd_arrays()
             await harness.remote.cmd_setArrays.start(cmd_data_sent, timeout=1)
 
-            # by default log level does not include INFO messages, so expect nothing
+            # by default log level does not include INFO messages,
+            # so expect nothing
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.remote.evt_logMessage.next(flush=False, timeout=0.2)
 
@@ -662,7 +663,7 @@ class CommunicateTestCase(unittest.TestCase):
         self.assertLess(duration, np.sum(durations))
 
     def test_multiple_sequential_commands(self):
-        """Test that commands prohibig multiple callbacks are executed
+        """Test that commands prohibiting multiple callbacks are executed
         one after the other.
         """
         harness = Harness(initial_state=salobj.State.ENABLED)
@@ -979,7 +980,8 @@ class CommunicateTestCase(unittest.TestCase):
     def test_simulation_mode(self):
         """Test simulation mode command and event.
 
-        Changing simulation mode can only be done in states STANDBY and DISABLED.
+        Changing simulation mode can only be done in states STANDBY
+        and DISABLED.
         """
         async def doit():
             # start in STANDBY and verify that simulation mode is reported
@@ -1063,7 +1065,8 @@ class RemoteConstructorTestCase(unittest.TestCase):
         all_event_method_names = set(f"evt_{name}" for name in all_event_topic_names)
         all_telemetry_method_names = set(f"tel_{name}" for name in all_telemetry_topic_names)
 
-        # remote0 specifies neither include nor exclude; it should have everything
+        # remote0 specifies neither include nor exclude;
+        # it should have everything
         remote0 = salobj.Remote(SALPY_Test, index)
         remote_command_names = set([name for name in dir(remote0) if name.startswith("cmd_")])
         self.assertEqual(remote_command_names, all_command_method_names)

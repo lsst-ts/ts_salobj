@@ -273,7 +273,8 @@ class ControllerCommand(BaseTopic):
             await asyncio.sleep(0.05)
 
     def _setup(self):
-        """Get SAL functions and tell SAL that I want to receive this command."""
+        """Get SAL functions and tell SAL that I want to receive this command.
+        """
         self._accept_func = getattr(self.salinfo.manager, 'acceptCommand_' + self.name)
         self._ack_func = getattr(self.salinfo.manager, 'ackCommand_' + self.name)
         self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_command_" + self.name + "C")
