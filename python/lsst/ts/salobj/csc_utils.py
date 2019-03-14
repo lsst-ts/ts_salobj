@@ -23,6 +23,7 @@ __all__ = ["enable_csc", "set_summary_state"]
 
 import asyncio
 import re
+import warnings
 
 from lsst.ts import salobj
 from .base_csc import State
@@ -137,6 +138,8 @@ def _state_from_ack_error(result):
 async def enable_csc(remote, settingsToApply="", force_config=False, timeout=1):
     """Enable a CSC from its current state.
 
+    Superseded by set_summary_state.
+
     Parameters
     ----------
     remote : `Remote`
@@ -159,6 +162,7 @@ async def enable_csc(remote, settingsToApply="", force_config=False, timeout=1):
     summary state has been cached and was `State.ENABLED` and ``force_config``
     is False).
     """
+    warnings.warn("Superseded by set_summary_state", DeprecationWarning)
     # get current summary state
     state = None
     # try a simple get
