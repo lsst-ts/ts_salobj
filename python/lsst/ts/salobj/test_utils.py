@@ -115,6 +115,7 @@ class TestCsc(base_csc.BaseCsc):
         super().__init__(SALPY_Test, index=index, initial_state=initial_state,
                          initial_simulation_mode=initial_simulation_mode)
         self.cmd_wait.allow_multiple_callbacks = True
+        self.settingsToApply = None
 
     def do_setArrays(self, id_data):
         """Execute the setArrays command."""
@@ -157,6 +158,11 @@ class TestCsc(base_csc.BaseCsc):
         """
         self.log.warning("executing fault")
         self.fault()
+
+    def do_start(self, id_data):
+        """Save the settingsToApply field."""
+        super().do_start(id_data)
+        self.settingsToApply = id_data.data.settingsToApply
 
     async def do_wait(self, id_data):
         """Execute the wait command.
