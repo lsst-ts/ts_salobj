@@ -65,7 +65,7 @@ class BaseCsc(Controller):
 
     Raises
     ------
-    salobj.ExpectedException
+    salobj.ExpectedError
         If initial_state or initial_simulation_mode is invalid.
 
     Notes
