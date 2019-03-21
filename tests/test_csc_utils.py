@@ -1,6 +1,8 @@
 import asyncio
 import unittest
 
+import pytest
+
 try:
     import SALPY_Test
 except ImportError:
@@ -92,7 +94,8 @@ class EnableCscTestCase(unittest.TestCase):
         async def doit():
             harness = Harness(initial_state=salobj.State.ENABLED)
             await self.assert_state(harness, salobj.State.ENABLED)
-            await salobj.enable_csc(harness.remote, force_config=False)
+            with pytest.warns(DeprecationWarning):
+                await salobj.enable_csc(harness.remote, force_config=False)
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.next_state(timeout=0.1)
 
@@ -102,7 +105,8 @@ class EnableCscTestCase(unittest.TestCase):
         async def doit():
             harness = Harness(initial_state=salobj.State.DISABLED)
             await self.assert_state(harness, salobj.State.DISABLED)
-            await salobj.enable_csc(harness.remote, force_config=False)
+            with pytest.warns(DeprecationWarning):
+                await salobj.enable_csc(harness.remote, force_config=False)
             await self.assert_state(harness, salobj.State.ENABLED)
 
         asyncio.get_event_loop().run_until_complete(doit())
@@ -111,7 +115,8 @@ class EnableCscTestCase(unittest.TestCase):
         async def doit():
             harness = Harness(initial_state=salobj.State.STANDBY)
             await self.assert_state(harness, salobj.State.STANDBY)
-            await salobj.enable_csc(harness.remote, force_config=False)
+            with pytest.warns(DeprecationWarning):
+                await salobj.enable_csc(harness.remote, force_config=False)
             await self.assert_state(harness, salobj.State.DISABLED)
             await self.assert_state(harness, salobj.State.ENABLED)
 
@@ -121,7 +126,8 @@ class EnableCscTestCase(unittest.TestCase):
         async def doit():
             harness = Harness(initial_state=salobj.State.FAULT)
             await self.assert_state(harness, salobj.State.FAULT)
-            await salobj.enable_csc(harness.remote, force_config=False)
+            with pytest.warns(DeprecationWarning):
+                await salobj.enable_csc(harness.remote, force_config=False)
             await self.assert_state(harness, salobj.State.STANDBY)
             await self.assert_state(harness, salobj.State.DISABLED)
             await self.assert_state(harness, salobj.State.ENABLED)
@@ -132,7 +138,8 @@ class EnableCscTestCase(unittest.TestCase):
         async def doit():
             harness = Harness(initial_state=salobj.State.ENABLED)
             await self.assert_state(harness, salobj.State.ENABLED)
-            await salobj.enable_csc(harness.remote, force_config=True)
+            with pytest.warns(DeprecationWarning):
+                await salobj.enable_csc(harness.remote, force_config=True)
             await self.assert_state(harness, salobj.State.DISABLED)
             await self.assert_state(harness, salobj.State.STANDBY)
             await self.assert_state(harness, salobj.State.DISABLED)
@@ -146,7 +153,8 @@ class EnableCscTestCase(unittest.TestCase):
                 with self.subTest(initial_state=initial_state):
                     harness = Harness(initial_state=initial_state)
                     await self.assert_state(harness, initial_state)
-                    await salobj.enable_csc(harness.remote, force_config=True)
+                    with pytest.warns(DeprecationWarning):
+                        await salobj.enable_csc(harness.remote, force_config=True)
                     await self.assert_state(harness, salobj.State.STANDBY)
                     await self.assert_state(harness, salobj.State.DISABLED)
                     await self.assert_state(harness, salobj.State.ENABLED)
@@ -157,7 +165,8 @@ class EnableCscTestCase(unittest.TestCase):
         async def doit():
             harness = Harness(initial_state=salobj.State.STANDBY)
             await self.assert_state(harness, salobj.State.STANDBY)
-            await salobj.enable_csc(harness.remote, force_config=True)
+            with pytest.warns(DeprecationWarning):
+                await salobj.enable_csc(harness.remote, force_config=True)
             await self.assert_state(harness, salobj.State.DISABLED)
             await self.assert_state(harness, salobj.State.ENABLED)
 
