@@ -62,6 +62,23 @@ class BasicsTestCase(unittest.TestCase):
         for item in ("AckError", msg, cmd_id, ack_code, error, result):
             self.assertIn(str(item), repr_err)
 
+    def test_long_ack_result(self):
+        salinfo = salobj.SalInfo(SALPY_Test, index=1)
+        ack_code = salinfo.lib.SAL__CMD_FAILED
+        error = 15
+        long_result = "this string is longer than MAX_RESULT_LEN characters " \
+            "this string is longer than MAX_RESULT_LEN characters " \
+            "this string is longer than MAX_RESULT_LEN characters " \
+            "this string is longer than MAX_RESULT_LEN characters " \
+            "this string is longer than MAX_RESULT_LEN characters "
+        self.assertGreater(len(long_result), salobj.MAX_RESULT_LEN)
+        with self.assertRaises(ValueError):
+            salinfo.makeAck(ack=ack_code, error=error, result=long_result, truncate_result=False)
+        ack = salinfo.makeAck(ack=ack_code, error=error, result=long_result, truncate_result=True)
+        self.assertEqual(ack.result, long_result[0:salobj.MAX_RESULT_LEN])
+        self.assertEqual(ack.ack, ack_code)
+        self.assertEqual(ack.error, error)
+
     def test_cmd_id_ack_repr(self):
         """Test CommandIdAck.__str__ and AckError.__repr__"""
         cmd_id = 5
