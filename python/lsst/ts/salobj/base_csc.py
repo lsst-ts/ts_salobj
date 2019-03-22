@@ -294,6 +294,8 @@ class BaseCsc(Controller):
             False is convenient for some kinds of testing.
         **kwargs : `dict` (optional)
             Additional keyword arguments for your CSC's constructor.
+            If any arguments match those from the command line
+            the command line values will be used.
 
         Returns
         -------
@@ -306,20 +308,61 @@ class BaseCsc(Controller):
         then it is probably simplest to put a version of this code
         in your command-line executable.
         """
+        parser = argparse.ArgumentParser(f"Run {cls.__name__}")
         if index is True:
-            parser = argparse.ArgumentParser(f"Run {cls.__name__}")
             parser.add_argument("index", type=int,
-                                help="Script SAL Component index; must be unique among running Scripts")
-            args = parser.parse_args()
+                                help="Script SAL Component index.")
+        cls.add_arguments(parser)
+
+        args = parser.parse_args()
+        if index is True:
             kwargs["index"] = args.index
         elif index in (None, False):
             pass
         else:
-            kwargs["index"] = index
+            kwargs["index"] = int(index)
+        cls.add_kwargs_from_args(args=args, kwargs=kwargs)
+
         csc = cls(**kwargs)
         if run_loop:
             asyncio.get_event_loop().run_until_complete(csc.done_task)
         return csc
+
+    @classmethod
+    def add_arguments(cls, parser):
+        """Add arguments to the argument parser created by `main`.
+
+        Parameters
+        ----------
+        parser : `argparse.ArgumentParser`
+            The argument parser.
+
+        Notes
+        -----
+        If you override this method then you should almost certainly override
+        `add_kwargs_from_args` as well.
+        """
+        pass
+
+    @classmethod
+    def add_kwargs_from_args(cls, args, kwargs):
+        """Add constructor keyword arguments based on parsed arguments.
+
+        Parameters
+        ----------
+        args : `argparse.namespace`
+            Parsed command.
+        kwargs : `dict`
+            Keyword argument dict for the constructor.
+            The index argument will already be present if relevant.
+            Update this based on args.
+
+        Notes
+        -----
+        If you override this method then you should almost certainly override
+        `add_arguments` as well.
+        """
+        pass
 
     def do_disable(self, id_data):
         """Transition to from `State.ENABLED` to `State.DISABLED`.
