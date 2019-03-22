@@ -36,8 +36,12 @@ class State(enum.IntEnum):
     """State constants.
 
     The numeric values come from
-    https://confluence.lsstcorp.org/display/SYSENG/SAL+constraints+and+recommendations
+    https://confluence.lsstcorp.org/display/SYSENG/
+        SAL+constraints+and+recommendations
     """
+    # This does not use SALPY enum values because that would require a SALPY
+    # library. Using hard-coded values makes State available to all packages
+    # without having to know which SALPY library the package uses.
     OFFLINE = 4
     STANDBY = 5
     DISABLED = 1
