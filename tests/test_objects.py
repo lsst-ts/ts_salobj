@@ -1244,16 +1244,21 @@ class ControllerCommandLoggingTestCase(unittest.TestCase):
 class BaseCscMainTestCase(unittest.TestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_domain()
+        self.original_argv = sys.argv[:]
+
+    def tearDown(self):
+        sys.argv = self.original_argv
 
     def test_no_index(self):
         async def doit(index):
+            sys.argv = sys.argv[0:1]
             arg1 = "astring"
             arg2 = 2.75
             csc = NoIndexCsc.main(index=index, arg1=arg1, arg2=arg2, run_loop=False)
             self.assertEqual(csc.arg1, arg1)
             self.assertEqual(csc.arg2, arg2)
             csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
-            await csc.done_task
+            await asyncio.wait_for(csc.done_task, timeout=5)
 
         for index in (False, None):
             with self.subTest(index=index):
@@ -1261,26 +1266,23 @@ class BaseCscMainTestCase(unittest.TestCase):
 
     def test_specified_index(self):
         async def doit():
+            sys.argv = sys.argv[0:1]
             index = next(index_gen)
             csc = salobj.TestCsc.main(index=index, run_loop=False)
             self.assertEqual(csc.salinfo.index, index)
             csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
-            await csc.done_task
+            await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
     def test_index_from_argument(self):
         async def doit():
             index = next(index_gen)
-            original_argv = sys.argv[:]
-            try:
-                sys.argv[:] = [sys.argv[0], str(index)]
-                csc = salobj.TestCsc.main(index=True, run_loop=False)
-                self.assertEqual(csc.salinfo.index, index)
-                csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
-                await csc.done_task
-            finally:
-                sys.argv[:] = original_argv
+            sys.argv = [sys.argv[0], str(index)]
+            csc = salobj.TestCsc.main(index=True, run_loop=False)
+            self.assertEqual(csc.salinfo.index, index)
+            csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
+            await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
