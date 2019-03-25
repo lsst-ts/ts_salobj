@@ -22,6 +22,6 @@
 
 """An example of how to run a CSC"""
 
-from lsst.ts.salobj.test_utils import TestCsc
+from lsst.ts.salobj import TestCsc
 
 TestCsc.main(index=True)
