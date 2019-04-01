@@ -62,15 +62,9 @@ class Logger:
 
     Parameters
     ----------
-    index : `int`
-        Index of SAL Script component. This must be unique among all
-        SAL scripts that are currently running.
-    descr : `str`
-        Short description of what the script does, for operator display.
-    remotes_dict : `dict` of `str` : `Remote` (optional)
-        Dict of attribute name: `Remote`, or `None` if no remotes.
-        These remotes are added as attributes of ``self`` and are also
-        used to generate a list of remote names for script metadata.
+    initial_level : `int`
+        Initial logging level: `logging.ERROR`=40, `logging.WARNING`=30,
+        `logging.INFO`=20, `logging.DEBUG`=10
 
     Notes
     -----
