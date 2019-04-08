@@ -21,6 +21,9 @@
 
 __all__ = ["RemoteEvent"]
 
+import time
+
+from .base_topic import SAL_SLEEP
 from .remote_telemetry import RemoteTelemetry
 
 
@@ -50,3 +53,4 @@ class RemoteEvent(RemoteTelemetry):
             self.salinfo.manager.salEventSub(topic_name)
         except Exception as e:
             raise RuntimeError(f"Could not subscribe to telemetry {self.name}") from e
+        time.sleep(SAL_SLEEP)

@@ -25,7 +25,7 @@ import asyncio
 import inspect
 import time
 
-from .base_topic import BaseTopic
+from .base_topic import BaseTopic, SAL_SLEEP
 
 
 class RemoteTelemetry(BaseTopic):
@@ -72,6 +72,7 @@ class RemoteTelemetry(BaseTopic):
         if not self.has_callback:
             data = self.DataType()
             retcode = self._get_newest_func(data)
+            time.sleep(SAL_SLEEP)
             if retcode == self.salinfo.lib.SAL__OK:
                 self.data = data
             elif retcode == self.salinfo.lib.SAL__NO_UPDATES:
@@ -102,6 +103,7 @@ class RemoteTelemetry(BaseTopic):
 
         data = self.DataType()
         retcode = self._get_oldest_func(data)
+        time.sleep(SAL_SLEEP)
         if retcode == self.salinfo.lib.SAL__OK:
             self.data = data
             return data
@@ -160,6 +162,7 @@ class RemoteTelemetry(BaseTopic):
         # the SAL flush function needs data, but doesn't do anything with it
         null_data = self.DataType()
         self._flush_func(null_data)
+        time.sleep(SAL_SLEEP)
 
     @property
     def allow_multiple_callbacks(self):
@@ -323,3 +326,4 @@ class RemoteTelemetry(BaseTopic):
             self.salinfo.manager.salTelemetrySub(topic_name)
         except Exception as e:
             raise RuntimeError(f"Could not subscribe to telemetry {self.name}") from e
+        time.sleep(SAL_SLEEP)
