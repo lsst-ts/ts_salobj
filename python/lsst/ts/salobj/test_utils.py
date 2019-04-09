@@ -255,7 +255,6 @@ class TestCsc(base_csc.BaseCsc):
         ):
             field = getattr(data, field_name)
             iinfo = np.iinfo(field.dtype)
-            print(f"{field_name} has type {field.dtype}")
             field[:] = np.random.randint(iinfo.min, iinfo.max, size=(nelts,), dtype=field.dtype)
         data.float0[:] = np.random.uniform(-1e5, 1e5, size=(nelts,))
         data.double0[:] = np.random.uniform(-1e5, 1e5, size=(nelts,))
