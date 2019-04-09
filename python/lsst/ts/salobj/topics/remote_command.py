@@ -165,7 +165,7 @@ class RemoteCommand(BaseOutputTopic):
         self._start_wait_for_ack(cmd_info=cmd_info, timeout=timeout)
         return cmd_info.done_task
 
-    def start(self, data=None, timeout=None, wait_done=True):
+    async def start(self, data=None, timeout=None, wait_done=True):
         """Start a command.
 
         Parameters
@@ -207,7 +207,7 @@ class RemoteCommand(BaseOutputTopic):
         cmd_info = _CommandInfo(remote_command=self, cmd_id=cmd_id, wait_done=wait_done)
         self._running_cmds[cmd_id] = cmd_info
         self._start_wait_for_ack(cmd_info=cmd_info, timeout=timeout)
-        return cmd_info.done_task
+        return await cmd_info.done_task
 
     def _start_wait_for_ack(self, cmd_info, timeout):
         cmd_info.start_timeout(timeout)
