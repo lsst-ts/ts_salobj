@@ -236,7 +236,7 @@ class TestCsc(base_csc.BaseCsc):
         return self._make_random_scalars(dtype=self.tel_scalars.DataType)
 
     def _make_random_arrays(self, dtype):
-        """Make random arrays data using numpy.random."""
+        """Make random arrays or setArrays data using numpy.random."""
         nelts = 5
         data = dtype()
         data.boolean0[:] = np.random.choice([False, True], size=(nelts,))
@@ -262,7 +262,7 @@ class TestCsc(base_csc.BaseCsc):
         return data
 
     def _make_random_scalars(self, dtype):
-        """Make random data for cmd_setScalars using numpy.random."""
+        """Make random setScalars or scalars data using numpy.random."""
         data = dtype()
         # also make an empty arrays struct to get dtype of int fields,
         # since that information is lost in the scalars pybind11 wrapper
