@@ -25,6 +25,9 @@ import abc
 
 import numpy as np
 
+# Time to sleep after each SAL command to give the C++ threads time to work.
+# Note: always use `time.sleep(SAL_SLEEP)` instead of
+# `await asyncio.sleep(SAL_SLEEP)` because the latter may keep Python too busy.
 SAL_SLEEP = 0.001  # time to sleep after each SAL command
 
 

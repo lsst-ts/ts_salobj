@@ -271,7 +271,7 @@ class ControllerCommand(BaseTopic):
         while True:
             cmd_id = self._accept_func(data)
             if cmd_id > 0:
-                await asyncio.sleep(SAL_SLEEP)
+                time.sleep(SAL_SLEEP)
                 return CommandIdData(cmd_id, data)
 
             await asyncio.sleep(0.05)
