@@ -22,6 +22,7 @@
 __all__ = ["TestCsc"]
 
 import asyncio
+import pathlib
 import string
 import warnings
 
@@ -31,10 +32,11 @@ try:
     import SALPY_Test
 except ImportError:
     warnings.warn("Could not import SALPY_Test; TestCsc will not work")
-from . import base_csc
+from .base_csc import State
+from .configurable_csc import ConfigurableCsc
 
 
-class TestCsc(base_csc.BaseCsc):
+class TestCsc(ConfigurableCsc):
     """A simple CSC intended for unit testing.
 
     Supported commands:
@@ -57,6 +59,8 @@ class TestCsc(base_csc.BaseCsc):
     index : `int`
         Index of Test component; each unit test method
         should use a different index.
+    config_dir : `str` (optional)
+        Path to configuration files.
     initial_state : `salobj.State` (optional)
         The initial state of the CSC. Typically one of:
 
@@ -67,11 +71,13 @@ class TestCsc(base_csc.BaseCsc):
     """
     __test__ = False  # stop pytest from warning that this is not a test
 
-    def __init__(self, index, initial_state=base_csc.State.STANDBY, initial_simulation_mode=0):
-        super().__init__(SALPY_Test, index=index, initial_state=initial_state,
+    def __init__(self, index, config_dir=None, initial_state=State.STANDBY, initial_simulation_mode=0):
+        schema_path = pathlib.Path(__file__).resolve().parents[4].joinpath("schema", "Test.yaml")
+        super().__init__(SALPY_Test, schema_path=schema_path, config_dir=config_dir,
+                         index=index, initial_state=initial_state,
                          initial_simulation_mode=initial_simulation_mode)
         self.cmd_wait.allow_multiple_callbacks = True
-        self.settingsToApply = None
+        self.config = None
 
     def do_setArrays(self, id_data):
         """Execute the setArrays command."""
@@ -114,11 +120,6 @@ class TestCsc(base_csc.BaseCsc):
         """
         self.log.warning("executing fault")
         self.fault()
-
-    def do_start(self, id_data):
-        """Save the settingsToApply field."""
-        super().do_start(id_data)
-        self.settingsToApply = id_data.data.settingsToApply
 
     async def do_wait(self, id_data):
         """Execute the wait command.
@@ -248,3 +249,10 @@ class TestCsc(base_csc.BaseCsc):
         data.float0 = np.random.uniform(-1e5, 1e5)
         data.double0 = np.random.uniform(-1e5, 1e5)
         return data
+
+    @staticmethod
+    def get_config_pkg():
+        return "ts_config_ocs"
+
+    def configure(self, config):
+        self.config = config
