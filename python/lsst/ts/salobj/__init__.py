@@ -5,4 +5,5 @@ from .logger import *
 from .remote import *
 from .csc_utils import *
 from .test_utils import *
+from .test_csc import *
 from .version import *
