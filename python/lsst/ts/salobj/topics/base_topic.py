@@ -19,11 +19,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["BaseTopic", "BaseOutputTopic"]
+__all__ = ["SAL_SLEEP", "BaseTopic", "BaseOutputTopic"]
 
 import abc
 
 import numpy as np
+
+# Time to sleep after each SAL command to give the C++ threads time to work.
+# Note: always use `time.sleep(SAL_SLEEP)` instead of
+# `await asyncio.sleep(SAL_SLEEP)` because the latter may keep Python too busy.
+SAL_SLEEP = 0.001  # time to sleep after each SAL command
 
 
 class BaseTopic(abc.ABC):

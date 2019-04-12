@@ -21,7 +21,9 @@
 
 __all__ = ["ControllerTelemetry"]
 
-from .base_topic import BaseOutputTopic
+import time
+
+from .base_topic import BaseOutputTopic, SAL_SLEEP
 
 
 class ControllerTelemetry(BaseOutputTopic):
@@ -50,6 +52,7 @@ class ControllerTelemetry(BaseOutputTopic):
         if data is not None:
             self.data = data
         retcode = self._put_func(self.data)
+        time.sleep(0.001)
         if retcode != self.salinfo.lib.SAL__OK:
             raise RuntimeError(f"put failed with return code {retcode} from {self._put_func_name}")
 
@@ -88,3 +91,4 @@ class ControllerTelemetry(BaseOutputTopic):
             self.salinfo.manager.salTelemetryPub(topic_name)
         except Exception as e:
             raise RuntimeError(f"Could not subscribe to telemetry {self.name}") from e
+        time.sleep(SAL_SLEEP)

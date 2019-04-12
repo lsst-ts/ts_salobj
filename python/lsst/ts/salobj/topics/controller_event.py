@@ -21,6 +21,9 @@
 
 __all__ = ["ControllerEvent"]
 
+import time
+
+from .base_topic import SAL_SLEEP
 from .controller_telemetry import ControllerTelemetry
 
 
@@ -53,6 +56,7 @@ class ControllerEvent(ControllerTelemetry):
         if data is not None:
             self.data = data
         retcode = self._put_func(self.data, priority)
+        time.sleep(SAL_SLEEP)
         if retcode != self.salinfo.lib.SAL__OK:
             raise RuntimeError(f"salProcessor({self.name}) failed with return code {retcode}")
 
@@ -98,3 +102,4 @@ class ControllerEvent(ControllerTelemetry):
             self.salinfo.manager.salEventPub(topic_name)
         except Exception as e:
             raise RuntimeError(f"Could not subscribe to event {self.name}") from e
+        time.sleep(SAL_SLEEP)

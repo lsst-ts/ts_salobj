@@ -23,10 +23,11 @@ __all__ = ["RemoteCommand"]
 
 import asyncio
 import logging
+import time
 import warnings
 
 from ..base import AckError, CommandIdAck
-from .base_topic import BaseOutputTopic
+from .base_topic import BaseOutputTopic, SAL_SLEEP
 
 DEFAULT_TIMEOUT = 60*60  # default timeout, in seconds
 
@@ -165,7 +166,7 @@ class RemoteCommand(BaseOutputTopic):
         self._start_wait_for_ack(cmd_info=cmd_info, timeout=timeout)
         return cmd_info.done_task
 
-    def start(self, data=None, timeout=None, wait_done=True):
+    async def start(self, data=None, timeout=None, wait_done=True):
         """Start a command.
 
         Parameters
@@ -200,6 +201,7 @@ class RemoteCommand(BaseOutputTopic):
         if data is not None:
             self.data = data
         cmd_id = self._issue_func(self.data)
+        time.sleep(SAL_SLEEP)
         if cmd_id <= 0:
             raise RuntimeError(f"{self.name} command with data={data} could not be started")
         if cmd_id in self._running_cmds:
@@ -207,7 +209,7 @@ class RemoteCommand(BaseOutputTopic):
         cmd_info = _CommandInfo(remote_command=self, cmd_id=cmd_id, wait_done=wait_done)
         self._running_cmds[cmd_id] = cmd_info
         self._start_wait_for_ack(cmd_info=cmd_info, timeout=timeout)
-        return cmd_info.done_task
+        return await cmd_info.done_task
 
     def _start_wait_for_ack(self, cmd_info, timeout):
         cmd_info.start_timeout(timeout)
@@ -221,6 +223,7 @@ class RemoteCommand(BaseOutputTopic):
         while True:
             try:
                 response_id = self._response_func(ack)
+                time.sleep(SAL_SLEEP)
             except Exception as e:
                 self.log.warning(f"{self._response_func_name} raised {e}")
                 continue
@@ -267,3 +270,4 @@ class RemoteCommand(BaseOutputTopic):
             self.salinfo.manager.salCommand(topic_name)
         except Exception as e:
             raise RuntimeError(f"Could not subscribe to command {self.name}") from e
+        time.sleep(SAL_SLEEP)
