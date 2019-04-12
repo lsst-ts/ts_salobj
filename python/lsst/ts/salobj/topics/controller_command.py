@@ -23,8 +23,9 @@ __all__ = ["ControllerCommand"]
 
 import asyncio
 import inspect
+import time
 
-from .base_topic import BaseTopic
+from .base_topic import BaseTopic, SAL_SLEEP
 from ..base import CommandIdData, ExpectedError
 
 
@@ -59,6 +60,7 @@ class ControllerCommand(BaseTopic):
             Command acknowledgement.
         """
         self._ack_func(id_data.cmd_id, ack.ack, ack.error, ack.result)
+        time.sleep(SAL_SLEEP)
 
     def ackInProgress(self, id_data, result=""):
         """Ackowledge this command as "in progress".
@@ -106,6 +108,7 @@ class ControllerCommand(BaseTopic):
 
         data = self.DataType()
         cmd_id = self._accept_func(data)
+        time.sleep(SAL_SLEEP)
         if cmd_id > 0:
             return CommandIdData(cmd_id, data)
         return None
@@ -268,6 +271,7 @@ class ControllerCommand(BaseTopic):
         while True:
             cmd_id = self._accept_func(data)
             if cmd_id > 0:
+                time.sleep(SAL_SLEEP)
                 return CommandIdData(cmd_id, data)
 
             await asyncio.sleep(0.05)
@@ -284,3 +288,4 @@ class ControllerCommand(BaseTopic):
             self.salinfo.manager.salProcessor(topic_name)
         except Exception as e:
             raise RuntimeError(f"Could not subscribe to command {self.name}") from e
+        time.sleep(SAL_SLEEP)

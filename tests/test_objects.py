@@ -65,7 +65,7 @@ class CommunicateTestCase(unittest.TestCase):
                 summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=10)
                 self.assertEqual(summaryState_data.summaryState, salobj.State.OFFLINE)
 
-                await asyncio.wait_for(process.wait(), 2)
+                await asyncio.wait_for(process.wait(), 5)
             except Exception:
                 if process.returncode is None:
                     process.terminate()
@@ -186,9 +186,9 @@ class CommunicateTestCase(unittest.TestCase):
             harness.csc.tel_scalars.put(tel_data2)
             harness.csc.assert_scalars_equal(tel_data2, harness.csc.tel_scalars.data)
             data = await harness.remote.tel_scalars.next(flush=False, timeout=1)
+            harness.csc.assert_scalars_equal(data, harness.csc.tel_scalars.data)
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.remote.tel_scalars.next(flush=False, timeout=0.1)
-            harness.csc.assert_scalars_equal(data, harness.csc.tel_scalars.data)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
@@ -213,18 +213,18 @@ class CommunicateTestCase(unittest.TestCase):
             harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
             harness.csc.evt_scalars.put()
             data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
+            harness.csc.assert_scalars_equal(data, harness.csc.evt_scalars.data)
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
-            harness.csc.assert_scalars_equal(data, harness.csc.evt_scalars.data)
 
             # put random event data specifying the data
             evt_data2 = harness.csc.make_random_evt_scalars()
             harness.csc.evt_scalars.put(evt_data2)
             harness.csc.assert_scalars_equal(evt_data2, harness.csc.evt_scalars.data)
             data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
+            harness.csc.assert_scalars_equal(data, harness.csc.evt_scalars.data)
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
-            harness.csc.assert_scalars_equal(data, harness.csc.evt_scalars.data)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
@@ -247,20 +247,20 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertTrue(harness.csc.tel_scalars.has_data)
             harness.csc.assert_scalars_equal(tel_data1, harness.csc.tel_scalars.data)
             data = await harness.remote.tel_scalars.next(flush=False, timeout=1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.tel_scalars.next(flush=False, timeout=0.1)
             harness.csc.assert_scalars_equal(data, tel_data1)
             harness.csc.assert_scalars_equal(data, harness.remote.tel_scalars.data)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.tel_scalars.next(flush=False, timeout=0.1)
 
             # set_put the same data again; the telemetry should be sent
             harness.csc.tel_scalars.set_put(**dict_data1)
             self.assertTrue(harness.csc.tel_scalars.has_data)
             harness.csc.assert_scalars_equal(tel_data1, harness.csc.tel_scalars.data)
             data = await harness.remote.tel_scalars.next(flush=False, timeout=1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.tel_scalars.next(flush=False, timeout=0.1)
             harness.csc.assert_scalars_equal(data, tel_data1)
             harness.csc.assert_scalars_equal(data, harness.remote.tel_scalars.data)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.tel_scalars.next(flush=False, timeout=0.1)
 
             # use None for values to set_put; the same telemetry should be sent
             none_dict = dict((key, None) for key in dict_data1)
@@ -268,10 +268,10 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertTrue(harness.csc.tel_scalars.has_data)
             harness.csc.assert_scalars_equal(tel_data1, harness.csc.tel_scalars.data)
             data = await harness.remote.tel_scalars.next(flush=False, timeout=1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.tel_scalars.next(flush=False, timeout=0.1)
             harness.csc.assert_scalars_equal(data, tel_data1)
             harness.csc.assert_scalars_equal(data, harness.remote.tel_scalars.data)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.tel_scalars.next(flush=False, timeout=0.1)
 
             # try an invalid key
             with self.assertRaises(AttributeError):
@@ -326,10 +326,10 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertTrue(did_put)
             harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
             data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
             harness.csc.assert_scalars_equal(data, evt_data1)
             harness.csc.assert_scalars_equal(data, harness.remote.evt_scalars.data)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
 
             # set_put with None values; the event should *not* be sent
             none_dict = dict((key, None) for key in dict_data1)
@@ -344,10 +344,10 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertTrue(did_put)
             harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
             data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
             harness.csc.assert_scalars_equal(data, evt_data1)
             harness.csc.assert_scalars_equal(data, harness.remote.evt_scalars.data)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
 
             # set_put the same data again; the event should *not* be sent
             did_put = harness.csc.evt_scalars.set_put(**dict_data1)
@@ -360,10 +360,10 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertTrue(did_put)
             harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
             data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
             harness.csc.assert_scalars_equal(data, evt_data1)
             harness.csc.assert_scalars_equal(data, harness.remote.evt_scalars.data)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
 
             # change one field of the data and set_put again
             dict_data1["int0"] = dict_data1["int0"] + 1
@@ -374,10 +374,10 @@ class CommunicateTestCase(unittest.TestCase):
             evt_data1.int0 += 1
             harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
             data = await harness.remote.evt_scalars.next(flush=False, timeout=1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
             harness.csc.assert_scalars_equal(data, evt_data1)
             harness.csc.assert_scalars_equal(data, harness.remote.evt_scalars.data)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.evt_scalars.next(flush=False, timeout=0.1)
 
             # try an invalid key
             with self.assertRaises(AttributeError):
@@ -686,7 +686,8 @@ class CommunicateTestCase(unittest.TestCase):
         start_time = time.time()
         asyncio.get_event_loop().run_until_complete(doit())
         duration = time.time() - start_time
-        self.assertGreaterEqual(duration, np.sum(durations))
+        # 0.1 gives a little slop for imprecise timing
+        self.assertGreaterEqual(duration + 0.1, np.sum(durations))
 
     def test_asynchronous_event_callback(self):
         harness = Harness(initial_state=salobj.State.ENABLED)
@@ -813,7 +814,7 @@ class CommunicateTestCase(unittest.TestCase):
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.remote.evt_errorCode.next(flush=False, timeout=0.1)
 
-            harness.remote.cmd_standby.start(timeout=1)
+            await harness.remote.cmd_standby.start(timeout=1)
             state = await harness.remote.evt_summaryState.next(flush=False, timeout=1)
             self.assertEqual(state.summaryState, salobj.State.STANDBY)
 
@@ -824,7 +825,7 @@ class CommunicateTestCase(unittest.TestCase):
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.remote.evt_errorCode.next(flush=False, timeout=0.1)
 
-            harness.remote.cmd_standby.start(timeout=1)
+            await harness.remote.cmd_standby.start(timeout=1)
             state = await harness.remote.evt_summaryState.next(flush=False, timeout=1)
             self.assertEqual(state.summaryState, salobj.State.STANDBY)
 
@@ -838,7 +839,7 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertEqual(data.errorCode, code)
             self.assertEqual(data.errorReport, report)
 
-            harness.remote.cmd_standby.start(timeout=1)
+            await harness.remote.cmd_standby.start(timeout=1)
             state = await harness.remote.evt_summaryState.next(flush=False, timeout=1)
             self.assertEqual(state.summaryState, salobj.State.STANDBY)
 
@@ -849,8 +850,8 @@ class CommunicateTestCase(unittest.TestCase):
             self.assertEqual(data.errorCode, code)
             self.assertEqual(data.errorReport, "")
 
-            harness.remote.cmd_standby.start(timeout=1)
-            harness.remote.cmd_exitControl.start(timeout=1)
+            await harness.remote.cmd_standby.start(timeout=1)
+            await harness.remote.cmd_exitControl.start(timeout=1)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
