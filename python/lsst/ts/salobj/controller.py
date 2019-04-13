@@ -56,7 +56,8 @@ class Controller(logger.Logger):
 
     Writing a Controller:
 
-    (To write a CSC see :ref:`Writing a CSC<writing_a_csc>`, instead)
+    (To write a CSC see :ref:`Writing a CSC<lsst.ts.salobj-writing_a_csc>`,
+    instead)
 
     To write a controller that is not a CSC (one that does not provide
     the standard summary states and associated state transition commands):

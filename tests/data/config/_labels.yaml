@@ -1,0 +1,12 @@
+# Labels for recommended settings; a dict of label: config_file
+all_fields: all_fields.yaml
+empty: empty.yaml
+some_fields: some_fields.yaml
+_invalid_label_name: empty.yaml
+label_to_missing_file: nonexistent_file.yaml
+_invalid_label_to_missing_file: nonexistent_file.yaml
+long_label1_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars: empty.yaml
+long_label2_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars: empty.yaml
+long_label3_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars: empty.yaml
+long_label4_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars: empty.yaml
+long_label5_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars: empty.yaml

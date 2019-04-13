@@ -1,11 +1,14 @@
 import asyncio
 import logging
+import os
+import pathlib
 import shutil
 import sys
 import time
 import unittest
 
 import numpy as np
+import yaml
 
 try:
     import SALPY_Test
@@ -13,16 +16,22 @@ except ImportError:
     SALPY_Test = None
 from lsst.ts import salobj
 
+SHOW_LOG_MESSAGES = False
+
 np.random.seed(47)
 
 index_gen = salobj.index_generator()
+TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent.joinpath("data", "config")
 
 
 class Harness:
-    def __init__(self, initial_state):
+    def __init__(self, initial_state, config_dir=None):
         index = next(index_gen)
         salobj.set_random_lsst_dds_domain()
-        self.csc = salobj.TestCsc(index=index, initial_state=initial_state)
+        self.csc = salobj.TestCsc(index=index, config_dir=config_dir, initial_state=initial_state)
+        if SHOW_LOG_MESSAGES:
+            handler = logging.StreamHandler()
+            self.csc.log.addHandler(handler)
         self.remote = salobj.Remote(SALPY_Test, index)
 
 
@@ -57,7 +66,7 @@ class CommunicateTestCase(unittest.TestCase):
             process = await asyncio.create_subprocess_exec(exe_name, str(index))
             try:
                 remote = salobj.Remote(SALPY_Test, index)
-                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=20)
+                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=60)
                 self.assertEqual(summaryState_data.summaryState, salobj.State.STANDBY)
 
                 id_ack = await remote.cmd_exitControl.start(timeout=2)
@@ -779,10 +788,6 @@ class CommunicateTestCase(unittest.TestCase):
                 # make sure we can go from any non-OFFLINE state to FAULT
                 await harness.remote.cmd_fault.start(fault_data, timeout=2)
                 self.assertEqual(harness.csc.summary_state, salobj.State.FAULT)
-                log_message = await harness.remote.evt_logMessage.next(flush=False, timeout=1)
-                self.assertIsNotNone(log_message)
-                self.assertEqual(log_message.level, logging.WARNING)
-                self.assertIn("fault", log_message.message.lower())
 
                 await harness.remote.cmd_standby.start(standby_data, timeout=2)
                 self.assertEqual(harness.csc.summary_state, salobj.State.STANDBY)
@@ -1012,11 +1017,12 @@ class CommunicateTestCase(unittest.TestCase):
         async def doit():
             salobj.set_random_lsst_dds_domain()
             for initial_simulation_mode in (1, 3, 4):
-                csc = salobj.TestCsc(index=1, initial_simulation_mode=initial_simulation_mode)
+                csc = salobj.TestCsc(index=1, config_dir=TEST_CONFIG_DIR,
+                                     initial_simulation_mode=initial_simulation_mode)
                 with self.assertRaises(salobj.ExpectedError):
                     await csc.start_task
 
-            csc = salobj.TestCsc(index=1, initial_simulation_mode=0)
+            csc = salobj.TestCsc(index=1, config_dir=TEST_CONFIG_DIR, initial_simulation_mode=0)
             await csc.start_task
             self.assertEqual(csc.simulation_mode, 0)
 
@@ -1178,10 +1184,28 @@ class ControllerConstructorTestCase(unittest.TestCase):
 
 class NoIndexCsc(salobj.TestCsc):
     """A CSC whose constructor has no index argument"""
-    def __init__(self, arg1, arg2):
-        super().__init__(index=next(index_gen))
+    def __init__(self, arg1, arg2, config_dir=None):
+        super().__init__(index=next(index_gen), config_dir=TEST_CONFIG_DIR)
         self.arg1 = arg1
         self.arg2 = arg2
+
+
+class InvalidPkgNameCsc(salobj.TestCsc):
+    """A CSC whose get_pkg_name classmethod returns a nonexistent package.
+    """
+    @staticmethod
+    def get_config_pkg():
+        """Return a name of a non-existent package."""
+        return "not_a_valid_pkg_name"
+
+
+class WrongConfigPkgCsc(salobj.TestCsc):
+    """A CSC whose get_pkg_name classmethod returns the wrong package.
+    """
+    @staticmethod
+    def get_config_pkg():
+        """Return a package that does not have a Test subdirectory."""
+        return "ts_salobj"
 
 
 @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
@@ -1197,6 +1221,20 @@ class TestCscConstructorTestCase(unittest.TestCase):
                 csc = salobj.TestCsc(index=next(index_gen), initial_state=int_state)
                 self.assertEqual(csc.summary_state, state)
 
+    def test_invalid_config_dir(self):
+        """Test that invalid integer initial_state is rejected."""
+        with self.assertRaises(ValueError):
+            salobj.TestCsc(index=next(index_gen), initial_state=salobj.State.STANDBY,
+                           config_dir=TEST_CONFIG_DIR / "not_a_directory")
+
+    def test_invalid_config_pkg(self):
+        with self.assertRaises(RuntimeError):
+            InvalidPkgNameCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
+
+    def test_wrong_config_pkg(self):
+        with self.assertRaises(RuntimeError):
+            WrongConfigPkgCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
+
     def test_invalid_initial_state(self):
         """Test that invalid integer initial_state is rejected."""
         for invalid_state in (min(salobj.State) - 1,
@@ -1206,10 +1244,156 @@ class TestCscConstructorTestCase(unittest.TestCase):
                     salobj.TestCsc(index=next(index_gen), initial_state=invalid_state)
 
 
+@unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
+class ConfigurationTestCase(unittest.TestCase):
+    def setUp(self):
+        salobj.set_random_lsst_dds_domain()
+        self.harness = Harness(initial_state=salobj.State.STANDBY,
+                               config_dir=TEST_CONFIG_DIR)
+        # defaults hard-coded in <ts_salobj_root>/schema/Test.yaml
+        self.default_dict = dict(string0="default value for string0",
+                                 bool0=True,
+                                 int0=5,
+                                 float0=3.14,
+                                 intarr0=[-1, 1],
+                                 )
+        self.config_fields = self.default_dict.keys()
+
+    def test_no_config_specified(self):
+        async def doit():
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.STANDBY)
+            data = await self.harness.remote.evt_settingVersions.next(flush=False, timeout=2)
+            self.assertEqual(pathlib.Path(TEST_CONFIG_DIR).resolve().as_uri(), data.settingsUrl)
+            self.assertTrue(len(data.recommendedSettingsVersion) > 0)
+            expected_labels = (
+                "all_fields", "empty", "some_fields",
+                "long_label1_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
+                "long_label2_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
+                "long_label3_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
+                "long_label4_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
+                "long_label5_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
+            )
+            self.assertEqual(data.recommendedSettingsLabels, ",".join(expected_labels))
+            await self.harness.remote.cmd_start.start(timeout=2)
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.DISABLED)
+            config = self.harness.csc.config
+            for key, expected_value in self.default_dict.items():
+                self.assertEqual(getattr(config, key), expected_value)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_empty_label(self):
+        config_name = "empty"
+
+        async def doit():
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.STANDBY)
+            self.harness.remote.cmd_start.set(settingsToApply=config_name)
+            await self.harness.remote.cmd_start.start(timeout=2)
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.DISABLED)
+            config = self.harness.csc.config
+            for key, expected_value in self.default_dict.items():
+                self.assertEqual(getattr(config, key), expected_value)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_some_fields_label(self):
+        """Test a config with some fields set to valid values."""
+        config_label = "some_fields"
+        config_file = "some_fields.yaml"
+
+        async def doit():
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.STANDBY)
+            self.harness.remote.cmd_start.set(settingsToApply=config_label)
+            await self.harness.remote.cmd_start.start(timeout=2)
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.DISABLED)
+            config = self.harness.csc.config
+            config_path = os.path.join(self.harness.csc.config_dir, config_file)
+            with open(config_path, "r") as f:
+                config_yaml = f.read()
+            config_from_file = yaml.safe_load(config_yaml)
+            for key, default_value in self.default_dict.items():
+                if key in config_from_file:
+                    self.assertEqual(getattr(config, key), config_from_file[key])
+                    self.assertNotEqual(getattr(config, key), default_value)
+                else:
+                    self.assertEqual(getattr(config, key), default_value)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_some_fields_file(self):
+        """Test a config with some fields set to valid values."""
+        config_file = "some_fields.yaml"
+
+        async def doit():
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.STANDBY)
+            self.harness.remote.cmd_start.set(settingsToApply=config_file)
+            await self.harness.remote.cmd_start.start(timeout=2)
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.DISABLED)
+            config = self.harness.csc.config
+            config_path = os.path.join(self.harness.csc.config_dir, config_file)
+            with open(config_path, "r") as f:
+                config_yaml = f.read()
+            config_from_file = yaml.safe_load(config_yaml)
+            for key, default_value in self.default_dict.items():
+                if key in config_from_file:
+                    self.assertEqual(getattr(config, key), config_from_file[key])
+                    self.assertNotEqual(getattr(config, key), default_value)
+                else:
+                    self.assertEqual(getattr(config, key), default_value)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_all_fields_label(self):
+        """Test a config with all fields set to valid values."""
+        config_name = "all_fields"
+        config_file = "all_fields.yaml"
+
+        async def doit():
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.STANDBY)
+            self.harness.remote.cmd_start.set(settingsToApply=config_name)
+            await self.harness.remote.cmd_start.start(timeout=2)
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.DISABLED)
+            config = self.harness.csc.config
+            config_path = os.path.join(self.harness.csc.config_dir, config_file)
+            with open(config_path, "r") as f:
+                config_yaml = f.read()
+            config_from_file = yaml.safe_load(config_yaml)
+            for key in self.config_fields:
+                self.assertEqual(getattr(config, key), config_from_file[key])
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_invalid_configs(self):
+        async def doit():
+            data = await self.harness.remote.evt_summaryState.next(flush=False, timeout=2)
+            self.assertEqual(data.summaryState, salobj.State.STANDBY)
+            for name in ("all_bad_types", "bad_format", "one_bad_type", "extra_field"):
+                config_file = f"invalid_{name}.yaml"
+                with self.subTest(config_file=config_file):
+                    self.harness.remote.cmd_start.set(settingsToApply=config_file)
+                    with self.assertRaises(salobj.AckError):
+                        await self.harness.remote.cmd_start.start(timeout=2)
+                    data = self.harness.remote.evt_summaryState.get()
+                    self.assertEqual(self.harness.csc.summary_state, salobj.State.STANDBY)
+                    self.assertEqual(data.summaryState, salobj.State.STANDBY)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+
 class FailedCallbackCsc(salobj.TestCsc):
     """A CSC whose do_wait command raises a RuntimeError"""
     def __init__(self, index, initial_state):
-        super().__init__(index=index, initial_state=initial_state)
+        super().__init__(index=index, config_dir=TEST_CONFIG_DIR, initial_state=initial_state)
         self.exc_msg = "do_wait raised an exception on purpose"
 
     async def do_wait(self, id_data):
@@ -1244,16 +1428,21 @@ class ControllerCommandLoggingTestCase(unittest.TestCase):
 class BaseCscMainTestCase(unittest.TestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_domain()
+        self.original_argv = sys.argv[:]
+
+    def tearDown(self):
+        sys.argv = self.original_argv
 
     def test_no_index(self):
         async def doit(index):
+            sys.argv = [sys.argv[0]]
             arg1 = "astring"
             arg2 = 2.75
             csc = NoIndexCsc.main(index=index, arg1=arg1, arg2=arg2, run_loop=False)
             self.assertEqual(csc.arg1, arg1)
             self.assertEqual(csc.arg2, arg2)
             csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
-            await csc.done_task
+            await asyncio.wait_for(csc.done_task, timeout=5)
 
         for index in (False, None):
             with self.subTest(index=index):
@@ -1261,26 +1450,42 @@ class BaseCscMainTestCase(unittest.TestCase):
 
     def test_specified_index(self):
         async def doit():
+            sys.argv = [sys.argv[0]]
             index = next(index_gen)
             csc = salobj.TestCsc.main(index=index, run_loop=False)
             self.assertEqual(csc.salinfo.index, index)
             csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
-            await csc.done_task
+            await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
-    def test_index_from_argument(self):
+    def test_index_from_argument_and_default_config_dir(self):
         async def doit():
             index = next(index_gen)
-            original_argv = sys.argv[:]
-            try:
-                sys.argv[:] = [sys.argv[0], str(index)]
-                csc = salobj.TestCsc.main(index=True, run_loop=False)
-                self.assertEqual(csc.salinfo.index, index)
-                csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
-                await csc.done_task
-            finally:
-                sys.argv[:] = original_argv
+            sys.argv = [sys.argv[0], str(index)]
+            csc = salobj.TestCsc.main(index=True, run_loop=False)
+            self.assertEqual(csc.salinfo.index, index)
+
+            desired_config_pkg_name = "ts_config_ocs"
+            desired_config_env_name = desired_config_pkg_name.upper() + "_DIR"
+            desird_config_pkg_dir = os.environ[desired_config_env_name]
+            desired_config_dir = pathlib.Path(desird_config_pkg_dir) / "Test/v1"
+            self.assertEqual(csc.get_config_pkg(), desired_config_pkg_name)
+            self.assertEqual(csc.config_dir, desired_config_dir)
+            csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
+            await asyncio.wait_for(csc.done_task, timeout=5)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_config_from_argument(self):
+        async def doit():
+            index = next(index_gen)
+            sys.argv = [sys.argv[0], str(index), "--config", str(TEST_CONFIG_DIR)]
+            csc = salobj.TestCsc.main(index=True, run_loop=False)
+            self.assertEqual(csc.salinfo.index, index)
+            self.assertEqual(csc.config_dir, TEST_CONFIG_DIR)
+            csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
+            await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
 

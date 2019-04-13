@@ -1,5 +1,6 @@
 setupRequired(sconsUtils)
 setupRequired(ts_sal)  # for SALPY libs
+setupOptional(ts_config_ocs)  # for Test configuration files
 
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
 
