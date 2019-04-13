@@ -1,0 +1,3 @@
+string0: an arbitrary string
+unwanted: "this field should not be present"
+intarr0: [0, 2, -3, -5, 4]

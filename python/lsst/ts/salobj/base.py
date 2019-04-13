@@ -20,10 +20,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = ["AckError", "CommandIdAck", "CommandIdData", "ExpectedError",
-           "index_generator", "SalInfo", "MAX_SAL_INDEX"]
+           "index_generator", "SalInfo", "MAX_SAL_INDEX", "MAX_RESULT_LEN"]
 
 
 MAX_SAL_INDEX = (2 << 30) - 1
+MAX_RESULT_LEN = 256  # max length for result field of an Ack
 
 
 def _ack_str(ack):
@@ -174,11 +175,41 @@ class SalInfo:
         """
         return self._AckType
 
-    def makeAck(self, ack, error=0, result=""):
+    def makeAck(self, ack, error=0, result="", truncate_result=False):
         """Make an AckType object from keyword arguments.
+
+        Parameters
+        ----------
+        ack : `int`
+            Acknowledgement code; one of the ``self.lib.SAL__CMD_``
+            constants, such as ``self.lib.SAL__CMD_COMPLETE``.
+        error : `int`
+            Error code. Should be 0 unless ``ack`` is
+            ``self.lib.SAL__CMD_FAILED``
+        result : `str`
+            More information. This is arbitrary, but limited to
+            `MAX_RESULT_LEN` characters.
+        truncate_result : `bool`
+            What to do if ``result`` is longer than  `MAX_RESULT_LEN`
+            characters:
+
+            * If True then silently truncate ``result`` to `MAX_RESULT_LEN`
+              characters.
+            * If False then raise `ValueError`
+
+        Raises
+        ------
+        ValueError
+            If ``len(result) > `MAX_RESULT_LEN`` and ``truncate_result``
+            is false.
         """
         data = self.AckType()
         data.ack = ack
         data.error = error
+        if len(result) > MAX_RESULT_LEN:
+            if truncate_result:
+                result = result[0:MAX_RESULT_LEN]
+            else:
+                raise ValueError(f"len(result) > MAX_RESULT_LEN={MAX_RESULT_LEN}; result={result}")
         data.result = result
         return data

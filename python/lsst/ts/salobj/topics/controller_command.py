@@ -222,7 +222,8 @@ class ControllerCommand(BaseTopic):
                     ack = result
                 self.ack(id_data, ack)
         except Exception as e:
-            ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1, result=f"Failed: {e}")
+            ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1,
+                                       result=f"Failed: {e}", truncate_result=True)
             self.ack(id_data, ack)
             if not isinstance(e, ExpectedError):
                 self.log.exception(f"cmd_{self.name} callback failed")
@@ -246,7 +247,8 @@ class ControllerCommand(BaseTopic):
                 ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_COMPLETE, result="Done")
             self.ack(id_data, ack)
         except Exception as e:
-            ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1, result=f"Failed: {e}")
+            ack = self.salinfo.makeAck(self.salinfo.lib.SAL__CMD_FAILED, error=1,
+                                       result=f"Failed: {e}", truncate_result=True)
             self.ack(id_data, ack)
             if not isinstance(e, ExpectedError):
                 self.log.exception(f"coro cmd_{self.name} callback failed")

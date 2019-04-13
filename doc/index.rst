@@ -15,10 +15,13 @@ Object-oriented Python interface to `Service Abstraction Layer`_ (SAL) component
 Using lsst.ts.salobj
 ====================
 
+.. toctree::
+    salobj_cscs
+
 Important classes:
 
-* `BaseCsc` is a subclass of `Controller` that supports the standard CSC summary states and state transition commands.
-  See :ref:`Writing a CSC<writing_a_csc>` for more information.
+* `BaseCsc` and `ConfigurableCsc` are subclasses of `Controller` that supports the standard CSC summary states and state transition commands. The latter also supports configuration via yaml files that are validated against a schema.
+  See :ref:`Writing a CSC<lsst.ts.salobj-writing_a_csc>` for more information.
 * `Controller` provides the capability to output SAL telemetry and event topics and receive SAL commands.
   Every Python SAL component that is not a Commandable SAL Component (CSC) should be a subclass of `Controller`.
   See :ref:`Writing a Controller<writing_a_controller>` for more information.
