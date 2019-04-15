@@ -59,11 +59,9 @@ class SetSummaryStateTestCSe(unittest.TestCase):
                             self.assertIsNotNone(harness.csc.config)
                         else:
                             self.assertIsNone(harness.csc.config)
-                        # TODO DM-18491 the following should work
-                        # but reliably fails for some cases:
-                        # await asyncio.sleep(0.1)
-                        # state = harness.remote.evt_summaryState.get()
-                        # self.assertEqual(state.summaryState, final_state)
+                        await asyncio.sleep(0.1)
+                        state = harness.remote.evt_summaryState.get()
+                        self.assertEqual(state.summaryState, final_state)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
