@@ -63,8 +63,8 @@ class Logger:
     Parameters
     ----------
     initial_level : `int`
-        Initial logging level: `logging.ERROR`=40, `logging.WARNING`=30,
-        `logging.INFO`=20, `logging.DEBUG`=10
+        Initial logging level, e.g. ``logging.ERROR=40``,
+        ``logging.WARNING=30``, ``logging.INFO=20``, ``logging.DEBUG=10``
 
     Notes
     -----

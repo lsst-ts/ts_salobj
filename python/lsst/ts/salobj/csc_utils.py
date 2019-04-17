@@ -54,7 +54,7 @@ _INDEX_CMD_DICT = {
 }
 
 
-async def set_summary_state(remote, state, settingsToApply="", timeout=1):
+async def set_summary_state(remote, state, settingsToApply="", timeout=10):
     """Put a CSC into the specified summary state.
 
     Parameters
