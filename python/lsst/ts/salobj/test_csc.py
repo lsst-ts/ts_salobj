@@ -254,5 +254,5 @@ class TestCsc(ConfigurableCsc):
     def get_config_pkg():
         return "ts_config_ocs"
 
-    def configure(self, config):
+    async def configure(self, config):
         self.config = config

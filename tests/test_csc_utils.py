@@ -13,14 +13,14 @@ from lsst.ts import salobj
 STD_TIMEOUT = 2  # timeout for fast operations (sec)
 
 index_gen = salobj.index_generator()
-CONFIG_DIR = pathlib.Path(__file__).resolve().parent.joinpath("data", "config")
+TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent.joinpath("data", "config")
 
 
 class Harness:
     def __init__(self, initial_state):
         index = next(index_gen)
         salobj.set_random_lsst_dds_domain()
-        self.csc = salobj.TestCsc(index=index, config_dir=CONFIG_DIR, initial_state=initial_state)
+        self.csc = salobj.TestCsc(index=index, config_dir=TEST_CONFIG_DIR, initial_state=initial_state)
         self.remote = salobj.Remote(SALPY_Test, index)
 
     async def next_state(self, timeout=STD_TIMEOUT):
@@ -51,12 +51,18 @@ class SetSummaryStateTestCSe(unittest.TestCase):
                         # wait for the initial state (meaning harness is ready)
                         await harness.remote.evt_summaryState.next(flush=False, timeout=10)
                         await salobj.set_summary_state(remote=harness.remote, state=final_state,
-                                                       timeout=STD_TIMEOUT)
+                                                       settingsToApply="all_fields")
                         self.assertEqual(harness.csc.summary_state, final_state)
                         if initial_state in (salobj.State.FAULT, salobj.State.STANDBY) \
                                 and final_state in (salobj.State.DISABLED, salobj.State.ENABLED):
-                            # the start command should have been sent
+                            # The start command was sent
                             self.assertIsNotNone(harness.csc.config)
+                            self.assertEqual(harness.csc.config.string0, "an arbitrary string")
+                        elif initial_state in (salobj.State.DISABLED, salobj.State.ENABLED):
+                            # the constructor default-configured the CSC
+                            self.assertIsNotNone(harness.csc.config)
+                            # default value hard-coded in schema/Test.yaml
+                            self.assertEqual(harness.csc.config.string0, "default value for string0")
                         else:
                             self.assertIsNone(harness.csc.config)
                         await asyncio.sleep(0.1)
