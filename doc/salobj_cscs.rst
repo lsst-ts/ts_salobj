@@ -12,6 +12,7 @@ Writing a CSC
 .. _lsst.ts.salobj-writing_a_csc:
 
 * Make your CSC a subclass of `ConfigurableCsc` if it can be configured via the ``start`` command, or `BaseCsc` if not.
+* Override `BaseCsc.close_tasks` if you have background tasks to clean up when quitting.
 * Handling commands:
 
     * Your subclass must provide a ``do_<name>`` method for every command
@@ -49,9 +50,13 @@ Writing a CSC
       If all values have sensible defaults then your CSC can be configured without specifying a configuration file as part of the ``start`` command.
     * A ``configure`` method that accepts configuration as a struct-like object (a `types.SimpleNamespace`).
     * A ``get_config_pkg`` classmethod that returns ``ts_config_...``, the package that contains configuration files for your CSC.
-    * In that config package add a subdirectory with the name of the SAL component your CSC uses, e.g. ``ATDome``.
-    * In that config package subdirectory add a file ``_labels.yaml`` which contains a mapping of label: config file for each recommended config file.
-      If you have no such config files then leave ``_labels.yaml`` blank (except, preferably, for a comment), in order to avoid a warning log message when your CSC is constructed.
+    * In that config package:
+
+        * Add a directory whose name is the SAL component, and a subdirectory inside that whose name is your schema version, for example ``ATDome/v1/``. In that subdirectory add the following:
+        * Configuration files, if any.
+          Only add configuration files if your CSC's default configuration (as defined by the default values specfied in the schema) is not adequate for normal operation modes.
+        * A file ``_labels.yaml`` which contains a mapping of ``label: configuration file name`` for each recommended configuration file.
+          If you have no configuration files then leave ``_labels.yaml`` blank (except, preferably, a comment saying there are no configuration files), in order to avoid a warning log message when your CSC is constructed.
     * Add the config package to your eups table as a required dependency in your ``ups/<csc_pkg>.table`` file.
 
 * Talking to other CSCs:

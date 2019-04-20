@@ -21,16 +21,20 @@
 
 __all__ = ["Controller", "OPTIONAL_COMMAND_NAMES"]
 
-from . import base
+import asyncio
+import time
+
+from .domain import Domain
+from .sal_info import SalInfo
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
-from . import logger
+from .sal_log_handler import SalLogHandler
 
 # This supports is a hack to allow support for ts_sal before and after
 # generics. TODO TSS-3259 remove this and the code that uses it.
 OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue"))
 
 
-class Controller(logger.Logger):
+class Controller:
     """A class that receives commands for a SAL component
     and sends telemetry and events from that component.
 
@@ -40,8 +44,8 @@ class Controller(logger.Logger):
 
     Parameters
     ----------
-    sallib : ``module``
-        salpy component library generatedby SAL
+    name : `str`
+        Name of SAL component.
     index : `int` or `None` (optional)
         SAL component index, or 0 or None if the component is not indexed.
         A value is required if the component is indexed.
@@ -63,32 +67,37 @@ class Controller(logger.Logger):
     the standard summary states and associated state transition commands):
 
     * Inherit from this class.
-    * Provide all :ref:`Required Logger Attribute<required_logger_attributes>`;
+    * Provide all
+      :ref:`Required Logging Attributes<required_logging_attributes>`;
       these are automatically provided to CSCs, but not other controllers.
+    * Implement `close_tasks`.
+
 
     Attributes:
 
-    Each `Controller` will have the following attributes,
-    in addition to the ``log`` provided by `Logger`:
+    Each `Controller` has the following attributes:
 
-    - ``cmd_<command_name>``, a `topics.ControllerCommand`,
+    - ``log``: a `logging.Logger`
+    - ``salinfo``: a `SalInfo`
+    - ``cmd_<command_name>``: a `topics.ControllerCommand`,
       for each command supported by the SAL component.
-    - ``evt_<event_name>``, a `topics.ControllerEvent`
+    - ``evt_<event_name>``: a `topics.ControllerEvent`
       for each log event topic supported by the SAL component.
-    - ``tel_<telemetry_name>``, a `topics.ControllerTelemetry`
+    - ``tel_<telemetry_name>``: a `topics.ControllerTelemetry`
       for each telemetry topic supported by the SAL component.
 
-    Here is an example that shows the expected attributes (but does not do
-    anything useful, such as handle commands and write events and telemetry;
-    see `TestCsc` for that)::
+    Here is an example that makes a Test controller and displays
+    the topic-related attributes, but has no code to do anything
+    useful with those topics (see `TestCsc` for that)::
 
-        include SALPY_Test
         include salobj
-        # the index is arbitrary, but a remote must use the same index
-        # to talk to this particular controller
-        test_controller = salobj.Controller(SALPY_Test, index=5)
 
-    ``test_controller`` will have the following attributes:
+        # the index is arbitrary, but a remote must use the same index
+        # to talk to this controller
+        test_controller = salobj.Controller("Test", index=5)
+        print(dir(test_controller))
+
+    You should see the following topic-related attributes:
 
     * Commands, each an instance of `topics.ControllerCommand`:
 
@@ -111,33 +120,139 @@ class Controller(logger.Logger):
 
         * ``tel_arrays``
         * ``tel_scalars``
+
+
+    .. _required_logging_attributes:
+
+    Required Logging Attributes:
+
+    Each `Controller` must support the following topics,
+    as specified in ts_xml in ``SALGenerics.xml``:
+
+    * setLogLevel command
+    * logLevel event
+    * logMessage event
     """
-    def __init__(self, sallib, index=None, *, do_callbacks=False):
-        super().__init__()
-        self.salinfo = base.SalInfo(sallib, index)
+    def __init__(self, name, index=None, *, do_callbacks=False):
+        domain = Domain()
+        try:
+            self.salinfo = SalInfo(domain=domain, name=name, index=index)
+            self.log = self.salinfo.log
+            self.done_task = asyncio.Future()
+            """This task is set done when the controller is closed."""
 
-        command_names = self.salinfo.manager.getCommandNames()
-        if do_callbacks:
-            self._assert_do_methods_present(command_names)
-        for cmd_name in command_names:
-            cmd = ControllerCommand(self.salinfo, cmd_name, log=self.log)
-            setattr(self, "cmd_" + cmd_name, cmd)
+            self._isopen = True
+            command_names = self.salinfo.command_names
             if do_callbacks:
-                func = getattr(self, f"do_{cmd_name}", None)
-                if func:
-                    cmd.callback = getattr(self, f"do_{cmd_name}")
-                elif cmd_name not in OPTIONAL_COMMAND_NAMES:
-                    raise RuntimeError(f"Can't find method do_{cmd_name}")
+                self._assert_do_methods_present(command_names)
+            for cmd_name in command_names:
+                cmd = ControllerCommand(self.salinfo, cmd_name)
+                setattr(self, "cmd_" + cmd_name, cmd)
+                if do_callbacks:
+                    func = getattr(self, f"do_{cmd_name}", None)
+                    if func:
+                        cmd.callback = getattr(self, f"do_{cmd_name}")
+                    elif cmd_name not in OPTIONAL_COMMAND_NAMES:
+                        raise RuntimeError(f"Can't find method do_{cmd_name}")
 
-        for evt_name in self.salinfo.manager.getEventNames():
-            evt = ControllerEvent(self.salinfo, evt_name)
-            setattr(self, "evt_" + evt_name, evt)
+            for evt_name in self.salinfo.event_names:
+                evt = ControllerEvent(self.salinfo, evt_name)
+                setattr(self, "evt_" + evt_name, evt)
 
-        for tel_name in self.salinfo.manager.getTelemetryNames():
-            tel = ControllerTelemetry(self.salinfo, tel_name)
-            setattr(self, "tel_" + tel_name, tel)
+            for tel_name in self.salinfo.telemetry_names:
+                tel = ControllerTelemetry(self.salinfo, tel_name)
+                setattr(self, "tel_" + tel_name, tel)
 
+            for required_name in ("logMessage", "logLevel"):
+                if not hasattr(self, f"evt_{required_name}"):
+                    raise RuntimeError(f"{self!r} has no {required_name} event")
+
+            self._sal_log_handler = SalLogHandler(controller=self)
+            self.log.addHandler(self._sal_log_handler)
+            self.start_task = asyncio.ensure_future(self.start())
+            """This task is set done when the CSC is fully started.
+
+            If `start` fails then the task has an exception set
+            and the CSC is not usable.
+            """
+
+        except Exception:
+            asyncio.ensure_future(domain.close())
+            raise
+
+    async def start(self):
+        """Finish construction."""
+        await self.salinfo.start()
         self.put_log_level()
+
+    @property
+    def domain(self):
+        return self.salinfo.domain
+
+    async def close(self, exception=None):
+        """Shut down, clean up resources and set done_task done.
+
+        Subclasses will typically override `close_tasks`.
+
+        Parameters
+        ----------
+        exception : `Exception` (optional)
+            The exception that caused stopping, if any, in which case
+            the ``self.done_task`` exception is set to this value.
+            Specify `None` for a normal exit, in which case
+            the ``self.done_task`` result is set to `None`.
+
+        Notes
+        -----
+        Removes the SAL log handler, calls `close_tasks` to stop
+        all background tasks, pauses briefly to allow final SAL messages
+        to be sent, then closes the dds domain.
+        """
+        if not self._isopen:
+            return
+        self._isopen = False
+        try:
+            # Give time to output final log messages
+            time.sleep(0.01)
+            await asyncio.sleep(0.01)
+            self.log.removeHandler(self._sal_log_handler)
+            self._sal_log_handler = None
+            await self.close_tasks()
+            # Give a little extra time to close
+            await asyncio.sleep(0.1)
+            time.sleep(0.01)
+            await self.salinfo.domain.close()
+        finally:
+            if not self.done_task.done():
+                if exception:
+                    self.done_task.set_exception(exception)
+                else:
+                    self.done_task.set_result(None)
+
+    async def close_tasks(self):
+        """Shut down pending tasks. Called by `close`.
+
+        Perform all cleanup other than disabling logging to SAL
+        and closing the dds domain.
+        """
+        pass
+
+    def do_setLogLevel(self, data):
+        """Set logging level.
+
+        Parameters
+        ----------
+        data : ``cmd_setLogLevel.DataType``
+            Logging level.
+        """
+        self.log.setLevel(data.level)
+        self.put_log_level()
+
+    def put_log_level(self):
+        """Output the logLevel event.
+        """
+        self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(),
+                                  force_output=True)
 
     def _assert_do_methods_present(self, command_names):
         """Assert that all needed do_<name> methods are present,
@@ -147,7 +262,7 @@ class Controller(logger.Logger):
         ----------
         command_names : `list` of `str`
             List of command names, e.g. as provided by
-            `salinfo.manager.getCommandNames`
+            `salinfo.command_names`
         """
         do_names = [name for name in dir(self) if name.startswith("do_")]
         supported_command_names = [name[3:] for name in do_names]
@@ -165,3 +280,24 @@ class Controller(logger.Logger):
                 return
             err_msg = " and ".join(err_msgs)
             raise TypeError(f"This class {err_msg}")
+
+    async def __aenter__(self):
+        await self.start_task
+        return self
+
+    async def __aexit__(self, type, value, traceback):
+        await self.close()
+
+    def __del__(self):
+        """Last-ditch effort to clean up critical resources.
+
+        Users should call `close` instead, because it does more
+        and because ``__del__`` is not reliably called.
+        """
+        handler = getattr(self, "_sal_log_handler", None)
+        log = getattr(self, "log", None)
+        if None not in (handler, log):
+            log.removeHandler(handler)
+        domain = getattr(self, "domain", None)
+        if domain is not None:
+            domain.close_dds()

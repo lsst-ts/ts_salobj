@@ -19,17 +19,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["AckError", "CommandIdAck", "CommandIdData", "ExpectedError",
-           "index_generator", "SalInfo", "MAX_SAL_INDEX", "MAX_RESULT_LEN"]
+__all__ = ["AckError", "AckTimeoutError", "ExpectedError",
+           "index_generator", "make_done_future", "MAX_SAL_INDEX", "tai_from_utc"]
+
+import asyncio
+
+from . import sal_enums
+
+MAX_SAL_INDEX = (1 << 31) - 1
 
 
-MAX_SAL_INDEX = (2 << 30) - 1
-MAX_RESULT_LEN = 256  # max length for result field of an Ack
-
-
-def _ack_str(ack):
+def _ackcmd_str(ackcmd):
     """Format an Ack as a string"""
-    return f"(ack={ack.ack}, error={ack.error}, result={ack.result!r})"
+    return f"(ackcmd private_seqNum={ackcmd.private_seqNum}, " \
+        f"ack={sal_enums.as_salRetCode(ackcmd.ack)!r}, error={ackcmd.error}, result={ackcmd.result!r})"
 
 
 class AckError(Exception):
@@ -39,49 +42,29 @@ class AckError(Exception):
     ----------
     msg : `str`
         Error message
-    ack : ``AckType``
+    ackcmd : ``AckType``
         Command acknowledgement.
     """
-    def __init__(self, msg, cmd_id, ack):
+    def __init__(self, msg, ackcmd):
         super().__init__(msg)
-        self.cmd_id = cmd_id
-        """Command ID."""
-        self.ack = ack
+        self.ackcmd = ackcmd
         """Command acknowledgement."""
 
     def __str__(self):
-        return f"msg={self.args[0]!r}, cmd_id={self.cmd_id}, ack={_ack_str(self.ack)}"
+        return f"msg={self.args[0]!r}, ackcmd={_ackcmd_str(self.ackcmd)}"
 
     def __repr__(self):
         return f"{type(self).__name__}({self!s})"
 
 
-class CommandIdAck:
-    """Struct to hold a command ID and its associated acknowledgement.
+class AckTimeoutError(AckError):
+    """Exception raised if waiting for a command acknowledgement times out.
 
-    Parameters
-    ----------
-    cmd_id : `int`
-        Command ID.
-    ack : ``AckType``
-        Command acknowledgement.
+    The ``ackcmd`` attribute is the last ackcmd seen.
+    If no command acknowledgement was received then
+    the ack code will be `SalRetCode.CMD_NOACK`.
     """
-    def __init__(self, cmd_id, ack):
-        self.cmd_id = int(cmd_id)
-        self.ack = ack
-
-    def __str__(self):
-        return f"cmd_id={self.cmd_id}, ack={_ack_str(self.ack)}"
-
-    def __repr__(self):
-        return f"CommandIdAck({self!s})"
-
-
-class CommandIdData:
-    """Struct to hold a command ID and its associated data"""
-    def __init__(self, cmd_id, data):
-        self.cmd_id = cmd_id
-        self.data = data
+    pass
 
 
 class ExpectedError(Exception):
@@ -92,30 +75,37 @@ class ExpectedError(Exception):
     pass
 
 
-def index_generator(imin=1, imax=MAX_SAL_INDEX):
-    """Sequential index generator, e.g. for SAL components.
+def index_generator(imin=1, imax=MAX_SAL_INDEX, i0=None):
+    """Sequential index generator.
 
-    Returns values min, min+1, ..., max, min, min + 1, ...
+    Returns values i0, i0+1, i0+2, ..., max, min, min+1, ...
 
     Parameters
     ----------
-    imin : `int`
+    imin : `int` (optional)
         Minimum index (inclusive).
-    imax : `int`
+    imax : `int` (optional)
         Maximum index (inclusive).
+    i0 : `int` (optional)
+        Initial index; if None then use ``imin``.
 
     Raises
     ------
     ValueError
         If imin >= imax
     """
+    imin = int(imin)
+    imax = int(imax)
+    i0 = imin if i0 is None else int(i0)
     if imax <= imin:
         raise ValueError(f"imin={imin} must be less than imax={imax}")
+    if not imin <= i0 <= imax:
+        raise ValueError(f"i0={i0} must be >= imin={imin} and <= imax={imax}")
 
     # define an inner generator and return that
     # in order to get immediate argument checking
     def index_impl():
-        index = imin - 1
+        index = i0 - 1
         while True:
             index += 1
             if index > imax:
@@ -126,90 +116,18 @@ def index_generator(imin=1, imax=MAX_SAL_INDEX):
     return index_impl()
 
 
-class SalInfo:
-    """SALPY information for a component, including the
-    SALPY library, component name, component index and SALPY manager
+def make_done_future():
+    future = asyncio.Future()
+    future.set_result(None)
+    return future
 
-    Parameters
-    ----------
-    sallib : ``module``
-        SALPY library for a SAL component
-    index : `int` (optional)
-        SAL component index, or 0 or `None` if the component is not indexed.
-    debug : `int` (optional)
-        SAL debug level; 0 to not print SAL debug statements.
+
+def tai_from_utc(utc):
+    """Return TAI unix seconds, given UTC in unix seconds.
+
+    TODO DM-19791: replace this with code that uses ts_sal's solution
+
+    This function is only intended for current time;
+    it makes no attempt to be correct for historical dates.
     """
-    def __init__(self, sallib, index=None, debug=0):
-        self.lib = sallib
-        self.name = sallib.componentName[4:]  # lop off leading SAL_
-        if sallib.componentIsMultiple:
-            if index is None:
-                raise RuntimeError(f"Component {self.name} is indexed, so index cannot be None")
-        else:
-            if index not in (0, None):
-                raise RuntimeError(f"Component {self.name} is not indexed so index={index} must be None or 0")
-            index = 0
-        self.index = index
-        Manager = getattr(self.lib, "SAL_" + self.name)
-        self.manager = Manager(self.index)
-        self.manager.setDebugLevel(debug)
-        self._AckType = getattr(self.lib, self.name + "_ackcmdC")
-
-    def __repr__(self):
-        return f"SalInfo({self.name}, {self.index})"
-
-    @property
-    def AckType(self):
-        """The class of command acknowledgement.
-
-        It is contructed with the following parameters
-        and has these fields:
-
-        ack : `int`
-            Acknowledgement code; one of the ``self.lib.SAL__CMD_``
-            constants, such as ``self.lib.SAL__CMD_COMPLETE``.
-        error : `int`
-            Error code; 0 for no error.
-        result : `str`
-            Explanatory message, or "" for no message.
-        """
-        return self._AckType
-
-    def makeAck(self, ack, error=0, result="", truncate_result=False):
-        """Make an AckType object from keyword arguments.
-
-        Parameters
-        ----------
-        ack : `int`
-            Acknowledgement code; one of the ``self.lib.SAL__CMD_``
-            constants, such as ``self.lib.SAL__CMD_COMPLETE``.
-        error : `int`
-            Error code. Should be 0 unless ``ack`` is
-            ``self.lib.SAL__CMD_FAILED``
-        result : `str`
-            More information. This is arbitrary, but limited to
-            `MAX_RESULT_LEN` characters.
-        truncate_result : `bool`
-            What to do if ``result`` is longer than  `MAX_RESULT_LEN`
-            characters:
-
-            * If True then silently truncate ``result`` to `MAX_RESULT_LEN`
-              characters.
-            * If False then raise `ValueError`
-
-        Raises
-        ------
-        ValueError
-            If ``len(result) > `MAX_RESULT_LEN`` and ``truncate_result``
-            is false.
-        """
-        data = self.AckType()
-        data.ack = ack
-        data.error = error
-        if len(result) > MAX_RESULT_LEN:
-            if truncate_result:
-                result = result[0:MAX_RESULT_LEN]
-            else:
-                raise ValueError(f"len(result) > MAX_RESULT_LEN={MAX_RESULT_LEN}; result={result}")
-        data.result = result
-        return data
+    return utc + 37

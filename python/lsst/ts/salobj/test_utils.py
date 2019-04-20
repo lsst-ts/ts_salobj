@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["assertRaisesAckError", "set_random_lsst_dds_domain"]
+__all__ = ["assertRaisesAckError", "assertRaisesAckTimeoutError", "set_random_lsst_dds_domain"]
 
 import contextlib
 import os
@@ -27,7 +27,7 @@ import random
 import socket
 import time
 
-from .base import AckError
+from .base import AckError, AckTimeoutError
 
 
 @contextlib.contextmanager
@@ -37,7 +37,7 @@ def assertRaisesAckError(ack=None, error=None):
     Parameters
     ----------
     ack : `int` (optional)
-        Ack code, typically a SAL__CMD_<x> constant.
+        Ack code, almost always a `SalRetCode` ``CMD_<x>`` constant.
         If None then the ack code is not checked.
     error : `int`
         Error code. If None then the error value is not checked.
@@ -46,10 +46,32 @@ def assertRaisesAckError(ack=None, error=None):
         yield
         raise AssertionError("AckError not raised")
     except AckError as e:
-        if ack is not None and e.ack.ack != ack:
-            raise AssertionError(f"ack.ack={e.ack.ack} instead of {ack}")
-        if error is not None and e.ack.error != error:
-            raise AssertionError(f"ack.error={e.ack.error} instead of {error}")
+        if ack is not None and e.ackcmd.ack != ack:
+            raise AssertionError(f"ackcmd.ack={e.ackcmd.ack} instead of {ack}")
+        if error is not None and e.ackcmd.error != error:
+            raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
+
+
+@contextlib.contextmanager
+def assertRaisesAckTimeoutError(ack=None, error=None):
+    """Assert that code raises a salobj.AckTimeoutError
+
+    Parameters
+    ----------
+    ack : `int` (optional)
+        Ack code of the last ack seen, almost always a `SalRetCode`
+        ``CMD_<x>`` constant. If None then the ack code is not checked.
+    error : `int`
+        Error code. If None then the error value is not checked.
+    """
+    try:
+        yield
+        raise AssertionError("AckError not raised")
+    except AckTimeoutError as e:
+        if ack is not None and e.ackcmd.ack != ack:
+            raise AssertionError(f"ackcmd.ack={e.ackcmd.ack} instead of {ack}")
+        if error is not None and e.ackcmd.error != error:
+            raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
 
 
 def set_random_lsst_dds_domain():

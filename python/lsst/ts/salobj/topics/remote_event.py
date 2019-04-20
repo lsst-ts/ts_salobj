@@ -21,36 +21,33 @@
 
 __all__ = ["RemoteEvent"]
 
-import time
-
-from .base_topic import SAL_SLEEP
-from .remote_telemetry import RemoteTelemetry
+from . import read_topic
 
 
-class RemoteEvent(RemoteTelemetry):
-    """An object that reads a specific event topic from a SAL component.
+class RemoteEvent(read_topic.ReadTopic):
+    """Read a specific event topic.
 
     Parameters
     ----------
-    salinfo : `lsst.ts.salobj.SalInfo`
+    salinfo : `SalInfo`
         SAL component information
     name : `str`
         Event topic name
-    """
-    def _setup(self):
-        """Get functions from salinfo and subscribe to the topic."""
-        self._get_newest_func_name = "getSample_logevent_" + self.name
-        self._get_newest_func = getattr(self.salinfo.manager, self._get_newest_func_name)
-        self._get_oldest_func_name = "getEvent_" + self.name
-        self._get_oldest_func = getattr(self.salinfo.manager, self._get_oldest_func_name)
-        self._flush_func_name = "flushSamples_logevent_" + self.name
-        self._flush_func = getattr(self.salinfo.manager, self._flush_func_name)
-        self._DataType_name = self.salinfo.name + "_logevent_" + self.name + "C"
-        self._DataType = getattr(self.salinfo.lib, self._DataType_name)
+    max_history : `int` (optional)
+        Maximum number of historical items to read:
 
-        topic_name = self.salinfo.name + "_logevent_" + self.name
-        try:  # work around lack of topic name in SAL's exception message
-            self.salinfo.manager.salEventSub(topic_name)
-        except Exception as e:
-            raise RuntimeError(f"Could not subscribe to event {self.name}") from e
-        time.sleep(SAL_SLEEP)
+        * -1 to use queue_len
+        * 0 if none; strongly recommended for `RemoteCommand` & `AckCmdReader`
+        * 1 is recommended for events and telemetry
+    queue_len : `int`
+        Number of elements that can be queued for `get_oldest`.
+
+    Notes
+    -----
+    All functions that return data return from an internal cache.
+    This cached value is replaced by all read operations, so as long as
+    no other code modifies the data, the returned data will not change.
+    """
+    def __init__(self, salinfo, name, max_history=1, queue_len=100):
+        super().__init__(salinfo=salinfo, name=name, sal_prefix="logevent_",
+                         max_history=max_history, queue_len=queue_len)

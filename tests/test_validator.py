@@ -24,6 +24,7 @@ class ValidatorTestCase(unittest.TestCase):
                                int0=5,
                                float0=3.14,
                                intarr0=[-1, 1],
+                               multi_type=None,
                                )
         self.assertEqual(data_dict, {})  # input not changed
         self.assertEqual(result, expected_result)
@@ -38,6 +39,7 @@ class ValidatorTestCase(unittest.TestCase):
                          int0=-47,
                          float0=1.234,
                          intarr0=[0, 2, -3, -5, 4],
+                         multi_type="another string"
                          )
         original_data = data_dict.copy()
         result = self.validator.validate(data_dict)
@@ -47,17 +49,26 @@ class ValidatorTestCase(unittest.TestCase):
 
     def test_some_fields(self):
         """Test a config with some fields set to a non-default value."""
-        data_dict = dict(string0="an arbitrary string",
-                         bool0=False,
-                         int0=-47,
-                         float0=1.234,
-                         intarr0=[0, 2, -3, -5, 4],
-                         )
-        original_data = data_dict.copy()
-        result = self.validator.validate(data_dict)
-        self.assertEqual(result, original_data)  # input not changed
-        # all values were provided so none should be altered
-        self.assertEqual(data_dict, original_data)
+        default_values = dict(string0="default value for string0",
+                              bool0=True,
+                              int0=5,
+                              float0=3.14,
+                              intarr0=[-1, 1],
+                              multi_type=None,
+                              )
+        non_default_values = dict(string0="an arbitrary string",
+                                  bool0=False,
+                                  int0=-47,
+                                  float0=1.234,
+                                  intarr0=[0, 2, -3, -5, 4],
+                                  multi_type=5,
+                                  )
+        for name, value in non_default_values.items():
+            expected_values = default_values.copy()
+            expected_values[name] = value
+            one_item_data_dict = {name: value}
+        result = self.validator.validate(one_item_data_dict)
+        self.assertEqual(result, expected_values)
 
     def test_invalid_data(self):
         good_data = dict(string0="an arbitrary string",
@@ -65,13 +76,14 @@ class ValidatorTestCase(unittest.TestCase):
                          int0=-47,
                          float0=1.234,
                          intarr0=[0, 2, -3, -5, 4],
+                         multi_type=5,
                          )
-
         bad_data = dict(string0=45,
                         bool0=35,
                         int0=1.234,
                         float0="hello",
                         intarr0=45,
+                        multi_type=3.5,
                         )
         # set one field at a time to bad data
         for field in good_data:
