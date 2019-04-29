@@ -250,7 +250,7 @@ class BaseCsc(Controller):
         pass
 
     async def do_disable(self, id_data):
-        """Transition to from `State.ENABLED` to `State.DISABLED`.
+        """Transition from `State.ENABLED` to `State.DISABLED`.
 
         Parameters
         ----------
@@ -293,7 +293,7 @@ class BaseCsc(Controller):
         await self._do_change_state(id_data, "standby", [State.DISABLED, State.FAULT], State.STANDBY)
 
     async def do_start(self, id_data):
-        """Transition to from `State.STANDBY` to `State.DISABLED`.
+        """Transition from `State.STANDBY` to `State.DISABLED`.
 
         Parameters
         ----------
