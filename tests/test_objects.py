@@ -1441,7 +1441,7 @@ class BaseCscMainTestCase(unittest.TestCase):
             csc = NoIndexCsc.main(index=index, arg1=arg1, arg2=arg2, run_loop=False)
             self.assertEqual(csc.arg1, arg1)
             self.assertEqual(csc.arg2, arg2)
-            csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
+            await csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
             await asyncio.wait_for(csc.done_task, timeout=5)
 
         for index in (False, None):
@@ -1454,7 +1454,7 @@ class BaseCscMainTestCase(unittest.TestCase):
             index = next(index_gen)
             csc = salobj.TestCsc.main(index=index, run_loop=False)
             self.assertEqual(csc.salinfo.index, index)
-            csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
+            await csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
             await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
@@ -1472,7 +1472,7 @@ class BaseCscMainTestCase(unittest.TestCase):
             desired_config_dir = pathlib.Path(desird_config_pkg_dir) / "Test/v1"
             self.assertEqual(csc.get_config_pkg(), desired_config_pkg_name)
             self.assertEqual(csc.config_dir, desired_config_dir)
-            csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
+            await csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
             await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
@@ -1484,7 +1484,7 @@ class BaseCscMainTestCase(unittest.TestCase):
             csc = salobj.TestCsc.main(index=True, run_loop=False)
             self.assertEqual(csc.salinfo.index, index)
             self.assertEqual(csc.config_dir, TEST_CONFIG_DIR)
-            csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
+            await csc.do_exitControl(salobj.CommandIdData(cmd_id=1, data=None))
             await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())

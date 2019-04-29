@@ -82,6 +82,16 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     * The configuration is passed to the ``configure`` method,
       which subclasses must override. Note that ``configure`` is called just
       before summary state changes from `State.STANDBY` to `State.DISABLED`.
+
+    The constructor does the following:
+
+    * Set summary state, then run the `ConfigurableCsc.start` asynchronously,
+      which does the following:
+    * If ``initial_summary_state`` is `State.DISABLED` or `State.ENABLED`
+      then call `ConfigurableCsc.configure`.
+    * Call `BaseCsc.set_simulation_mode`
+    * Call `BaseCsc.report_summary_state`
+    * Set ``start_task`` done
     """
     def __init__(self, sallib, index, schema_path, config_dir=None,
                  initial_state=State.STANDBY, initial_simulation_mode=0):
@@ -111,13 +121,6 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             if not config_dir.is_dir():
                 raise ValueError(f"config_dir={config_dir} does not exists or is not a directory")
         self.config_dir = config_dir
-
-        # If starting up in Enabled or Disabled state then the CSC must be
-        # configured now, because it won't be configured by the start command.
-        if initial_state in (State.DISABLED, State.ENABLED):
-            default_config_dict = self.config_validator.validate(None)
-            default_config = types.SimpleNamespace(**default_config_dict)
-            self.configure(config=default_config)
 
     @property
     def config_dir(self):
@@ -177,6 +180,27 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                                          recommendedSettingsVersion=settings_version,
                                          settingsUrl=f"{self.config_dir.as_uri()}",
                                          force_output=True)
+
+    async def start(self, initial_simulation_mode):
+        """Finish constructing the CSC.
+
+        * If ``initial_summary_state`` is `State.DISABLED` or `State.ENABLED`
+          then call `configure`.
+        * Run `BaseCsc.start`
+
+        Parameters
+        ----------
+        initial_simulation_mode : `int` (optional)
+            Initial simulation mode.
+        """
+        # If starting up in Enabled or Disabled state then the CSC must be
+        # configured now, because it won't be configured by
+        # the start command (do_start method).
+        if self.summary_state in (State.DISABLED, State.ENABLED):
+            default_config_dict = self.config_validator.validate(None)
+            default_config = types.SimpleNamespace(**default_config_dict)
+            await self.configure(config=default_config)
+        await super().start(initial_simulation_mode=initial_simulation_mode)
 
     def _get_settings_version(self):
         """Get data for evt_settingsVersions.recommendedSettingsVersion.
@@ -246,7 +270,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             except Exception as e:
                 self.log.exception(e)
 
-    def begin_start(self, id_data):
+    async def begin_start(self, id_data):
         """Begin do_start; configure the CSC before changing state.
 
         Parameters
@@ -294,11 +318,11 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         except Exception as e:
             raise base.ExpectedError(f"schema {config_file_path} failed validation: {e}")
         config = types.SimpleNamespace(**full_config_dict)
-        self.configure(config)
+        await self.configure(config)
         self.evt_appliedSettingsMatchStart.set_put(appliedSettingsMatchStartIsTrue=True, force_output=True)
 
     @abc.abstractmethod
-    def configure(self, config):
+    async def configure(self, config):
         """Configure the CSC.
 
         Parameters
