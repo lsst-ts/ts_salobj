@@ -24,14 +24,9 @@ __all__ = ["TestCsc"]
 import asyncio
 import pathlib
 import string
-import warnings
 
 import numpy as np
 
-try:
-    import SALPY_Test
-except ImportError:
-    warnings.warn("Could not import SALPY_Test; TestCsc will not work")
 from .base_csc import State
 from .configurable_csc import ConfigurableCsc
 
@@ -73,26 +68,27 @@ class TestCsc(ConfigurableCsc):
 
     def __init__(self, index, config_dir=None, initial_state=State.STANDBY, initial_simulation_mode=0):
         schema_path = pathlib.Path(__file__).resolve().parents[4].joinpath("schema", "Test.yaml")
-        super().__init__(SALPY_Test, schema_path=schema_path, config_dir=config_dir,
+        super().__init__("Test", schema_path=schema_path, config_dir=config_dir,
                          index=index, initial_state=initial_state,
                          initial_simulation_mode=initial_simulation_mode)
         self.cmd_wait.allow_multiple_callbacks = True
         self.config = None
 
-    def do_setArrays(self, id_data):
+    def do_setArrays(self, data):
         """Execute the setArrays command."""
         self.assert_enabled("setArrays")
-        data_dict = self.as_dict(id_data.data, self.arrays_fields)
+        self.log.info("executing setArrays")
+        data_dict = self.as_dict(data, self.arrays_fields)
         self.evt_arrays.set(**data_dict)
         self.tel_arrays.set(**data_dict)
         self.evt_arrays.put()
         self.tel_arrays.put()
 
-    def do_setScalars(self, id_data):
+    def do_setScalars(self, data):
         """Execute the setScalars command."""
         self.assert_enabled("setScalars")
         self.log.info("executing setScalars")
-        data_dict = self.as_dict(id_data.data, self.scalars_fields)
+        data_dict = self.as_dict(data, self.scalars_fields)
         self.evt_scalars.set(**data_dict)
         self.tel_scalars.set(**data_dict)
         self.evt_scalars.put()
@@ -113,7 +109,7 @@ class TestCsc(ConfigurableCsc):
             ret[field] = getattr(data, field)
         return ret
 
-    def do_fault(self, id_data):
+    def do_fault(self, data):
         """Execute the fault command.
 
         Change the summary state to State.FAULT
@@ -121,20 +117,39 @@ class TestCsc(ConfigurableCsc):
         self.log.warning("executing fault")
         self.fault()
 
-    async def do_wait(self, id_data):
+    async def do_wait(self, data):
         """Execute the wait command.
 
         Wait for the specified time and then acknowledge the command
         using the specified ack code.
         """
         self.assert_enabled("wait")
-        await asyncio.sleep(id_data.data.duration)
+        await asyncio.sleep(data.duration)
+
+    @property
+    def field_type(self):
+        """Get a dict of field_name: element type."""
+        return dict(boolean0=bool,
+                    byte0=np.uint8,
+                    char0=str,
+                    short0=np.int16,
+                    int0=np.int32,
+                    long0=np.int32,
+                    longLong0=np.int64,
+                    octet0=np.uint8,
+                    unsignedShort0=np.uint16,
+                    unsignedInt0=np.uint32,
+                    unsignedLong0=np.uint32,
+                    float0=np.single,
+                    double0=np.double,
+                    string0=str,
+                    )
 
     @property
     def arrays_fields(self):
         """Get a tuple of the fields in an arrays struct."""
         return (
-            "boolean0", "byte0", "char0", "short0",
+            "boolean0", "byte0", "short0",
             "int0", "long0", "longLong0", "octet0",
             "unsignedShort0", "unsignedInt0", "unsignedLong0",
             "float0", "double0")
@@ -148,6 +163,14 @@ class TestCsc(ConfigurableCsc):
             "unsignedShort0", "unsignedInt0", "unsignedLong0",
             "float0", "double0", "string0")
 
+    @property
+    def int_fields(self):
+        """Get a tuple of the integer fields in a struct."""
+        return (
+            "byte0", "short0",
+            "int0", "long0", "longLong0", "octet0",
+            "unsignedShort0", "unsignedInt0", "unsignedLong0")
+
     def assert_arrays_equal(self, arrays1, arrays2):
         """Assert that two arrays data structs are equal.
 
@@ -157,9 +180,10 @@ class TestCsc(ConfigurableCsc):
         # use reversed so boolean0 is not compared first,
         # as a discrepancy there is harder to interpret
         for field in reversed(self.arrays_fields):
-            if np.any(getattr(arrays1, field) != getattr(arrays2, field)):
-                raise AssertionError("arrays1.{} = {} != {} = arrays2.{}".format(
-                    field, getattr(arrays1, field), getattr(arrays2, field), field))
+            field_arr1 = getattr(arrays1, field)
+            field_arr2 = getattr(arrays2, field)
+            if not np.array_equal(field_arr1, field_arr2):
+                raise AssertionError(f"arrays1.{field} = {field_arr1} != {field_arr2} = arrays2.{field}")
 
     def assert_scalars_equal(self, scalars1, scalars2):
         """Assert that two scalars data structs are equal.
@@ -170,9 +194,10 @@ class TestCsc(ConfigurableCsc):
         # use reversed so boolean0 is not compared first,
         # as a discrepancy there is harder to interpret
         for field in reversed(self.scalars_fields):
-            if getattr(scalars1, field) != getattr(scalars2, field):
-                raise AssertionError("scalars1.{} = {} != {} = scalars2.{}".format(
-                    field, getattr(scalars1, field), getattr(scalars2, field), field))
+            field_val1 = getattr(scalars1, field)
+            field_val2 = getattr(scalars2, field)
+            if field_val1 != field_val2:
+                raise AssertionError(f"scalars1.{field} = {field_val1} != {field_val2} = scalars2.{field}")
 
     def make_random_cmd_arrays(self):
         return self._make_random_arrays(dtype=self.cmd_setArrays.DataType)
@@ -194,59 +219,40 @@ class TestCsc(ConfigurableCsc):
 
     def _make_random_arrays(self, dtype):
         """Make random arrays data using numpy.random."""
-        nelts = 5
         data = dtype()
-        data.boolean0[:] = np.random.choice([False, True], size=(nelts,))
-        printable_chars = [c for c in string.ascii_letters + string.digits]
-        data.char0 = "".join(np.random.choice(printable_chars, size=(nelts,)))
-        for field_name in (
-            "byte0",
-            "octet0",
-            "short0",
-            "int0",
-            "long0",
-            "longLong0",
-            "unsignedShort0",
-            "unsignedInt0",
-            "unsignedLong0",
-        ):
-            field = getattr(data, field_name)
-            iinfo = np.iinfo(field.dtype)
-            print(f"{field_name} has type {field.dtype}")
-            field[:] = np.random.randint(iinfo.min, iinfo.max, size=(nelts,), dtype=field.dtype)
-        data.float0[:] = np.random.uniform(-1e5, 1e5, size=(nelts,))
-        data.double0[:] = np.random.uniform(-1e5, 1e5, size=(nelts,))
+        nelts = len(data.boolean0)
+        data.boolean0 = np.random.choice([False, True], size=(nelts,))
+        for field in self.int_fields:
+            field_type = self.field_type[field]
+            nelts = len(getattr(data, field))
+            iinfo = np.iinfo(field_type)
+            field_data = np.random.randint(iinfo.min, iinfo.max, size=(nelts,), dtype=field_type)
+            setattr(data, field, field_data)
+        for field in ("float0", "double0"):
+            field_type = self.field_type[field]
+            nelts = len(getattr(data, field))
+            field_data = np.array(np.random.uniform(-1e5, 1e5, size=(nelts,)), dtype=field_type)
+            setattr(data, field, field_data)
         return data
 
     def _make_random_scalars(self, dtype):
         """Make random data for cmd_setScalars using numpy.random."""
         data = dtype()
-        # also make an empty arrays struct to get dtype of int fields,
-        # since that information is lost in the scalars pybind11 wrapper
-        empty_arrays = self.cmd_setArrays.DataType()
         data.boolean0 = np.random.choice([False, True])
-        printable_chars = [c for c in string.ascii_letters + string.digits]
-        data.char0 = np.random.choice(printable_chars)
+        printable_chars = [c for c in string.printable]
+        data.char0 = "".join(np.random.choice(printable_chars, size=(20,)))
         data.string0 = "".join(np.random.choice(printable_chars, size=(20,)))
-        for field_name in (
-            "byte0",
-            "octet0",
-            "short0",
-            "int0",
-            "long0",
-            "longLong0",
-            "unsignedShort0",
-            "unsignedInt0",
-            "unsignedLong0",
-        ):
-            dtype = getattr(empty_arrays, field_name).dtype
-            # work around a bug in numpy 1.14.5 that causes
-            # TypeError: 'numpy.dtype' object is not callable
-            if dtype == np.int64:
-                dtype = np.int64
-            iinfo = np.iinfo(dtype)
-            setattr(data, field_name, np.random.randint(iinfo.min, iinfo.max, dtype=dtype))
-        data.float0 = np.random.uniform(-1e5, 1e5)
+        for field in self.int_fields:
+            field_type = self.field_type[field]
+            iinfo = np.iinfo(field_type)
+            field_data = np.random.randint(iinfo.min, iinfo.max, dtype=field_type)
+            setattr(data, field, field_data)
+        for field in ("float0", "double0"):
+            field_type = self.field_type[field]
+            field_data = field_type(np.random.uniform(-1e5, 1e5))
+            setattr(data, field, field_data)
+
+        data.float0 = np.array(np.random.uniform(-1e5, 1e5), dtype=np.single)
         data.double0 = np.random.uniform(-1e5, 1e5)
         return data
 

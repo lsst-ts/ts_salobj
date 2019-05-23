@@ -19,17 +19,45 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["RemoteCommand"]
+__all__ = ["AckCmdReader", "RemoteCommand"]
 
 import asyncio
+import collections
 import logging
-import time
-import warnings
+import random
 
-from ..base import AckError, CommandIdAck
-from .base_topic import BaseOutputTopic, SAL_SLEEP
+from .. import base
+from .. import sal_enums
+from . import read_topic
+from . import write_topic
 
 DEFAULT_TIMEOUT = 60*60  # default timeout, in seconds
+
+
+class AckCmdReader(read_topic.ReadTopic):
+    """Read the ``ackcmd`` command acknowledgement topic.
+
+    Parameters
+    ----------
+    salinfo : `SalInfo`
+        SAL component information
+    max_history : `int` (optional)
+        Maximum number of historical items to read:
+
+        * -1 to use queue_len
+        * 0 if none; strongly recommended for `RemoteCommand` & `AckCmdReader`
+        * 1 is recommended for events and telemetry
+    queue_len : `int`
+        Number of elements that can be queued for `get_oldest`.
+
+    Notes
+    -----
+    The same ``ackcmd`` topic is used for all command topics from a given
+    SAL component.
+    """
+    def __init__(self, salinfo, max_history=0, queue_len=100):
+        super().__init__(salinfo=salinfo, name="ackcmd", sal_prefix="",
+                         max_history=max_history, queue_len=queue_len)
 
 
 class _CommandInfo:
@@ -39,100 +67,199 @@ class _CommandInfo:
     ----------
     remote_command : `RemoteCommand`
         Remote command.
-    cmd_id : `int`
-        Command ID.
-    ack : `salobj.AckType`
-        Command acknowledgement.
+    seq_num : `int`
+        Sequence number of command.
     wait_done : `bool`
         Wait until the command is done to finish the task?
     """
-    def __init__(self, remote_command, cmd_id, wait_done):
+    def __init__(self, remote_command, seq_num, wait_done):
         self.remote_command = remote_command
-        self.cmd_id = int(cmd_id)
-        self.ack = remote_command.salinfo.AckType()
+        self.seq_num = int(seq_num)
+        """Command acknowledgement"""
+
         self.wait_done = bool(wait_done)
-        self.done_task = asyncio.Future()
-        """A task that is set to the final CommandIdAck when the command
-        is done, or raises salobj.AckError if the command fails.
+        """Wait until the command is done?
+
+        If false then wait for the next ack.
         """
-        self._timeout_task = None
-        lib = self.remote_command.salinfo.lib
-        self.good_ack_codes = (lib.SAL__CMD_ACK, lib.SAL__CMD_INPROGRESS, lib.SAL__CMD_COMPLETE)
 
-    def start_timeout(self, timeout):
-        """Start waiting for an ack."""
-        # reset done_task in case we are starting a new wait with `next_ack`.
-        self.done_task = asyncio.Future()
-        self._timeout_task = asyncio.ensure_future(self._start_timeout(timeout))
+        self._wait_task = asyncio.Future()
+        self._next_ack_task = asyncio.Future()
 
-    def set_final_ack(self, ack, cancel_timeout):
-        """End waiting for an ack.
+        self.done_ack_codes = frozenset((
+            sal_enums.SalRetCode.CMD_ABORTED,
+            sal_enums.SalRetCode.CMD_COMPLETE,
+            sal_enums.SalRetCode.CMD_FAILED,
+            sal_enums.SalRetCode.CMD_NOACK,
+            sal_enums.SalRetCode.CMD_NOPERM,
+            sal_enums.SalRetCode.CMD_STALLED,
+            sal_enums.SalRetCode.CMD_TIMEOUT,
+        ))
+        self.failed_ack_codes = frozenset((
+            sal_enums.SalRetCode.CMD_ABORTED,
+            sal_enums.SalRetCode.CMD_FAILED,
+            sal_enums.SalRetCode.CMD_NOACK,
+            sal_enums.SalRetCode.CMD_NOPERM,
+            sal_enums.SalRetCode.CMD_STALLED,
+            sal_enums.SalRetCode.CMD_TIMEOUT,
+        ))
+        self.good_ack_codes = frozenset((
+            sal_enums.SalRetCode.CMD_ACK,
+            sal_enums.SalRetCode.CMD_INPROGRESS,
+            sal_enums.SalRetCode.CMD_COMPLETE))
+
+        # we should see at most 3 acks, but leave room for one more,
+        # just in case
+        self._ack_queue = collections.deque(maxlen=4)
+        self._last_ackcmd = None
+
+    def abort(self, result=""):
+        """Report command as aborted. Ignored if already done."""
+        if not self._wait_task.done():
+            self._wait_task.cancel()
+        if not self._next_ack_task.done():
+            self._next_ack_task.cancel()
+
+    def add_ackcmd(self, ackcmd):
+        """Add a command acknowledgement to the queue.
 
         Parameters
         ----------
-        ack : `salobj.AckType`
-            Command acknowledgement
-        cancel_timeout : `bool`
-            If True then cancel the timeout_task.
-            If False then report timeout.
+        ackcmd : `SalInfo.AckCmdType`
+            Command acknowledgement data.
+
+        Returns
+        -------
+        isdone : `bool`
+            True if this is a final acknowledgement.
         """
-        if self.done_task.done():
-            return
-        if cancel_timeout:
-            if self._timeout_task is None or self._timeout_task.done():
-                warnings.warn(f"{self}._timeout_task is already done")
-            self._timeout_task.cancel()
-        if ack.ack in self.good_ack_codes:
-            self.done_task.set_result(CommandIdAck(cmd_id=self.cmd_id, ack=ack))
-        else:
-            self.done_task.set_exception(
-                AckError(f"Command failed with ack code {ack.ack}", cmd_id=self.cmd_id, ack=ack))
+        # print(f"add_ackcmd; ackcmd.ack={ackcmd.ack}")
+        isdone = ackcmd.ack in self.done_ack_codes
+        self._ack_queue.append(ackcmd)
+        if not self._next_ack_task.done():
+            self._next_ack_task.set_result(None)
+        return isdone
+
+    async def next_ackcmd(self, timeout):
+        """Get next command acknowledgement of interest.
+
+        If ``wait_done`` true then return the final command acknowledgement,
+        else return the next command acknowledgement.
+        If the ackcmd is an error then raise `AckError`.
+        If waiting times out then raise `AckTimeoutError`.
+
+        Parameters
+        ----------
+        timeout : `float` (optional)
+            Timeout in seconds. If the next command acknowledgement
+            does not arrive in time then raise `AckTimeoutError`.
+
+        Returns
+        -------
+        ackcmd : `SalInfo.AckCmdType`
+            Command acknowledgement.
+
+        Raises
+        ------
+        AckTimeoutError
+            If the command acknowledgement does not arrive in time.
+        AckError
+            If the command fails.
+        """
+        if timeout is None:  # for backwards compatibility
+            timeout = DEFAULT_TIMEOUT
+        try:
+            self._wait_task = asyncio.ensure_future(asyncio.wait_for(self._basic_next_ack(),
+                                                                     timeout=timeout))
+            ackcmd = await self._wait_task
+            # print(f"next_ackcmd got {ackcmd.ack} from _basic_next_ack")
+            if ackcmd.ack in self.failed_ack_codes:
+                raise base.AckError(msg="Command failed", ackcmd=ackcmd)
+            return ackcmd
+        except asyncio.TimeoutError:
+            if self._last_ackcmd is None:
+                last_ackcmd = self.remote_command.salinfo.makeAckCmd(private_seqNum=self.seq_num,
+                                                                     ack=sal_enums.SalRetCode.CMD_NOACK,
+                                                                     result="No command acknowledgement seen")
+            else:
+                last_ackcmd = self._last_ackcmd
+
+            if self.seq_num in self.remote_command.salinfo._running_cmds:
+                self.remote_command.salinfo._running_cmds.pop(self.seq_num)
+            raise base.AckTimeoutError(msg="Timed out waiting for command acknowledgement",
+                                       ackcmd=last_ackcmd)
+
+    async def _basic_next_ack(self):
+        """Get the next command acknowledgment of interest.
+
+        Implements `next_ackcmd` but does not interpret the result
+        beyond ignoring acks that are not of interest.
+
+        Returns
+        -------
+        ackcmd : `SalInfo.AckCmdType`
+            Next command acknowledgement of interest.
+        """
+        # note: set self._last_ackcmd here instead of in add_ackcmd
+        # because it reduces or eliminates a race condition where a new
+        # command acknowledgement comes in as next_ackcmd is timing out.
+        while True:
+            while self._ack_queue:
+                ackcmd = self._ack_queue.popleft()
+                self._last_ackcmd = ackcmd
+                if not self.wait_done or ackcmd.ack in self.done_ack_codes:
+                    return ackcmd
+            self._next_ack_task = asyncio.Future()
+            await self._next_ack_task
+            ackcmd = self._ack_queue.popleft()
+            self._last_ackcmd = ackcmd
+            if not self.wait_done or ackcmd.ack in self.done_ack_codes:
+                return ackcmd
 
     def __del__(self):
-        timeout_task = getattr(self, "_timeout_task", None)
-        if timeout_task is not None and not timeout_task.done():
-            timeout_task.cancel()
+        for task_name in ("_wait_task", "_next_ack_task"):
+            task = getattr(self, task_name, None)
+            if task is not None and not task.done():
+                task.cancel()
 
     def __repr__(self):
-        return f"_CommandInfo(remote_command={self.remote_command}, cmd_id={self.cmd_id}, " \
-               f"wait_done={self.wait_done}, ack.ack={self.ack.ack})"
-
-    async def _start_timeout(self, timeout):
-        if timeout is None:
-            timeout = DEFAULT_TIMEOUT
-        await asyncio.sleep(timeout)
-
-        # Set the final ack to NOACK, which is the correct code for the reader
-        # timing out (TIMEOUT is for timing out at the controller).
-        self.ack.ack = self.remote_command.salinfo.lib.SAL__CMD_NOACK
-        if self.cmd_id in self.remote_command._running_cmds:
-            self.remote_command._running_cmds.pop(self.cmd_id)
-        self.set_final_ack(ack=self.ack, cancel_timeout=False)
+        return f"_CommandInfo(remote_command={self.remote_command}, seq_num={self.seq_num}, " \
+               f"wait_done={self.wait_done})"
 
 
-class RemoteCommand(BaseOutputTopic):
-    """An object that issues a specific command to a SAL component.
+class RemoteCommand(write_topic.WriteTopic):
+    """Issue a specific command topic and wait for acknowldgement.
 
     Parameters
     ----------
-    salinfo : `lsst.ts.salobj.SalInfo`
+    salinfo : `SalInfo`
         SAL component information
     name : `str`
         Command name
     """
     def __init__(self, salinfo, name):
-        super().__init__(salinfo=salinfo, name=name)
+        num_commands = len(salinfo.command_names)
+        seq_num_increment = write_topic.MAX_SEQ_NUM // num_commands
+        name_ind = salinfo.command_names.index(name)
+        min_seq_num = name_ind*seq_num_increment + 1
+        max_seq_num = min_seq_num + seq_num_increment - 1
+        initial_seq_num = random.randint(min_seq_num, max_seq_num)
+        super().__init__(salinfo=salinfo, name=name, sal_prefix="command_",
+                         min_seq_num=min_seq_num, max_seq_num=max_seq_num,
+                         initial_seq_num=initial_seq_num)
         self.log = logging.getLogger(f"{salinfo}.RemoteCommand.{name}")
-        self._running_cmds = dict()
-        self._next_ack_task = None
+        # dict of seq_num: CommandInfo
+        if salinfo._ackcmd_reader is None:
+            salinfo._ackcmd_reader = AckCmdReader(salinfo)
+            salinfo._ackcmd_reader.callback = salinfo._ackcmd_callback
 
-    def next_ack(self, cmd_id_ack, timeout=None, wait_done=True):
+    async def next_ackcmd(self, ackcmd, timeout=DEFAULT_TIMEOUT, wait_done=True):
         """Wait for the next acknowledement for the command
 
         Parameters
         ----------
-        cmd_id : `lsst.ts.salobj.CommandIdAck`
-            The command ID and acknowledgement returned by
+        ackcmd : `SalInfo.AckCmdType`
+            The command acknowledgement returned by
             the previous wait (e.g. from `start`).
         timeout : `float` (optional)
             Time limit, in seconds. If None then no time limit.
@@ -140,33 +267,70 @@ class RemoteCommand(BaseOutputTopic):
             is true, else it is for the first acknowledgement
             after the initial "SAL__CMD_ACK".
         wait_done : `bool` (optional)
-            If True then wait for final command acknowledgement,
-            otherwise wait until the next ack; if that acknowledgement
-            is not final (the ack code is not in done_ack_codes),
-            then you will almost certainly want to await `next_ack` again.
+            If True then wait for final command acknowledgement.
+            If False then wait until the next command acknowledgement;
+            if that acknowledgement is not final (the ack code is not in
+            ``done_ack_codes``), then you will almost certainly want to
+            await `next_ackcmd` again.
 
         Returns
         -------
-        coro : `coroutine`
-            A coroutine that waits for command acknowledgement
-            and returns a `lsst.ts.salobj.CommandIdAck` instance.
+        ackcmd : `SalInfo.AckCmdType`
+            Command acknowledgement.
 
         Raises
         ------
         salobj.AckError
             If the command fails or times out.
         RuntimeError
-            If the command specified by ``cmd_id`` is unknown
+            If the command specified by ``seq_num`` is unknown
             or has already finished.
         """
-        cmd_info = self._running_cmds.get(cmd_id_ack.cmd_id, None)
+        cmd_info = self.salinfo._running_cmds.get(ackcmd.private_seqNum, None)
         if cmd_info is None:
-            raise RuntimeError(f"Command cmd_id={cmd_id_ack.cmd_id} is unknown or finished")
+            raise RuntimeError(f"Command private_seqNum={ackcmd.private_seqNum} is unknown or finished")
         cmd_info.wait_done = wait_done
-        self._start_wait_for_ack(cmd_info=cmd_info, timeout=timeout)
-        return cmd_info.done_task
+        return await cmd_info.next_ackcmd(timeout=timeout)
 
-    async def start(self, data=None, timeout=None, wait_done=True):
+    async def set_start(self, timeout=DEFAULT_TIMEOUT, wait_done=True, **kwargs):
+        """Set zero or more command data fields and start a command.
+
+        Parameters
+        ----------
+        timeout : `float` (optional)
+            Time limit, in seconds. If None then no time limit.
+            This time limit is for the entire command if wait_done
+            is true, else it is for the first acknowledgement
+            after the initial "SAL__CMD_ACK".
+        wait_done : `bool` (optional)
+            If True then wait for final command acknowledgement.
+            If False then wait for the first acknowledgement after the
+            initial "SAL__CMD_ACK"; if that acknowledgement is not final
+            (the ack code is not in done_ack_codes), then you will almost
+            certainly want to await `next_ackcmd`.
+        **kwargs : `dict` [`str`, ``any``]
+            The remaining keyword arguments are
+            field name = new value for that field.
+            See `set` for more information about values.
+
+        Returns
+        -------
+        cmdack : `SalInfo.AckCmdType`
+            Command acknowledgement.
+
+        Raises
+        ------
+        salobj.AckError
+            If the command fails.
+        salobj.AckTimeoutError
+            If the command times out.
+        TypeError
+            If ``data`` is not None and not an instance of `DataType`.
+        """
+        self.set(**kwargs)
+        return await self.start(timeout=timeout, wait_done=wait_done)
+
+    async def start(self, data=None, timeout=DEFAULT_TIMEOUT, wait_done=True):
         """Start a command.
 
         Parameters
@@ -183,91 +347,28 @@ class RemoteCommand(BaseOutputTopic):
             If False then wait for the first acknowledgement after the
             initial "SAL__CMD_ACK"; if that acknowledgement is not final
             (the ack code is not in done_ack_codes), then you will almost
-            certainly want to await `next_ack`.
+            certainly want to await `next_ackcmd`.
 
         Returns
         -------
-        coro : `coroutine`
-            A coroutine that waits for command acknowledgement
-            and returns a `lsst.ts.salobj.CommandIdAck` instance.
+        cmdack : `SalInfo.AckCmdType`
+            Command acknowledgement.
 
         Raises
         ------
         salobj.AckError
-            If the command fails or times out.
+            If the command fails.
+        salobj.AckTimeoutError
+            If the command times out.
         TypeError
             If ``data`` is not None and not an instance of `DataType`.
         """
         if data is not None:
             self.data = data
-        cmd_id = self._issue_func(self.data)
-        time.sleep(SAL_SLEEP)
-        if cmd_id <= 0:
-            raise RuntimeError(f"{self.name} command with data={data} could not be started")
-        if cmd_id in self._running_cmds:
-            raise RuntimeError(f"{self.name} bug: a command with cmd_id={cmd_id} is already running")
-        cmd_info = _CommandInfo(remote_command=self, cmd_id=cmd_id, wait_done=wait_done)
-        self._running_cmds[cmd_id] = cmd_info
-        self._start_wait_for_ack(cmd_info=cmd_info, timeout=timeout)
-        return await cmd_info.done_task
-
-    def _start_wait_for_ack(self, cmd_info, timeout):
-        cmd_info.start_timeout(timeout)
-        if self._next_ack_task is None or self._next_ack_task.done():
-            self._next_ack_task = asyncio.ensure_future(self._next_ack_loop())
-
-    async def _next_ack_loop(self):
-        """Read command acks until self._running_cmds is empty.
-        """
-        ack = self.salinfo.AckType()
-        while True:
-            try:
-                response_id = self._response_func(ack)
-                time.sleep(SAL_SLEEP)
-            except Exception as e:
-                self.log.warning(f"{self._response_func_name} raised {e}")
-                continue
-            if response_id == self.salinfo.lib.SAL__CMD_NOACK:
-                pass  # no new ack
-            elif response_id < 0:
-                self.log.warning(f"{self._response_func_name} returned {response_id}")
-            elif response_id in self._running_cmds:
-                cmd_info = self._running_cmds[response_id]
-                cmd_info.ack = ack
-                if cmd_info.done_task:
-                    is_done = ack.ack in self.done_ack_codes
-                    do_end_task = is_done if cmd_info.wait_done else True
-                    if is_done:
-                        del self._running_cmds[response_id]
-                    if do_end_task:
-                        cmd_info.set_final_ack(ack=ack, cancel_timeout=True)
-
-            if self._running_cmds:
-                await asyncio.sleep(0.05)
-            else:
-                return
-
-    def _setup(self):
-        """Get SAL functions."""
-        self._issue_func_name = "issueCommand_" + self.name
-        self._issue_func = getattr(self.salinfo.manager, self._issue_func_name)
-        self._response_func_name = "getResponse_" + self.name
-        self._response_func = getattr(self.salinfo.manager, self._response_func_name)
-        self._AckType = getattr(self.salinfo.lib, self.salinfo.name + "_ackcmdC")
-        self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_command_" + self.name + "C")
-        self.done_ack_codes = frozenset((
-            self.salinfo.lib.SAL__CMD_ABORTED,
-            self.salinfo.lib.SAL__CMD_COMPLETE,
-            self.salinfo.lib.SAL__CMD_FAILED,
-            self.salinfo.lib.SAL__CMD_NOACK,
-            self.salinfo.lib.SAL__CMD_NOPERM,
-            self.salinfo.lib.SAL__CMD_STALLED,
-            self.salinfo.lib.SAL__CMD_TIMEOUT,
-        ))
-
-        topic_name = self.salinfo.name + "_command_" + self.name
-        try:  # work around lack of topic name in SAL's exception message
-            self.salinfo.manager.salCommand(topic_name)
-        except Exception as e:
-            raise RuntimeError(f"Could not subscribe to command {self.name}") from e
-        time.sleep(SAL_SLEEP)
+        self.put()
+        seq_num = self.data.private_seqNum
+        if seq_num in self.salinfo._running_cmds:
+            raise RuntimeError(f"{self.name} bug: a command with seq_num={seq_num} is already running")
+        cmd_info = _CommandInfo(remote_command=self, seq_num=seq_num, wait_done=wait_done)
+        self.salinfo._running_cmds[seq_num] = cmd_info
+        return await cmd_info.next_ackcmd(timeout=timeout)

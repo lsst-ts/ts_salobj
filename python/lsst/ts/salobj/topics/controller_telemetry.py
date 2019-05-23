@@ -21,21 +21,22 @@
 
 __all__ = ["ControllerTelemetry"]
 
-import time
-
-from .base_topic import BaseOutputTopic, SAL_SLEEP
+from . import write_topic
 
 
-class ControllerTelemetry(BaseOutputTopic):
-    """An object that writes a specific telemetry topic.
+class ControllerTelemetry(write_topic.WriteTopic):
+    """Write a specific telemetry topic.
 
     Parameters
     ----------
-    salinfo : `lsst.ts.salobj.SalInfo`
+    salinfo : `SalInfo`
         SAL component information
     name : `str`
         Command name
     """
+    def __init__(self, salinfo, name):
+        super().__init__(salinfo=salinfo, name=name, sal_prefix="")
+
     def put(self, data=None):
         """Output this topic.
 
@@ -49,20 +50,15 @@ class ControllerTelemetry(BaseOutputTopic):
         TypeError
             If ``data`` is not None and not an instance of `DataType`.
         """
-        if data is not None:
-            self.data = data
-        retcode = self._put_func(self.data)
-        time.sleep(0.001)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"put failed with return code {retcode} from {self._put_func_name}")
+        super().put(data=data)
 
     def set_put(self, **kwargs):
-        """Set one or more fields of ``self.data`` and put the result.
+        """Set zero or more fields of ``self.data`` and put the result.
 
         Parameters
         ----------
         **kwargs : `dict` [`str`, ``any``]
-            Dict of field name: new value for that field.
+            The keyword arguments are field name = new value for that field.
             See `set` for more information about values.
 
         Returns
@@ -80,15 +76,3 @@ class ControllerTelemetry(BaseOutputTopic):
         did_change = self.set(**kwargs)
         self.put()
         return did_change
-
-    def _setup(self):
-        """Get functions from salinfo and publish this topic."""
-        self._put_func = getattr(self.salinfo.manager, "putSample_" + self.name)
-        self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_" + self.name + "C")
-
-        topic_name = self.salinfo.name + "_" + self.name
-        try:  # work around lack of topic name in SAL's exception message
-            self.salinfo.manager.salTelemetryPub(topic_name)
-        except Exception as e:
-            raise RuntimeError(f"Could not subscribe to telemetry {self.name}") from e
-        time.sleep(SAL_SLEEP)
