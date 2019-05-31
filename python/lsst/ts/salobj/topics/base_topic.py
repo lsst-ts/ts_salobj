@@ -19,138 +19,55 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["SAL_SLEEP", "BaseTopic", "BaseOutputTopic"]
+__all__ = ["BaseTopic"]
 
 import abc
 
-import numpy as np
-
-# Time to sleep after each SAL command to give the C++ threads time to work.
-# Note: always use `time.sleep(SAL_SLEEP)` instead of
-# `await asyncio.sleep(SAL_SLEEP)` because the latter may keep Python too busy.
-SAL_SLEEP = 0.001  # time to sleep after each SAL command
+# TODO when we upgrade to OpenSplice 6.10, use its ddsutil:
+# import ddsutil
+from .. import ddsutil
 
 
 class BaseTopic(abc.ABC):
-    """Base class for topics.
+    r"""Base class for topics.
 
     Parameters
     ----------
     salinfo : `SalInfo`
         SAL component information
     name : `str`
-        Command name
+        Topic name, without a "command\_" or "logevent\_" prefix.
+    sal_prefix : `str`
+        SAL topic prefix: one of "command\_", "logevent\_" or ""
     """
-    def __init__(self, salinfo, name):
-        self.salinfo = salinfo
-        self.name = str(name)
-        self._has_data = False
-        self._setup()
-        self._data = self.DataType()
+    def __init__(self, *, salinfo, name, sal_prefix):
+        try:
+            self.salinfo = salinfo
+            self.name = str(name)
+            if sal_prefix not in ("", "logevent_", "command_"):
+                raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
+            self._sal_topic_name = sal_prefix + self.name
+            self.log = salinfo.log.getChild(self._sal_topic_name)
+            if name == "ackcmd":
+                ddsname = f"{salinfo.name}_ackcmd"
+                revname = f"{salinfo.name}::ackcmd"
+                self._revCode = ""
+            else:
+                revname = salinfo.revnames.get(self._sal_topic_name)
+                if revname is None:
+                    raise ValueError(f"Could not find {self.salinfo.name} topic {self._sal_topic_name}")
+                ddsname = revname.replace("::", "_")
+                self._revCode = ddsname[-8:]
+            self._type = ddsutil.get_dds_classes_from_idl(salinfo.idl_loc, revname)
+            self._topic = self._type.register_topic(salinfo.domain.participant, ddsname,
+                                                    salinfo.domain.topic_qos)
+        except Exception as e:
+            raise RuntimeError(f"Failed to create topic {salinfo.name}.{name}") from e
 
     @property
     def DataType(self):
         """The class of data for this topic."""
-        return self._DataType
-
-    @property
-    def data(self):
-        """Get or set internally cached data.
-
-        Parameters
-        ----------
-        data : `DataType`
-            New data.
-
-        Raises
-        ------
-        TypeError
-            If ``data`` is not an instance of `DataType`
-
-        Notes
-        -----
-        You must not modify the returned data, nor assume that it will be
-        constant. If you need a copy then make it yourself.
-        """
-        return self._data
-
-    @data.setter
-    def data(self, data):
-        if not isinstance(data, self.DataType):
-            raise TypeError(f"data={data!r} must be an instance of {self.DataType}")
-        self._data = data
-        self._has_data = True
-
-    @property
-    def has_data(self):
-        """Has `data` ever been set?"""
-        return self._has_data
+        return self._type.topic_data_class
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.salinfo}, {self.name})"
-
-    @abc.abstractmethod
-    def _setup(self):
-        """Get functions from salinfo and subscribe to this topic."""
-
-
-class BaseOutputTopic(BaseTopic):
-    """Base class for topics that are output.
-
-    This includes  controller events, controller telemetry and remote commands.
-    """
-    def set(self, **kwargs):
-        """Set one or more fields of ``self.data``.
-
-        Parameters
-        ----------
-        **kwargs : `dict` [`str`, ``any``]
-            Dict of field name: new value for that field:
-
-            * Any key whose value is `None` is checked for existence,
-              but the value of the field is not changed.
-            * If the field being set is an array then the value must either
-              be an array of the same length or a scalar (which replaces
-              every element of the array).
-
-        Returns
-        -------
-        did_change : `bool`
-            True if data was changed or if this was the first call to `set`.
-
-        Raises
-        ------
-        AttributeError
-            If the topic does not have the specified field.
-        ValueError
-            If the field cannot be set to the specified value.
-
-        Notes
-        -----
-        If one or more fields cannot be set, the data may be partially updated.
-        This is not ideal, but is pragmatic because it is difficult to copy
-        SAL topics (see TSS-3195).
-        """
-        did_change = not self.has_data
-        for field_name, value in kwargs.items():
-            if value is None:
-                if not hasattr(self.data, field_name):
-                    raise AttributeError(f"{self.data} has no attribute {field_name}")
-                continue
-            old_value = getattr(self.data, field_name)
-            try:
-                if isinstance(old_value, np.ndarray):
-                    if not did_change:
-                        # numpy.array_equiv performs the desired check
-                        # even if value is a scalar
-                        did_change |= not np.array_equiv(old_value, value)
-                    old_value[:] = value
-                else:
-                    if not did_change:
-                        is_different = old_value != value
-                        did_change |= is_different
-                    setattr(self.data, field_name, value)
-            except Exception as e:
-                raise ValueError(f"Could not set {self.data}.{field_name} to {value!r}") from e
-        self._has_data = True
-        return did_change
+        return f"{type(self).__name__}({self.salinfo.name}, {self.salinfo.index}, {self.name})"

@@ -1,98 +1,100 @@
+import asyncio
 import os
 import random
 import unittest
 
-try:
-    import SALPY_Test
-except ImportError:
-    SALPY_Test = None
 from lsst.ts import salobj
 
 
-def makeAck(ack, error=0, result=""):
-    """Make an AckType object from keyword arguments.
-    """
-    data = SALPY_Test.Test_ackcmdC()
-    data.ack = ack
-    data.error = error
-    data.result = result
-    return data
-
-
 class BasicsTestCase(unittest.TestCase):
+    def setUp(self):
+        salobj.set_random_lsst_dds_domain()
+
     def test_assert_ack_error(self):
-        err = salobj.AckError("a message", cmd_id=5, ack=makeAck(ack=23, error=-6, result="a result"))
-        self.assertEqual(err.cmd_id, 5)
-        self.assertEqual(err.ack.ack, 23)
-        self.assertEqual(err.ack.error, -6)
-        self.assertEqual(err.ack.result, "a result")
+        async def doit():
+            async with salobj.Domain() as domain:
+                salinfo = salobj.SalInfo(domain, "Test", index=1)
+                private_seqNum = 5
+                ack = 23
+                error = -6
+                result = "a result"
+                err = salobj.AckError("a message",
+                                      ackcmd=salinfo.makeAckCmd(private_seqNum=private_seqNum, ack=ack,
+                                                                error=error, result=result))
+                self.assertEqual(err.ackcmd.private_seqNum, private_seqNum)
+                self.assertEqual(err.ackcmd.ack, ack)
+                self.assertEqual(err.ackcmd.error, error)
+                self.assertEqual(err.ackcmd.result, result)
 
-        for ExceptionClass in (Exception, TypeError, KeyError, RuntimeError, AssertionError):
-            with self.assertRaises(ExceptionClass):
+                for ExceptionClass in (Exception, TypeError, KeyError, RuntimeError, AssertionError):
+                    with self.assertRaises(ExceptionClass):
+                        with salobj.assertRaisesAckError():
+                            raise ExceptionClass("assertRaisesAckError should ignore other exception types")
+
+                with self.assertRaises(AssertionError):
+                    with salobj.assertRaisesAckError(ack=5):
+                        raise salobj.AckError("mismatched ack",
+                                              ackcmd=salinfo.makeAckCmd(private_seqNum=1, ack=1))
+
+                with self.assertRaises(AssertionError):
+                    with salobj.assertRaisesAckError(error=47):
+                        raise salobj.AckError("mismatched error",
+                                              ackcmd=salinfo.makeAckCmd(private_seqNum=2, ack=25, error=2))
+
                 with salobj.assertRaisesAckError():
-                    raise ExceptionClass("assertRaisesAckError should ignore other exception types")
+                    raise salobj.AckError("no ack or error specified",
+                                          ackcmd=salinfo.makeAckCmd(private_seqNum=3, ack=1, error=2))
 
-        with self.assertRaises(AssertionError):
-            with salobj.assertRaisesAckError(ack=5):
-                raise salobj.AckError("mismatched ack", cmd_id=1, ack=makeAck(ack=1))
+                with salobj.assertRaisesAckError(ack=1, error=2):
+                    raise salobj.AckError("matching ack and error",
+                                          ackcmd=salinfo.makeAckCmd(private_seqNum=4, ack=1, error=2))
 
-        with self.assertRaises(AssertionError):
-            with salobj.assertRaisesAckError(error=47):
-                raise salobj.AckError("mismatched error", cmd_id=2, ack=makeAck(ack=25, error=2))
-
-        with salobj.assertRaisesAckError():
-            raise salobj.AckError("no ack or error specified", cmd_id=3, ack=makeAck(ack=1, error=2))
-
-        with salobj.assertRaisesAckError(ack=1, error=2):
-            raise salobj.AckError("matching ack and error", cmd_id=4, ack=makeAck(ack=1, error=2))
+        asyncio.get_event_loop().run_until_complete(doit())
 
     def test_ack_error_repr(self):
         """Test AckError.__str__ and AckError.__repr__"""
-        msg = "a message"
-        cmd_id = 5
-        ack_code = 23
-        error = -6
-        result = "a result"
-        err = salobj.AckError(msg, cmd_id=cmd_id, ack=makeAck(ack=ack_code, error=error, result=result))
-        str_err = str(err)
-        for item in (msg, cmd_id, ack_code, error, result):
-            self.assertIn(str(item), str_err)
-        self.assertNotIn("AckError", str_err)
-        repr_err = repr(err)
-        for item in ("AckError", msg, cmd_id, ack_code, error, result):
-            self.assertIn(str(item), repr_err)
+        async def doit():
+            async with salobj.Domain() as domain:
+                salinfo = salobj.SalInfo(domain, "Test", index=1)
+                msg = "a message"
+                private_seqNum = 5
+                ack = 23
+                error = -6
+                result = "a result"
+                err = salobj.AckError(msg, ackcmd=salinfo.makeAckCmd(private_seqNum=private_seqNum,
+                                                                     ack=ack, error=error, result=result))
+                str_err = str(err)
+                for item in (msg, private_seqNum, ack, error, result):
+                    self.assertIn(str(item), str_err)
+                self.assertNotIn("AckError", str_err)
+                repr_err = repr(err)
+                for item in ("AckError", msg, private_seqNum, ack, error, result):
+                    self.assertIn(str(item), repr_err)
+
+        asyncio.get_event_loop().run_until_complete(doit())
 
     def test_long_ack_result(self):
-        salinfo = salobj.SalInfo(SALPY_Test, index=1)
-        ack_code = salinfo.lib.SAL__CMD_FAILED
-        error = 15
-        long_result = "this string is longer than MAX_RESULT_LEN characters " \
-            "this string is longer than MAX_RESULT_LEN characters " \
-            "this string is longer than MAX_RESULT_LEN characters " \
-            "this string is longer than MAX_RESULT_LEN characters " \
-            "this string is longer than MAX_RESULT_LEN characters "
-        self.assertGreater(len(long_result), salobj.MAX_RESULT_LEN)
-        with self.assertRaises(ValueError):
-            salinfo.makeAck(ack=ack_code, error=error, result=long_result, truncate_result=False)
-        ack = salinfo.makeAck(ack=ack_code, error=error, result=long_result, truncate_result=True)
-        self.assertEqual(ack.result, long_result[0:salobj.MAX_RESULT_LEN])
-        self.assertEqual(ack.ack, ack_code)
-        self.assertEqual(ack.error, error)
+        async def doit():
+            async with salobj.Domain() as domain:
+                salinfo = salobj.SalInfo(domain, "Test", index=1)
+                ack = salobj.SalRetCode.CMD_FAILED
+                error = 15
+                long_result = "this string is longer than MAX_RESULT_LEN characters " \
+                    "this string is longer than MAX_RESULT_LEN characters " \
+                    "this string is longer than MAX_RESULT_LEN characters " \
+                    "this string is longer than MAX_RESULT_LEN characters " \
+                    "this string is longer than MAX_RESULT_LEN characters "
+                self.assertGreater(len(long_result), salobj.MAX_RESULT_LEN)
+                with self.assertRaises(ValueError):
+                    salinfo.makeAckCmd(private_seqNum=1,
+                                       ack=ack, error=error, result=long_result, truncate_result=False)
+                ackcmd = salinfo.makeAckCmd(private_seqNum=2,
+                                            ack=ack, error=error, result=long_result, truncate_result=True)
+                self.assertEqual(ackcmd.result, long_result[0:salobj.MAX_RESULT_LEN])
+                self.assertEqual(ackcmd.ack, ack)
+                self.assertEqual(ackcmd.error, error)
 
-    def test_cmd_id_ack_repr(self):
-        """Test CommandIdAck.__str__ and AckError.__repr__"""
-        cmd_id = 5
-        ack_code = 23
-        error = -6
-        result = "a result"
-        idack = salobj.CommandIdAck(cmd_id=cmd_id, ack=makeAck(ack=ack_code, error=error, result=result))
-        str_idack = str(idack)
-        for item in (cmd_id, ack_code, error, result):
-            self.assertIn(str(item), str_idack)
-        self.assertNotIn("CommandIdAck", str_idack)
-        repr_idack = repr(idack)
-        for item in ("CommandIdAck", cmd_id, ack_code, error, result):
-            self.assertIn(str(item), repr_idack)
+        asyncio.get_event_loop().run_until_complete(doit())
 
     def test_set_random_lsst_dds_domain(self):
         random.seed(42)
@@ -106,26 +108,70 @@ class BasicsTestCase(unittest.TestCase):
         # any duplicate names will reduce the size of names
         self.assertEqual(len(names), NumToTest)
 
+    def test_lsst_dds_domain_required(self):
+        del os.environ["LSST_DDS_DOMAIN"]
+
+        async def doit():
+            async with salobj.Domain() as domain:
+                with self.assertRaises(RuntimeError):
+                    salobj.SalInfo(domain=domain, name="Test", index=1)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_domain_host_origin(self):
+        async def doit():
+            for bad_ip in ("5.5", "foo"):
+                os.environ["LSST_DDS_IP"] = bad_ip
+                with self.assertRaises(ValueError):
+                    salobj.Domain()
+
+            os.environ["LSST_DDS_IP"] = "57"
+            async with salobj.Domain() as domain:
+                self.assertEqual(domain.host, 57)
+                self.assertEqual(domain.origin, os.getpid())
+
+            del os.environ["LSST_DDS_IP"]
+            async with salobj.Domain() as domain:
+                self.assertGreater(domain.host, 0)
+                self.assertNotEqual(domain.host, 57)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
     def test_index_generator(self):
         with self.assertRaises(ValueError):
-            salobj.index_generator(0, 0)
+            salobj.index_generator(1, 1)  # imin >= imax
         with self.assertRaises(ValueError):
-            salobj.index_generator(5, 4)
+            salobj.index_generator(1, 0)  # imin >= imax
+        with self.assertRaises(ValueError):
+            salobj.index_generator(0, 5, -1)  # i0 < imin
+        with self.assertRaises(ValueError):
+            salobj.index_generator(0, 5, 6)  # i0 > imax
 
         imin = -2
         imax = 5
-        nvalues = 14
         gen = salobj.index_generator(imin=imin, imax=imax)
-        values = [next(gen) for i in range(nvalues)]
-        expected_values = (list(range(imin, imax+1))*2)[0:nvalues]
+        expected_values = [-2, -1, 0, 1, 2, 3, 4, 5, -2, -1, 0, 1, 2, 3, 4, 5, -2]
+        values = [next(gen) for i in range(len(expected_values))]
+        self.assertEqual(values, expected_values)
+
+        imin = -2
+        imax = 5
+        i0 = 5
+        expected_values = [5, -2, -1, 0, 1, 2, 3, 4, 5, -2]
+        gen = salobj.index_generator(imin=imin, imax=imax, i0=i0)
+        values = [next(gen) for i in range(len(expected_values))]
         self.assertEqual(values, expected_values)
 
     def test_salinfo_constructor(self):
-        with self.assertRaises(RuntimeError):
-            salobj.SalInfo(SALPY_Test, index=None)
+        async def doit():
+            with self.assertRaises(TypeError):
+                salobj.SalInfo(domain=None, name="Test")
 
-        with self.assertRaises(AttributeError):
-            salobj.SalInfo(None)
+            async with salobj.Domain() as domain:
+                with self.assertRaises(RuntimeError):
+                    salobj.SalInfo(domain, name="invalid_component_name")
+
+        asyncio.get_event_loop().run_until_complete(doit())
 
 
 if __name__ == "__main__":

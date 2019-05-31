@@ -21,47 +21,25 @@
 
 __all__ = ["ControllerEvent"]
 
-import time
-
-from .base_topic import SAL_SLEEP
-from .controller_telemetry import ControllerTelemetry
+from . import write_topic
 
 
-class ControllerEvent(ControllerTelemetry):
-    """An object that writes a specific event topic.
+class ControllerEvent(write_topic.WriteTopic):
+    """Write a specific event topic.
 
     Parameters
     ----------
-    salinfo : `lsst.ts.salobj.SalInfo`
+    salinfo : `SalInfo`
         SAL component information
     name : `str`
         Event topic name
     """
-    def put(self, data=None, priority=1):
-        """Output this topic.
-
-        Parameters
-        ----------
-        data : ``self.DataType`` (optional)
-            New data to replace ``self.data``, if any.
-        priority : `int` (optional)
-            Priority. ts_sal does not yet use this for anything;
-            in the meantime I provide a default that works.
-
-        Raises
-        ------
-        TypeError
-            If ``data`` is not None and not an instance of `DataType`.
-        """
-        if data is not None:
-            self.data = data
-        retcode = self._put_func(self.data, priority)
-        time.sleep(SAL_SLEEP)
-        if retcode != self.salinfo.lib.SAL__OK:
-            raise RuntimeError(f"salProcessor({self.name}) failed with return code {retcode}")
+    def __init__(self, salinfo, name):
+        super().__init__(salinfo=salinfo, name=name, sal_prefix="logevent_")
 
     def set_put(self, force_output=False, **kwargs):
-        """Set one or more fields of ``self.data`` and put *if changed*.
+        """Set zero or more fields of ``self.data`` and put if changed
+        or if ``force_output`` true.
 
         The data is put if it has never been set (`has_data` False), or this
         call changes the value of any field, or ``force_output`` is true.
@@ -69,9 +47,10 @@ class ControllerEvent(ControllerTelemetry):
         Parameters
         ----------
         force_output : `bool` (optional)
-            If True then output the event, even if not changed.
+            If True then output the event, even if no fields have changed.
         **kwargs : `dict` [`str`, ``any``]
-            Dict of field name: new value for that field.
+            The remaining keyword arguments are
+            field name = new value for that field.
             See `set` for more information about values.
 
         Returns
@@ -91,15 +70,3 @@ class ControllerEvent(ControllerTelemetry):
         if do_output:
             self.put(self.data)
         return do_output
-
-    def _setup(self):
-        """Get functions from salinfo and publish this topic."""
-        self._put_func = getattr(self.salinfo.manager, "logEvent_" + self.name)
-        self._DataType = getattr(self.salinfo.lib, self.salinfo.name + "_logevent_" + self.name + "C")
-
-        topic_name = self.salinfo.name + "_logevent_" + self.name
-        try:  # work around lack of topic name in SAL's exception message
-            self.salinfo.manager.salEventPub(topic_name)
-        except Exception as e:
-            raise RuntimeError(f"Could not subscribe to event {self.name}") from e
-        time.sleep(SAL_SLEEP)

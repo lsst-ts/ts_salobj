@@ -22,5 +22,13 @@ properties:
     default: [-1, 1]
     items:
       type: integer
-required: [string0, bool0, int0, float0, intarr0]
+  multi_type:
+    anyOf:
+      - type: integer
+        minimum: 1
+      - type: string
+      - type: "null"
+    default: null
+
+required: [string0, bool0, int0, float0, intarr0, multi_type]
 additionalProperties: false

@@ -42,8 +42,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
     Parameters
     ----------
-    sallib : ``module``
-        salpy component library generatedby SAL
+    name : `str`
+        Name of SAL component.
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
     schema_path : `str`
@@ -93,7 +93,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     * Call `BaseCsc.report_summary_state`
     * Set ``start_task`` done
     """
-    def __init__(self, sallib, index, schema_path, config_dir=None,
+    def __init__(self, name, index, schema_path, config_dir=None,
                  initial_state=State.STANDBY, initial_simulation_mode=0):
 
         if not pathlib.Path(schema_path).is_file():
@@ -111,7 +111,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         except Exception as e:
             raise ValueError(f"Schema {schema_path} invalid") from e
 
-        super().__init__(sallib=sallib, index=index, initial_state=initial_state,
+        super().__init__(name=name, index=index, initial_state=initial_state,
                          initial_simulation_mode=initial_simulation_mode)
 
         if config_dir is None:
@@ -181,17 +181,12 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                                          settingsUrl=f"{self.config_dir.as_uri()}",
                                          force_output=True)
 
-    async def start(self, initial_simulation_mode):
+    async def start(self):
         """Finish constructing the CSC.
 
         * If ``initial_summary_state`` is `State.DISABLED` or `State.ENABLED`
           then call `configure`.
         * Run `BaseCsc.start`
-
-        Parameters
-        ----------
-        initial_simulation_mode : `int` (optional)
-            Initial simulation mode.
         """
         # If starting up in Enabled or Disabled state then the CSC must be
         # configured now, because it won't be configured by
@@ -200,7 +195,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             default_config_dict = self.config_validator.validate(None)
             default_config = types.SimpleNamespace(**default_config_dict)
             await self.configure(config=default_config)
-        await super().start(initial_simulation_mode=initial_simulation_mode)
+        await super().start()
 
     def _get_settings_version(self):
         """Get data for evt_settingsVersions.recommendedSettingsVersion.
@@ -270,13 +265,13 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             except Exception as e:
                 self.log.exception(e)
 
-    async def begin_start(self, id_data):
+    async def begin_start(self, data):
         """Begin do_start; configure the CSC before changing state.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : ``cmd_start.DataType``
+            Command data
 
         Notes
         -----
@@ -287,7 +282,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
           ``<file_name>:<version>``, where the version is a git reference,
           such as a git tag or commit hash. This form does not support labels.
         """
-        config_name = id_data.data.settingsToApply
+        config_name = data.settingsToApply
         if config_name:
             name_version = config_name.split(":")
             if len(name_version) == 2:

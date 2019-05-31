@@ -21,10 +21,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import argparse
 import asyncio
-import importlib
 import concurrent.futures
 import sys
-import time
 
 from lsst.ts import salobj
 
@@ -40,8 +38,6 @@ async def main():
         "then all topics are purged")
     parser.add_argument("component",
                         help="Name of SAL component (e.g. ATDome).")
-    parser.add_argument("-i", "--index", default=0,
-                        help="Index of SAL component.")
     parser.add_argument("-c", "--commands", nargs="+", default=None,
                         help="Command topics to purge.")
     parser.add_argument("-e", "--events", nargs="+", default=None,
@@ -51,145 +47,86 @@ async def main():
     args = parser.parse_args()
 
     await purge_topics(component=args.component,
-                       index=int(args.index),
                        commands=args.commands,
                        events=args.events,
                        telemetry=args.telemetry)
 
 
-def purge_topic(category, item_name, topic_name, func, sleep):
+def purge_one_topic(component, category, topic_name, sleep):
     """Purge one SAL topic.
 
     Parameters
     ----------
+    component : `str`
+        Name of SAL component, e.g. "ATDome".
     category : `str`
         Type of topic; one of: "command", "event" or "telemetry".
-    item_name : `str`
-        Name of command, event or telemetry
     topic_name : `str`
         Full topic name; the argument to ``func``
-    func : ``callable``
-        Function to call to subscribe to the topic
     sleep : `float`
-        Amount of time to sleep after purging the topic,
-        before closing the SAL object (sec).
+        Amount of time to sleep after purging the topic
+        before closing the domain (sec).
     """
-    try:
-        func(topic_name)
-    except Exception as e:
-        print(f"Could not purge {category} {item_name}: {e}")
-        sys.exit(1)
-    time.sleep(sleep)
-    print(f"Purged {category} {item_name}")
+    TopicClass = dict(command=salobj.topics.ControllerCommand,
+                      event=salobj.topics.RemoteEvent,
+                      telemetry=salobj.topics.RemoteTelemetry)[category]
+
+    async def doit():
+        async with salobj.Domain() as domain:
+            try:
+                salinfo = salobj.SalInfo(domain=domain, name=component)
+                TopicClass(salinfo=salinfo, name=topic_name)
+                await asyncio.sleep(sleep)
+                print(f"Purged {category} {topic_name}")
+            except Exception as e:
+                print(f"Could not purge {component} {category} {topic_name}: {e}")
+                sys.exit(1)
+
+    asyncio.new_event_loop().run_until_complete(doit())
 
 
-def purge_command(component, index, command_name, sleep=SLEEP_TIME):
-    """Purge one SAL command topic.
-
-    Parameters
-    ----------
-    component : `str`
-        Name of SAL component, e.g. "ATDome".
-    index : `int`
-        Index of SAL component.
-    command_name : `str`
-        Name of command.
-    sleep : `float`
-        Amount of time to sleep after purging the topic,
-        before closing the SAL object (sec).
-    """
-    lib = importlib.import_module(f"SALPY_{component}")
-    salinfo = salobj.SalInfo(lib, index)
-    topic_name = salinfo.name + "_command_" + command_name
-    purge_topic(category="command", item_name=command_name,
-                topic_name=topic_name, func=salinfo.manager.salProcessor, sleep=sleep)
-
-
-def purge_event(component, index, event_name, sleep=SLEEP_TIME):
-    """Purge one SAL event topic.
-
-    Parameters
-    ----------
-    component : `str`
-        Name of SAL component, e.g. "ATDome".
-    index : `int`
-        Index of SAL component.
-    event_name : `str`
-        Name of event.
-    sleep : `float`
-        Amount of time to sleep after purging the topic,
-        before closing the SAL object (sec).
-    """
-    lib = importlib.import_module(f"SALPY_{component}")
-    salinfo = salobj.SalInfo(lib, index)
-    topic_name = salinfo.name + "_logevent_" + event_name
-    purge_topic(category="event", item_name=event_name,
-                topic_name=topic_name, func=salinfo.manager.salEventSub, sleep=sleep)
-
-
-def purge_telemetry(component, index, telemetry_name, sleep=SLEEP_TIME):
-    """Purge one SAL telemetry topic.
-
-    Parameters
-    ----------
-    component : `str`
-        Name of SAL component, e.g. "ATDome".
-    index : `int`
-        Index of SAL component.
-    telemetry_name : `str`
-        Name of telemetry.
-    sleep : `float`
-        Amount of time to sleep after purging the topic,
-        before closing the SAL object (sec).
-    """
-    lib = importlib.import_module(f"SALPY_{component}")
-    salinfo = salobj.SalInfo(lib, index)
-    topic_name = salinfo.name + "_" + telemetry_name
-    purge_topic(category="telemetry", item_name=telemetry_name,
-                topic_name=topic_name, func=salinfo.manager.salTelemetrySub, sleep=sleep)
-
-
-async def purge_topics(component, index=0, commands=None, events=None, telemetry=None, sleep=SLEEP_TIME):
+async def purge_topics(component, commands=None, events=None, telemetry=None, sleep=SLEEP_TIME):
     """Purge commands for a given SAL component.
 
     Parameters
     ----------
     component : `str`
         Name of SAL component, e.g. "ATDome".
-    index : `int`
-        Index of SAL component.
     commands : `list` of `str` (optional)
         Names of comamnds to purge; if None then purge all commands
     sleep : `float`
         Amount of time to sleep after purging each command,
         before closing the SAL object (sec).
     """
-    lib = importlib.import_module(f"SALPY_{component}")
-    if commands is None and events is None and telemetry is None:
-        salinfo = salobj.SalInfo(lib, index)
-        commands = salinfo.manager.getCommandNames()
-        events = salinfo.manager.getEventNames()
-        telemetry = salinfo.manager.getTelemetryNames()
-    if commands is None:
-        commands = ()
-    if events is None:
-        events = ()
-    if telemetry is None:
-        telemetry = ()
+    async with salobj.Domain() as domain:
+        if commands is None and events is None and telemetry is None:
+            salinfo = salobj.SalInfo(domain=domain, name=component)
+            commands = salinfo.command_names
+            events = salinfo.event_names
+            telemetry = salinfo.telemetry_names
+        if commands is None:
+            commands = ()
+        if events is None:
+            events = ()
+        if telemetry is None:
+            telemetry = ()
 
-    loop = asyncio.get_event_loop()
-    with concurrent.futures.ProcessPoolExecutor() as pool:
-        coros = []
-        for command_name in commands:
-            coros.append(loop.run_in_executor(pool, purge_command, component, index, command_name, sleep))
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ProcessPoolExecutor() as pool:
+            coros = []
+            for topic_name in commands:
+                coros.append(loop.run_in_executor(pool, purge_one_topic,
+                                                  component, "command", topic_name, sleep))
 
-        for event_name in events:
-            coros.append(loop.run_in_executor(pool, purge_event, component, index, event_name, sleep))
+            for topic_name in events:
+                coros.append(loop.run_in_executor(pool, purge_one_topic,
+                                                  component, "event", topic_name, sleep))
 
-        for telemetry_name in telemetry:
-            coros.append(loop.run_in_executor(pool, purge_telemetry, component, index, telemetry_name, sleep))
+            for topic_name in telemetry:
+                coros.append(loop.run_in_executor(pool, purge_one_topic,
+                                                  component, "telemetry", topic_name, sleep))
 
-    await asyncio.gather(*coros)
+        await asyncio.gather(*coros)
 
 
 if __name__ == "__main__":

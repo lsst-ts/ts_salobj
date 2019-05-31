@@ -19,30 +19,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["BaseCsc", "State"]
+__all__ = ["BaseCsc"]
 
 import argparse
 import asyncio
-import enum
 import sys
 
 from . import base
+from .sal_enums import State
 from .controller import Controller
 
 HEARTBEAT_INTERVAL = 1  # seconds
-
-
-class State(enum.IntEnum):
-    """CSC summaryState constants.
-    """
-    # This does not use SALPY enum values because that would require a SALPY
-    # library. Using hard-coded values makes State available to all packages
-    # without having to know which SALPY library the package uses.
-    OFFLINE = 4
-    STANDBY = 5
-    DISABLED = 1
-    ENABLED = 2
-    FAULT = 3
 
 
 class BaseCsc(Controller):
@@ -52,8 +39,8 @@ class BaseCsc(Controller):
 
     Parameters
     ----------
-    sallib : ``module``
-        salpy component library generatedby SAL
+    name : `str`
+        Name of SAL component.
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
     initial_state : `State` or `int` (optional)
@@ -98,71 +85,37 @@ class BaseCsc(Controller):
     * Set the summary state.
     * Run `start` asynchronously.
     """
-    def __init__(self, sallib, index=None, initial_state=State.STANDBY, initial_simulation_mode=0):
+    def __init__(self, name, index=None, initial_state=State.STANDBY, initial_simulation_mode=0):
         # cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
         initial_state = State(initial_state)
-        super().__init__(sallib, index, do_callbacks=True)
+        super().__init__(name=name, index=index, do_callbacks=True)
+        self._initial_simulation_mode = int(initial_simulation_mode)
         self._summary_state = State(initial_state)
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
         self.heartbeat_interval = HEARTBEAT_INTERVAL
         """Interval between heartbeat events (sec)."""
-        self.start_task = asyncio.Future()
-        """This task is set done when the CSC is fully started.
 
-        If `start` fails then the task has an exception set
-        and the CSC is not usable.
-        """
-        self.done_task = asyncio.Future()
-        """This task is set done when the CSC is done, which is when
-        the ``exitControl`` command is received.
-        """
-        asyncio.ensure_future(self.start(initial_simulation_mode))
-
-    async def start(self, initial_simulation_mode):
+    async def start(self):
         """Finish constructing the CSC.
 
         * Call `set_simulation_mode`. If this fails, set ``self.start_task``
           to the exception, call `stop`, making the CSC unusable, and return.
         * Call `report_summary_state`
         * Set ``self.start_task`` done.
-
-        Parameters
-        ----------
-        initial_simulation_mode : `int` (optional)
-            Initial simulation mode.
         """
+        await super().start()
         try:
-            await self.set_simulation_mode(initial_simulation_mode)
+            await self.set_simulation_mode(self._initial_simulation_mode)
         except Exception as e:
-            self.start_task.set_exception(e)
-            await self.stop(exception=e)
-            return
+            await self.close(exception=e)
+            raise
 
         self.report_summary_state()
-        self.start_task.set_result(None)
 
-    async def stop(self, exception=None):
-        """Stop the CSC.
-
-        Stop all background tasks and set ``self.done_task`` done.
-        `main` and other code that runs CSCs should exit when
-        ``self.done_task`` is done.
-
-        Parameters
-        ----------
-        exception : `Exception` (optional)
-            The exception that caused stopping, if any, in which case
-            the ``self.done_task`` exception is set to this value.
-            Specify `None` for a normal exit, in which case
-            the ``self.done_task`` result is set to `None`.
-        """
-        await asyncio.sleep(0.1)
+    async def close_tasks(self):
+        """Shut down pending tasks. Called by `close`."""
         self._heartbeat_task.cancel()
-        if exception:
-            self.done_task.set_exception(exception)
-        else:
-            self.done_task.set_result(None)
 
     @classmethod
     def main(cls, index, run_loop=True, **kwargs):
@@ -249,68 +202,68 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def do_disable(self, id_data):
+    async def do_disable(self, data):
         """Transition from `State.ENABLED` to `State.DISABLED`.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : ``cmd_disable.DataType``
+            Command data
         """
-        await self._do_change_state(id_data, "disable", [State.ENABLED], State.DISABLED)
+        await self._do_change_state(data, "disable", [State.ENABLED], State.DISABLED)
 
-    async def do_enable(self, id_data):
+    async def do_enable(self, data):
         """Transition from `State.DISABLED` to `State.ENABLED`.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : ``cmd_enable.DataType``
+            Command data
         """
-        await self._do_change_state(id_data, "enable", [State.DISABLED], State.ENABLED)
+        await self._do_change_state(data, "enable", [State.DISABLED], State.ENABLED)
 
-    async def do_exitControl(self, id_data):
+    async def do_exitControl(self, data):
         """Transition from `State.STANDBY` to `State.OFFLINE` and quit.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : ``cmd_exitControl.DataType``
+            Command data
         """
-        await self._do_change_state(id_data, "exitControl", [State.STANDBY], State.OFFLINE)
+        await self._do_change_state(data, "exitControl", [State.STANDBY], State.OFFLINE)
 
-        asyncio.ensure_future(self.stop())
+        asyncio.ensure_future(self.close())
 
-    async def do_standby(self, id_data):
+    async def do_standby(self, data):
         """Transition from `State.DISABLED` or `State.FAULT` to
         `State.STANDBY`.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : ``cmd_standby.DataType``
+            Command data
         """
-        await self._do_change_state(id_data, "standby", [State.DISABLED, State.FAULT], State.STANDBY)
+        await self._do_change_state(data, "standby", [State.DISABLED, State.FAULT], State.STANDBY)
 
-    async def do_start(self, id_data):
+    async def do_start(self, data):
         """Transition from `State.STANDBY` to `State.DISABLED`.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : ``cmd_start.DataType``
+            Command data
         """
-        await self._do_change_state(id_data, "start", [State.STANDBY], State.DISABLED)
+        await self._do_change_state(data, "start", [State.STANDBY], State.DISABLED)
 
-    async def do_setSimulationMode(self, id_data):
+    async def do_setSimulationMode(self, data):
         """Enter or leave simulation mode.
 
         The CSC must be in `State.STANDBY` or `State.DISABLED` state.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : ``cmd_setSimulationMode.DataType``
+            Command data
 
         Notes
         -----
@@ -318,7 +271,7 @@ class BaseCsc(Controller):
         """
         if self.summary_state not in (State.STANDBY, State.DISABLED):
             raise base.ExpectedError(f"Cannot set simulation_mode in state {self.summary_state!r}")
-        await self.set_simulation_mode(id_data.data.mode)
+        await self.set_simulation_mode(data.mode)
 
     @property
     def simulation_mode(self):
@@ -381,112 +334,112 @@ class BaseCsc(Controller):
             raise base.ExpectedError(
                 f"This CSC does not support simulation; simulation_mode={simulation_mode} but must be 0")
 
-    async def begin_disable(self, id_data):
+    async def begin_disable(self, data):
         """Begin do_disable; called before state changes.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         """
         pass
 
-    async def begin_enable(self, id_data):
+    async def begin_enable(self, data):
         """Begin do_enable; called before state changes.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         """
         pass
 
-    async def begin_exitControl(self, id_data):
+    async def begin_exitControl(self, data):
         """Begin do_exitControl; called before state changes.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         """
         pass
 
-    async def begin_standby(self, id_data):
+    async def begin_standby(self, data):
         """Begin do_standby; called before the state changes.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         """
         pass
 
-    async def begin_start(self, id_data):
+    async def begin_start(self, data):
         """Begin do_start; called before state changes.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         """
         pass
 
-    async def end_disable(self, id_data):
+    async def end_disable(self, data):
         """End do_disable; called after state changes
         but before command acknowledged.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         """
         pass
 
-    async def end_enable(self, id_data):
+    async def end_enable(self, data):
         """End do_enable; called after state changes
         but before command acknowledged.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         """
         pass
 
-    async def end_exitControl(self, id_data):
+    async def end_exitControl(self, data):
         """End do_exitControl; called after state changes
         but before command acknowledged.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         """
         pass
 
-    async def end_standby(self, id_data):
+    async def end_standby(self, data):
         """End do_standby; called after state changes
         but before command acknowledged.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         """
         pass
 
-    async def end_start(self, id_data):
+    async def end_start(self, data):
         """End do_start; called after state changes
         but before command acknowledged.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         """
         pass
 
-    def fault(self, code=None, report=""):
+    def fault(self, code=None, report="", traceback=""):
         """Enter the fault state.
 
         Parameters
@@ -495,10 +448,13 @@ class BaseCsc(Controller):
             Error code for the ``errorCode`` event; if None then ``errorCode``
             is not output and you should output it yourself.
         report : `str` (optional)
-            Text description of the error.
+            Description of the error.
+        traceback : `str` (optional)
+            Description of the traceback, if any.
         """
         if code is not None:
-            self.evt_errorCode.set_put(errorCode=code, errorReport=report, force_output=True)
+            self.evt_errorCode.set_put(errorCode=code, errorReport=report,
+                                       traceback=traceback, force_output=True)
         self.summary_state = State.FAULT
 
     def assert_enabled(self, action):
@@ -538,13 +494,13 @@ class BaseCsc(Controller):
         """
         self.evt_summaryState.set_put(summaryState=self.summary_state)
 
-    async def _do_change_state(self, id_data, cmd_name, allowed_curr_states, new_state):
+    async def _do_change_state(self, data, cmd_name, allowed_curr_states, new_state):
         """Change to the desired state.
 
         Parameters
         ----------
-        id_data : `CommandIdData`
-            Command ID and data
+        data : `DataType`
+            Command data
         cmd_name : `str`
             Name of command, e.g. "disable" or "exitControl".
         allowed_curr_states : `list` of `State`
@@ -556,13 +512,13 @@ class BaseCsc(Controller):
         if curr_state not in allowed_curr_states:
             raise base.ExpectedError(f"{cmd_name} not allowed in state {curr_state!r}")
         try:
-            await getattr(self, f"begin_{cmd_name}")(id_data)
+            await getattr(self, f"begin_{cmd_name}")(data)
         except Exception:
             self.log.exception(f"beg_{cmd_name} failed; remaining in state {curr_state!r}")
             raise
         self._summary_state = new_state
         try:
-            await getattr(self, f"end_{cmd_name}")(id_data)
+            await getattr(self, f"end_{cmd_name}")(data)
         except Exception:
             self._summary_state = curr_state
             self.log.exception(f"end_{cmd_name} failed; reverting to state {curr_state!r}")
@@ -579,4 +535,5 @@ class BaseCsc(Controller):
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print(f"Heartbeat output failed: {e}", file=sys.stderr)
+                # don't use the log because it also uses DDS messaging
+                print(f"Heartbeat output failed: {e!r}", file=sys.stderr)

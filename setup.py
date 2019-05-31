@@ -19,7 +19,7 @@ setup(
     package_dir={"": "python"},
     packages=find_namespace_packages(where="python"),
     package_data={"": ["*.rst", "*.yaml"]},
-    scripts=["bin.src/purge_topics.py", "bin.src/run_test_csc.py", "bin.src/show_salpy_attributes.py"],
+    scripts=["bin.src/purge_topics.py", "bin.src/run_test_csc.py"],
     tests_require=tests_require,
     extras_require={"dev": dev_requires},
     license="GPL",
