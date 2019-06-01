@@ -47,7 +47,7 @@ class Domain:
     Environment variables:
 
     * LSST_DDS_IP used to set the private_host field of samples
-      when writing them. Must be an integer. Optiona.
+      when writing them. Must be an integer. Optional.
       If absent then use a random positive number
 
     It is important to close a `Domain` when you are done with it, especially
