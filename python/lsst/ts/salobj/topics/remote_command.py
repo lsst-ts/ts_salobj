@@ -41,11 +41,6 @@ class AckCmdReader(read_topic.ReadTopic):
     ----------
     salinfo : `SalInfo`
         SAL component information
-    max_history : `int` (optional)
-        Maximum number of historical items to read:
-
-        * 0 if none; strongly recommended for `RemoteCommand` & `AckCmdReader`
-        * 1 is recommended for events and telemetry
     queue_len : `int`
         Number of elements that can be queued for `get_oldest`.
 
@@ -54,9 +49,9 @@ class AckCmdReader(read_topic.ReadTopic):
     The same ``ackcmd`` topic is used for all command topics from a given
     SAL component.
     """
-    def __init__(self, salinfo, max_history=0, queue_len=100):
+    def __init__(self, salinfo, queue_len=100):
         super().__init__(salinfo=salinfo, name="ackcmd", sal_prefix="",
-                         max_history=max_history, queue_len=queue_len)
+                         max_history=0, queue_len=queue_len)
 
 
 class _CommandInfo:
