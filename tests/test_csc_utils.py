@@ -52,7 +52,6 @@ class SetSummaryStateTestCSe(unittest.TestCase):
                     with self.subTest(initial_state=initial_state, final_state=final_state):
                         print(f"initial_state={initial_state!r}; final_state={final_state!r}")
                         async with Harness(initial_state=initial_state) as harness:
-                            await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
                             await salobj.set_summary_state(remote=harness.remote, state=final_state,
                                                            settingsToApply="all_fields")
                             self.assertEqual(harness.csc.summary_state, final_state)

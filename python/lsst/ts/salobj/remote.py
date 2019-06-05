@@ -58,6 +58,12 @@ class Remote:
     exclude : ``iterable`` of `str` (optional)
         Names of topics (telemetry or events) to not support.
         If `None` or empty then no topics are excluded.
+    evt_max_history : `int` (optional)
+        Maximum number of historical items to read for events.
+        Set to 0 if your remote is not interested in "late joiner" data.
+    tel_max_history : `int` (optional)
+        Maximum number of historical items to read for telemetry.
+        Set to 0 if your remote is not interested in "late joiner" data.
 
     Raises
     ------
@@ -113,7 +119,8 @@ class Remote:
         * ``tel_arrays``
         * ``tel_scalars``
     """
-    def __init__(self, domain, name, index=None, *, readonly=False, include=None, exclude=None):
+    def __init__(self, domain, name, index=None, *, readonly=False,
+                 include=None, exclude=None, evt_max_history=1, tel_max_history=1):
         if include is not None and exclude is not None:
             raise ValueError("Cannot specify both include and exclude")
         include_set = set(include) if include is not None else None
@@ -136,7 +143,7 @@ class Remote:
                     continue
                 elif exclude_set and evt_name in exclude_set:
                     continue
-                evt = RemoteEvent(salinfo, evt_name)
+                evt = RemoteEvent(salinfo, evt_name, max_history=evt_max_history)
                 setattr(self, "evt_" + evt_name, evt)
 
             for tel_name in salinfo.telemetry_names:
@@ -144,7 +151,7 @@ class Remote:
                     continue
                 elif exclude_set and tel_name in exclude_set:
                     continue
-                tel = RemoteTelemetry(salinfo, tel_name)
+                tel = RemoteTelemetry(salinfo, tel_name, max_history=tel_max_history)
                 setattr(self, "tel_" + tel_name, tel)
 
             self.start_task = asyncio.ensure_future(self.start())
