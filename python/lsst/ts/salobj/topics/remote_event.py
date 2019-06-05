@@ -36,7 +36,6 @@ class RemoteEvent(read_topic.ReadTopic):
     max_history : `int` (optional)
         Maximum number of historical items to read:
 
-        * -1 to use queue_len
         * 0 if none; strongly recommended for `RemoteCommand` & `AckCmdReader`
         * 1 is recommended for events and telemetry
     queue_len : `int`

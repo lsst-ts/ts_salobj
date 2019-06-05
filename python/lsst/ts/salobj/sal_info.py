@@ -130,7 +130,7 @@ class SalInfo:
         """
 
         self.log = logging.getLogger(self.name)
-        self.log.level = INITIAL_LOG_LEVEL
+        self.log.setLevel(INITIAL_LOG_LEVEL)
 
         # dict of private_seqNum: salobj.topics.CommandInfo
         self._running_cmds = dict()
