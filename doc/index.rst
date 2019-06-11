@@ -17,6 +17,8 @@ Using lsst.ts.salobj
 
 .. toctree::
     salobj_cscs
+    sal_scripts
+    :maxdepth: 1
 
 **Important classes:**
 
@@ -36,9 +38,13 @@ Using lsst.ts.salobj
   There should be one `Domain` per process or unit test method.
   `Controller` creates and manages a `Domain`, but if you have no controller (as may be the case for some unit tests and Jupyter notebooks) then you will have to create and manage it yourself.
   See :ref:`Cleanup<lsst.ts.salobj-cleanup>` for more information.
+* `BaseScript` is a base class for :ref:`Python SAL Scripts<lsst.ts.salobj_python_sal_scripts>`.
 
-`TestCsc` is an example of a fairly simple SAL CSC, though it is slightly unusual because it is intended for use in unit tests.
-In particular, it does not output telemetry at regular intervals.
+Examples:
+
+* `TestCsc` is an example of a fairly simple SAL CSC, though it is slightly unusual because it is intended for use in unit tests.
+  In particular, it does not output telemetry at regular intervals.
+* `TestScript` is an example of a trivial :ref:`Python SAL Script<lsst.ts.salobj_python_sal_scripts>`.
 
 .. _lsst.ts.salobj-cleanup:
 
