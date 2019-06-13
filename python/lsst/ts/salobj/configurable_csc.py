@@ -231,6 +231,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             self.log.debug(f"{labels_path} is empty")
             return {}
         input_dict = yaml.safe_load(labels_raw)
+        if input_dict is None:
+            return {}
         if not isinstance(input_dict, dict):
             self.log.warning(f"{labels_path} does not describe a dict")
             return {}
