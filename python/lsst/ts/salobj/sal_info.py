@@ -330,8 +330,8 @@ class SalInfo:
                     try:
                         data_list = topic._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
                     except dds.DDSException as e:
-                        self.log.warn(f"dds error while reading late joiner data for {topic}; "
-                                      f"trying again: {e}")
+                        self.log.warning(f"dds error while reading late joiner data for {topic}; "
+                                         f"trying again: {e}")
                         time.sleep(0.001)
                         data_list = topic._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
                     self.log.debug(f"Read {len(data_list)} history items for {topic}")
