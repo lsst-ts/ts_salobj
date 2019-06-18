@@ -293,9 +293,12 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                 config_file_name, githash = name_version
                 config_file_path = self.config_dir / config_file_name
                 try:
-                    config_yaml = subprocess.check_output(["git", "cat-file", "--textconv",
-                                                          f"{githash}:{config_file_path}"],
-                                                          stderr=subprocess.STDOUT)
+                    print(f"config_file_path={config_file_path}; "
+                          f"githash={githash}; config_dir={self.config_dir}")
+                    config_yaml = subprocess.check_output(
+                        args=["git", "show", f"{githash}:./{config_file_name}"],
+                        stderr=subprocess.STDOUT,
+                        cwd=self.config_dir)
                 except subprocess.CalledProcessError as e:
                     raise base.ExpectedError(f"Could not read config {config_name}: {e.output}")
             elif len(name_version) == 1:

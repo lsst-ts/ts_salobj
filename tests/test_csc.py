@@ -612,8 +612,8 @@ class ConfigurationTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
-    def test_some_fields_file(self):
-        """Test a config with some fields set to valid values."""
+    def test_some_fields_file_no_hash(self):
+        """Test a config specified by filename."""
         config_file = "some_fields.yaml"
 
         async def doit():
@@ -621,6 +621,32 @@ class ConfigurationTestCase(unittest.TestCase):
                 data = await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
                 self.assertEqual(data.summaryState, salobj.State.STANDBY)
                 await harness.remote.cmd_start.set_start(settingsToApply=config_file, timeout=STD_TIMEOUT)
+                data = await harness.remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
+                self.assertEqual(data.summaryState, salobj.State.DISABLED)
+                config = harness.csc.config
+                config_path = os.path.join(harness.csc.config_dir, config_file)
+                with open(config_path, "r") as f:
+                    config_yaml = f.read()
+                config_from_file = yaml.safe_load(config_yaml)
+                for key, default_value in self.default_dict.items():
+                    if key in config_from_file:
+                        self.assertEqual(getattr(config, key), config_from_file[key])
+                        self.assertNotEqual(getattr(config, key), default_value)
+                    else:
+                        self.assertEqual(getattr(config, key), default_value)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_some_fields_file_with_hash(self):
+        """Test a config specified by filename:hash."""
+        config_file = "some_fields.yaml"
+
+        async def doit():
+            async with Harness(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR) as harness:
+                data = await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
+                self.assertEqual(data.summaryState, salobj.State.STANDBY)
+                await harness.remote.cmd_start.set_start(settingsToApply=f"{config_file}:HEAD",
+                                                         timeout=STD_TIMEOUT)
                 data = await harness.remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(data.summaryState, salobj.State.DISABLED)
                 config = harness.csc.config
