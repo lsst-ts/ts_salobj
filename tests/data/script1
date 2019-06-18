@@ -1,0 +1,6 @@
+#!/usr/bin/env python
+from lsst.ts.salobj import TestScript
+
+
+if __name__ == "__main__":
+    TestScript.main(descr="standard script1")
