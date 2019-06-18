@@ -748,11 +748,11 @@ class BaseCscMainTestCase(unittest.TestCase):
             sys.argv = [sys.argv[0]]
             arg1 = "astring"
             arg2 = 2.75
-            csc = NoIndexCsc.main(index=index, arg1=arg1, arg2=arg2, run_loop=False)
-            self.assertEqual(csc.arg1, arg1)
-            self.assertEqual(csc.arg2, arg2)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+            async with NoIndexCsc.main(index=index, arg1=arg1, arg2=arg2, run_loop=False) as csc:
+                self.assertEqual(csc.arg1, arg1)
+                self.assertEqual(csc.arg2, arg2)
+                await csc.do_exitControl(data=None)
+                await asyncio.wait_for(csc.done_task, timeout=5)
 
         for index in (False, None):
             with self.subTest(index=index):
@@ -762,10 +762,10 @@ class BaseCscMainTestCase(unittest.TestCase):
         async def doit():
             sys.argv = [sys.argv[0]]
             index = next(index_gen)
-            csc = salobj.TestCsc.main(index=index, run_loop=False)
-            self.assertEqual(csc.salinfo.index, index)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+            async with salobj.TestCsc.main(index=index, run_loop=False) as csc:
+                self.assertEqual(csc.salinfo.index, index)
+                await csc.do_exitControl(data=None)
+                await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
@@ -773,17 +773,17 @@ class BaseCscMainTestCase(unittest.TestCase):
         async def doit():
             index = next(index_gen)
             sys.argv = [sys.argv[0], str(index)]
-            csc = salobj.TestCsc.main(index=True, run_loop=False)
-            self.assertEqual(csc.salinfo.index, index)
+            async with salobj.TestCsc.main(index=True, run_loop=False) as csc:
+                self.assertEqual(csc.salinfo.index, index)
 
-            desired_config_pkg_name = "ts_config_ocs"
-            desired_config_env_name = desired_config_pkg_name.upper() + "_DIR"
-            desird_config_pkg_dir = os.environ[desired_config_env_name]
-            desired_config_dir = pathlib.Path(desird_config_pkg_dir) / "Test/v1"
-            self.assertEqual(csc.get_config_pkg(), desired_config_pkg_name)
-            self.assertEqual(csc.config_dir, desired_config_dir)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+                desired_config_pkg_name = "ts_config_ocs"
+                desired_config_env_name = desired_config_pkg_name.upper() + "_DIR"
+                desird_config_pkg_dir = os.environ[desired_config_env_name]
+                desired_config_dir = pathlib.Path(desird_config_pkg_dir) / "Test/v1"
+                self.assertEqual(csc.get_config_pkg(), desired_config_pkg_name)
+                self.assertEqual(csc.config_dir, desired_config_dir)
+                await csc.do_exitControl(data=None)
+                await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
@@ -791,11 +791,11 @@ class BaseCscMainTestCase(unittest.TestCase):
         async def doit():
             index = next(index_gen)
             sys.argv = [sys.argv[0], str(index), "--config", str(TEST_CONFIG_DIR)]
-            csc = salobj.TestCsc.main(index=True, run_loop=False)
-            self.assertEqual(csc.salinfo.index, index)
-            self.assertEqual(csc.config_dir, TEST_CONFIG_DIR)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+            async with salobj.TestCsc.main(index=True, run_loop=False) as csc:
+                self.assertEqual(csc.salinfo.index, index)
+                self.assertEqual(csc.config_dir, TEST_CONFIG_DIR)
+                await csc.do_exitControl(data=None)
+                await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
