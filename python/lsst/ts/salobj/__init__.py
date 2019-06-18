@@ -8,7 +8,9 @@ from .validator import *
 from .configurable_csc import *
 from .controller import *
 from .remote import *
+from .base_script import *
 from .csc_utils import *
 from .test_utils import *
 from .test_csc import *
+from .test_script import *
 from .version import *
