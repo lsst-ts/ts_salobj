@@ -204,8 +204,10 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         then return detailed git information. Otherwise return "".
         """
         try:
-            git_info = subprocess.check_output(["git", "describe", "--all", "--long", "--always",
-                                                "--dirty"], stderr=subprocess.STDOUT)
+            git_info = subprocess.check_output(
+                args=["git", "describe", "--all", "--long", "--always", "--dirty"],
+                stderr=subprocess.STDOUT,
+                cwd=self.config_dir)
         except subprocess.CalledProcessError:
             self.log.warning(f"Could not get git info for config_dir={self.config_dir}")
             return ""

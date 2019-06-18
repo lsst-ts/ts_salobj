@@ -557,6 +557,19 @@ class ConfigurationTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
+    def test_default_config_dir(self):
+        async def doit():
+            async with Harness(initial_state=salobj.State.STANDBY, config_dir=None) as harness:
+                data = await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
+                self.assertEqual(data.summaryState, salobj.State.STANDBY)
+                data = await harness.remote.evt_settingVersions.next(flush=False, timeout=STD_TIMEOUT)
+                self.assertTrue(len(data.recommendedSettingsVersion) > 0)
+                self.assertEqual(data.settingsUrl[0:8], "file:///")
+                config_path = pathlib.Path(data.settingsUrl[7:])
+                self.assertTrue(config_path.samefile(harness.csc.config_dir))
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
     def test_empty_label(self):
         config_name = "empty"
 
