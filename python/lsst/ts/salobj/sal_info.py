@@ -44,7 +44,7 @@ INITIAL_LOG_LEVEL = logging.INFO
 
 # default time to wait for historical data (sec)
 # override by setting env var $LSST_DDS_HISTORYSYNC
-DEFAULT_LSST_DDS_HISTORYSYNC = 30
+DEFAULT_LSST_DDS_HISTORYSYNC = 60
 
 
 class SalInfo:
@@ -318,9 +318,9 @@ class SalInfo:
                 if not self.isopen:  # shutting down
                     return
                 if isok:
-                    self.log.info(f"Read historical data in {dt:0.2} sec")
+                    self.log.info(f"Read historical data in {dt:0.2f} sec")
                 else:
-                    self.log.warning(f"Could not read historical data in {dt:0.2} sec")
+                    self.log.warning(f"Could not read historical data in {dt:0.2f} sec")
                 for read_cond, topic in list(self._readers.items()):
                     if not self.isopen:  # shutting down
                         return
@@ -427,10 +427,10 @@ class SalInfo:
             time_limit = DEFAULT_LSST_DDS_HISTORYSYNC
         else:
             time_limit = float(time_limit)
-
         wait_timeout = dds.DDSDuration(sec=time_limit)
         num_ok = 0
         num_checked = 0
+        t0 = time.time()
         for reader in list(self._readers.values()):
             if not self.isopen:  # shutting down
                 return False
@@ -440,5 +440,7 @@ class SalInfo:
             isok = reader._reader.wait_for_historical_data(wait_timeout)
             if isok:
                 num_ok += 1
-                wait_timeout = dds.DDSDuration(sec=0.1)
+            elapsed_time = time.time() - t0
+            rem_time = max(0.01, time_limit - elapsed_time)
+            wait_timeout = dds.DDSDuration(sec=rem_time)
         return num_ok > 0 or num_checked == 0
