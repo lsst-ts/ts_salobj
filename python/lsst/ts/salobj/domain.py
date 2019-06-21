@@ -143,20 +143,7 @@ class Domain:
                                                      kind=dds.DDSHistoryKind.KEEP_LAST)
             self.reader_qos = self.qos_provider.get_reader_qos()
             self.reader_qos.set_policies([read_queue_policy])
-            """Quality of service for topic readers that want late joiner data.
-
-            A dds.Qos.
-            """
-
-            self.volatile_reader_qos = self.qos_provider.get_reader_qos()
-            volatile_policy = dds.DurabilityQosPolicy(dds.DDSDurabilityKind.VOLATILE)
-            self.volatile_reader_qos.set_policies([read_queue_policy, volatile_policy])
-            """Quality of service for topic readers that do not want
-            late joiner data.
-
-            Examples include command_<name> topic readers and the
-            ackcmd topic reader. A dds.Qos.
-            """
+            """Quality of service for topic readers, a dds.Qos"""
         except Exception:
             # very unlikely, but just in case...
             self.participant.close()

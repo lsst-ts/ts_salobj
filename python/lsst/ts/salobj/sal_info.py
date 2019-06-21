@@ -339,9 +339,10 @@ class SalInfo:
                     if len(sd_list) < len(data_list):
                         ninvalid = len(data_list) - len(sd_list)
                         self.log.warning(f"Bug: read {ninvalid} late joiner items for {topic}")
-                    sd_list = sd_list[-topic.max_history:]
-                    if sd_list:
-                        topic._queue_data(sd_list)
+                    if topic.max_history > 0:
+                        sd_list = sd_list[-topic.max_history:]
+                        if sd_list:
+                            topic._queue_data(sd_list)
             self._read_loop_task = asyncio.ensure_future(self._read_loop())
             self.start_task.set_result(None)
         except Exception as e:
@@ -434,9 +435,6 @@ class SalInfo:
             if not self.isopen:  # shutting down
                 return False
             if not reader.isopen:
-                continue
-            if reader.max_history == 0:
-                # volatile; should not get late joiner data
                 continue
             num_checked += 1
             isok = reader._reader.wait_for_historical_data(wait_timeout)

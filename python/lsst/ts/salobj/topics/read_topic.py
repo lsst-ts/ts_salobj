@@ -129,11 +129,7 @@ class ReadTopic(BaseTopic):
         self._callback_loop_task = base.make_done_future()
         self._length_checker = QueueLengthChecker(queue_len)
         self._warned_readloop = False
-        if max_history == 0:
-            reader_qos = salinfo.domain.volatile_reader_qos
-        else:
-            reader_qos = salinfo.domain.reader_qos
-        self._reader = salinfo.subscriber.create_datareader(self._topic, reader_qos)
+        self._reader = salinfo.subscriber.create_datareader(self._topic, salinfo.domain.reader_qos)
         if salinfo.index > 0:
             query = f"{salinfo.name}ID = {salinfo.index}"
             read_condition = dds.QueryCondition(self._reader, dds.DDSMaskUtil.new_samples(), query)
