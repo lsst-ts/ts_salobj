@@ -557,6 +557,19 @@ class ConfigurationTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
+    def test_default_config_dir(self):
+        async def doit():
+            async with Harness(initial_state=salobj.State.STANDBY, config_dir=None) as harness:
+                data = await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
+                self.assertEqual(data.summaryState, salobj.State.STANDBY)
+                data = await harness.remote.evt_settingVersions.next(flush=False, timeout=STD_TIMEOUT)
+                self.assertTrue(len(data.recommendedSettingsVersion) > 0)
+                self.assertEqual(data.settingsUrl[0:8], "file:///")
+                config_path = pathlib.Path(data.settingsUrl[7:])
+                self.assertTrue(config_path.samefile(harness.csc.config_dir))
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
     def test_empty_label(self):
         config_name = "empty"
 
@@ -599,8 +612,8 @@ class ConfigurationTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
-    def test_some_fields_file(self):
-        """Test a config with some fields set to valid values."""
+    def test_some_fields_file_no_hash(self):
+        """Test a config specified by filename."""
         config_file = "some_fields.yaml"
 
         async def doit():
@@ -608,6 +621,32 @@ class ConfigurationTestCase(unittest.TestCase):
                 data = await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
                 self.assertEqual(data.summaryState, salobj.State.STANDBY)
                 await harness.remote.cmd_start.set_start(settingsToApply=config_file, timeout=STD_TIMEOUT)
+                data = await harness.remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
+                self.assertEqual(data.summaryState, salobj.State.DISABLED)
+                config = harness.csc.config
+                config_path = os.path.join(harness.csc.config_dir, config_file)
+                with open(config_path, "r") as f:
+                    config_yaml = f.read()
+                config_from_file = yaml.safe_load(config_yaml)
+                for key, default_value in self.default_dict.items():
+                    if key in config_from_file:
+                        self.assertEqual(getattr(config, key), config_from_file[key])
+                        self.assertNotEqual(getattr(config, key), default_value)
+                    else:
+                        self.assertEqual(getattr(config, key), default_value)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_some_fields_file_with_hash(self):
+        """Test a config specified by filename:hash."""
+        config_file = "some_fields.yaml"
+
+        async def doit():
+            async with Harness(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR) as harness:
+                data = await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
+                self.assertEqual(data.summaryState, salobj.State.STANDBY)
+                await harness.remote.cmd_start.set_start(settingsToApply=f"{config_file}:HEAD",
+                                                         timeout=STD_TIMEOUT)
                 data = await harness.remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(data.summaryState, salobj.State.DISABLED)
                 config = harness.csc.config
@@ -748,11 +787,11 @@ class BaseCscMainTestCase(unittest.TestCase):
             sys.argv = [sys.argv[0]]
             arg1 = "astring"
             arg2 = 2.75
-            csc = NoIndexCsc.main(index=index, arg1=arg1, arg2=arg2, run_loop=False)
-            self.assertEqual(csc.arg1, arg1)
-            self.assertEqual(csc.arg2, arg2)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+            async with NoIndexCsc.main(index=index, arg1=arg1, arg2=arg2, run_loop=False) as csc:
+                self.assertEqual(csc.arg1, arg1)
+                self.assertEqual(csc.arg2, arg2)
+                await csc.do_exitControl(data=None)
+                await asyncio.wait_for(csc.done_task, timeout=5)
 
         for index in (False, None):
             with self.subTest(index=index):
@@ -762,10 +801,10 @@ class BaseCscMainTestCase(unittest.TestCase):
         async def doit():
             sys.argv = [sys.argv[0]]
             index = next(index_gen)
-            csc = salobj.TestCsc.main(index=index, run_loop=False)
-            self.assertEqual(csc.salinfo.index, index)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+            async with salobj.TestCsc.main(index=index, run_loop=False) as csc:
+                self.assertEqual(csc.salinfo.index, index)
+                await csc.do_exitControl(data=None)
+                await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
@@ -773,17 +812,17 @@ class BaseCscMainTestCase(unittest.TestCase):
         async def doit():
             index = next(index_gen)
             sys.argv = [sys.argv[0], str(index)]
-            csc = salobj.TestCsc.main(index=True, run_loop=False)
-            self.assertEqual(csc.salinfo.index, index)
+            async with salobj.TestCsc.main(index=True, run_loop=False) as csc:
+                self.assertEqual(csc.salinfo.index, index)
 
-            desired_config_pkg_name = "ts_config_ocs"
-            desired_config_env_name = desired_config_pkg_name.upper() + "_DIR"
-            desird_config_pkg_dir = os.environ[desired_config_env_name]
-            desired_config_dir = pathlib.Path(desird_config_pkg_dir) / "Test/v1"
-            self.assertEqual(csc.get_config_pkg(), desired_config_pkg_name)
-            self.assertEqual(csc.config_dir, desired_config_dir)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+                desired_config_pkg_name = "ts_config_ocs"
+                desired_config_env_name = desired_config_pkg_name.upper() + "_DIR"
+                desird_config_pkg_dir = os.environ[desired_config_env_name]
+                desired_config_dir = pathlib.Path(desird_config_pkg_dir) / "Test/v1"
+                self.assertEqual(csc.get_config_pkg(), desired_config_pkg_name)
+                self.assertEqual(csc.config_dir, desired_config_dir)
+                await csc.do_exitControl(data=None)
+                await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
@@ -791,11 +830,11 @@ class BaseCscMainTestCase(unittest.TestCase):
         async def doit():
             index = next(index_gen)
             sys.argv = [sys.argv[0], str(index), "--config", str(TEST_CONFIG_DIR)]
-            csc = salobj.TestCsc.main(index=True, run_loop=False)
-            self.assertEqual(csc.salinfo.index, index)
-            self.assertEqual(csc.config_dir, TEST_CONFIG_DIR)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+            async with salobj.TestCsc.main(index=True, run_loop=False) as csc:
+                self.assertEqual(csc.salinfo.index, index)
+                self.assertEqual(csc.config_dir, TEST_CONFIG_DIR)
+                await csc.do_exitControl(data=None)
+                await asyncio.wait_for(csc.done_task, timeout=5)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
