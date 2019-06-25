@@ -376,7 +376,8 @@ class SalInfo:
                         if len(sd_list) < len(data_list):
                             ninvalid = len(data_list) - len(sd_list)
                             self.log.warning(f"Bug: read {ninvalid} invalid items for {topic}")
-                        topic._queue_data(sd_list)
+                        if sd_list:
+                            topic._queue_data(sd_list)
                         await asyncio.sleep(0)  # free the event loop
         except asyncio.CancelledError:
             raise
