@@ -336,9 +336,12 @@ class SalInfo:
                         data_list = topic._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
                     self.log.debug(f"Read {len(data_list)} history items for {topic}")
                     sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
-                    if len(sd_list) < len(data_list):
-                        ninvalid = len(data_list) - len(sd_list)
-                        self.log.warning(f"Bug: read {ninvalid} late joiner items for {topic}")
+                    # TODO DM-20313: enable this code
+                    # which was commented out to work around DM-20312:
+                    # if len(sd_list) < len(data_list):
+                    #     ninvalid = len(data_list) - len(sd_list)
+                    #     self.log.warning(f"Bug: read {ninvalid} late joiner "
+                    #                      f"items for {topic}")
                     if topic.max_history > 0:
                         sd_list = sd_list[-topic.max_history:]
                         if sd_list:
@@ -373,9 +376,12 @@ class SalInfo:
                             topic._warned_readloop = True
                             self.log.warning(f"{topic!r} falling behind; read {len(data_list)} messages")
                         sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
-                        if len(sd_list) < len(data_list):
-                            ninvalid = len(data_list) - len(sd_list)
-                            self.log.warning(f"Bug: read {ninvalid} invalid items for {topic}")
+                        # TODO DM-20313: enable this code
+                        # which was commented out to work around DM-20312:
+                        # if len(sd_list) < len(data_list):
+                        #     ninvalid = len(data_list) - len(sd_list)
+                        #     self.log.warning(f"Bug: read {ninvalid} invalid "
+                        #                      f"items for {topic}")
                         if sd_list:
                             topic._queue_data(sd_list)
                         await asyncio.sleep(0)  # free the event loop
