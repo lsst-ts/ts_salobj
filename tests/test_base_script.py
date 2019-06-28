@@ -425,9 +425,8 @@ class BaseScriptTestCase(unittest.TestCase):
             def __init__(self, index, remote_indices):
                 super().__init__(index, descr="Script with remotes")
                 remotes = []
-                # use remotes that read history here, despite the startup
-                # overhead, to check that script.start_task
-                # waits for the start_task in each remote.
+                # use remotes that read history here, to check that
+                # script.start_task waits for the start_task in each remote.
                 for rind in remote_indices:
                     remotes.append(salobj.Remote(domain=self.domain, name="Test", index=rind))
                 self.remotes = remotes
@@ -455,7 +454,7 @@ class BaseScriptTestCase(unittest.TestCase):
                         index = next(index_gen)
                         remote = salobj.Remote(domain=domain, name="Script", index=index,
                                                evt_max_history=0, tel_max_history=0)
-                        await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
+                        await asyncio.wait_for(remote.start_task, timeout=START_TIMEOUT)
 
                         def logcallback(data):
                             print(f"message={data.message}")
@@ -468,7 +467,7 @@ class BaseScriptTestCase(unittest.TestCase):
                             state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
                             self.assertEqual(state.state, ScriptState.UNCONFIGURED)
 
-                            logLevel_data = remote.evt_logLevel.get()
+                            logLevel_data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                             self.assertEqual(logLevel_data.level, logging.INFO)
 
                             wait_time = 0.1
@@ -480,11 +479,8 @@ class BaseScriptTestCase(unittest.TestCase):
                             configure_data.config = config
                             await remote.cmd_configure.start(configure_data, timeout=STD_TIMEOUT)
 
-                            metadata = remote.evt_metadata.get()
+                            metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                             self.assertEqual(metadata.duration, wait_time)
-                            await asyncio.sleep(0.2)
-                            log_msg = remote.evt_logMessage.get()
-                            self.assertEqual(log_msg.message, "Configure succeeded")
 
                             await remote.cmd_run.start(timeout=STD_TIMEOUT)
 

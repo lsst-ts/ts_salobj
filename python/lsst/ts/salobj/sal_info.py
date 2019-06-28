@@ -44,7 +44,7 @@ INITIAL_LOG_LEVEL = logging.INFO
 
 # default time to wait for historical data (sec)
 # override by setting env var $LSST_DDS_HISTORYSYNC
-DEFAULT_LSST_DDS_HISTORYSYNC = 30
+DEFAULT_LSST_DDS_HISTORYSYNC = 60
 
 
 class SalInfo:
@@ -318,9 +318,9 @@ class SalInfo:
                 if not self.isopen:  # shutting down
                     return
                 if isok:
-                    self.log.info(f"Read historical data in {dt:0.2} sec")
+                    self.log.info(f"Read historical data in {dt:0.2f} sec")
                 else:
-                    self.log.warning(f"Could not read historical data in {dt:0.2} sec")
+                    self.log.warning(f"Could not read historical data in {dt:0.2f} sec")
                 for read_cond, topic in list(self._readers.items()):
                     if not self.isopen:  # shutting down
                         return
@@ -336,12 +336,16 @@ class SalInfo:
                         data_list = topic._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
                     self.log.debug(f"Read {len(data_list)} history items for {topic}")
                     sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
-                    if len(sd_list) < len(data_list):
-                        ninvalid = len(data_list) - len(sd_list)
-                        self.log.warning(f"Bug: read {ninvalid} late joiner items for {topic}")
-                    sd_list = sd_list[-topic.max_history:]
-                    if sd_list:
-                        topic._queue_data(sd_list)
+                    # TODO DM-20313: enable this code
+                    # which was commented out to work around DM-20312:
+                    # if len(sd_list) < len(data_list):
+                    #     ninvalid = len(data_list) - len(sd_list)
+                    #     self.log.warning(f"Bug: read {ninvalid} late joiner "
+                    #                      f"items for {topic}")
+                    if topic.max_history > 0:
+                        sd_list = sd_list[-topic.max_history:]
+                        if sd_list:
+                            topic._queue_data(sd_list)
             self._read_loop_task = asyncio.ensure_future(self._read_loop())
             self.start_task.set_result(None)
         except Exception as e:
@@ -372,10 +376,14 @@ class SalInfo:
                             topic._warned_readloop = True
                             self.log.warning(f"{topic!r} falling behind; read {len(data_list)} messages")
                         sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
-                        if len(sd_list) < len(data_list):
-                            ninvalid = len(data_list) - len(sd_list)
-                            self.log.warning(f"Bug: read {ninvalid} invalid items for {topic}")
-                        topic._queue_data(sd_list)
+                        # TODO DM-20313: enable this code
+                        # which was commented out to work around DM-20312:
+                        # if len(sd_list) < len(data_list):
+                        #     ninvalid = len(data_list) - len(sd_list)
+                        #     self.log.warning(f"Bug: read {ninvalid} invalid "
+                        #                      f"items for {topic}")
+                        if sd_list:
+                            topic._queue_data(sd_list)
                         await asyncio.sleep(0)  # free the event loop
         except asyncio.CancelledError:
             raise
@@ -426,21 +434,20 @@ class SalInfo:
             time_limit = DEFAULT_LSST_DDS_HISTORYSYNC
         else:
             time_limit = float(time_limit)
-
         wait_timeout = dds.DDSDuration(sec=time_limit)
         num_ok = 0
         num_checked = 0
+        t0 = time.time()
         for reader in list(self._readers.values()):
             if not self.isopen:  # shutting down
                 return False
             if not reader.isopen:
                 continue
-            if reader.max_history == 0:
-                # volatile; should not get late joiner data
-                continue
             num_checked += 1
             isok = reader._reader.wait_for_historical_data(wait_timeout)
             if isok:
                 num_ok += 1
-                wait_timeout = dds.DDSDuration(sec=0.1)
+            elapsed_time = time.time() - t0
+            rem_time = max(0.01, time_limit - elapsed_time)
+            wait_timeout = dds.DDSDuration(sec=rem_time)
         return num_ok > 0 or num_checked == 0
