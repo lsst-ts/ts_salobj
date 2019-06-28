@@ -1,6 +1,7 @@
 setupRequired(sconsUtils)
-setupRequired(ts_sal)  # for SALPY libs
-setupOptional(ts_config_ocs)  # for Test configuration files
+setupRequired(ts_idl)  # IDL files and the quality of service file
+setupOptional(ts_sal)  # SALPY_Test library for unit tests
+setupOptional(ts_config_ocs)  # Test configuration files for unit tests
 
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
 

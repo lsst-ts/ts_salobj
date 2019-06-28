@@ -467,7 +467,7 @@ class BaseScriptTestCase(unittest.TestCase):
                             state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
                             self.assertEqual(state.state, ScriptState.UNCONFIGURED)
 
-                            logLevel_data = remote.evt_logLevel.get()
+                            logLevel_data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                             self.assertEqual(logLevel_data.level, logging.INFO)
 
                             wait_time = 0.1
@@ -479,11 +479,8 @@ class BaseScriptTestCase(unittest.TestCase):
                             configure_data.config = config
                             await remote.cmd_configure.start(configure_data, timeout=STD_TIMEOUT)
 
-                            metadata = remote.evt_metadata.get()
+                            metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                             self.assertEqual(metadata.duration, wait_time)
-                            await asyncio.sleep(0.2)
-                            log_msg = remote.evt_logMessage.get()
-                            self.assertEqual(log_msg.message, "Configure succeeded")
 
                             await remote.cmd_run.start(timeout=STD_TIMEOUT)
 
