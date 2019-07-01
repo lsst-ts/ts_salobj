@@ -22,7 +22,6 @@
 __all__ = ["Controller", "OPTIONAL_COMMAND_NAMES"]
 
 import asyncio
-import time
 
 from .domain import Domain
 from .sal_info import SalInfo
@@ -213,14 +212,12 @@ class Controller:
         self._isopen = False
         try:
             # Give time to output final log messages
-            time.sleep(0.01)
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.1)
             self.log.removeHandler(self._sal_log_handler)
             self._sal_log_handler = None
             await self.close_tasks()
             # Give a little extra time to close
             await asyncio.sleep(0.1)
-            time.sleep(0.01)
             await self.salinfo.domain.close()
         finally:
             if not self.done_task.done():
