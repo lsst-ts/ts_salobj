@@ -4,8 +4,8 @@ pipeline {
         dockerImageNameBuild = "salobj:b${BUILD_NUMBER}"
         dockerImageBuild = ""
         work_branches = "${GIT_BRANCH} ${CHANGE_BRANCH} master"
-        container_name = "c_${BUILD_ID}_${GIT_COMMIT}"
-        network_name = "n_${BUILD_ID}_${GIT_COMMIT}"
+        container_name = "c_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
+        network_name = "n_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
     }
 
     stages {
