@@ -9,8 +9,7 @@ from lsst.ts import salobj
 
 SHOW_LOG_MESSAGES = False
 
-STD_TIMEOUT = 5  # timeout for command ack
-LONG_TIMEOUT = 30  # timeout for CSCs to start
+STD_TIMEOUT = 10  # timeout for command ack
 EVENT_DELAY = 0.1  # time for events to be output as a result of a command
 NODATA_TIMEOUT = 0.1  # timeout for when we expect no new data
 
@@ -47,8 +46,6 @@ class TopicsTestCase(unittest.TestCase):
         """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 # until put is called nothing has been sent
                 self.assertFalse(harness.csc.tel_scalars.has_data)
                 self.assertFalse(harness.remote.tel_scalars.has_data)
@@ -84,8 +81,6 @@ class TopicsTestCase(unittest.TestCase):
         """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 # until put is called nothing has been sent
                 self.assertFalse(harness.csc.evt_scalars.has_data)
                 self.assertFalse(harness.remote.evt_scalars.has_data)
@@ -126,8 +121,6 @@ class TopicsTestCase(unittest.TestCase):
         """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 # until set_put is called nothing has been sent
                 self.assertFalse(harness.csc.tel_scalars.has_data)
                 self.assertFalse(harness.remote.tel_scalars.has_data)
@@ -201,8 +194,6 @@ class TopicsTestCase(unittest.TestCase):
         """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 # until set_put is called nothing has been sent
                 self.assertFalse(harness.csc.tel_scalars.has_data)
                 self.assertFalse(harness.remote.tel_scalars.has_data)
@@ -314,8 +305,6 @@ class TopicsTestCase(unittest.TestCase):
     def test_remote_get_oldest(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 num_commands = 3
                 cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
                 # wait for all events
@@ -346,8 +335,6 @@ class TopicsTestCase(unittest.TestCase):
     def test_remote_get(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 num_commands = 3
                 cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
                 # wait for all events
@@ -372,8 +359,6 @@ class TopicsTestCase(unittest.TestCase):
     def test_remote_next(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 num_commands = 3
                 cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
 
@@ -417,8 +402,6 @@ class TopicsTestCase(unittest.TestCase):
 
             num_commands = 3
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 harness.remote.evt_scalars.callback = evt_callback
                 harness.remote.tel_scalars.callback = tel_callback
 
@@ -454,8 +437,6 @@ class TopicsTestCase(unittest.TestCase):
         """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 with self.assertRaises(TypeError):
                     # telemetry/event mismatch
                     harness.csc.evt_scalars.put(harness.csc.tel_scalars.DataType())
@@ -489,8 +470,6 @@ class TopicsTestCase(unittest.TestCase):
     def test_command_timeout(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 with salobj.assertRaisesAckTimeoutError(ack=salobj.SalRetCode.CMD_INPROGRESS):
                     await harness.remote.cmd_wait.set_start(duration=5, ack=salobj.SalRetCode.CMD_COMPLETE,
                                                             timeout=0.5)
@@ -505,8 +484,6 @@ class TopicsTestCase(unittest.TestCase):
         """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 # next fails if there is a callback
                 with self.assertRaises(RuntimeError):
                     await harness.csc.cmd_wait.next()
@@ -544,8 +521,6 @@ class TopicsTestCase(unittest.TestCase):
         """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 self.assertTrue(harness.csc.cmd_wait.has_callback)
                 self.assertEqual(harness.csc.cmd_wait.callback, harness.csc.do_wait)
 
@@ -567,8 +542,6 @@ class TopicsTestCase(unittest.TestCase):
             """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 self.assertTrue(harness.csc.cmd_wait.has_callback)
                 self.assertTrue(harness.csc.cmd_wait.allow_multiple_callbacks)
 
@@ -598,8 +571,6 @@ class TopicsTestCase(unittest.TestCase):
         """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 self.assertTrue(harness.csc.cmd_wait.has_callback)
                 harness.csc.cmd_wait.allow_multiple_callbacks = False
                 self.assertFalse(harness.csc.cmd_wait.allow_multiple_callbacks)
@@ -628,8 +599,6 @@ class TopicsTestCase(unittest.TestCase):
     def test_asynchronous_event_callback(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 cmd_scalars_data = harness.csc.make_random_cmd_scalars()
                 callback_data = None
 
@@ -652,8 +621,6 @@ class TopicsTestCase(unittest.TestCase):
         is synchronous"""
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 cmd_scalars_data = harness.csc.make_random_cmd_scalars()
                 callback_data = None
 
@@ -674,8 +641,6 @@ class TopicsTestCase(unittest.TestCase):
     def test_remote_command_next_ack(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 ackcmd1 = await harness.remote.cmd_wait.set_start(duration=0.1, wait_done=False,
                                                                   timeout=STD_TIMEOUT)
                 self.assertEqual(ackcmd1.ack, salobj.SalRetCode.CMD_ACK)
@@ -698,8 +663,6 @@ class TopicsTestCase(unittest.TestCase):
     def test_remote_command_seq_num(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 prev_max_seq_num = None
                 for cmd_name in harness.remote.salinfo.command_names:
                     remote_cmd = getattr(harness.remote, f"cmd_{cmd_name}")
