@@ -26,29 +26,52 @@ import asyncio
 from .base_csc import State
 
 
-# Support for set_summary_state
-# A dict of State: index,
-# where index provides an ordering from OFFLINE to ENABLED
-# (the STATE enums also have integer value, but not in a useful order)
-_STATE_INDEX_DICT = {
-    State.OFFLINE: 0,
-    State.STANDBY: 1,
-    State.DISABLED: 2,
-    State.ENABLED: 3,
-}
+def _make_state_transition_dict():
+    """Make a dict of state transition commands and states
 
-# Support for set_summary_state
-# State transition commands for non-fault states:
-# keys are (from state index, to state index)
-# values are state transition command names
-_INDEX_CMD_DICT = {
-    (0, 1): "enterControl",
-    (1, 2): "start",
-    (2, 3): "enable",
-    (3, 2): "disable",
-    (2, 1): "standby",
-    (1, 0): "exitControl",
-}
+    The keys are (beginning state, ending state)
+    The values are a list of tuples:
+
+    * A state transition command
+    * The expected state after that command
+    """
+    ordered_states = (State.OFFLINE, State.STANDBY, State.DISABLED, State.ENABLED)
+
+    basic_state_transition_commands = {
+        (State.OFFLINE, State.STANDBY): "enterControl",
+        (State.STANDBY, State.DISABLED): "start",
+        (State.DISABLED, State.ENABLED): "enable",
+        (State.ENABLED, State.DISABLED): "disable",
+        (State.DISABLED, State.STANDBY): "standby",
+        (State.STANDBY, State.OFFLINE): "exitControl",
+    }
+
+    # compute transitions from non-FAULT to all other states
+    state_transition_dict = dict()
+    for beg_ind, beg_state in enumerate(ordered_states):
+        for end_ind, end_state in enumerate(ordered_states):
+            if beg_ind == end_ind:
+                state_transition_dict[(beg_state, end_state)] = []
+                continue
+            step = 1 if end_ind > beg_ind else -1
+            command_state_list = []
+            for next_ind in range(beg_ind, end_ind, step):
+                from_state = ordered_states[next_ind]
+                to_state = ordered_states[next_ind + step]
+                command = basic_state_transition_commands[from_state, to_state]
+                command_state_list.append((command, to_state))
+            state_transition_dict[(beg_state, end_state)] = command_state_list
+
+    # add transitions from FAULT to all other states
+    for end_state in ordered_states:
+        command_state_list = [("standby", State.STANDBY)]
+        if end_state != State.STANDBY:
+            command_state_list += state_transition_dict[State.STANDBY, end_state]
+        state_transition_dict[State.FAULT, end_state] = command_state_list
+    return state_transition_dict
+
+
+_STATE_TRANSITION_DICT = _make_state_transition_dict()
 
 
 async def set_summary_state(remote, state, settingsToApply="", timeout=30):
@@ -67,6 +90,13 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
     timeout : `float`
         Timeout for each state transition command and a possible initial
         summaryState read (sec).
+
+    Returns
+    -------
+    states : `list` [`State`]
+        A list of the initial summary state and all summary states
+        this function transitioned the CSC through,
+        ending with the desired state.
 
     Notes
     -----
@@ -88,35 +118,21 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
             raise RuntimeError(f"Cannot get summaryState from {remote.salinfo.name}")
     current_state = State(state_data.summaryState)
 
+    states = [current_state]
     if current_state == state:
         # we are already in the desired state
-        return
-    elif current_state == State.FAULT:
-        # first go into standby, then use _INDEX_CMD_DICT
-        await remote.cmd_standby.start(timeout=timeout)
-        current_state = State.STANDBY
-        if current_state == state:
-            return
+        return states
+
+    command_state_list = _STATE_TRANSITION_DICT[(current_state, state)]
 
     old_settings_to_apply = remote.cmd_start.data.settingsToApply
     try:
         remote.cmd_start.set(settingsToApply=settingsToApply)
 
-        current_ind = _STATE_INDEX_DICT[current_state]
-        desired_ind = _STATE_INDEX_DICT[state]
-        cmdnames = []
-        if desired_ind > current_ind:
-            for ind in range(current_ind, desired_ind):
-                from_to_ind = (ind, ind+1)
-                cmdnames.append(_INDEX_CMD_DICT[from_to_ind])
-        elif current_ind > desired_ind:
-            for ind in range(current_ind, desired_ind, -1):
-                from_to_ind = (ind, ind-1)
-                cmd = _INDEX_CMD_DICT[from_to_ind]
-                cmdnames.append(_INDEX_CMD_DICT[from_to_ind])
-
-        for cmdname in cmdnames:
-            cmd = getattr(remote, f"cmd_{cmdname}")
+        for command, state in command_state_list:
+            cmd = getattr(remote, f"cmd_{command}")
             await cmd.start(timeout=timeout)
+            states.append(state)
     finally:
         remote.cmd_start.data.settingsToApply = old_settings_to_apply
+    return states

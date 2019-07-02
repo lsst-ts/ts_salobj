@@ -18,10 +18,6 @@ class Harness:
         self.csc = salobj.TestCsc(index=index, config_dir=TEST_CONFIG_DIR, initial_state=initial_state)
         self.remote = salobj.Remote(domain=self.csc.domain, name="Test", index=index)
 
-    async def next_state(self, timeout=STD_TIMEOUT):
-        state = await self.remote.evt_summaryState.next(flush=False, timeout=timeout)
-        return state.summaryState
-
     async def __aenter__(self):
         await self.csc.start_task
         await self.remote.start_task
@@ -33,10 +29,6 @@ class Harness:
 
 
 class SetSummaryStateTestCSe(unittest.TestCase):
-    async def assert_state(self, harness, state, timeout=STD_TIMEOUT):
-        actual_state = await harness.next_state(timeout=timeout)
-        self.assertEqual(actual_state, actual_state)
-
     def test_transitions(self):
         """Test transitions between all states.
         """
@@ -52,8 +44,16 @@ class SetSummaryStateTestCSe(unittest.TestCase):
                     with self.subTest(initial_state=initial_state, final_state=final_state):
                         print(f"initial_state={initial_state!r}; final_state={final_state!r}")
                         async with Harness(initial_state=initial_state) as harness:
-                            await salobj.set_summary_state(remote=harness.remote, state=final_state,
-                                                           settingsToApply="all_fields")
+                            self.assertEqual(harness.csc.summary_state, initial_state)
+                            data = await harness.remote.evt_summaryState.next(flush=False,
+                                                                              timeout=STD_TIMEOUT)
+                            self.assertEqual(data.summaryState, initial_state)
+
+                            states = await salobj.set_summary_state(remote=harness.remote,
+                                                                    state=final_state,
+                                                                    settingsToApply="all_fields")
+                            self.assertEqual(states[0], initial_state)
+                            self.assertEqual(states[-1], final_state)
                             self.assertEqual(harness.csc.summary_state, final_state)
                             if initial_state in (salobj.State.FAULT, salobj.State.STANDBY) \
                                     and final_state in (salobj.State.DISABLED, salobj.State.ENABLED):
@@ -67,9 +67,13 @@ class SetSummaryStateTestCSe(unittest.TestCase):
                                 self.assertEqual(harness.csc.config.string0, "default value for string0")
                             else:
                                 self.assertIsNone(harness.csc.config)
-                            await asyncio.sleep(0.1)
-                            state = harness.remote.evt_summaryState.get()
-                            self.assertEqual(state.summaryState, final_state)
+                            # the initial state was read by the remote
+                            # in set_summary_state (and in the test),
+                            # so only check for subsequent states
+                            for expected_state in states[1:]:
+                                data = await harness.remote.evt_summaryState.next(flush=False,
+                                                                                  timeout=STD_TIMEOUT)
+                                self.assertEqual(data.summaryState, expected_state)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
