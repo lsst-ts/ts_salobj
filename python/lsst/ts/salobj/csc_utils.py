@@ -22,7 +22,6 @@
 __all__ = ["set_summary_state"]
 
 import asyncio
-import re
 
 from .base_csc import State
 
@@ -121,11 +120,3 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
             await cmd.start(timeout=timeout)
     finally:
         remote.cmd_start.data.settingsToApply = old_settings_to_apply
-
-
-def _state_from_ack_error(result):
-    """Get summary state from failed state change AckError result."""
-    match = re.search(r"State\.[a-zA-Z]+: (\d+)", result)
-    if match is None:
-        raise RuntimeError(f"Could not find state in {result}")
-    return int(match.group(1))
