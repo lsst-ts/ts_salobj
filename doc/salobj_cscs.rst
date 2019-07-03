@@ -143,10 +143,10 @@ Running a CSC
 -------------
 
 To run your CSC call the `main` method or equivalent code.
-For an example see ``bin.src/run_test_csc.py``.
+For an example see ``bin/run_test_csc.py``.
 If you wish to provide additional command line arguments for your CSC then you may
 override the `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` class methods,
-or, if you prefer, copy the contents of `main` into your ``bin.src`` script
+or, if you prefer, copy the contents of `main` into your ``bin`` script
 and adapt it as required.
 
 In unit tests, wait for ``self.start_task`` to be done, or for the initial
@@ -158,8 +158,7 @@ In unit tests, wait for ``self.start_task`` to be done, or for the initial
 Simulation Mode
 ---------------
 
-CSCs should support a simulation mode if practical; this is especially
-important if the CSC talks to hardware.
+CSCs should support a simulation mode if practical; this is especially important if the CSC talks to hardware.
 
 To implement a simulation mode, first pick one or more non-zero values
 for the ``simulation_mode`` property (0 is reserved for normal operation)
