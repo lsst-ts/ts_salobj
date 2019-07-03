@@ -13,4 +13,8 @@ from .csc_utils import *
 from .test_utils import *
 from .test_csc import *
 from .test_script import *
-from .version import *
+
+try:
+    from .version import *
+except ImportError:
+    pass
