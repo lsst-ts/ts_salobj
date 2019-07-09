@@ -127,6 +127,17 @@ class RemoteTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
+    def test_start_false(self):
+        """Test the start argument of Remote."""
+
+        async def doit():
+            index = next(index_gen)
+            async with salobj.Domain() as domain:
+                remote = salobj.Remote(domain=domain, name="Test", index=index, start=False)
+                self.assertFalse(hasattr(remote, "start_task"))
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
 
 if __name__ == "__main__":
     unittest.main()
