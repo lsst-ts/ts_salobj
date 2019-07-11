@@ -77,6 +77,25 @@ class RemoteTestCase(unittest.TestCase):
                 remote_telemetry_names = set([name for name in dir(remote3) if name.startswith("tel_")])
                 self.assertEqual(remote_telemetry_names, all_telemetry_method_names)
 
+                # remote4 uses include=[]
+                remote4 = salobj.Remote(domain=domain, name="Test", index=index, include=[])
+                remote_command_names = set([name for name in dir(remote4) if name.startswith("cmd_")])
+                self.assertEqual(remote_command_names, all_command_method_names)
+                remote_event_names = set([name for name in dir(remote4) if name.startswith("evt_")])
+                self.assertEqual(remote_event_names, set())
+                remote_telemetry_names = set([name for name in dir(remote4) if name.startswith("tel_")])
+                self.assertEqual(remote_telemetry_names, set())
+
+                # remote5 uses exclude=[] (though there is no reason to doubt
+                # that it will work the same as exclude=None)
+                remote5 = salobj.Remote(domain=domain, name="Test", index=index, exclude=[])
+                remote_command_names = set([name for name in dir(remote5) if name.startswith("cmd_")])
+                self.assertEqual(remote_command_names, all_command_method_names)
+                remote_event_names = set([name for name in dir(remote5) if name.startswith("evt_")])
+                self.assertEqual(remote_event_names, all_event_method_names)
+                remote_telemetry_names = set([name for name in dir(remote5) if name.startswith("tel_")])
+                self.assertEqual(remote_telemetry_names, all_telemetry_method_names)
+
                 # make sure one cannot specify both include and exclude
                 with self.assertRaises(ValueError):
                     salobj.Remote(domain=domain, name="Test", index=index, include=include, exclude=exclude)

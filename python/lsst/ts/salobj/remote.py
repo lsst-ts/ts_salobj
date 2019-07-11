@@ -146,7 +146,7 @@ class Remote:
                     setattr(self, "cmd_" + cmd_name, cmd)
 
             for evt_name in salinfo.event_names:
-                if include_set and evt_name not in include_set:
+                if include_set is not None and evt_name not in include_set:
                     continue
                 elif exclude_set and evt_name in exclude_set:
                     continue
@@ -154,7 +154,7 @@ class Remote:
                 setattr(self, "evt_" + evt_name, evt)
 
             for tel_name in salinfo.telemetry_names:
-                if include_set and tel_name not in include_set:
+                if include_set is not None and tel_name not in include_set:
                     continue
                 elif exclude_set and tel_name in exclude_set:
                     continue
