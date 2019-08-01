@@ -162,6 +162,26 @@ class BasicsTestCase(unittest.TestCase):
         values = [next(gen) for i in range(len(expected_values))]
         self.assertEqual(values, expected_values)
 
+    def test_name_to_name_index(self):
+        for name, expected_result in (
+            ("Script", ("Script", 0)),
+            ("Script:0", ("Script", 0)),
+            ("Script:15", ("Script", 15)),
+        ):
+            with self.subTest(name=name):
+                result = salobj.name_to_name_index(name)
+                self.assertEqual(result, expected_result)
+
+        for bad_name in (
+            (" Script:15"),  # leading space
+            ("Script:15 "),  # trailing space
+            ("Script:"),   # colon with no index
+            ("Script:zero"),  # index is not an integer
+        ):
+            with self.subTest(bad_name=bad_name):
+                with self.assertRaises(ValueError):
+                    salobj.name_to_name_index(bad_name)
+
     def test_salinfo_constructor(self):
         async def doit():
             with self.assertRaises(TypeError):

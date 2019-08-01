@@ -20,13 +20,17 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = ["AckError", "AckTimeoutError", "ExpectedError",
-           "index_generator", "make_done_future", "MAX_SAL_INDEX", "tai_from_utc"]
+           "index_generator", "make_done_future", "MAX_SAL_INDEX",
+           "name_to_name_index", "tai_from_utc"]
 
 import asyncio
+import re
 
 from . import sal_enums
 
 MAX_SAL_INDEX = (1 << 31) - 1
+
+_NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-]+)(:(?P<index>\d+))?$")
 
 
 def _ackcmd_str(ackcmd):
@@ -120,6 +124,41 @@ def make_done_future():
     future = asyncio.Future()
     future.set_result(None)
     return future
+
+
+def name_to_name_index(name):
+    """Parse a SAL component name of the form name[:index].
+
+    Parameters
+    ----------
+    name : `str`
+        Component name of the form ``name`` or ``name:index``.
+        The default index is 0.
+
+    Raises
+    ------
+    ValueError
+        If the name cannot be parsed.
+
+    Notes
+    -----
+    Examples:
+
+    * ``"Script" -> ("Script", 0)``
+    * ``"Script:0" -> ("Script", 0)``
+    * ``"Script:15" -> ("Script", 15)``
+    * ``" Script:15" -> raise ValueError (leading space)``
+    * ``"Script:15 " -> raise ValueError (trailing space)``
+    * ``"Script:" -> raise ValueError (colon with no index)``
+    * ``"Script:zero" -> raise ValueError (index not an integer)``
+    """
+    match = _NAME_REGEX.match(name)
+    if not match:
+        raise ValueError(f"name {name!r} is not of the form 'name' or 'name:index'")
+    name = match["name"]
+    index = match["index"]
+    index = 0 if index is None else int(index)
+    return (name, index)
 
 
 def tai_from_utc(utc):
