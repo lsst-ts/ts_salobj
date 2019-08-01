@@ -27,6 +27,10 @@ import abc
 # import ddsutil
 from .. import ddsutil
 
+# dict of sal_prefix: attr_prefix: the prefix used for
+# Controller and Remote topic attributes.
+_ATTR_PREFIXES = {"": "tel_", "logevent_": "evt_", "command_": "cmd_"}
+
 
 class BaseTopic(abc.ABC):
     r"""Base class for topics.
@@ -39,12 +43,31 @@ class BaseTopic(abc.ABC):
         Topic name, without a "command\_" or "logevent\_" prefix.
     sal_prefix : `str`
         SAL topic prefix: one of "command\_", "logevent\_" or ""
+
+    Raises
+    ------
+    RuntimeError
+        If the topic cannot be constructed.
     """
     def __init__(self, *, salinfo, name, sal_prefix):
         try:
             self.salinfo = salinfo
+            """The ``salinfo`` constructor argument.
+            """
+
             self.name = str(name)
-            if sal_prefix not in ("", "logevent_", "command_"):
+            """The ``name`` constructor argument.
+            """
+
+            self.attr_prefix = _ATTR_PREFIXES.get(sal_prefix)
+            """Prefix used for attributes of `Controller` and `Remote`.
+
+            * "cmd_" for commands
+            * "evt_" for events
+            * "tel_" for telemetry
+            """
+
+            if self.attr_prefix is None:
                 raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
             self._sal_topic_name = sal_prefix + self.name
             self.log = salinfo.log.getChild(self._sal_topic_name)

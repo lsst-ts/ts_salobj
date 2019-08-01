@@ -64,6 +64,13 @@ class Remote:
     tel_max_history : `int` (optional)
         Maximum number of historical items to read for telemetry.
         Set to 0 if your remote is not interested in "late joiner" data.
+    start : `bool` (optional)
+        Automatically start the read loop when constructed?
+        Normally this should be `True`, but if you are adding topics
+        piecemeal after constructing the remote then specify `False`
+        and call `start` manually after you have added all topics.
+        Warning: if `False` then `self.start_task` will not exist
+        and the remote cannot be used as an async context manager.
 
     Raises
     ------
@@ -120,7 +127,7 @@ class Remote:
         * ``tel_scalars``
     """
     def __init__(self, domain, name, index=None, *, readonly=False,
-                 include=None, exclude=None, evt_max_history=1, tel_max_history=1):
+                 include=None, exclude=None, evt_max_history=1, tel_max_history=1, start=True):
         if include is not None and exclude is not None:
             raise ValueError("Cannot specify both include and exclude")
         include_set = set(include) if include is not None else None
@@ -139,7 +146,7 @@ class Remote:
                     setattr(self, "cmd_" + cmd_name, cmd)
 
             for evt_name in salinfo.event_names:
-                if include_set and evt_name not in include_set:
+                if include_set is not None and evt_name not in include_set:
                     continue
                 elif exclude_set and evt_name in exclude_set:
                     continue
@@ -147,14 +154,15 @@ class Remote:
                 setattr(self, "evt_" + evt_name, evt)
 
             for tel_name in salinfo.telemetry_names:
-                if include_set and tel_name not in include_set:
+                if include_set is not None and tel_name not in include_set:
                     continue
                 elif exclude_set and tel_name in exclude_set:
                     continue
                 tel = RemoteTelemetry(salinfo, tel_name, max_history=tel_max_history)
                 setattr(self, "tel_" + tel_name, tel)
 
-            self.start_task = asyncio.ensure_future(self.start())
+            if start:
+                self.start_task = asyncio.ensure_future(self.start())
         except Exception:
             asyncio.ensure_future(self.salinfo.close())
             raise

@@ -41,6 +41,103 @@ class TopicsTestCase(unittest.TestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_domain()
 
+    def test_attributes(self):
+        async def doit():
+            async with Harness(initial_state=salobj.State.ENABLED) as harness:
+                for cmd_name in harness.csc.salinfo.command_names:
+                    remote_cmd = getattr(harness.remote, f"cmd_{cmd_name}")
+                    self.assertEqual(remote_cmd.name, cmd_name)
+                    self.assertEqual(remote_cmd.attr_prefix, "cmd_")
+
+                    controller_cmd = getattr(harness.csc, f"cmd_{cmd_name}")
+                    self.assertEqual(controller_cmd.name, cmd_name)
+                    self.assertEqual(controller_cmd.attr_prefix, "cmd_")
+
+                for evt_name in harness.csc.salinfo.event_names:
+                    remote_evt = getattr(harness.remote, f"evt_{evt_name}")
+                    self.assertEqual(remote_evt.name, evt_name)
+                    self.assertEqual(remote_evt.attr_prefix, "evt_")
+
+                    controller_evt = getattr(harness.csc, f"evt_{evt_name}")
+                    self.assertEqual(controller_evt.name, evt_name)
+                    self.assertEqual(controller_evt.attr_prefix, "evt_")
+
+                for tel_name in harness.csc.salinfo.telemetry_names:
+                    remote_tel = getattr(harness.remote, f"tel_{tel_name}")
+                    self.assertEqual(remote_tel.name, tel_name)
+                    self.assertEqual(remote_tel.attr_prefix, "tel_")
+
+                    controller_tel = getattr(harness.csc, f"tel_{tel_name}")
+                    self.assertEqual(controller_tel.name, tel_name)
+                    self.assertEqual(controller_tel.attr_prefix, "tel_")
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_base_topic_constructor_good(self):
+        async def doit():
+
+            async with salobj.Domain() as domain:
+                salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+
+                for cmd_name in salinfo.command_names:
+                    cmd = salobj.topics.BaseTopic(salinfo=salinfo, name=cmd_name, sal_prefix="command_")
+                    self.assertEqual(cmd.name, cmd_name)
+                    self.assertEqual(cmd.attr_prefix, "cmd_")
+
+                for evt_name in salinfo.event_names:
+                    evt = salobj.topics.BaseTopic(salinfo=salinfo, name=evt_name, sal_prefix="logevent_")
+                    self.assertEqual(evt.name, evt_name)
+                    self.assertEqual(evt.attr_prefix, "evt_")
+
+                for tel_name in salinfo.telemetry_names:
+                    tel = salobj.topics.BaseTopic(salinfo=salinfo, name=tel_name, sal_prefix="")
+                    self.assertEqual(tel.name, tel_name)
+                    self.assertEqual(tel.attr_prefix, "tel_")
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_base_topic_constructor_errors(self):
+        async def doit():
+
+            async with salobj.Domain() as domain:
+                salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+
+                for good_name in ("setScalars", "scalars"):
+                    for bad_prefix in (
+                        "_",
+                        "invalid_",
+                        "logevent",  # no trailing underscore
+                        "command",  # no trailing underscore
+                    ):
+                        with self.assertRaises(RuntimeError):
+                            salobj.topics.BaseTopic(salinfo=salinfo, name=good_name, sal_prefix=bad_prefix)
+
+                for good_prefix in ("", "command_", "logevent_"):
+                    for bad_name in ("", "no_such_topic"):
+                        with self.assertRaises(RuntimeError):
+                            salobj.topics.BaseTopic(salinfo=salinfo, name=bad_name, sal_prefix=good_prefix)
+
+                for cmd_name in salinfo.command_names:
+                    for non_cmd_prefix in ("", "logevent_"):
+                        with self.assertRaises(RuntimeError):
+                            salobj.topics.BaseTopic(salinfo=salinfo, name=cmd_name, sal_prefix=non_cmd_prefix)
+
+                # there is overlap between event and telemetry names
+                # so just use the command_ prefix as the invalid prefix
+                non_evt_prefix = "command_"
+                for evt_name in salinfo.event_names:
+                    with self.assertRaises(RuntimeError):
+                        salobj.topics.BaseTopic(salinfo=salinfo, name=evt_name, sal_prefix=non_evt_prefix)
+
+                # there is overlap between event and telemetry names
+                # so just use the command_ prefix as the invalid prefix
+                non_tel_prefix = "command_"
+                for tel_name in salinfo.telemetry_names:
+                    with self.assertRaises(RuntimeError):
+                        salobj.topics.BaseTopic(salinfo=salinfo, name=tel_name, sal_prefix=non_tel_prefix)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
     def test_controller_telemetry_put(self):
         """Test ControllerTelemetry.put using data=None and providing data.
         """
