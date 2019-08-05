@@ -134,7 +134,7 @@ class WriteTopic(BaseTopic):
             self.data.priority = priority
         curr_utc = time.time()
         self.data.private_sndStamp = base.tai_from_utc(curr_utc)
-        self.data.private_revCode = self._revCode
+        self.data.private_revCode = self.rev_code
         self.data.private_host = self.salinfo.domain.host
         self.data.private_origin = self.salinfo.domain.origin
         if self._seq_num_generator is not None:

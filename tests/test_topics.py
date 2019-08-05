@@ -48,28 +48,40 @@ class TopicsTestCase(unittest.TestCase):
                     remote_cmd = getattr(harness.remote, f"cmd_{cmd_name}")
                     self.assertEqual(remote_cmd.name, cmd_name)
                     self.assertEqual(remote_cmd.attr_prefix, "cmd_")
+                    self.assertEqual(remote_cmd.attr_name, "cmd_" + cmd_name)
+                    self.assertEqual(remote_cmd.sal_name, "command_" + cmd_name)
 
                     controller_cmd = getattr(harness.csc, f"cmd_{cmd_name}")
                     self.assertEqual(controller_cmd.name, cmd_name)
                     self.assertEqual(controller_cmd.attr_prefix, "cmd_")
+                    self.assertEqual(controller_cmd.attr_name, "cmd_" + cmd_name)
+                    self.assertEqual(controller_cmd.sal_name, "command_" + cmd_name)
 
                 for evt_name in harness.csc.salinfo.event_names:
                     remote_evt = getattr(harness.remote, f"evt_{evt_name}")
                     self.assertEqual(remote_evt.name, evt_name)
                     self.assertEqual(remote_evt.attr_prefix, "evt_")
+                    self.assertEqual(remote_evt.attr_name, "evt_" + evt_name)
+                    self.assertEqual(remote_evt.sal_name, "logevent_" + evt_name)
 
                     controller_evt = getattr(harness.csc, f"evt_{evt_name}")
                     self.assertEqual(controller_evt.name, evt_name)
                     self.assertEqual(controller_evt.attr_prefix, "evt_")
+                    self.assertEqual(controller_evt.attr_name, "evt_" + evt_name)
+                    self.assertEqual(controller_evt.sal_name, "logevent_" + evt_name)
 
                 for tel_name in harness.csc.salinfo.telemetry_names:
                     remote_tel = getattr(harness.remote, f"tel_{tel_name}")
                     self.assertEqual(remote_tel.name, tel_name)
                     self.assertEqual(remote_tel.attr_prefix, "tel_")
+                    self.assertEqual(remote_tel.attr_name, "tel_" + tel_name)
+                    self.assertEqual(remote_tel.sal_name, tel_name)
 
                     controller_tel = getattr(harness.csc, f"tel_{tel_name}")
                     self.assertEqual(controller_tel.name, tel_name)
                     self.assertEqual(controller_tel.attr_prefix, "tel_")
+                    self.assertEqual(controller_tel.attr_name, "tel_" + tel_name)
+                    self.assertEqual(controller_tel.sal_name, tel_name)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
