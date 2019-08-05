@@ -44,44 +44,42 @@ class TopicsTestCase(unittest.TestCase):
     def test_attributes(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                for cmd_name in harness.csc.salinfo.command_names:
-                    remote_cmd = getattr(harness.remote, f"cmd_{cmd_name}")
-                    self.assertEqual(remote_cmd.name, cmd_name)
-                    self.assertEqual(remote_cmd.attr_prefix, "cmd_")
-                    self.assertEqual(remote_cmd.attr_name, "cmd_" + cmd_name)
-                    self.assertEqual(remote_cmd.sal_name, "command_" + cmd_name)
+                for obj in (harness.remote, harness.csc):
+                    for cmd_name in obj.salinfo.command_names:
+                        cmd = getattr(obj, f"cmd_{cmd_name}")
+                        self.assertEqual(cmd.name, cmd_name)
+                        self.assertEqual(cmd.attr_name, "cmd_" + cmd_name)
+                        self.assertEqual(cmd.sal_name, "command_" + cmd_name)
+                        self.assertEqual(cmd.dds_name,
+                                         cmd.salinfo.name + "_" + cmd.sal_name + "_" + cmd.rev_code)
 
-                    controller_cmd = getattr(harness.csc, f"cmd_{cmd_name}")
-                    self.assertEqual(controller_cmd.name, cmd_name)
-                    self.assertEqual(controller_cmd.attr_prefix, "cmd_")
-                    self.assertEqual(controller_cmd.attr_name, "cmd_" + cmd_name)
-                    self.assertEqual(controller_cmd.sal_name, "command_" + cmd_name)
+                    for evt_name in obj.salinfo.event_names:
+                        evt = getattr(obj, f"evt_{evt_name}")
+                        self.assertEqual(evt.name, evt_name)
+                        self.assertEqual(evt.attr_name, "evt_" + evt_name)
+                        self.assertEqual(evt.sal_name, "logevent_" + evt_name)
+                        self.assertEqual(evt.dds_name,
+                                         evt.salinfo.name + "_" + evt.sal_name + "_" + evt.rev_code)
 
-                for evt_name in harness.csc.salinfo.event_names:
-                    remote_evt = getattr(harness.remote, f"evt_{evt_name}")
-                    self.assertEqual(remote_evt.name, evt_name)
-                    self.assertEqual(remote_evt.attr_prefix, "evt_")
-                    self.assertEqual(remote_evt.attr_name, "evt_" + evt_name)
-                    self.assertEqual(remote_evt.sal_name, "logevent_" + evt_name)
+                    for tel_name in obj.salinfo.telemetry_names:
+                        tel = getattr(obj, f"tel_{tel_name}")
+                        self.assertEqual(tel.name, tel_name)
+                        self.assertEqual(tel.attr_name, "tel_" + tel_name)
+                        self.assertEqual(tel.sal_name, tel_name)
+                        self.assertEqual(tel.dds_name,
+                                         tel.salinfo.name + "_" + tel.sal_name + "_" + tel.rev_code)
 
-                    controller_evt = getattr(harness.csc, f"evt_{evt_name}")
-                    self.assertEqual(controller_evt.name, evt_name)
-                    self.assertEqual(controller_evt.attr_prefix, "evt_")
-                    self.assertEqual(controller_evt.attr_name, "evt_" + evt_name)
-                    self.assertEqual(controller_evt.sal_name, "logevent_" + evt_name)
-
-                for tel_name in harness.csc.salinfo.telemetry_names:
-                    remote_tel = getattr(harness.remote, f"tel_{tel_name}")
-                    self.assertEqual(remote_tel.name, tel_name)
-                    self.assertEqual(remote_tel.attr_prefix, "tel_")
-                    self.assertEqual(remote_tel.attr_name, "tel_" + tel_name)
-                    self.assertEqual(remote_tel.sal_name, tel_name)
-
-                    controller_tel = getattr(harness.csc, f"tel_{tel_name}")
-                    self.assertEqual(controller_tel.name, tel_name)
-                    self.assertEqual(controller_tel.attr_prefix, "tel_")
-                    self.assertEqual(controller_tel.attr_name, "tel_" + tel_name)
-                    self.assertEqual(controller_tel.sal_name, tel_name)
+                # cannot add new topics to the existing SalInfo, so create a new SalInfo
+                salinfo = salobj.SalInfo(domain=harness.csc.salinfo.domain,
+                                         name=harness.csc.salinfo.name,
+                                         index=harness.csc.salinfo.index)
+                for ackcmd in (salobj.topics.AckCmdReader(salinfo=salinfo),
+                               salobj.topics.AckCmdWriter(salinfo=salinfo)):
+                    self.assertEqual(ackcmd.name, "ackcmd")
+                    self.assertEqual(ackcmd.attr_name, "ack_" + ackcmd.name)
+                    self.assertEqual(ackcmd.sal_name, ackcmd.name)
+                    self.assertEqual(ackcmd.dds_name,
+                                     ackcmd.salinfo.name + "_" + ackcmd.name)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
@@ -411,7 +409,7 @@ class TopicsTestCase(unittest.TestCase):
             await harness.remote.cmd_setScalars.start(cmd_data, timeout=STD_TIMEOUT)
         return cmd_data_list
 
-    def test_remote_get_oldest(self):
+    def test_get_oldest(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
                 num_commands = 3
@@ -441,7 +439,7 @@ class TopicsTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
-    def test_remote_get(self):
+    def test_get(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
                 num_commands = 3
@@ -465,7 +463,7 @@ class TopicsTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
-    def test_remote_next(self):
+    def test_next(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
                 num_commands = 3
@@ -497,7 +495,7 @@ class TopicsTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
-    def test_remote_callbacks(self):
+    def test_callbacks(self):
         async def doit():
             evt_data_list = []
 
@@ -747,7 +745,7 @@ class TopicsTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
-    def test_remote_command_next_ack(self):
+    def test_command_next_ack(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
                 ackcmd1 = await harness.remote.cmd_wait.set_start(duration=0.1, wait_done=False,
@@ -769,23 +767,23 @@ class TopicsTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
-    def test_remote_command_seq_num(self):
+    def test_command_seq_num(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
                 prev_max_seq_num = None
                 for cmd_name in harness.remote.salinfo.command_names:
-                    remote_cmd = getattr(harness.remote, f"cmd_{cmd_name}")
-                    remote_cmd.put()
-                    seq_num = remote_cmd.data.private_seqNum
-                    remote_cmd.put()
-                    seq_num2 = remote_cmd.data.private_seqNum
-                    if seq_num < remote_cmd.max_seq_num:
+                    cmd = getattr(harness.remote, f"cmd_{cmd_name}")
+                    cmd.put()
+                    seq_num = cmd.data.private_seqNum
+                    cmd.put()
+                    seq_num2 = cmd.data.private_seqNum
+                    if seq_num < cmd.max_seq_num:
                         self.assertEqual(seq_num2, seq_num+1)
                     if prev_max_seq_num is None:
-                        self.assertEqual(remote_cmd.min_seq_num, 1)
+                        self.assertEqual(cmd.min_seq_num, 1)
                     else:
-                        self.assertEqual(remote_cmd.min_seq_num, prev_max_seq_num + 1)
-                    prev_max_seq_num = remote_cmd.max_seq_num
+                        self.assertEqual(cmd.min_seq_num, prev_max_seq_num + 1)
+                    prev_max_seq_num = cmd.max_seq_num
 
         asyncio.get_event_loop().run_until_complete(doit())
 

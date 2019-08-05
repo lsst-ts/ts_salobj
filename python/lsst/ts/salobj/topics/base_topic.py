@@ -59,32 +59,39 @@ class BaseTopic(abc.ABC):
             """The ``name`` constructor argument.
             """
 
-            self.attr_prefix = _ATTR_PREFIXES.get(sal_prefix)
-            """Prefix used for attributes of `Controller` and `Remote`.
-
-            * "cmd_" for commands
-            * "evt_" for events
-            * "tel_" for telemetry
-            """
-
-            self.attr_name = self.attr_prefix + name
-            """Name of topic attribute in `Controller` and `Remote`.
-            """
-
-            if self.attr_prefix is None:
-                raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
             self.sal_name = sal_prefix + self.name
             self.log = salinfo.log.getChild(self.sal_name)
+
             if name == "ackcmd":
+                attr_prefix = "ack_"
                 dds_name = f"{salinfo.name}_ackcmd"
                 rev_name = f"{salinfo.name}::ackcmd"
                 rev_code = ""
             else:
+                attr_prefix = _ATTR_PREFIXES.get(sal_prefix)
+                if attr_prefix is None:
+                    raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
+
                 rev_name = salinfo.revnames.get(self.sal_name)
                 if rev_name is None:
                     raise ValueError(f"Could not find {self.salinfo.name} topic {self.sal_name}")
                 dds_name = rev_name.replace("::", "_")
                 rev_code = dds_name[-8:]
+
+            self.attr_prefix = attr_prefix
+            """Prefix used for attributes of `Controller` and `Remote`.
+
+            * "cmd_" for commands
+            * "evt_" for events
+            * "tel_" for telemetry
+            * "ack_" for ackcmd (but this topic is not
+                     an attribute of `Controller` or `Remote`
+            """
+
+            self.attr_name = attr_prefix + name
+            """Name of topic attribute in `Controller` and `Remote`.
+            """
+
             self.dds_name = dds_name
             """Name of topic in DDS.
             """
