@@ -78,16 +78,6 @@ class BaseTopic(abc.ABC):
                 dds_name = rev_name.replace("::", "_")
                 rev_code = dds_name[-8:]
 
-            self.attr_prefix = attr_prefix
-            """Prefix used for attributes of `Controller` and `Remote`.
-
-            * "cmd_" for commands
-            * "evt_" for events
-            * "tel_" for telemetry
-            * "ack_" for ackcmd (but this topic is not
-                     an attribute of `Controller` or `Remote`
-            """
-
             self.attr_name = attr_prefix + name
             """Name of topic attribute in `Controller` and `Remote`.
             """

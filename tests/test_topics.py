@@ -69,7 +69,8 @@ class TopicsTestCase(unittest.TestCase):
                         self.assertEqual(tel.dds_name,
                                          tel.salinfo.name + "_" + tel.sal_name + "_" + tel.rev_code)
 
-                # cannot add new topics to the existing SalInfo, so create a new SalInfo
+                # cannot add new topics to the existing salinfos
+                # (because the read loop has started) so create a new one
                 salinfo = salobj.SalInfo(domain=harness.csc.salinfo.domain,
                                          name=harness.csc.salinfo.name,
                                          index=harness.csc.salinfo.index)
@@ -92,17 +93,14 @@ class TopicsTestCase(unittest.TestCase):
                 for cmd_name in salinfo.command_names:
                     cmd = salobj.topics.BaseTopic(salinfo=salinfo, name=cmd_name, sal_prefix="command_")
                     self.assertEqual(cmd.name, cmd_name)
-                    self.assertEqual(cmd.attr_prefix, "cmd_")
 
                 for evt_name in salinfo.event_names:
                     evt = salobj.topics.BaseTopic(salinfo=salinfo, name=evt_name, sal_prefix="logevent_")
                     self.assertEqual(evt.name, evt_name)
-                    self.assertEqual(evt.attr_prefix, "evt_")
 
                 for tel_name in salinfo.telemetry_names:
                     tel = salobj.topics.BaseTopic(salinfo=salinfo, name=tel_name, sal_prefix="")
                     self.assertEqual(tel.name, tel_name)
-                    self.assertEqual(tel.attr_prefix, "tel_")
 
         asyncio.get_event_loop().run_until_complete(doit())
 
