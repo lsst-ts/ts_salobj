@@ -275,7 +275,7 @@ class BaseCsc(Controller):
 
     @property
     def simulation_mode(self):
-        """Get or set the current simulation mode.
+        """Get the current simulation mode.
 
         0 means normal operation (no simulation).
 

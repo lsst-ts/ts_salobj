@@ -143,7 +143,7 @@ class Remote:
             if not readonly:
                 for cmd_name in salinfo.command_names:
                     cmd = RemoteCommand(salinfo, cmd_name)
-                    setattr(self, "cmd_" + cmd_name, cmd)
+                    setattr(self, cmd.attr_name, cmd)
 
             for evt_name in salinfo.event_names:
                 if include_set is not None and evt_name not in include_set:
@@ -151,7 +151,7 @@ class Remote:
                 elif exclude_set and evt_name in exclude_set:
                     continue
                 evt = RemoteEvent(salinfo, evt_name, max_history=evt_max_history)
-                setattr(self, "evt_" + evt_name, evt)
+                setattr(self, evt.attr_name, evt)
 
             for tel_name in salinfo.telemetry_names:
                 if include_set is not None and tel_name not in include_set:
@@ -159,7 +159,7 @@ class Remote:
                 elif exclude_set and tel_name in exclude_set:
                     continue
                 tel = RemoteTelemetry(salinfo, tel_name, max_history=tel_max_history)
-                setattr(self, "tel_" + tel_name, tel)
+                setattr(self, tel.attr_name, tel)
 
             if start:
                 self.start_task = asyncio.ensure_future(self.start())

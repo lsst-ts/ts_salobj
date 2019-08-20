@@ -146,7 +146,7 @@ class Controller:
                 self._assert_do_methods_present(command_names)
             for cmd_name in command_names:
                 cmd = ControllerCommand(self.salinfo, cmd_name)
-                setattr(self, "cmd_" + cmd_name, cmd)
+                setattr(self, cmd.attr_name, cmd)
                 if do_callbacks:
                     func = getattr(self, f"do_{cmd_name}", None)
                     if func:
@@ -156,11 +156,11 @@ class Controller:
 
             for evt_name in self.salinfo.event_names:
                 evt = ControllerEvent(self.salinfo, evt_name)
-                setattr(self, "evt_" + evt_name, evt)
+                setattr(self, evt.attr_name, evt)
 
             for tel_name in self.salinfo.telemetry_names:
                 tel = ControllerTelemetry(self.salinfo, tel_name)
-                setattr(self, "tel_" + tel_name, tel)
+                setattr(self, tel.attr_name, tel)
 
             for required_name in ("logMessage", "logLevel"):
                 if not hasattr(self, f"evt_{required_name}"):
