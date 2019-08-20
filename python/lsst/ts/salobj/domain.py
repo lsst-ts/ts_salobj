@@ -22,6 +22,7 @@
 __all__ = ["Domain", "DDS_READ_QUEUE_LEN"]
 
 import asyncio
+import ipaddress
 import os
 import random
 import weakref
@@ -46,9 +47,12 @@ class Domain:
     -----
     Environment variables:
 
-    * LSST_DDS_IP used to set the private_host field of samples
-      when writing them. Must be an integer. Optional.
-      If absent then use a random positive number
+    * LSST_DDS_IP (optional) is used to set the ``host`` attribute.
+      If provided, it must be a dotted numeric IP address, e.g. "192.168.0.1".
+      The ``host`` attribute is set to the integer equivalent, or a positive
+      random integer if the environment variable if not provided.
+      This value is used to set the ``private_host`` field of topics
+      when writing them.
 
     It is important to close a `Domain` when you are done with it, especially
     in unit tests, because otherwise unreleased resources may cause problems.
@@ -109,9 +113,10 @@ class Domain:
             host = random.randint(1, MAX_RANDOM_HOST)
         else:
             try:
-                host = int(host)
-            except ValueError:
-                raise ValueError(f"Could not parse $LSST_DDS_IP={host} as an integer")
+                host = int(ipaddress.IPv4Address(host))
+            except ipaddress.AddressValueError as e:
+                raise ValueError(f"Could not parse $LSST_DDS_IP={host} "
+                                 "as a numeric IP address (e.g. '192.168.0.1')") from e
         self.host = host
         """Value for the private_host field of output samples."""
 

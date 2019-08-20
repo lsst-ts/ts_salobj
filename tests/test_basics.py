@@ -120,20 +120,20 @@ class BasicsTestCase(unittest.TestCase):
 
     def test_domain_host_origin(self):
         async def doit():
-            for bad_ip in ("5.5", "foo"):
+            for bad_ip in ("57", "192.168", "192.168.0", "www.lsst.org"):
                 os.environ["LSST_DDS_IP"] = bad_ip
                 with self.assertRaises(ValueError):
                     salobj.Domain()
 
-            os.environ["LSST_DDS_IP"] = "57"
+            # a value from the ipaddress documentation
+            os.environ["LSST_DDS_IP"] = "192.168.0.1"
             async with salobj.Domain() as domain:
-                self.assertEqual(domain.host, 57)
+                self.assertEqual(domain.host, 3232235521)
                 self.assertEqual(domain.origin, os.getpid())
 
             del os.environ["LSST_DDS_IP"]
             async with salobj.Domain() as domain:
                 self.assertGreater(domain.host, 0)
-                self.assertNotEqual(domain.host, 57)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
