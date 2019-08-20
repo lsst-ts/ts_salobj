@@ -238,12 +238,15 @@ class SalInfo:
         * event_names: a tuple of event names, without the ``"logevent_"``
           prefix
         * telemetry_names: a tuple of telemetry topic names
+        * sal_topic_names: a tuple of SAL topic names, e.g.
+          "logevent_summaryState", in alphabetical order
         * revnames: a dict of topic name: name_revision
         """
         pattern = re.compile(r" *struct +(?P<name_rev>(?P<name>.+)_(?:[a-zA-Z0-9]+)) +{ *")
         command_names = []
         event_names = []
         telemetry_names = []
+        sal_topic_names = []
         revnames = {}
         with open(self.idl_loc, "r") as f:
             for line in f:
@@ -260,9 +263,11 @@ class SalInfo:
                     event_names.append(name[9:])
                 elif name != "ackcmd":
                     telemetry_names.append(name)
+                sal_topic_names.append(name)
         self.command_names = tuple(command_names)
         self.event_names = tuple(event_names)
         self.telemetry_names = tuple(telemetry_names)
+        self.sal_topic_names = tuple(sorted(sal_topic_names))
         self.revnames = revnames
 
     async def close(self):

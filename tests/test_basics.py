@@ -189,7 +189,41 @@ class BasicsTestCase(unittest.TestCase):
 
             async with salobj.Domain() as domain:
                 with self.assertRaises(RuntimeError):
-                    salobj.SalInfo(domain, name="invalid_component_name")
+                    salobj.SalInfo(domain=domain, name="invalid_component_name")
+
+                salinfo = salobj.SalInfo(domain=domain, name="Test")
+                self.assertEqual(salinfo.name, "Test")
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_salinfo_attributes(self):
+        async def doit():
+            async with salobj.Domain() as domain:
+                salinfo = salobj.SalInfo(domain=domain, name="Test")
+
+                # expected_commands omits a few commands that TestCsc
+                # does not support, but that are in generics.
+                expected_commands = ["disable", "enable", "exitControl", "standby", "start",
+                                     "setArrays", "setLogLevel", "setScalars", "setSimulationMode",
+                                     "fault", "wait"]
+                self.assertTrue(set(expected_commands).issubset(set(salinfo.command_names)))
+
+                # expected_events omits a few events that TestCsc
+                # does not support, but that are in generics.
+                expected_events = ["errorCode", "heartbeat", "logLevel", "logMessage", "settingVersions",
+                                   "simulationMode", "summaryState",
+                                   "scalars", "arrays"]
+                self.assertTrue(set(expected_events).issubset(set(salinfo.event_names)))
+
+                # telemetry topic names should match; there are no generics
+                expected_telemetry = ["arrays", "scalars"]
+                self.assertEqual(set(expected_telemetry), set(salinfo.telemetry_names))
+
+                expected_sal_topic_names = ["ackcmd"]
+                expected_sal_topic_names += [f"command_{name}" for name in salinfo.command_names]
+                expected_sal_topic_names += [f"logevent_{name}" for name in salinfo.event_names]
+                expected_sal_topic_names += [name for name in salinfo.telemetry_names]
+                self.assertEqual(sorted(expected_sal_topic_names), list(salinfo.sal_topic_names))
 
         asyncio.get_event_loop().run_until_complete(doit())
 
