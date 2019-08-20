@@ -153,7 +153,10 @@ class SalInfo:
         if not self.idl_loc.is_file():
             raise RuntimeError(f"Cannot find IDL file {self.idl_loc} for name={self.name!r}")
         self.parse_idl()
-        self.ackcmd_type = ddsutil.get_dds_classes_from_idl(self.idl_loc, f"{self.name}::ackcmd")
+        ackcmd_revname = self.revnames.get("ackcmd")
+        if ackcmd_revname is None:
+            raise RuntimeError(f"Could not find {self.salinfo.name} topic 'ackcmd'")
+        self.ackcmd_type = ddsutil.get_dds_classes_from_idl(self.idl_loc, ackcmd_revname)
         domain.add_salinfo(self)
 
     def _ackcmd_callback(self, data):
@@ -255,7 +258,7 @@ class SalInfo:
                     command_names.append(name[8:])
                 elif name.startswith("logevent_"):
                     event_names.append(name[9:])
-                else:
+                elif name != "ackcmd":
                     telemetry_names.append(name)
         self.command_names = tuple(command_names)
         self.event_names = tuple(event_names)

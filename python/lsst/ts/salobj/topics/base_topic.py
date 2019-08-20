@@ -60,38 +60,39 @@ class BaseTopic(abc.ABC):
             """
 
             self.sal_name = sal_prefix + self.name
+            """The topic name used by SAL.
+
+            Example: "logevent_summaryState".
+            """
+
             self.log = salinfo.log.getChild(self.sal_name)
 
-            if name == "ackcmd":
-                attr_prefix = "ack_"
-                dds_name = f"{salinfo.name}_ackcmd"
-                rev_name = f"{salinfo.name}::ackcmd"
-                rev_code = ""
-            else:
-                attr_prefix = _ATTR_PREFIXES.get(sal_prefix)
-                if attr_prefix is None:
-                    raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
-
-                rev_name = salinfo.revnames.get(self.sal_name)
-                if rev_name is None:
-                    raise ValueError(f"Could not find {self.salinfo.name} topic {self.sal_name}")
-                dds_name = rev_name.replace("::", "_")
-                rev_code = dds_name[-8:]
-
+            attr_prefix = "ack_" if name == "ackcmd" else _ATTR_PREFIXES.get(sal_prefix)
+            if attr_prefix is None:
+                raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
             self.attr_name = attr_prefix + name
             """Name of topic attribute in `Controller` and `Remote`.
+
+            Example: "evt_summaryState".
             """
 
-            self.dds_name = dds_name
+            revname = salinfo.revnames.get(self.sal_name)
+            if revname is None:
+                raise ValueError(f"Could not find {self.salinfo.name} topic {self.sal_name}")
+            self.dds_name = revname.replace("::", "_")
             """Name of topic in DDS.
+
+            Example: "Test_logevent_summaryState_90255bf1".
             """
 
-            self.rev_code = rev_code
-            """Revision code suffix on DDS topic name.
+            self.rev_code = self.dds_name[-8:]
+            """Revision hash code suffix on DDS topic name.
+
+            Example: "90255bf1".
             """
 
-            self._type = ddsutil.get_dds_classes_from_idl(salinfo.idl_loc, rev_name)
-            self._topic = self._type.register_topic(salinfo.domain.participant, dds_name,
+            self._type = ddsutil.get_dds_classes_from_idl(salinfo.idl_loc, revname)
+            self._topic = self._type.register_topic(salinfo.domain.participant, self.dds_name,
                                                     salinfo.domain.topic_qos)
         except Exception as e:
             raise RuntimeError(f"Failed to create topic {salinfo.name}.{name}") from e

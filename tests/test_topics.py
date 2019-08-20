@@ -80,7 +80,7 @@ class TopicsTestCase(unittest.TestCase):
                     self.assertEqual(ackcmd.attr_name, "ack_" + ackcmd.name)
                     self.assertEqual(ackcmd.sal_name, ackcmd.name)
                     self.assertEqual(ackcmd.dds_name,
-                                     ackcmd.salinfo.name + "_" + ackcmd.name)
+                                     ackcmd.salinfo.name + "_" + ackcmd.sal_name + "_" + ackcmd.rev_code)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
