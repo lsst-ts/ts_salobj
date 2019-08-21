@@ -130,17 +130,16 @@ class ReadTopic(BaseTopic):
         self._length_checker = QueueLengthChecker(queue_len)
         self._warned_readloop = False
         self._reader = salinfo.subscriber.create_datareader(self._topic, salinfo.domain.reader_qos)
-        if name == "ackcmd" or sal_prefix == "command_":
-            # TODO DM-20313: remove this workaround for DM-20312:
-            # SALPY 3.10 disposes of ackcmd and command samples
-            # immediately after writing them, so don't require ALIVE
-            read_mask = [dds.DDSStateKind.NOT_READ_SAMPLE_STATE]
-        else:
-            read_mask = [dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
-                         dds.DDSStateKind.ALIVE_INSTANCE_STATE]
+        read_mask = [dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
+                     dds.DDSStateKind.ALIVE_INSTANCE_STATE]
+        queries = []
         if salinfo.index > 0:
-            query = f"{salinfo.name}ID = {salinfo.index}"
-            read_condition = dds.QueryCondition(self._reader, read_mask, query)
+            queries.append(f"{salinfo.name}ID = {salinfo.index}")
+        if name == "ackcmd":
+            queries += [f"origin = {salinfo.domain.origin}", f"host = {salinfo.domain.host}"]
+        if queries:
+            full_query = " AND ".join(queries)
+            read_condition = dds.QueryCondition(self._reader, read_mask, full_query)
         else:
             read_condition = self._reader.create_readcondition(read_mask)
         self._read_condition = read_condition

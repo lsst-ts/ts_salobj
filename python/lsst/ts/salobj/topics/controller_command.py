@@ -53,6 +53,7 @@ class ControllerCommand(read_topic.ReadTopic):
     def __init__(self, salinfo, name, max_history=0, queue_len=100):
         super().__init__(salinfo=salinfo, name=name, sal_prefix="command_",
                          max_history=max_history, queue_len=queue_len)
+        self.cmdtype = salinfo.sal_topic_names.index(self.sal_name)
         self._ack_writer = AckCmdWriter(salinfo=salinfo)
 
     def ack(self, data, ackcmd):
@@ -66,7 +67,12 @@ class ControllerCommand(read_topic.ReadTopic):
             Command acknowledgement.
         """
         self._ack_writer.set(private_seqNum=data.private_seqNum,
-                             ack=ackcmd.ack, error=ackcmd.error, result=ackcmd.result)
+                             host=data.private_host,
+                             origin=data.private_origin,
+                             cmdtype=self.cmdtype,
+                             ack=ackcmd.ack,
+                             error=ackcmd.error,
+                             result=ackcmd.result)
         self._ack_writer.put()
 
     def ackInProgress(self, data, result=""):

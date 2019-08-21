@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import time
 import unittest
 
@@ -143,6 +144,47 @@ class TopicsTestCase(unittest.TestCase):
                 for tel_name in salinfo.telemetry_names:
                     with self.assertRaises(RuntimeError):
                         salobj.topics.BaseTopic(salinfo=salinfo, name=tel_name, sal_prefix=non_tel_prefix)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_command_isolation(self):
+        """Test that multiple RemoteCommands for one command only see
+        cmdack replies to their own samples.
+
+        Note that the RemoteCommands must each have a different Domain,
+        as the isolation is based on Domain properties.
+        In order to avoid making extra domains, the command reader uses one of
+        those two domains.
+        """
+        async def doit():
+
+            async with salobj.Domain() as domain1, salobj.Domain() as domain2:
+                self.assertNotEqual(domain1.host, domain2.host)
+                salinfo1 = salobj.SalInfo(domain=domain1, name="Test", index=1)
+                salinfo2 = salobj.SalInfo(domain=domain2, name="Test", index=1)
+                cmdreader = salobj.topics.ControllerCommand(salinfo=salinfo1, name="wait")
+                # set the random seed before each call so both writers
+                # use the same initial seqNum
+                random.seed(52)
+                cmdwriter1 = salobj.topics.RemoteCommand(salinfo=salinfo1, name="wait")
+                random.seed(52)
+                cmdwriter2 = salobj.topics.RemoteCommand(salinfo=salinfo2, name="wait")
+                await salinfo1.start()
+                await salinfo2.start()
+
+                def reader_callback(data):
+                    ackcmd = cmdreader.salinfo.AckCmdType(private_seqNum=data.private_seqNum,
+                                                          ack=salobj.SalRetCode.CMD_COMPLETE)
+                    cmdreader.ack(data=data, ackcmd=ackcmd)
+
+                cmdreader.callback = reader_callback
+                num_commands = 3
+                for i in range(num_commands):
+                    ack1 = await cmdwriter1.start(timeout=STD_TIMEOUT)
+                    ack2 = await cmdwriter2.start(timeout=STD_TIMEOUT)
+                    self.assertEqual(ack1.private_seqNum, ack2.private_seqNum)
+                    self.assertEqual(ack1.host, domain1.host)
+                    self.assertEqual(ack2.host, domain2.host)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
