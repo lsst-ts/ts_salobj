@@ -35,7 +35,7 @@ from lsst.ts import idl
 # Length of DDS read queue
 # I would prefer to set this in the QoS file,
 # but dds does not make the information available
-DDS_READ_QUEUE_LEN = 1000  # length of DDS read queue
+DDS_READ_QUEUE_LEN = 100  # length of DDS read queue
 
 MAX_RANDOM_HOST = (1 << 31) - 1
 
