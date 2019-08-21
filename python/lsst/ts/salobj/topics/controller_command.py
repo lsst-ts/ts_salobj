@@ -54,7 +54,8 @@ class ControllerCommand(read_topic.ReadTopic):
         super().__init__(salinfo=salinfo, name=name, sal_prefix="command_",
                          max_history=max_history, queue_len=queue_len)
         self.cmdtype = salinfo.sal_topic_names.index(self.sal_name)
-        self._ack_writer = AckCmdWriter(salinfo=salinfo)
+        if salinfo._ackcmd_writer is None:
+            self.salinfo._ackcmd_writer = AckCmdWriter(salinfo=salinfo)
 
     def ack(self, data, ackcmd):
         """Acknowledge a command by writing a new state.
@@ -66,14 +67,14 @@ class ControllerCommand(read_topic.ReadTopic):
         ackcmd : `salobj.AckCmdType`
             Command acknowledgement.
         """
-        self._ack_writer.set(private_seqNum=data.private_seqNum,
-                             host=data.private_host,
-                             origin=data.private_origin,
-                             cmdtype=self.cmdtype,
-                             ack=ackcmd.ack,
-                             error=ackcmd.error,
-                             result=ackcmd.result)
-        self._ack_writer.put()
+        self.salinfo._ackcmd_writer.set(private_seqNum=data.private_seqNum,
+                                        host=data.private_host,
+                                        origin=data.private_origin,
+                                        cmdtype=self.cmdtype,
+                                        ack=ackcmd.ack,
+                                        error=ackcmd.error,
+                                        result=ackcmd.result)
+        self.salinfo._ackcmd_writer.put()
 
     def ackInProgress(self, data, result=""):
         """Ackowledge this command as "in progress".

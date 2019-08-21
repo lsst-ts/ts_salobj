@@ -140,6 +140,9 @@ class SalInfo:
         # an lsst.ts.salobj.topics.AckCmdReader
         # and set its callback to self._ackcmd_callback
         self._ackcmd_reader = None
+        # the first ControllerCommand created should set this to
+        # an lsst.ts.salobj.topics.AckCmdWriter
+        self._ackcmd_writer = None
         # wait_timeout is a failsafe for shutdown; normally all you have to do
         # is call `close` to trigger the guard condition and stop the wait
         self._wait_timeout = dds.DDSDuration(sec=10)
