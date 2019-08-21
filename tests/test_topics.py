@@ -53,6 +53,7 @@ class TopicsTestCase(unittest.TestCase):
                         self.assertEqual(cmd.sal_name, "command_" + cmd_name)
                         self.assertEqual(cmd.dds_name,
                                          cmd.salinfo.name + "_" + cmd.sal_name + "_" + cmd.rev_code)
+                        self.assertTrue(cmd.volatile)
 
                     for evt_name in obj.salinfo.event_names:
                         evt = getattr(obj, f"evt_{evt_name}")
@@ -61,6 +62,7 @@ class TopicsTestCase(unittest.TestCase):
                         self.assertEqual(evt.sal_name, "logevent_" + evt_name)
                         self.assertEqual(evt.dds_name,
                                          evt.salinfo.name + "_" + evt.sal_name + "_" + evt.rev_code)
+                        self.assertFalse(evt.volatile)
 
                     for tel_name in obj.salinfo.telemetry_names:
                         tel = getattr(obj, f"tel_{tel_name}")
@@ -69,6 +71,7 @@ class TopicsTestCase(unittest.TestCase):
                         self.assertEqual(tel.sal_name, tel_name)
                         self.assertEqual(tel.dds_name,
                                          tel.salinfo.name + "_" + tel.sal_name + "_" + tel.rev_code)
+                        self.assertFalse(tel.volatile)
 
                 # cannot add new topics to the existing salinfos
                 # (because the read loop has started) so create a new one
@@ -82,6 +85,7 @@ class TopicsTestCase(unittest.TestCase):
                     self.assertEqual(ackcmd.sal_name, ackcmd.name)
                     self.assertEqual(ackcmd.dds_name,
                                      ackcmd.salinfo.name + "_" + ackcmd.sal_name + "_" + ackcmd.rev_code)
+                    self.assertTrue(ackcmd.volatile)
 
         asyncio.get_event_loop().run_until_complete(doit())
 

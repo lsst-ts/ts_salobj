@@ -33,7 +33,9 @@ import dds
 from lsst.ts import idl
 
 # Length of DDS read queue
-# I would prefer to set this in the QoS file,
+# Warning: this must be equal to or longer than the queue length in the
+# QoS XML file.
+# I would prefer to set this constant *from* the QoS XML file,
 # but dds does not make the information available
 DDS_READ_QUEUE_LEN = 100  # length of DDS read queue
 
@@ -126,7 +128,7 @@ class Domain:
         self.idl_dir = idl.get_idl_dir()
 
         qos_path = idl.get_qos_path()
-        self.qos_provider = dds.QosProvider(qos_path.as_uri(), 'DDS DefaultQosProfile')
+        self.qos_provider = dds.QosProvider(qos_path.as_uri(), "DDS DefaultQosProfile")
         """Quality of service provider, a dds.QosProvider"""
 
         participant_qos = self.qos_provider.get_participant_qos()
@@ -138,17 +140,57 @@ class Domain:
         # are created in SalInfo, so that different SalInfo can be used
         # with different partitions.
         try:
+            volatile_policy = dds.DurabilityQosPolicy(dds.DDSDurabilityKind.VOLATILE)
+
             self.topic_qos = self.qos_provider.get_topic_qos()
-            """Quality of service for topics, a dds.Qos"""
+            """Quality of service for event and telemetry topics.
+
+            Readers of these topics want late-joiner data,
+            so they are not VOLATILE.
+            """
+
+            self.volatile_topic_qos = self.qos_provider.get_topic_qos()
+            self.volatile_topic_qos.set_policies([volatile_policy])
+            """Quality of service for command and ackcmd topics. A dds.Qos.
+
+            Readers of these topics do not want late-joiner data,
+            so the topics readers and writers are all VOLATILE. (Due to
+            OpenSplice bug 19934 we don't just make the readers VOLATILE.)
+            """
 
             self.writer_qos = self.qos_provider.get_writer_qos()
-            """Quality of service for topic writers, a dds.Qos"""
+            """Quality of service for event and telemetry writers. A dds.Qos.
+
+            Readers of these topics want late-joiner data,
+            so they are not VOLATILE.
+            """
+
+            self.volatile_writer_qos = self.qos_provider.get_writer_qos()
+            self.volatile_writer_qos.set_policies([volatile_policy])
+            """Quality of service for command and ackcmd writers. A dds.Qos.
+
+            Readers of these topics do not want late-joiner data,
+            so the topics readers and writers are all VOLATILE. (Due to
+            OpenSplice bug 19934 we don't just make the readers VOLATILE.)
+            """
 
             read_queue_policy = dds.HistoryQosPolicy(depth=DDS_READ_QUEUE_LEN,
                                                      kind=dds.DDSHistoryKind.KEEP_LAST)
             self.reader_qos = self.qos_provider.get_reader_qos()
             self.reader_qos.set_policies([read_queue_policy])
-            """Quality of service for topic readers, a dds.Qos"""
+            """Quality of service for telemetry and event readers. A dds.Qos.
+
+            These want late-joiner data and so are not VOLATILE.
+            """
+
+            self.volatile_reader_qos = self.qos_provider.get_reader_qos()
+            self.volatile_reader_qos.set_policies([read_queue_policy, volatile_policy])
+            """Quality of service for command and ackcmd readers. A dds.Qos.
+
+            Readers of these topics do not want late-joiner data,
+            so the topics readers and writers are all VOLATILE. (Due to
+            OpenSplice bug 19934 we don't just make the readers VOLATILE.)
+            """
         except Exception:
             # very unlikely, but just in case...
             self.participant.close()

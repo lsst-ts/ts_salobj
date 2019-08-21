@@ -73,7 +73,8 @@ class WriteTopic(BaseTopic):
         else:
             self._seq_num_generator = base.index_generator(imin=min_seq_num, imax=max_seq_num,
                                                            i0=initial_seq_num)
-        self._writer = salinfo.publisher.create_datawriter(self._topic, salinfo.domain.writer_qos)
+        qos = salinfo.domain.volatile_writer_qos if self.volatile else salinfo.domain.writer_qos
+        self._writer = salinfo.publisher.create_datawriter(self._topic, qos)
         self._has_data = False
         self._data = self.DataType()
         self._has_priority = sal_prefix == "logevent_"

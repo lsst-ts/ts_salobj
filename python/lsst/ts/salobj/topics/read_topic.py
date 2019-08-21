@@ -88,11 +88,22 @@ class ReadTopic(BaseTopic):
     max_history : `int`
         Maximum number of historical items to read:
 
-        * 0 is strongly recommended for commands and the ackcmd reader
+        * 0 is required for commands and the ackcmd reader
         * 1 is recommended for events and telemetry
     queue_len : `int` (optional)
         The maximum number of items that can be read and not dealt with
         by a callback function or `next` before older data will be dropped.
+
+    Raises
+    ------
+    ValueError
+        If max_history < 0.
+    ValueError
+        If max_history > 0 and the topic is volatile (command or ackcmd).
+    ValueError
+        If queue_len <= 0.
+    ValueError
+        If max_history > queue_len.
 
     Notes
     -----
@@ -115,6 +126,8 @@ class ReadTopic(BaseTopic):
         self._allow_multiple_callbacks = False
         if max_history < 0:
             raise ValueError(f"max_history={max_history} must be >= 0")
+        if max_history > 0 and self.volatile:
+            raise ValueError(f"max_history={max_history} must be 0 for volatile topics")
         if queue_len <= 0:
             raise ValueError(f"queue_len={queue_len} must be positive")
         if max_history > queue_len:
@@ -129,7 +142,8 @@ class ReadTopic(BaseTopic):
         self._callback_loop_task = base.make_done_future()
         self._length_checker = QueueLengthChecker(queue_len)
         self._warned_readloop = False
-        self._reader = salinfo.subscriber.create_datareader(self._topic, salinfo.domain.reader_qos)
+        qos = salinfo.domain.volatile_reader_qos if self.volatile else salinfo.domain.reader_qos
+        self._reader = salinfo.subscriber.create_datareader(self._topic, qos)
         read_mask = [dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
                      dds.DDSStateKind.ALIVE_INSTANCE_STATE]
         queries = []

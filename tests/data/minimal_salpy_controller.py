@@ -55,7 +55,7 @@ class MinimalSALPYController:
                 break
 
         # make sure SALPY has time to send the final logLevel event
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.5)
         self.manager.salShutdown()
 
 

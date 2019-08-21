@@ -67,6 +67,16 @@ class BaseTopic(abc.ABC):
 
             self.log = salinfo.log.getChild(self.sal_name)
 
+            self.volatile = name == "ackcmd" or sal_prefix == "command_"
+            """Does this topic have VOLATILE durability?
+
+            If volatile then no late-joiner data is written or read.
+            Commands and ackcmd topics are volatile; other topics are not.
+            (It appears to be an OpenSplice bug that the writer must be
+            volatile in order for a volatile reader to not see historical
+            data.)
+            """
+
             attr_prefix = "ack_" if name == "ackcmd" else _ATTR_PREFIXES.get(sal_prefix)
             if attr_prefix is None:
                 raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
@@ -92,8 +102,9 @@ class BaseTopic(abc.ABC):
             """
 
             self._type = ddsutil.get_dds_classes_from_idl(salinfo.idl_loc, revname)
-            self._topic = self._type.register_topic(salinfo.domain.participant, self.dds_name,
-                                                    salinfo.domain.topic_qos)
+            qos = salinfo.domain.volatile_topic_qos if self.volatile else salinfo.domain.topic_qos
+            self._topic = self._type.register_topic(salinfo.domain.participant, self.dds_name, qos)
+
         except Exception as e:
             raise RuntimeError(f"Failed to create topic {salinfo.name}.{name}") from e
 
