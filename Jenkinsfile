@@ -6,6 +6,8 @@ pipeline {
         work_branches = "${GIT_BRANCH} ${CHANGE_BRANCH} master"
         container_name = "c_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
         network_name = "n_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
+        user_ci = credentials('lsst-io')
+
     }
 
     stages {
@@ -24,7 +26,7 @@ pipeline {
         stage("Build") {
             steps {
                 script {
-                    dockerImageBuild = docker.build(dockerImageNameBuild, "--no-cache --network ${network_name} --build-arg sal_v=\"${work_branches}\" --build-arg salobj_v=\"${work_branches}\" --build-arg xml_v=\"${work_branches}\" --build-arg idl_v=\"${work_branches}\" --build-arg config_ocs_v=\"${work_branches}\" --build-arg base_image_tag=master .")
+                        dockerImageBuild = docker.build(dockerImageNameBuild, "--no-cache --network ${network_name} --build-arg branch_name=\"${GIT_BRANCH}\" --build-arg user_ci=\"${user_ci_USR}\" --build-arg user_pwd=\"${user_ci_PSW}\" --build-arg sal_v=\"${work_branches}\" --build-arg salobj_v=\"${work_branches}\" --build-arg xml_v=\"${work_branches}\" --build-arg idl_v=\"${work_branches}\" --build-arg config_ocs_v=\"${work_branches}\" --build-arg base_image_tag=master .")
                 }
             }
         }
@@ -60,8 +62,9 @@ pipeline {
         }
         cleanup {
             sh """
-            docker stop ${container_name}
-            docker network rm ${network_name}
+            docker stop ${container_name} || echo could not stop ${container_name}
+            docker network rm ${network_name} || echo could not remove ${network_name}
+            docker system prune -af
             """
         }
     }

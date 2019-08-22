@@ -8,6 +8,9 @@ ARG sal_v="develop"
 ARG salobj_v="develop"
 ARG xml_v="develop"
 ARG idl_v="develop"
+ARG user_ci
+ARG user_pwd
+ARG branch_name
 
 WORKDIR /home/saluser/repos/ts_config_ocs
 RUN /home/saluser/.checkout_repo.sh ${config_ocs_v}
@@ -51,3 +54,14 @@ RUN source /opt/lsst/software/stack/loadLSST.bash && setup lsst_distrib && \
     setup ts_idl -t current && \
     setup ts_salobj -t current && \
     scons --clean && scons || scons
+
+RUN source /opt/lsst/software/stack/loadLSST.bash && setup lsst_distrib && \
+    source /home/saluser/repos/ts_sal/setup.env && \
+    setup ts_sal -t current && \
+    setup ts_idl -t current && \
+    setup ts_salobj -t current && \
+    package-docs build && \
+    pip install ltd-conveyor==0.5.0a1 && \
+    export LTD_USERNAME=${user_ci} && \
+    export LTD_PASSWORD=${user_pwd} && \
+    ltd upload --product ts-salobj --git-ref ${branch_name} --dir doc/_build/html
