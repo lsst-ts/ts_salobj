@@ -158,7 +158,7 @@ class SalInfo:
         self.parse_idl()
         ackcmd_revname = self.revnames.get("ackcmd")
         if ackcmd_revname is None:
-            raise RuntimeError(f"Could not find {self.salinfo.name} topic 'ackcmd'")
+            raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
         self.ackcmd_type = ddsutil.get_dds_classes_from_idl(self.idl_loc, ackcmd_revname)
         domain.add_salinfo(self)
 
