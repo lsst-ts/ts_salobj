@@ -257,6 +257,34 @@ class ReadTopic(BaseTopic):
             task.cancel()
         self._data_queue.clear()
 
+    async def aget(self, timeout=None):
+        """Get the current value, if any, else wait for the next new value.
+
+        Parameters
+        ----------
+        timeout : `float` (optional)
+            Time limit, in seconds. If None then no time limit.
+
+        Returns
+        -------
+        data : `DataType`
+            The data.
+
+        Raises
+        ------
+        RuntimeError
+            If a callback function is present.
+
+        Notes
+        -----
+        Do not modify the data. To copy the data use ``copy.copy(value)``.
+        """
+        if self.has_callback:
+            raise RuntimeError("Not allowed because there is a callback function")
+        if self._current_data is not None:
+            return self._current_data
+        return await self._next(timeout=timeout)
+
     def flush(self):
         """Flush the queue of unread messages.
 
@@ -338,8 +366,7 @@ class ReadTopic(BaseTopic):
 
         Notes
         -----
-        Do not modify the data or assume that it will be static.
-        If you need a private copy, then copy it yourself.
+        Do not modify the data. To copy the data use ``copy.copy(value)``.
         """
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")

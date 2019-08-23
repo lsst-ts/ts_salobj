@@ -442,6 +442,18 @@ class TopicsTestCase(unittest.TestCase):
         asyncio.get_event_loop().run_until_complete(doit())
 
     async def set_and_get_scalars(self, harness, num_commands):
+        """Send the setScalars command repeatedly and return what was sent.
+
+        Each command is sent with new random data. Each command triggers
+        one sample each of ``scalars`` event and ``scalars`` telemetry.
+
+        Parameters
+        ----------
+        harness : `Harness`
+            Test harness.
+        num_commands : `int`
+            The number of setScalars commands to send.
+        """
         # until the controller gets its first setArrays
         # it will not send any scalars events or telemetry
         self.assertIsNone(harness.remote.evt_scalars.get())
@@ -452,6 +464,69 @@ class TopicsTestCase(unittest.TestCase):
         for cmd_data in cmd_data_list:
             await harness.remote.cmd_setScalars.start(cmd_data, timeout=STD_TIMEOUT)
         return cmd_data_list
+
+    def test_aget(self):
+        async def doit():
+            async with Harness(initial_state=salobj.State.ENABLED) as harness:
+                with self.assertRaises(asyncio.TimeoutError):
+                    await harness.remote.evt_scalars.aget(timeout=NODATA_TIMEOUT)
+                with self.assertRaises(asyncio.TimeoutError):
+                    await harness.remote.tel_scalars.aget(timeout=NODATA_TIMEOUT)
+
+                # start waiting for both events, then trigger multiple events
+                evt_task = asyncio.ensure_future(harness.remote.evt_scalars.aget(timeout=STD_TIMEOUT))
+                tel_task = asyncio.ensure_future(harness.remote.tel_scalars.aget(timeout=STD_TIMEOUT))
+
+                num_commands = 3
+                cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
+
+                # the pending aget calls should receive the first event sent
+                evt_data, tel_data = await asyncio.gather(evt_task, tel_task)
+                harness.csc.assert_scalars_equal(cmd_data_list[0], evt_data)
+                harness.csc.assert_scalars_equal(cmd_data_list[0], tel_data)
+
+                # wait for all remaining events to be received
+                await asyncio.sleep(EVENT_DELAY)
+
+                # aget should return the last value seen,
+                # no matter now many times it is called
+                evt_data_list = [await harness.remote.evt_scalars.aget() for i in range(5)]
+                for evt_data in evt_data_list:
+                    self.assertIsNotNone(evt_data)
+                    harness.csc.assert_scalars_equal(cmd_data_list[-1], evt_data)
+
+                # aget should return the last value seen,
+                # no matter now many times it is called
+                tel_data_list = [await harness.remote.tel_scalars.aget() for i in range(5)]
+                for tel_data in tel_data_list:
+                    self.assertIsNotNone(tel_data)
+                    harness.csc.assert_scalars_equal(cmd_data_list[-1], tel_data)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_get(self):
+        async def doit():
+            async with Harness(initial_state=salobj.State.ENABLED) as harness:
+                num_commands = 3
+                cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
+                # wait for all events
+                await asyncio.sleep(EVENT_DELAY)
+
+                # get should return the last value seen,
+                # no matter now many times it is called
+                evt_data_list = [harness.remote.evt_scalars.get() for i in range(5)]
+                for evt_data in evt_data_list:
+                    self.assertIsNotNone(evt_data)
+                    harness.csc.assert_scalars_equal(cmd_data_list[-1], evt_data)
+
+                # get should return the last value seen,
+                # no matter now many times it is called
+                tel_data_list = [harness.remote.tel_scalars.get() for i in range(5)]
+                for tel_data in tel_data_list:
+                    self.assertIsNotNone(tel_data)
+                    harness.csc.assert_scalars_equal(cmd_data_list[-1], tel_data)
+
+        asyncio.get_event_loop().run_until_complete(doit())
 
     def test_get_oldest(self):
         async def doit():
@@ -480,30 +555,6 @@ class TopicsTestCase(unittest.TestCase):
                 self.assertEqual(len(tel_data_list), num_commands)
                 for cmd_data, tel_data in zip(cmd_data_list, tel_data_list):
                     harness.csc.assert_scalars_equal(cmd_data, tel_data)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_get(self):
-        async def doit():
-            async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                num_commands = 3
-                cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
-                # wait for all events
-                await asyncio.sleep(EVENT_DELAY)
-
-                # get should return the last value seen,
-                # no matter now many times it is called
-                evt_data_list = [harness.remote.evt_scalars.get() for i in range(5)]
-                for evt_data in evt_data_list:
-                    self.assertIsNotNone(evt_data)
-                    harness.csc.assert_scalars_equal(cmd_data_list[-1], evt_data)
-
-                # get should return the last value seen,
-                # no matter now many times it is called
-                tel_data_list = [harness.remote.tel_scalars.get() for i in range(5)]
-                for tel_data in tel_data_list:
-                    self.assertIsNotNone(tel_data)
-                    harness.csc.assert_scalars_equal(cmd_data_list[-1], tel_data)
 
         asyncio.get_event_loop().run_until_complete(doit())
 
