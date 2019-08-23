@@ -17,4 +17,4 @@ from .test_script import *
 try:
     from .version import *
 except ImportError:
-    pass
+    __version__ = "?"
