@@ -57,7 +57,7 @@ class SalInfo:
     name : `str`
         SAL component name.
     index : `int` (optional)
-        Component index; 0 if this component is not indexed.
+        Component index; 0 or None if this component is not indexed.
 
     Raises
     ------
@@ -67,6 +67,8 @@ class SalInfo:
         If the IDL file cannot be found for the specified ``name``.
     TypeError
         If ``domain`` is not a `Domain`.
+    ValueError
+        If ``index`` is nonzero and the component is not indexed.
 
     Notes
     -----
@@ -98,9 +100,7 @@ class SalInfo:
         self.isopen = True
         self.domain = domain
         self.name = name
-        if index is None:
-            index = 0
-        self.index = int(index)
+        self.index = 0 if index is None else int(index)
 
         # Create the publisher and subscriber. Both depend on the DDS
         # partition, and so are created here instead of in Domain,
@@ -156,6 +156,8 @@ class SalInfo:
         if not self.idl_loc.is_file():
             raise RuntimeError(f"Cannot find IDL file {self.idl_loc} for name={self.name!r}")
         self.parse_idl()
+        if self.index != 0 and not self.indexed:
+            raise ValueError(f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component")
         ackcmd_revname = self.revnames.get("ackcmd")
         if ackcmd_revname is None:
             raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
@@ -245,19 +247,24 @@ class SalInfo:
           "logevent_summaryState", in alphabetical order
         * revnames: a dict of topic name: name_revision
         """
-        pattern = re.compile(r" *struct +(?P<name_rev>(?P<name>.+)_(?:[a-zA-Z0-9]+)) +{ *")
+        struct_pattern = re.compile(r"\s*struct\s+(?P<name_rev>(?P<name>.+)_(?:[a-zA-Z0-9]+)) +{")
+        index_pattern = re.compile(rf"\s*long\s+{self.name}ID;")
         command_names = []
         event_names = []
         telemetry_names = []
         sal_topic_names = []
         revnames = {}
+        self.indexed = False
         with open(self.idl_loc, "r") as f:
             for line in f:
-                match = pattern.match(line.strip())
-                if not match:
+                struct_match = struct_pattern.match(line)
+                if not struct_match:
+                    index_match = index_pattern.match(line)
+                    if index_match is not None:
+                        self.indexed = True
                     continue
-                name = match.group("name")
-                name_rev = match.group("name_rev")
+                name = struct_match.group("name")
+                name_rev = struct_match.group("name_rev")
                 revnames[name] = f"{self.name}::{name_rev}"
 
                 if name.startswith("command_"):
