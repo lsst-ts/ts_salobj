@@ -88,3 +88,10 @@ Python API reference
 .. automodapi:: lsst.ts.salobj.topics.base_topic
     :no-main-docstr:
     :no-inheritance-diagram:
+
+Revision History
+================
+
+.. toctree::
+    revision_history
+    :maxdepth: 1
