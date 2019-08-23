@@ -83,6 +83,9 @@ def set_random_lsst_dds_domain():
 
     The set name will contain the hostname and current time
     as well as a random integer.
+
+    The random value is generated using the `random` library,
+    so call ``random.seed(...)`` to seed this value.
     """
     hostname = socket.gethostname()
     curr_time = time.time()
