@@ -353,7 +353,11 @@ class SalInfo:
                         self.log.warning(f"dds error while reading late joiner data for {reader}; "
                                          f"trying again: {e}")
                         time.sleep(0.001)
-                        data_list = reader._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
+                        try:
+                            data_list = reader._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
+                        except dds.DDSException as e:
+                            raise RuntimeError(f"dds error while reading late joiner data for {reader}; "
+                                               "giving up") from e
                     self.log.debug(f"Read {len(data_list)} history items for {reader}")
                     sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
                     if len(sd_list) < len(data_list):
