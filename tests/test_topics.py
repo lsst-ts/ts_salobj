@@ -242,12 +242,10 @@ class TopicsTestCase(unittest.TestCase):
                 harness.csc.evt_scalars.data = evt_data1
                 self.assertTrue(harness.csc.evt_scalars.has_data)
                 harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
-                send_utc0 = time.time()
-                send_tai0 = salobj.tai_from_utc(send_utc0)
+                send_tai0 = salobj.current_tai()
                 harness.csc.evt_scalars.put()
                 data = await harness.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
-                rcv_utc0 = time.time()
-                rcv_tai0 = salobj.tai_from_utc(rcv_utc0)
+                rcv_tai0 = salobj.current_tai()
                 harness.csc.assert_scalars_equal(data, harness.csc.evt_scalars.data)
                 with self.assertRaises(asyncio.TimeoutError):
                     await harness.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)

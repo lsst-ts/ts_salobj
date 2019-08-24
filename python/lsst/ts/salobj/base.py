@@ -21,10 +21,14 @@
 
 __all__ = ["AckError", "AckTimeoutError", "ExpectedError",
            "index_generator", "make_done_future", "MAX_SAL_INDEX",
-           "name_to_name_index", "tai_from_utc"]
+           "name_to_name_index", "current_tai", "tai_from_utc"]
 
 import asyncio
 import re
+import time
+
+import astropy.time
+import astropy.units as u
 
 from . import sal_enums
 
@@ -161,12 +165,37 @@ def name_to_name_index(name):
     return (name, index)
 
 
-def tai_from_utc(utc):
-    """Return TAI unix seconds, given UTC in unix seconds.
+def current_tai():
+    """Return the current TAI in unix seconds.
 
-    TODO DM-19791: replace this with code that uses ts_sal's solution
-
-    This function is only intended for current time;
-    it makes no attempt to be correct for historical dates.
+    TODO: DM-21097: improve accuracy near a leap second transition.
     """
-    return utc + 37
+    return tai_from_utc(time.time())
+
+
+def tai_from_utc(utc, format="unix"):
+    """Return TAI in unix seconds, given UTC.
+
+    Parameters
+    ----------
+    utc : `float` or `str`
+        UTC time in the specified format.
+    format : `str` or `None`
+        Format of the UTC time, as an astropy.time format name,
+        or `None` to have astropy guess.
+    """
+    astropy_utc = astropy.time.Time(utc, scale="utc", format=format)
+    if format == "unix":
+        utc_unix = utc
+    else:
+        utc_unix = astropy_utc.utc.unix
+    try:
+        dt_utc = astropy_utc.utc.to_datetime()
+        dt_tai = astropy_utc.tai.to_datetime()
+    except ValueError:
+        # datetime cannot have 60 in the seconds field; back off a second
+        astropy_utc = astropy_utc - 1 * u.second
+        dt_utc = astropy_utc.utc.to_datetime()
+        dt_tai = astropy_utc.tai.to_datetime()
+    tai_minus_utc = (dt_tai - dt_utc).total_seconds()
+    return utc_unix + tai_minus_utc

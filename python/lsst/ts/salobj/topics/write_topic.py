@@ -22,7 +22,6 @@
 __all__ = ["MAX_SEQ_NUM", "WriteTopic"]
 
 import struct
-import time
 
 import numpy as np
 
@@ -133,8 +132,7 @@ class WriteTopic(BaseTopic):
 
         if self._has_priority:
             self.data.priority = priority
-        curr_utc = time.time()
-        self.data.private_sndStamp = base.tai_from_utc(curr_utc)
+        self.data.private_sndStamp = base.current_tai()
         self.data.private_revCode = self.rev_code
         self.data.private_host = self.salinfo.domain.host
         self.data.private_origin = self.salinfo.domain.origin

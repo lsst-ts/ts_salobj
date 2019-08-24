@@ -1,7 +1,11 @@
 import asyncio
 import os
 import random
+import time
 import unittest
+
+import astropy.time
+import astropy.units as u
 
 from lsst.ts import salobj
 
@@ -226,6 +230,55 @@ class BasicsTestCase(unittest.TestCase):
                 self.assertEqual(sorted(expected_sal_topic_names), list(salinfo.sal_topic_names))
 
         asyncio.get_event_loop().run_until_complete(doit())
+
+    def check_tai_from_utc(self, utc_ap, desired_tai_minus_utc):
+        """Check tai_from_utc at a specific UTC date.
+
+        Parameters
+        ----------
+        utc_ap : `astropy.time.Time`
+            UTC date as an astropy time.
+        desired_tai_minus_utc : `float`
+            Desired TAI-UTC in seconds.
+        """
+        utc = utc_ap.utc.unix
+        tai = salobj.tai_from_utc(utc)
+        self.assertAlmostEqual(tai - utc, desired_tai_minus_utc)
+
+        tai2 = salobj.tai_from_utc(utc_ap.utc.iso, format="iso")
+        self.assertAlmostEqual(tai, tai2)
+
+        tai3 = salobj.tai_from_utc(utc_ap.utc.iso, format=None)
+        self.assertAlmostEqual(tai, tai3)
+
+        tai4 = salobj.tai_from_utc(utc_ap.utc.mjd, format="mjd")
+        self.assertAlmostEqual(tai, tai4, places=5)
+
+    def test_tai_from_utc(self):
+        """Test tai_from_utc.
+        """
+        # check tai_from_utc at leap second transition 2017-01-01
+        # when leap seconds went from 36 to 37
+        utc0_ap = astropy.time.Time("2017-01-01", scale="utc", format="iso")
+        for desired_tai_minus_utc, utc_ap in (
+            (36, utc0_ap - 1 * u.second),
+            (36, utc0_ap - 0.1 * u.second),
+            (37, utc0_ap),
+            (37, utc0_ap + 0.1 * u.second),
+            (37, utc0_ap + 1 * u.second),
+        ):
+            with self.subTest(utc_ap=utc_ap, desired_tai_minus_utc=desired_tai_minus_utc):
+                self.check_tai_from_utc(utc_ap=utc_ap, desired_tai_minus_utc=desired_tai_minus_utc)
+
+    def test_current_tai(self):
+        utc0 = time.time()
+        tai0 = salobj.tai_from_utc(utc0)
+        tai1 = salobj.current_tai()
+        print(f"tai1-tai0={tai1-tai0:0.4f}")
+        # the difference should be much less than 0.1
+        # but pytest can introduce unexpected delays
+        self.assertLess(abs(tai1 - tai0), 0.1)
+        self.assertGreaterEqual(tai1, tai0)
 
 
 if __name__ == "__main__":
