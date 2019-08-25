@@ -950,11 +950,11 @@ class TopicsTestCase(unittest.TestCase):
                 # only the last value should be seen
                 for i in (3, 4, 5):
                     writer0.set_put(errorCode=i)
-                    await asyncio.sleep(0.001)
+                    await asyncio.sleep(0.01)
                     writer1.set_put(errorCode=10+i)
-                    await asyncio.sleep(0.001)
+                    await asyncio.sleep(0.01)
                     writer2.set_put(errorCode=20+i)
-                    await asyncio.sleep(0.001)
+                    await asyncio.sleep(0.01)
 
                 # create readers and set callbacks for them
                 # the index 0 reader should data from all writers;
@@ -971,11 +971,11 @@ class TopicsTestCase(unittest.TestCase):
                 # they should see all of it
                 for i in (6, 7, 8):
                     writer0.set_put(errorCode=i)
-                    await asyncio.sleep(0.001)
+                    await asyncio.sleep(0.01)
                     writer1.set_put(errorCode=10+i)
-                    await asyncio.sleep(0.001)
+                    await asyncio.sleep(0.01)
                     writer2.set_put(errorCode=20+i)
-                    await asyncio.sleep(0.001)
+                    await asyncio.sleep(0.01)
 
                 read_codes0 = []
                 read_codes1 = []
