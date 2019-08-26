@@ -385,23 +385,23 @@ class SalInfo:
                         # shutting down; clean everything up
                         return
                     for condition in conditions:
-                        topic = self._readers.get(condition)
-                        if topic is None:
+                        reader = self._readers.get(condition)
+                        if reader is None or not reader.isopen:
                             continue
                         # odds are we will only get one value per read,
                         # but read more so we can tell if we are falling behind
-                        data_list = topic._reader.take_cond(condition, topic._data_queue.maxlen)
+                        data_list = reader._reader.take_cond(condition, reader._data_queue.maxlen)
                         if len(data_list) == 1:
-                            topic._warned_readloop = False
-                        if len(data_list) >= 10 and not topic._warned_readloop:
-                            topic._warned_readloop = True
-                            self.log.warning(f"{topic!r} falling behind; read {len(data_list)} messages")
+                            reader._warned_readloop = False
+                        if len(data_list) >= 10 and not reader._warned_readloop:
+                            reader._warned_readloop = True
+                            self.log.warning(f"{reader!r} falling behind; read {len(data_list)} messages")
                         sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
                         if len(sd_list) < len(data_list):
                             ninvalid = len(data_list) - len(sd_list)
-                            self.log.warning(f"Bug: read {ninvalid} invalid items for {topic}")
+                            self.log.warning(f"Bug: read {ninvalid} invalid items for {reader}")
                         if sd_list:
-                            topic._queue_data(sd_list)
+                            reader._queue_data(sd_list)
                         await asyncio.sleep(0)  # free the event loop
         except asyncio.CancelledError:
             raise
