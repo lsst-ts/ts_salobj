@@ -50,7 +50,6 @@ class CommunicateTestCase(unittest.TestCase):
     def test_heartbeat(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
                 harness.csc.heartbeat_interval = 0.1
                 await harness.remote.evt_heartbeat.next(flush=True, timeout=STD_TIMEOUT)
                 await harness.remote.evt_heartbeat.next(flush=True, timeout=0.2)
@@ -91,8 +90,6 @@ class CommunicateTestCase(unittest.TestCase):
     def test_setArrays_command(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 # until the controller gets its first setArrays
                 # it will not send any arrays events or telemetry
                 self.assertFalse(harness.csc.evt_arrays.has_data)
@@ -137,8 +134,6 @@ class CommunicateTestCase(unittest.TestCase):
     def test_setScalars_command(self):
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 # until the controller gets its first setArrays
                 # it will not send any arrays events or telemetry
                 self.assertFalse(harness.csc.evt_scalars.has_data)
@@ -194,8 +189,6 @@ class CommunicateTestCase(unittest.TestCase):
         """
         async def doit():
             async with Harness(initial_state=salobj.State.STANDBY) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 fault_data = harness.csc.cmd_fault.DataType()
                 standby_data = harness.csc.cmd_standby.DataType()
                 exitControl_data = harness.csc.cmd_exitControl.DataType()
@@ -722,8 +715,6 @@ class ControllerCommandLoggingTestCase(unittest.TestCase):
             async with Harness(initial_state=salobj.State.ENABLED,
                                config_dir=TEST_CONFIG_DIR,
                                CscClass=FailedCallbackCsc) as harness:
-                await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-
                 logLevel = await harness.remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(logLevel.level, logging.INFO)
 

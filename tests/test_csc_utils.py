@@ -173,7 +173,6 @@ class SetSummaryStateTestCSe(unittest.TestCase):
                     # TestCsc cannot start in OFFLINE state
                     continue
                 async with Harness(initial_state=initial_state) as harness:
-                    await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
                     for bad_final_state in (min(salobj.State) - 1, salobj.State.FAULT, max(salobj.State) + 1):
                         with self.subTest(initial_state=initial_state, bad_final_state=bad_final_state):
                             with self.assertRaises(ValueError):
