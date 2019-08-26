@@ -344,8 +344,9 @@ class SalInfo:
                 for read_cond, reader in list(self._readers.items()):
                     if not self.isopen:  # shutting down
                         return
-                    if reader.volatile or not reader.isopen:
-                        # reader gets no late-joiner data or is closed
+                    if reader.volatile or not reader.isopen or not read_cond.triggered():
+                        # reader gets no historical data, is closed,
+                        # or has no data to be read
                         continue
                     try:
                         data_list = reader._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
