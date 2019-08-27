@@ -65,6 +65,7 @@ class WriteTopic(BaseTopic):
     def __init__(self, *, salinfo, name, sal_prefix, min_seq_num=1, max_seq_num=MAX_SEQ_NUM,
                  initial_seq_num=None):
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
+        self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
         if min_seq_num is None:
@@ -77,6 +78,8 @@ class WriteTopic(BaseTopic):
         self._has_data = False
         self._data = self.DataType()
         self._has_priority = sal_prefix == "logevent_"
+
+        salinfo.add_writer(self)
 
     @property
     def data(self):
@@ -110,6 +113,17 @@ class WriteTopic(BaseTopic):
     def has_data(self):
         """Has `data` ever been set?"""
         return self._has_data
+
+    async def close(self):
+        """Shut down and release resources.
+
+        Intended to be called by SalInfo.close(),
+        since that tracks all topics.
+        """
+        if not self.isopen:
+            return
+        self.isopen = False
+        self._writer.close()
 
     def put(self, data=None, priority=0):
         """Output this topic.

@@ -244,7 +244,7 @@ class ReadTopic(BaseTopic):
         """Shut down and release resources.
 
         Intended to be called by SalInfo.close(),
-        since that frees all DDS resources.
+        since that tracks all topics.
         """
         if not self.isopen:
             return
@@ -255,6 +255,7 @@ class ReadTopic(BaseTopic):
         while self._callback_tasks:
             task = self._callback_tasks.pop()
             task.cancel()
+        self._reader.close()
         self._data_queue.clear()
 
     async def aget(self, timeout=None):

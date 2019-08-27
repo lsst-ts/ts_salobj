@@ -134,8 +134,10 @@ class SalInfo:
 
         # dict of private_seqNum: salobj.topics.CommandInfo
         self._running_cmds = dict()
-        # dict of dds.ReadCondition: salobj Topic
+        # dict of dds.ReadCondition: salobj ReadTopic
         self._readers = dict()
+        # list of salobj WriteTopic
+        self._writers = list()
         # the first RemoteCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdReader
         # and set its callback to self._ackcmd_callback
@@ -291,6 +293,9 @@ class SalInfo:
         while self._readers:
             read_cond, reader = self._readers.popitem()
             await reader.close()
+        while self._writers:
+            writer = self._writers.pop()
+            await writer.close()
         while self._running_cmds:
             private_seqNum, cmd_info = self._running_cmds.popitem()
             try:
@@ -305,7 +310,7 @@ class SalInfo:
         Parameters
         ----------
         topic : `topics.ReadTopic`
-            Reader topic.
+            Read topic.
         """
         if self._start_called:
             raise RuntimeError(f"Cannot add topics after the start called")
@@ -313,6 +318,16 @@ class SalInfo:
             raise RuntimeError(f"{topic} already added")
         self._readers[topic._read_condition] = topic
         self._waitset.attach(topic._read_condition)
+
+    def add_writer(self, topic):
+        """Add a WriteTopic so it can be closed.
+
+        Parameters
+        ----------
+        topic : `topics.WriteTopic`
+            Write topic.
+        """
+        self._writers.append(topic)
 
     async def start(self):
         """Start the read loop.
