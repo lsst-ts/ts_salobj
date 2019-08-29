@@ -57,7 +57,14 @@ class BaseCsc(Controller):
 
     Notes
     -----
-    The constructor does the following:
+    **Attributes**
+
+    * ``heartbeat_interval``: interval between heartbeat events, in seconds;
+      a `float`.
+
+    **Constructor**
+
+    The constructor does the following, beyond the parent class constructor:
 
     * For each command defined for the component, find a ``do_<name>`` method
       (which must be present) and add it as a callback to the

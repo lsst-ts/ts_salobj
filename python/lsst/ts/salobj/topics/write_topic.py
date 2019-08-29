@@ -61,6 +61,13 @@ class WriteTopic(BaseTopic):
         Ignored if ``min_seq_num`` is None.
     initial_seq_num : `int` (optional)
         Initial sequence number; if `None` use min_seq_num.
+
+    Notes
+    -----
+    **Attributes**
+
+    * isopen: is this read topic open?  A `bool`. `True` until `close`
+      is called.
     """
     def __init__(self, *, salinfo, name, sal_prefix, min_seq_num=1, max_seq_num=MAX_SEQ_NUM,
                  initial_seq_num=None):

@@ -25,16 +25,16 @@ import logging
 
 
 class SalLogHandler(logging.Handler):
-    def __init__(self, controller):
-        """Log handler that outputs to an event topic.
+    """Log handler that outputs an event topic.
 
-        Parameters
-        ----------
-        controller : `Controller`
-            Controller with
-            :ref:`Required Logger Attribute<required_logging_attributes>`
-            ``evt_logEvent``.
-        """
+    Parameters
+    ----------
+    controller : `Controller`
+        Controller with
+        :ref:`Required Logger Attribute<required_logging_attributes>`
+        ``evt_logEvent``.
+    """
+    def __init__(self, controller):
         self.controller = controller
         super().__init__()
 

@@ -107,18 +107,32 @@ class ReadTopic(BaseTopic):
 
     Notes
     -----
+    **Attributes**
+
+    * isopen: is this read topic open?  A `bool`. `True` until `close`
+      is called.
+
+    **Queues**
+
     There are actually two queues: an internal queue whose length
     is set by ``queue_len`` and a dds queue whose length is set by
     low level configuration. Data can be lost in two ways:
-    - If this class cannot read data from the dds queue fast enough
-    then older data will be dropped from the dds queue. You will get a warning
-    log message if the reader starts to fall behind.
-    - As data is read it is put on the internal queue. if a callback
-    function or `next` does not process data quickly enough then
-    older data is dropped from the internal queue. If you have a callback
-    function you will get several warning log messages as this internal queue
-    fills up. You get no warning otherwise because this class has no way
-    of knowing if you intend to read all data using `next`.
+
+    - If this class cannot read data from the dds queue fast enough, then
+      older data will be dropped from the dds queue. You will get a warning
+      log message if the reader starts to fall behind.
+    - As data is read it is put on the internal queue. if a callback function
+      or `next` does not process data quickly enough then older data
+      is dropped from the internal queue. If you have a callback function
+      you will get several warning log messages as this internal queue
+      fills up. You get no warning otherwise because this class has no way
+      of knowing whether or not you intend to read all data using `next`.
+
+    **Reading**
+
+    Reading is performed by the `SalInfo` which has single read loop that
+    reads all topics. This is more efficient than having each `ReadTopic` read
+    its own data.
     """
     def __init__(self, *, salinfo, name, sal_prefix, max_history, queue_len=100):
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)

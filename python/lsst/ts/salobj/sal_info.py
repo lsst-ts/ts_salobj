@@ -81,6 +81,37 @@ class SalInfo:
     * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec)
       for waiting for historical (late-joiner) data.
 
+    **Attributes**
+
+    * ``domain``: the ``domain`` constructor argument; a `Domain`.
+    * ``name``: the ``name`` constructor argument; a `str`.
+    * ``index``: the ``index`` constructor argument; an `int`.
+    * ``idl_loc``: path to the IDL file for this SAL component;
+      a `pathlib.Path`.
+    * ``indexed``: `True` if this SAL component is indexed (meaning a non-zero
+        index is allowed), `False` if not.
+    * ``isopen``: is this read topic open?  A `bool`. `True` until `close`
+      is called.
+    * ``log``: a `logging.Logger`.
+    * ``partition_name``: the DDS partition name, from environment variable
+      LSST_DDS_DOMAIN; a `str`.
+    * ``publisher``: a DDS publisher, used to create DDS writers;
+      a `dds.Publisher`.
+    * ``subscriber``: a DDS subscriber, used to create DDS readers;
+      a `dds.Subscriber`.
+    * ``start_task``: a task which is finished when `start` is done;
+      an `asyncio.Task`.
+    * ``command_names``: a tuple of command names without the ``"command_"``
+      prefix
+    * ``event_names``: a tuple of event names, without the ``"logevent_"``
+      prefix
+    * ``telemetry_names``: a tuple of telemetry topic names
+    * ``sal_topic_names``: a tuple of SAL topic names, e.g.
+      "logevent_summaryState", in alphabetical order
+    * ``revnames``: a dict of topic name: name_revision
+
+    **Usage**
+
     Call `start` after constructing this `SalInfo` and all `Remote` objects.
     Until `start` is called no data will be read.
 
@@ -88,11 +119,6 @@ class SalInfo:
     for cleanup using a weak reference to avoid circular dependencies.
     You may safely close a `SalInfo` before closing its domain,
     and this is recommended if you create and destroy many remotes.
-
-    Contents include:
-
-    * A registry of DDS read condition: DDS reader for reading data.
-    * A registry of `topics.BaseTopic` instances for cleanup.
     """
     def __init__(self, domain, name, index=0):
         if not isinstance(domain, Domain):
@@ -163,7 +189,7 @@ class SalInfo:
         ackcmd_revname = self.revnames.get("ackcmd")
         if ackcmd_revname is None:
             raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
-        self.ackcmd_type = ddsutil.get_dds_classes_from_idl(self.idl_loc, ackcmd_revname)
+        self._ackcmd_type = ddsutil.get_dds_classes_from_idl(self.idl_loc, ackcmd_revname)
         domain.add_salinfo(self)
 
     def _ackcmd_callback(self, data):
@@ -193,7 +219,7 @@ class SalInfo:
         result : `str`
             Explanatory message, or "" for no message.
         """
-        return self.ackcmd_type.topic_data_class
+        return self._ackcmd_type.topic_data_class
 
     def makeAckCmd(self, private_seqNum, ack, error=0, result="", truncate_result=False):
         """Make an AckCmdType object from keyword arguments.
@@ -238,18 +264,14 @@ class SalInfo:
     def parse_idl(self):
         """Parse the SAL-generated IDL file.
 
-        Set the following attributes:
+        Set the following attributes (see the class doc string for details):
 
-        * indexed: `True` if this SAL component is indexed (meaning a non-zero
-            index is allowed), `False` if not.
-        * command_names: a tuple of command names without the ``"command_"``
-          prefix
-        * event_names: a tuple of event names, without the ``"logevent_"``
-          prefix
-        * telemetry_names: a tuple of telemetry topic names
-        * sal_topic_names: a tuple of SAL topic names, e.g.
-          "logevent_summaryState", in alphabetical order
-        * revnames: a dict of topic name: name_revision
+        * indexed
+        * command_names
+        * event_names
+        * telemetry_names
+        * sal_topic_names
+        * revnames
         """
         struct_pattern = re.compile(r"\s*struct\s+(?P<name_rev>(?P<name>.+)_(?:[a-zA-Z0-9]+)) +{")
         index_pattern = re.compile(rf"\s*long\s+{self.name}ID;")

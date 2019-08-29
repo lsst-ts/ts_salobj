@@ -47,7 +47,7 @@ class Domain:
 
     Notes
     -----
-    Environment variables:
+    **Environment Variables**
 
     * LSST_DDS_IP (optional) is used to set the ``host`` attribute.
       If provided, it must be a dotted numeric IP address, e.g. "192.168.0.1".
@@ -55,6 +55,35 @@ class Domain:
       random integer if the environment variable is not provided.
       This value is used to set the ``private_host`` field of topics
       when writing them.
+
+    **Attributes**
+
+    * ``participant``: DDS domain participant, a `dds.DomainParticipant`.
+    * ``host``: value for the ``private_host`` field of output samples;
+      an `int`.
+      See environment variable ``LSST_DDS_IP`` for details.
+    * ``origin``: process ID (an int). Used to set the ``private_origin``
+      field of output samples.
+    * ``idl_dir``: root directory of the ``ts_idl`` package; a `pathlib.Path`.
+    * ``qos_provider``: quality of service provider; a `dds.QosProvider`.
+    * ``topic_qos``: quality of service for non-volatile DDS topics
+      (those that want late-joiner data); a `dds.Qos`.
+    * ``volatile_topic_qos``: quality of service for volatile topics
+      (those that do not want any late-joiner data); a `dds.Qos`.
+      Note: we cannot just make readers volatile to avoid late-joiner data,
+      as volatile readers receive late-joiner data from non-volatile writers.
+      So we make readers, writers, and topics all volatile. See OpenSplice
+      issue 19934; according to ADLink it is a feature, not a bug.
+    * ``reader_qos``: quality of service for non-volatile DDS readers;
+      a `dds.Qos`.
+    * ``volatile_reader_qos``: quality of service for volatile DDS readers;
+      a `dds.Qos`.
+    * ``writer_qos``: quality of service for non-volatile DDS writers;
+      a `dds.Qos`.
+    * ``volatile_writer_qos``: quality of service for volatile DDS writers;
+      a `dds.Qos`.
+
+    **Cleanup**
 
     It is important to close a `Domain` when you are done with it, especially
     in unit tests, because otherwise unreleased resources may cause problems.
@@ -120,20 +149,14 @@ class Domain:
                 raise ValueError(f"Could not parse $LSST_DDS_IP={host} "
                                  "as a numeric IP address (e.g. '192.168.0.1')") from e
         self.host = host
-        """Value for the private_host field of output samples."""
-
         self.origin = os.getpid()
-        """Value for the private_origin field of output samples."""
-
         self.idl_dir = idl.get_idl_dir()
 
         qos_path = idl.get_qos_path()
         self.qos_provider = dds.QosProvider(qos_path.as_uri(), "DDS DefaultQosProfile")
-        """Quality of service provider, a dds.QosProvider"""
 
         participant_qos = self.qos_provider.get_participant_qos()
         self.participant = dds.DomainParticipant(qos=participant_qos)
-        """Domain participant, a dds.DomainParticipant"""
 
         # Create quality of service objects that do not depend on
         # the DDS partition. The two that do (publisher and subscriber)
@@ -143,54 +166,20 @@ class Domain:
             volatile_policy = dds.DurabilityQosPolicy(dds.DDSDurabilityKind.VOLATILE)
 
             self.topic_qos = self.qos_provider.get_topic_qos()
-            """Quality of service for event and telemetry topics.
-
-            Readers of these topics want late-joiner data,
-            so they are not VOLATILE.
-            """
 
             self.volatile_topic_qos = self.qos_provider.get_topic_qos()
             self.volatile_topic_qos.set_policies([volatile_policy])
-            """Quality of service for command and ackcmd topics. A dds.Qos.
-
-            Readers of these topics do not want late-joiner data,
-            so the topics readers and writers are all VOLATILE. (Due to
-            OpenSplice bug 19934 we don't just make the readers VOLATILE.)
-            """
 
             self.writer_qos = self.qos_provider.get_writer_qos()
-            """Quality of service for event and telemetry writers. A dds.Qos.
-
-            Readers of these topics want late-joiner data,
-            so they are not VOLATILE.
-            """
-
             self.volatile_writer_qos = self.qos_provider.get_writer_qos()
             self.volatile_writer_qos.set_policies([volatile_policy])
-            """Quality of service for command and ackcmd writers. A dds.Qos.
-
-            Readers of these topics do not want late-joiner data,
-            so the topics readers and writers are all VOLATILE. (Due to
-            OpenSplice bug 19934 we don't just make the readers VOLATILE.)
-            """
 
             read_queue_policy = dds.HistoryQosPolicy(depth=DDS_READ_QUEUE_LEN,
                                                      kind=dds.DDSHistoryKind.KEEP_LAST)
             self.reader_qos = self.qos_provider.get_reader_qos()
             self.reader_qos.set_policies([read_queue_policy])
-            """Quality of service for telemetry and event readers. A dds.Qos.
-
-            These want late-joiner data and so are not VOLATILE.
-            """
-
             self.volatile_reader_qos = self.qos_provider.get_reader_qos()
             self.volatile_reader_qos.set_policies([read_queue_policy, volatile_policy])
-            """Quality of service for command and ackcmd readers. A dds.Qos.
-
-            Readers of these topics do not want late-joiner data,
-            so the topics readers and writers are all VOLATILE. (Due to
-            OpenSplice bug 19934 we don't just make the readers VOLATILE.)
-            """
         except Exception:
             # very unlikely, but just in case...
             self.participant.close()

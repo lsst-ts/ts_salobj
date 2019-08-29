@@ -48,58 +48,45 @@ class BaseTopic(abc.ABC):
     ------
     RuntimeError
         If the topic cannot be constructed.
+
+    Notes
+    -----
+
+    **Attributes**
+
+    * salinfo: the ``salinfo`` constructor argument; a `SalInfo`.
+    * name: the ``name`` constructor argument; a `str`.
+    * sal_name: the topic name used by SAL; a `str`.
+      For example: "logevent_summaryState".
+    * log: a `logging.Logger`.
+    * volatile: is this topic volatile (does it want no historical data)?
+      A `bool`.
+    * attr_name: name of topic attribute in `Controller` and `Remote`; a `str`.
+      For example: "evt_summaryState".
+    * rev_code: revision hash code for the topic; a `str`.
+      This code changes whenever the schema for the topic changes,
+      and it is part of the DDS topic name. For example: "90255bf1"
+    * dds_name: name of topic seen by DDS; a `str`.
+      For example: "Test_logevent_summaryState_90255bf1".
     """
     def __init__(self, *, salinfo, name, sal_prefix):
         try:
             self.salinfo = salinfo
-            """The ``salinfo`` constructor argument.
-            """
-
             self.name = str(name)
-            """The ``name`` constructor argument.
-            """
-
             self.sal_name = sal_prefix + self.name
-            """The topic name used by SAL.
-
-            Example: "logevent_summaryState".
-            """
-
             self.log = salinfo.log.getChild(self.sal_name)
-
             self.volatile = name == "ackcmd" or sal_prefix == "command_"
-            """Does this topic have VOLATILE durability?
-
-            If volatile then no late-joiner data is written or read.
-            Commands and ackcmd topics are volatile; other topics are not.
-            (It appears to be an OpenSplice bug that the writer must be
-            volatile in order for a volatile reader to not see historical
-            data.)
-            """
 
             attr_prefix = "ack_" if name == "ackcmd" else _ATTR_PREFIXES.get(sal_prefix)
             if attr_prefix is None:
                 raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
             self.attr_name = attr_prefix + name
-            """Name of topic attribute in `Controller` and `Remote`.
-
-            Example: "evt_summaryState".
-            """
 
             revname = salinfo.revnames.get(self.sal_name)
             if revname is None:
                 raise ValueError(f"Could not find {self.salinfo.name} topic {self.sal_name}")
             self.dds_name = revname.replace("::", "_")
-            """Name of topic in DDS.
-
-            Example: "Test_logevent_summaryState_90255bf1".
-            """
-
             self.rev_code = self.dds_name[-8:]
-            """Revision hash code suffix on DDS topic name.
-
-            Example: "90255bf1".
-            """
 
             self._type = ddsutil.get_dds_classes_from_idl(salinfo.idl_loc, revname)
             qos = salinfo.domain.volatile_topic_qos if self.volatile else salinfo.domain.topic_qos

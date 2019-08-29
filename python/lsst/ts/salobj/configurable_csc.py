@@ -68,6 +68,18 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
     Notes
     -----
+    **Attributes**
+
+    * ``config_dir``: configuration directory; a `pathlib.Path`.
+      Directory containing configuration files.
+    * ``config_validator``: validator for configuration files that also sets
+      default values for omitted items; a `DefaultingValidator`.
+    * ``schema_version``: configuration schema version, as specified
+      in the schema as the final word of the ``title``; a `str`.
+      Used to find the ``config_dir``.
+
+    **Configuration**
+
     Configuration is handled by the ``start`` command, as follows:
 
     * The ``settingsToApply`` field specifies a path to a configuration file
@@ -83,7 +95,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
       which subclasses must override. Note that ``configure`` is called just
       before summary state changes from `State.STANDBY` to `State.DISABLED`.
 
-    The constructor does the following:
+    **Constructor**
+
+    The constructor does the following, beyond the parent class constructor:
 
     * Set summary state, then run the `ConfigurableCsc.start` asynchronously,
       which does the following:

@@ -80,15 +80,15 @@ class Remote:
 
     Notes
     -----
-    Each `Remote` will have the following attributes:
+    **Attributes**
 
-    - ``cmd_<command_name>``, a `topics.RemoteCommand`,
+    * ``cmd_<command_name>``, a `topics.RemoteCommand`,
       for each command supported by the component.
       Omitted if ``readonly`` true.
-    - ``evt_<event_name>``, a `topics.RemoteEvent`
+    * ``evt_<event_name>``, a `topics.RemoteEvent`
       for each log event topic supported by the component
       and specified by ``include`` and the ``exclude`` arguments.
-    - ``tel_<telemetry_name>``, a `topics.RemoteTelemetry`
+    * ``tel_<telemetry_name>``, a `topics.RemoteTelemetry`
       for each telemetry topic supported by the component
       and specified by the ``include`` and ``exclude`` arguments.
 

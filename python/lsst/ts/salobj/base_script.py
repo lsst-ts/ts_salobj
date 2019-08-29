@@ -64,12 +64,18 @@ class BaseScript(salobj.Controller, abc.ABC):
     descr : `str`
         Short description of what the script does, for operator display.
 
-    Attributes
-    ----------
-    log : `logging.Logger`
-        A Python log. You can safely log to it from different threads.
-        Note that it can take up to ``LOG_MESSAGES_INTERVAL`` seconds
-        before a log message is sent.
+    Notes
+    -----
+
+    **Attributes**
+
+    * ``log``: a `logging.Logger`.
+    * ``done_task``: a task that is done when the script has fully executed;
+      an `asyncio.Task`.
+    * ``final_state_delay``: final delay (in seconds) before exiting; `float`.
+      Must be long enough to allow final events to be output.
+    * ``timestamps``: a dict of ``ScriptState: TAI unix timestamp``.
+      Used to set timestamp data in the ``script`` event.
     """
     def __init__(self, index, descr):
         super().__init__("Script", index, do_callbacks=True)
@@ -95,7 +101,6 @@ class BaseScript(salobj.Controller, abc.ABC):
         the command before exiting."""
 
         self.timestamps = dict()
-        """Dict of ScriptState: timestamp"""
 
     async def start(self):
         self_name = f"Script:{self.salinfo.index}"
