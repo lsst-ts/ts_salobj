@@ -240,6 +240,8 @@ class SalInfo:
 
         Set the following attributes:
 
+        * indexed: `True` if this SAL component is indexed (meaning a non-zero
+            index is allowed), `False` if not.
         * command_names: a tuple of command names without the ``"command_"``
           prefix
         * event_names: a tuple of event names, without the ``"logevent_"``
@@ -256,6 +258,7 @@ class SalInfo:
         telemetry_names = []
         sal_topic_names = []
         revnames = {}
+        # assume the component is not indexed until we find a <name>ID field
         self.indexed = False
         with open(self.idl_loc, "r") as f:
             for line in f:
@@ -305,12 +308,18 @@ class SalInfo:
         self.domain.remove_salinfo(self)
 
     def add_reader(self, topic):
-        """Add a ReadTopic so it can be read.
+        """Add a ReadTopic, so it can be read by the read loop and closed
+        by `close`.
 
         Parameters
         ----------
         topic : `topics.ReadTopic`
             Read topic.
+
+        Raises
+        ------
+        RuntimeError
+            If called after `start` has been called.
         """
         if self._start_called:
             raise RuntimeError(f"Cannot add topics after the start called")
@@ -320,7 +329,7 @@ class SalInfo:
         self._waitset.attach(topic._read_condition)
 
     def add_writer(self, topic):
-        """Add a WriteTopic so it can be closed.
+        """Add a WriteTopic, so it can be closed by `close`.
 
         Parameters
         ----------

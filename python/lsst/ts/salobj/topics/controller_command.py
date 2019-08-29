@@ -113,6 +113,8 @@ class ControllerCommand(read_topic.ReadTopic):
         return await super().next(flush=False, timeout=timeout)
 
     def _queue_one_item(self, data):
+        """Convert the value to an ``ackcmd`` and queue it.
+        """
         if data.private_seqNum <= 0:
             raise ValueError(f"private_seqNum={data.private_seqNum} must be positive")
         ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum, ack=sal_enums.SalRetCode.CMD_ACK)

@@ -527,6 +527,8 @@ class TopicsTestCase(unittest.TestCase):
         asyncio.get_event_loop().run_until_complete(doit())
 
     def test_get_oldest(self):
+        """Test that `get_oldest` returns the oldest sample.
+        """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
                 num_commands = 3

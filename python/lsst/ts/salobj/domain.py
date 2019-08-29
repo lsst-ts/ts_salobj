@@ -35,8 +35,8 @@ from lsst.ts import idl
 # Length of DDS read queue
 # Warning: this must be equal to or longer than the queue length in the
 # QoS XML file.
-# I would prefer to set this constant *from* the QoS XML file,
-# but dds does not make the information available
+# This information is not available from dds objects, so I set queue depth
+# instead of using the value specified in the QoS XML file.
 DDS_READ_QUEUE_LEN = 100  # length of DDS read queue
 
 MAX_RANDOM_HOST = (1 << 31) - 1
@@ -52,7 +52,7 @@ class Domain:
     * LSST_DDS_IP (optional) is used to set the ``host`` attribute.
       If provided, it must be a dotted numeric IP address, e.g. "192.168.0.1".
       The ``host`` attribute is set to the integer equivalent, or a positive
-      random integer if the environment variable if not provided.
+      random integer if the environment variable is not provided.
       This value is used to set the ``private_host`` field of topics
       when writing them.
 

@@ -233,7 +233,7 @@ class ReadTopic(BaseTopic):
 
     @property
     def has_data(self):
-        """Has `data` ever been read?"""
+        """Has any data been seen for this topic?"""
         return self._current_data is not None
 
     @property
@@ -259,7 +259,7 @@ class ReadTopic(BaseTopic):
         self._data_queue.clear()
 
     async def aget(self, timeout=None):
-        """Get the current value, if any, else wait for the next new value.
+        """Get the current value, if any, else wait for the next value.
 
         Parameters
         ----------
@@ -269,7 +269,7 @@ class ReadTopic(BaseTopic):
         Returns
         -------
         data : `DataType`
-            The data.
+            The current or next value.
 
         Raises
         ------
@@ -278,7 +278,8 @@ class ReadTopic(BaseTopic):
 
         Notes
         -----
-        Do not modify the data. To copy the data use ``copy.copy(value)``.
+        Do not modify the returned data. To make a copy that you can modify
+        use ``copy.copy(value)``.
         """
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")
@@ -287,7 +288,7 @@ class ReadTopic(BaseTopic):
         return await self._next(timeout=timeout)
 
     def flush(self):
-        """Flush the queue of unread messages.
+        """Flush the queue of unread data.
 
         Raises
         ------
@@ -318,14 +319,13 @@ class ReadTopic(BaseTopic):
         return self._current_data
 
     def get_oldest(self):
-        """Pop and return the oldest data from the queue, or `None`
-        if all data has been read.
+        """Pop and return the oldest value from the queue, or `None`
+        if the queue is empty.
 
         Returns
         -------
         data : ``self.DataType`` or `None`
-            Return ``self.data`` if unread data was found on the queue,
-            else ``None``.
+            The oldest value found on the queue, if any, else `None`.
 
         Raises
         ------
@@ -344,13 +344,13 @@ class ReadTopic(BaseTopic):
         return None
 
     async def next(self, *, flush, timeout=None):
-        """Wait for data, returning old data if found.
+        """Wait for a value, possibly returning the oldest queued value.
 
         Parameters
         ----------
         flush : `bool`
             If True then flush the queue before starting a read.
-            If False then pop and return the oldest item from the queue,
+            If False then pop and return the oldest value from the queue,
             if any, else wait for new data.
         timeout : `float` (optional)
             Time limit, in seconds. If None then no time limit.
@@ -367,7 +367,8 @@ class ReadTopic(BaseTopic):
 
         Notes
         -----
-        Do not modify the data. To copy the data use ``copy.copy(value)``.
+        Do not modify the returned data. To make a copy that you can modify
+        use ``copy.copy(value)``.
         """
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")
@@ -413,9 +414,12 @@ class ReadTopic(BaseTopic):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
     def _queue_data(self, data_list):
-        """Convert items of data and add them to the internal queue.
+        """Queue multiple one or more values.
 
-        Also update self._current_data and fire self._next_task if waiting.
+        This is a no-op if ``data_list`` is empty.
+
+        Also update ``self._current_data`` and fire `self._next_task`
+        (if pending).
         """
         if not data_list:
             return
@@ -426,4 +430,9 @@ class ReadTopic(BaseTopic):
             self._next_task.set_result(None)
 
     def _queue_one_item(self, data):
+        """Add a single value to the internal queue.
+
+        Subclasses may override to massage the value before queuing.
+        `ControllerCommand` does this.
+        """
         self._data_queue.append(data)
