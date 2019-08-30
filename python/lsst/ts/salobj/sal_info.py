@@ -183,7 +183,7 @@ class SalInfo:
         self.idl_loc = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
         if not self.idl_loc.is_file():
             raise RuntimeError(f"Cannot find IDL file {self.idl_loc} for name={self.name!r}")
-        self.parse_idl()
+        self.parse_idl()  # adds self.indexed, self.revnames, etc.
         if self.index != 0 and not self.indexed:
             raise ValueError(f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component")
         ackcmd_revname = self.revnames.get("ackcmd")
@@ -336,7 +336,7 @@ class SalInfo:
         Parameters
         ----------
         topic : `topics.ReadTopic`
-            Read topic.
+            Topic to read and (eventually) close.
 
         Raises
         ------
@@ -356,7 +356,7 @@ class SalInfo:
         Parameters
         ----------
         topic : `topics.WriteTopic`
-            Write topic.
+            Write topic to (eventually) close.
         """
         self._writers.append(topic)
 
@@ -409,7 +409,10 @@ class SalInfo:
                     sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
                     if len(sd_list) < len(data_list):
                         ninvalid = len(data_list) - len(sd_list)
-                        self.log.warning(f"Bug: read {ninvalid} late joiner items for {reader}")
+                        self.log.warning(f"Read {ninvalid} invalid late-joiner items from {reader}. "
+                                         "The invalid items were safely skipped, but please examine "
+                                         "the code in SalInfo.start to see if it needs an update "
+                                         "for changes to OpenSplice dds.")
                     if reader.max_history > 0:
                         sd_list = sd_list[-reader.max_history:]
                         if sd_list:
@@ -446,7 +449,10 @@ class SalInfo:
                         sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
                         if len(sd_list) < len(data_list):
                             ninvalid = len(data_list) - len(sd_list)
-                            self.log.warning(f"Bug: read {ninvalid} invalid items for {reader}")
+                            self.log.warning(f"Read {ninvalid} invalid items from {reader}. "
+                                             "The invalid items were safely skipped, but please examine "
+                                             "the code in SalInfo._read_loop to see if it needs an update "
+                                             "for changes to OpenSplice dds.")
                         if sd_list:
                             reader._queue_data(sd_list)
                         await asyncio.sleep(0)  # free the event loop
