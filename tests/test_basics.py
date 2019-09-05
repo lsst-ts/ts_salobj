@@ -14,7 +14,9 @@ class BasicsTestCase(unittest.TestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_domain()
 
-    def test_assert_ack_error(self):
+    def test_assert_raises_ack_error(self):
+        """Test the assertRaisesAckError function.
+        """
         async def doit():
             async with salobj.Domain() as domain:
                 salinfo = salobj.SalInfo(domain, "Test", index=1)
@@ -50,12 +52,12 @@ class BasicsTestCase(unittest.TestCase):
                                           ackcmd=salinfo.makeAckCmd(private_seqNum=3, ack=1, error=2))
 
                 result = "result for this exception"
-                # test the full result string
+                # test result_contains with the full result string
                 with salobj.assertRaisesAckError(ack=1, error=2, result_contains=result):
                     raise salobj.AckError("match ack, error and full result",
                                           ackcmd=salinfo.makeAckCmd(private_seqNum=4, ack=1, error=2,
                                                                     result=result))
-                # test a substring of the result string
+                # test result_contains with a substring of the result string
                 with salobj.assertRaisesAckError(ack=1, error=2, result_contains=result[2:-2]):
                     raise salobj.AckError("match ack, error and a substring of result",
                                           ackcmd=salinfo.makeAckCmd(private_seqNum=4, ack=1, error=2,
