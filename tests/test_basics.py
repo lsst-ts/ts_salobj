@@ -49,9 +49,17 @@ class BasicsTestCase(unittest.TestCase):
                     raise salobj.AckError("no ack or error specified",
                                           ackcmd=salinfo.makeAckCmd(private_seqNum=3, ack=1, error=2))
 
-                with salobj.assertRaisesAckError(ack=1, error=2):
-                    raise salobj.AckError("matching ack and error",
-                                          ackcmd=salinfo.makeAckCmd(private_seqNum=4, ack=1, error=2))
+                result = "result for this exception"
+                # test the full result string
+                with salobj.assertRaisesAckError(ack=1, error=2, result_contains=result):
+                    raise salobj.AckError("match ack, error and full result",
+                                          ackcmd=salinfo.makeAckCmd(private_seqNum=4, ack=1, error=2,
+                                                                    result=result))
+                # test a substring of the result string
+                with salobj.assertRaisesAckError(ack=1, error=2, result_contains=result[2:-2]):
+                    raise salobj.AckError("match ack, error and a substring of result",
+                                          ackcmd=salinfo.makeAckCmd(private_seqNum=4, ack=1, error=2,
+                                                                    result=result))
 
         asyncio.get_event_loop().run_until_complete(doit())
 
