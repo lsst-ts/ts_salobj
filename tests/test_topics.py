@@ -718,7 +718,7 @@ class TopicsTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
-    def test_controller_command_callback(self):
+    def test_controller_command_get_set_callback(self):
         """Test getting and setting a callback for a ControllerCommand.
         """
         async def doit():
@@ -738,10 +738,110 @@ class TopicsTestCase(unittest.TestCase):
 
         asyncio.get_event_loop().run_until_complete(doit())
 
+    def test_controller_command_success(self):
+        """Test ack when a controller command succeeds.
+        """
+        async def doit():
+            async with Harness(initial_state=salobj.State.ENABLED) as harness:
+
+                ackcmd = await harness.remote.cmd_wait.set_start(duration=0, timeout=STD_TIMEOUT)
+                self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_controller_command_return_ackcmd(self):
+        """Test exception raised by remote command when controller command
+        callback returns an explicit failed ackcmd.
+        """
+        # cannot call check_controller_command_callback_failure
+        # because need a Harness to construct the returned ackcmd
+        async def doit():
+            async with Harness(initial_state=salobj.State.ENABLED) as harness:
+                failed_ack = salobj.SalRetCode.CMD_NOPERM
+                result = "return failed ackcmd"
+
+                def return_ack(data):
+                    return harness.csc.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
+                                                          ack=failed_ack,
+                                                          result=result)
+
+                harness.csc.cmd_wait.callback = return_ack
+                with salobj.assertRaisesAckError(ack=failed_ack, result_contains=result):
+                    await harness.remote.cmd_wait.start(timeout=STD_TIMEOUT)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
+    def test_controller_command_expected_error(self):
+        """Test exception raised by remote command when controller command
+        callback raises ExpectedError.
+        """
+        msg = "intentional failure"
+
+        def fail_expected_exception(data):
+            raise salobj.ExpectedError(msg)
+
+        self.check_controller_command_callback_failure(callback=fail_expected_exception,
+                                                       ack=salobj.SalRetCode.CMD_FAILED,
+                                                       result_contains=msg)
+
+    def test_controller_command_exception(self):
+        """Test exception raised by remote command when controller command
+        callback raises an Exception.
+        """
+        msg = "intentional failure"
+
+        def fail_exception(data):
+            raise Exception(msg)
+
+        self.check_controller_command_callback_failure(callback=fail_exception,
+                                                       ack=salobj.SalRetCode.CMD_FAILED,
+                                                       result_contains=msg)
+
+    def test_controller_command_timeout(self):
+        """Test exception raised by remote command when controller command
+        callback times out.
+        """
+        def fail_timeout(data):
+            raise asyncio.TimeoutError()
+
+        self.check_controller_command_callback_failure(callback=fail_timeout,
+                                                       ack=salobj.SalRetCode.CMD_TIMEOUT)
+
+    def test_controller_command_cancel(self):
+        """Test exception raised by remote command when controller command
+        callback is cancelled.
+        """
+        def fail_cancel(data):
+            raise asyncio.CancelledError()
+
+        self.check_controller_command_callback_failure(callback=fail_cancel,
+                                                       ack=salobj.SalRetCode.CMD_ABORTED)
+
+    def check_controller_command_callback_failure(self, callback, ack, result_contains=None):
+        """Check the exception raised by remote command when the
+        controller command raises or returns a failed ackcmd.
+
+        Parameters
+        ----------
+        callback : `callable`
+            Callback function for controller command.
+        ack : `SalRetCode`
+            Expected ack value for the `AckError`
+        result_contains : `str`, optional
+            Expected substring of the result value of the `AckError`
+        """
+        async def doit():
+            async with Harness(initial_state=salobj.State.ENABLED) as harness:
+                harness.csc.cmd_wait.callback = callback
+                with salobj.assertRaisesAckError(ack=ack, result_contains=result_contains):
+                    await harness.remote.cmd_wait.start(timeout=STD_TIMEOUT)
+
+        asyncio.get_event_loop().run_until_complete(doit())
+
     def test_multiple_commands(self):
         """Test that we can have multiple instances of the same command
-            running at the same time.
-            """
+        running at the same time.
+        """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
                 self.assertTrue(harness.csc.cmd_wait.has_callback)
@@ -820,7 +920,8 @@ class TopicsTestCase(unittest.TestCase):
 
     def test_synchronous_event_callback(self):
         """Like test_asynchronous_event_callback but the callback function
-        is synchronous"""
+        is synchronous.
+        """
         async def doit():
             async with Harness(initial_state=salobj.State.ENABLED) as harness:
                 cmd_scalars_data = harness.csc.make_random_cmd_scalars()

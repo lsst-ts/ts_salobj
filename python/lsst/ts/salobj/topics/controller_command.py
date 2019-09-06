@@ -21,6 +21,7 @@
 
 __all__ = ["AckCmdWriter", "ControllerCommand"]
 
+import asyncio
 import inspect
 
 from .. import sal_enums
@@ -38,17 +39,42 @@ class AckCmdWriter(write_topic.WriteTopic):
 class ControllerCommand(read_topic.ReadTopic):
     """Read a specified command topic.
 
-    Each command must be acknowledged. If you use a callback function
-    to process the command then this happens automatically (including
-    acknowledging as a failure if the callback raises an exception).
-    Otherwise you must the `ack` method to do this yourself.
-
     Parameters
     ----------
     salinfo : `SalInfo`
         SAL component information
     name : `str`
         Command name
+
+    Notes
+    -----
+    Each command must be acknowledged by writing an appropriate ``ackcmd``
+    message. If you use a callback function to process the command
+    then this happens automatically. Otherwise you must call the `ack` method
+    to acknowledge the command yourself, though an initial acknowledgement
+    with ``ack=SalRetCode.CMD_ACK`` is always automatically sent when
+    the command is read.
+
+
+    After the initial acknowledgement with ``ack=SalRetCode.CMD_ACK``,
+    automatic ackowledgement for callback functions works as follows:
+
+    * If the callback function is a coroutine then acknowledge with
+      ``ack=SalRetCode.CMD_INPROGRESS`` just before running the callback.
+    * If the callback function returns `None` then send a final
+      acknowledgement with ``ack=SalRetCode.CMD_COMPLETE``.
+    * If the callback function returns an acknowledgement
+      (instance of `SalInfo.AckType`) instead of `None`, then send that
+      as the final acknowledgement.
+    * If the callback function raises `asyncio.TimeoutError` then send a
+      final acknowledgement with ``ack=SalRetCode.CMD_TIMEOUT``.
+    * If the callback function raises `asyncio.CancelledError` then send
+      a final acknowledgement with ``ack=SalRetCode.CMD_ABORTED``.
+    * If the callback function raises `ExpectedError` then send a final
+      acknowledgement with ``ack=SalRetCode.CMD_FAILED`` and
+      ``result=f"Failed: {exception}"``.
+    * If the callback function raises any other `Exception`
+      then do the same as `ExpectedError` and also log a traceback.
     """
     def __init__(self, salinfo, name, max_history=0, queue_len=100):
         super().__init__(salinfo=salinfo, name=name, sal_prefix="command_",
@@ -140,6 +166,16 @@ class ControllerCommand(read_topic.ReadTopic):
             if ack is None:
                 ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
                                               ack=sal_enums.SalRetCode.CMD_COMPLETE, result="Done")
+            self.ack(data, ack)
+        except asyncio.CancelledError:
+            ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
+                                          ack=sal_enums.SalRetCode.CMD_ABORTED, error=1,
+                                          result=f"Aborted", truncate_result=True)
+            self.ack(data, ack)
+        except asyncio.TimeoutError:
+            ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
+                                          ack=sal_enums.SalRetCode.CMD_TIMEOUT, error=1,
+                                          result=f"Timeout", truncate_result=True)
             self.ack(data, ack)
         except Exception as e:
             ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,

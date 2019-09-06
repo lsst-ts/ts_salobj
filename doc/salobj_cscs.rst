@@ -28,19 +28,14 @@ Writing a CSC
       such as CPU-heavy tasks, make the method asynchronous
       and call the synchronous operation in a thread using
       the ``run_in_executor`` method of the event loop.
-    * Your CSC will report the command as failed if the ``do_<name>``
-      method raises an exception. The ``result`` field of that
-      acknowledgement will be the data in the exception.
-      Eventually the CSC may log a traceback, as well,
-      but never for `ExpectedError`.
-    * By default your CSC will report the command as completed
-      when ``do_<name>`` finishes, but you can return a different
-      acknowledgement (instance of `SalInfo.AckType`) instead,
-      and that will be used as the final command acknowledgement.
+    * Your CSC reports the command as unsuccessful if the ``do_<name>`` method raises an exception.
+      The ``ack`` value depends on the exception; see `ControllerCommand` for details.
+    * Your CSC reports the command as successful when ``do_<name>`` finishes and returns `None`.
+      If ``do_<name>`` returns an acknowledgement (instance of `SalInfo.AckType`) instead of `None`
+      then your CSC sends that as the final command acknowledgement.
     * If you want to allow more than one instance of the command running
       at a time, set ``self.cmd_<name>.allow_multiple_commands = True``
-      in your CSC's constructor. See
-      `topics.ControllerCommand`.allow_multiple_commands
+      in your CSC's constructor. See `topics.ControllerCommand`.allow_multiple_commands
       for details and limitations of this attribute.
     * ``do_`` is a reserved prefix: all ``do_<name>`` attributes must match a command name and must be callable.
 
