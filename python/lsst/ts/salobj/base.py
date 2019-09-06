@@ -181,7 +181,7 @@ def tai_from_utc(utc, format="unix"):
     utc : `float` or `str`
         UTC time in the specified format.
     format : `str` or `None`
-        Format of the UTC time, as an astropy.time format name,
+        Format of the UTC time, as an `astropy.time` format name,
         or `None` to have astropy guess.
     """
     astropy_utc = astropy.time.Time(utc, scale="utc", format=format)
