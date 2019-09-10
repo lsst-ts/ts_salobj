@@ -717,7 +717,7 @@ class BaseCscMainTestCase(asynctest.TestCase):
         sys.argv = self.original_argv
 
     async def test_no_index(self):
-        for index in (False, None):
+        for index in (0, None):
             with self.subTest(index=index):
                 sys.argv = [sys.argv[0]]
                 arg1 = "astring"

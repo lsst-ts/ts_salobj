@@ -134,7 +134,7 @@ class BaseCsc(Controller):
             If the CSC is indexed: specify `True` make index a required
             command line argument, or specify a non-zero `int` to use
             that index.
-            If the CSC is not indexed: specify `None` or `False`.
+            If the CSC is not indexed: specify `None` or 0.
         run_loop : `bool` (optional)
             Start an event loop? Set True for normal CSC operation.
             False is convenient for some kinds of testing.
@@ -162,7 +162,7 @@ class BaseCsc(Controller):
         args = parser.parse_args()
         if index is True:
             kwargs["index"] = args.index
-        elif index in (None, False):
+        elif not index:
             pass
         else:
             kwargs["index"] = int(index)
