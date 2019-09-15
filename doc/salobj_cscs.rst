@@ -75,8 +75,9 @@ Writing a CSC
       If any of these methods fail then the state change operation
       is aborted, the summary state does not change, and the command
       is acknowledged as failed.
-    * Your subclass may override `BaseCsc.report_summary_state` if you wish to
-      perform actions based the current summary state.
+    * Your subclass may override `BaseCsc.report_summary_state`
+      if you wish to perform actions based the current summary state.
+      This is an excellent place to :ref:`start and stop a telemetry loop<lsst.ts.salobj-telemetry_loop_example>`.
     * Output the ``errorCode`` event when your CSC goes into the
       `State.FAULT` summary state.
 
@@ -165,3 +166,38 @@ simulation mode, if supported, or raise an exception if not.
 Note that this method is called during construction of the CSC.
 The default implementation of `implement_simulation_mode` is to reject
 all non-zero values for ``simulation_mode``.
+
+.. _lsst.ts.salobj-telemetry_loop_example:
+
+----------------------
+Telemetry Loop Example
+----------------------
+
+Here is an example of how to write a telemetry loop.
+
+1. In the constructor (``__init__``): initialize::
+
+    self.telemetry_loop_task = salobj.make_done_future()
+    self.telemetry_interval = 1  # seconds between telemetry output
+
+   Initializing ``telemetry_loop_task`` to an `asyncio.Future` that is already done makes it easier to test and cancel than initializing it to `None`.
+
+2. Define a ``telemetry_loop`` method, such as::
+
+    def telemetry_task(self):
+        while True:
+            # read and write telemetry
+            #...
+            await asyncio.sleep(self.telemetry_interval)
+
+3. Start and stop the telemetry loop in `BaseCsc.report_summary_state`::
+
+    def report_summary_state(self):
+        super().report_summary_state()
+        if self.summary_state in (salobj.State.DISABLED, salobj.State.ENSABLED):
+            if self.telemetry_loop_task.done():
+                # telemetry loop is not running; start it
+                self.telemetry_loop_task = asyncio.create_task(self.telemetry_loop())
+        else:
+            # cancel is a no-op if the task is done, so no need to test for that
+            self.telemetry_loop_task.cancel()

@@ -18,9 +18,10 @@ Using lsst.ts.salobj
 .. toctree::
     salobj_cscs
     sal_scripts
-    :maxdepth: 1
+    :maxdepth: 2
 
-**Important classes:**
+Important Classes
+-----------------
 
 * `BaseCsc` and `ConfigurableCsc` are subclasses of `Controller` that supports the standard CSC summary states and state transition commands.
   The latter also supports configuration via yaml files that are validated against a schema.
@@ -48,7 +49,8 @@ Examples:
 
 .. _lsst.ts.salobj-cleanup:
 
-**Cleanup:**
+Cleanup
+-------
 
 It is important to call `Controller.close` or `Domain.close` when done with it (and this automatically closes the resources used by `Remote`).
 `Controller` creates and manages its own `Domain` but if you don't have a `Controller` then you will have to create and manage one yourself.
@@ -69,7 +71,8 @@ Contributing
 ============
 
 ``lsst.ts.salobj`` is developed at https://github.com/lsst-ts/ts_salobj.
-You can find Jira issues for this module under the `ts_salobj <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20component%20%3D%20ts_salobj>`_ component.
+You can find Jira issues for this module using `labels=ts_salobj <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20labels%20%20%3D%20ts_salobj>`_.
+
 
 .. _lsst.ts.salobj-pyapi:
 
