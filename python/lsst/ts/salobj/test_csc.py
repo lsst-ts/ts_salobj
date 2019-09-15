@@ -73,6 +73,10 @@ class TestCsc(ConfigurableCsc):
     and ``scalars`` events). That makes it more predictable when this
     data will appear. Note that the ``heartbeat`` event is output at
     regular intervals, as for any CSC.
+
+    **Error Codes**
+
+    * 1: the fault command was executed
     """
     __test__ = False  # stop pytest from warning that this is not a test
 
@@ -124,8 +128,8 @@ class TestCsc(ConfigurableCsc):
 
         Change the summary state to State.FAULT
         """
-        self.log.warning("executing fault")
-        self.fault()
+        self.log.warning("executing the fault command")
+        self.fault(code=1, report="executing the fault command")
 
     async def do_wait(self, data):
         """Execute the wait command.

@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import logging
 import os
 import pathlib
@@ -42,6 +43,43 @@ class Harness:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.remote.close()
         await self.csc.close()
+
+
+class FailInReportFaultCsc(salobj.TestCsc):
+    """A Test CSC that fails in report_summary_state when reporting fault.
+
+    This CSC always starts up in the ENABLED state.
+
+    Used to test for infinite loops and other issues when something
+    goes wrong while going to the fault state.
+
+    Parameters
+    ----------
+    index : `int`
+        SAL index.
+    doraise : `bool`
+        Raise in report_summary_state?
+        If false then call fault instead.
+    report_first : `bool`
+        Call super().report_summary_state first in report_summary_state?
+        If false then call it last.
+    """
+    def __init__(self, index, doraise, report_first):
+        super().__init__(index=index, initial_state=salobj.State.ENABLED)
+        self.doraise = doraise
+        self.report_first = report_first
+
+    def report_summary_state(self):
+        if self.report_first:
+            super().report_summary_state()
+        if self.summary_state == salobj.State.FAULT:
+            if self.doraise:
+                raise RuntimeError("Intentionally raise an exception when going to the FAULT state")
+            else:
+                self.fault(code=10934, report="a report that will be ignored",
+                           traceback="a traceback that will be ignored")
+        if not self.report_first:
+            super().report_summary_state()
 
 
 class CommunicateTestCase(asynctest.TestCase):
@@ -191,6 +229,9 @@ class CommunicateTestCase(asynctest.TestCase):
                 await harness.remote.cmd_fault.start(fault_data, timeout=STD_TIMEOUT)
                 self.assertEqual(harness.csc.summary_state, salobj.State.FAULT)
 
+                data = await harness.remote.evt_errorCode.next(flush=False, timeout=STD_TIMEOUT)
+                self.assertEqual(data.errorCode, 1)
+
                 await harness.remote.cmd_standby.start(standby_data, timeout=STD_TIMEOUT)
                 self.assertEqual(harness.csc.summary_state, salobj.State.STANDBY)
 
@@ -212,8 +253,9 @@ class CommunicateTestCase(asynctest.TestCase):
             report = "Report for error code"
             traceback = "Traceback for error code"
 
-            # if code not specified then errorCode is not output
-            harness.csc.fault()
+            # if code not specified (deprecated) then errorCode is not output
+            with self.assertWarns(DeprecationWarning):
+                harness.csc.fault()
             state = await harness.remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
             self.assertEqual(state.summaryState, salobj.State.FAULT)
             with self.assertRaises(asyncio.TimeoutError):
@@ -223,8 +265,21 @@ class CommunicateTestCase(asynctest.TestCase):
             state = await harness.remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
             self.assertEqual(state.summaryState, salobj.State.STANDBY)
 
-            # if code not specified then errorCode is not output
-            harness.csc.fault(report=report, traceback=traceback)
+            # if code not specified (deprecated) then errorCode is not output
+            with self.assertWarns(DeprecationWarning):
+                harness.csc.fault(report=report, traceback=traceback)
+            state = await harness.remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
+            self.assertEqual(state.summaryState, salobj.State.FAULT)
+            with self.assertRaises(asyncio.TimeoutError):
+                await harness.remote.evt_errorCode.next(flush=False, timeout=NODATA_TIMEOUT)
+
+            await harness.remote.cmd_standby.start(timeout=STD_TIMEOUT)
+            state = await harness.remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
+            self.assertEqual(state.summaryState, salobj.State.STANDBY)
+
+            # if an invalid code is specified then errorCode is not output
+            # but the CSC stil goes into a FAULT state
+            harness.csc.fault(code="not a valid code")
             state = await harness.remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
             self.assertEqual(state.summaryState, salobj.State.FAULT)
             with self.assertRaises(asyncio.TimeoutError):
@@ -235,9 +290,8 @@ class CommunicateTestCase(asynctest.TestCase):
             self.assertEqual(state.summaryState, salobj.State.STANDBY)
 
             # if code is specified then errorReport is output;
-            # output with report and traceback specified,
-            #  before testing with the defaults of "",
-            # to make sure report and traceback are not cached
+            # first test with report and traceback specified,
+            # then without, to make sure those values are not cached
             harness.csc.fault(code=code, report=report, traceback=traceback)
             state = await harness.remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
             self.assertEqual(state.summaryState, salobj.State.FAULT)
@@ -260,6 +314,36 @@ class CommunicateTestCase(asynctest.TestCase):
 
             await harness.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await harness.remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
+
+    async def test_fault_problems(self):
+        """Test BaseCsc.fault when report_summary_state misbehaves."""
+        index = next(index_gen)
+        for doraise, report_first in itertools.product((False, True), (False, True)):
+            with self.subTest(doraise=doraise, report_first=report_first):
+                async with FailInReportFaultCsc(index=index, doraise=doraise,
+                                                report_first=report_first) as csc, \
+                        salobj.Remote(domain=csc.domain, name="Test", index=index) as remote:
+
+                    state = await remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
+                    self.assertEqual(state.summaryState, salobj.State.ENABLED)
+
+                    code = 51
+                    report = "Report for error code"
+                    traceback = "Traceback for error code"
+                    csc.fault(code=code, report=report, traceback=traceback)
+
+                    state = await remote.evt_summaryState.next(flush=False, timeout=STD_TIMEOUT)
+                    self.assertEqual(state.summaryState, salobj.State.FAULT)
+                    data = await remote.evt_errorCode.next(flush=False, timeout=STD_TIMEOUT)
+                    self.assertEqual(data.errorCode, code)
+                    self.assertEqual(data.errorReport, report)
+                    self.assertEqual(data.traceback, traceback)
+
+                    # make sure FAULT state and errorCode are only sent once
+                    with self.assertRaises(asyncio.TimeoutError):
+                        await remote.evt_summaryState.next(flush=False, timeout=NODATA_TIMEOUT)
+                    with self.assertRaises(asyncio.TimeoutError):
+                        await remote.evt_errorCode.next(flush=False, timeout=NODATA_TIMEOUT)
 
     async def test_standard_state_transitions(self):
         """Test standard CSC state transitions.

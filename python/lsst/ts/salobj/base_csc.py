@@ -24,6 +24,7 @@ __all__ = ["BaseCsc"]
 import argparse
 import asyncio
 import sys
+import warnings
 
 from . import base
 from .sal_enums import State
@@ -99,9 +100,10 @@ class BaseCsc(Controller):
         super().__init__(name=name, index=index, do_callbacks=True)
         self._initial_simulation_mode = int(initial_simulation_mode)
         self._summary_state = State(initial_state)
+        self._faulting = False
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+        # Interval between heartbeat events (sec)
         self.heartbeat_interval = HEARTBEAT_INTERVAL
-        """Interval between heartbeat events (sec)."""
 
     async def start(self):
         """Finish constructing the CSC.
@@ -447,22 +449,43 @@ class BaseCsc(Controller):
         pass
 
     def fault(self, code=None, report="", traceback=""):
-        """Enter the fault state.
+        """Enter the fault state and output the ``errorCode`` event.
 
         Parameters
         ----------
         code : `int` (optional)
-            Error code for the ``errorCode`` event; if None then ``errorCode``
-            is not output and you should output it yourself.
+            Error code for the ``errorCode`` event.
+            If `None` then ``errorCode`` is not output and you should
+            output it yourself. Specifying `None` is deprecated;
+            please always specify an integer error code.
         report : `str` (optional)
             Description of the error.
         traceback : `str` (optional)
             Description of the traceback, if any.
         """
-        if code is not None:
-            self.evt_errorCode.set_put(errorCode=code, errorReport=report,
-                                       traceback=traceback, force_output=True)
-        self.summary_state = State.FAULT
+        if self._faulting:
+            return
+
+        try:
+            self._faulting = True
+            if code is None:
+                warnings.warn("specifying code=None is deprecated",
+                              DeprecationWarning)
+            else:
+                try:
+                    self.evt_errorCode.set_put(errorCode=code, errorReport=report,
+                                               traceback=traceback, force_output=True)
+                except Exception:
+                    self.log.exception(f"Failed to output errorCode: code={code!r}; report={report!r}")
+            try:
+                self.summary_state = State.FAULT
+            except Exception:
+                self.log.exception("Summary_state setter failed while going to FAULT; "
+                                   "some code may not have run.")
+                self._summary_state = State.FAULT
+                self.evt_summaryState.set_put(summaryState=self._summary_state)
+        finally:
+            self._faulting = False
 
     def assert_enabled(self, action):
         """Assert that an action that requires ENABLED state can be run.
