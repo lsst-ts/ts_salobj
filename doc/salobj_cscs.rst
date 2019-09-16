@@ -138,15 +138,74 @@ To write write an externally commandable CSC using ``lsst.ts.salobj`` do the fol
 Running a CSC
 -------------
 
-To run your CSC call the `main` method or equivalent code.
-For an example see ``bin/run_test_csc.py``.
-If you wish to provide additional command line arguments for your CSC then you may
-override the `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` class methods,
-or, if you prefer, copy the contents of `main` into your ``bin`` script
-and adapt it as required.
+To run your CSC call `asyncio.run` on the `amain` class method.
+For example::
 
-In unit tests, wait for ``self.start_task`` to be done, or for the initial
-``summaryState`` event, before expecting the CSC to be responsive.
+    import asyncio
+
+    from lsst.ts.salobj import TestCsc
+
+    asyncio.run(TestCsc.amain(index=True))
+
+If you wish to provide additional command line arguments for your CSC then you may
+override the `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` class methods.
+
+To run a CSC in a unit test there are two basic approaches: treat CSC as an asynchronous context manager
+or construct the CSC and explicitly await its start_task.
+The same choices exist for constructing a `Remote`.
+
+Here is an example using an async context manager::
+
+    index_gen = salobj.index_generator()
+
+    class MyTestCase(asynctest.TestCase)
+        def setUp(self):
+            salobj.set_random_lsst_dds_domain()
+
+        async def test_something(self):
+            index = next(index_gen)
+            async with TestCsc(index=index,
+                initial_summary_state=salobj.State.ENABLED) as csc, \
+                    async with salobj.Remote(domain=csc.domain,
+                                             name="Test", index=index) as remote:
+                # The csc and remote are ready; add your test code here...
+
+Explicitly waiting is harder to do correctly, since you should call ``close`` on your CSC even if a test fails.
+One technique I recommend is to make a "harness" class that is itself an asynchronous context manager
+that manages the CSC and `Remote` and possibly other related instances.
+This is useful if you are writing multiple tests that need these objects,
+especially if the different tests require different configurations.
+(If all tests use the same configuration, then you can use build and await
+the objects in ``async def setUp`` and close them in ``async def tearDown``).
+Here is an example::
+
+    index_gen = salobj.index_generator()
+
+    class Harness:
+        def __init__(self, initial_state, config_dir=None):
+            index = next(index_gen)
+            self.csc = TestCsc(index=index, initial_state=initial_state)
+            self.remote = salobj.Remote(domain=self.csc.domain,
+                                        name="Test", index=index)
+
+        async def __aenter__(self):
+            await self.csc.start_task
+            await self.remote.start_task
+            return self
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            await self.remote.close()
+            await self.csc.close()
+
+
+    class MyTestCase(asynctest.TestCase)
+        def setUp(self):
+            salobj.set_random_lsst_dds_domain()
+
+        async def test_something(self):
+            async with Harness(initial_state=salobj.State.ENABLED) as harness:
+                # harness.csc and harness.remote are ready; add your test code here...
+
 
 .. _lsst.ts.salobj-simulation_mode:
 

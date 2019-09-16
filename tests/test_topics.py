@@ -445,8 +445,8 @@ class TopicsTestCase(asynctest.TestCase):
                 await harness.remote.tel_scalars.aget(timeout=NODATA_TIMEOUT)
 
             # start waiting for both events, then trigger multiple events
-            evt_task = asyncio.ensure_future(harness.remote.evt_scalars.aget(timeout=STD_TIMEOUT))
-            tel_task = asyncio.ensure_future(harness.remote.tel_scalars.aget(timeout=STD_TIMEOUT))
+            evt_task = asyncio.create_task(harness.remote.evt_scalars.aget(timeout=STD_TIMEOUT))
+            tel_task = asyncio.create_task(harness.remote.tel_scalars.aget(timeout=STD_TIMEOUT))
 
             num_commands = 3
             cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
@@ -642,7 +642,7 @@ class TopicsTestCase(asynctest.TestCase):
             harness.csc.cmd_wait.callback = None
 
             duration = 1
-            task1 = asyncio.ensure_future(harness.remote.cmd_wait.set_start(duration=duration))
+            task1 = asyncio.create_task(harness.remote.cmd_wait.set_start(duration=duration))
             next_data = await harness.csc.cmd_wait.next(timeout=STD_TIMEOUT)
             get_data = harness.csc.cmd_wait.get()
             self.assertIsNotNone(get_data)
@@ -654,7 +654,7 @@ class TopicsTestCase(asynctest.TestCase):
                 await harness.csc.cmd_wait.next(timeout=NODATA_TIMEOUT)
 
             duration = 2
-            task2 = asyncio.ensure_future(harness.remote.cmd_wait.set_start(duration=duration))
+            task2 = asyncio.create_task(harness.remote.cmd_wait.set_start(duration=duration))
             await asyncio.sleep(0.5)
             get_data = harness.csc.cmd_wait.get(flush=False)
             next_data = await harness.csc.cmd_wait.next(timeout=STD_TIMEOUT)
@@ -785,7 +785,7 @@ class TopicsTestCase(asynctest.TestCase):
             t0 = time.time()
             tasks = []
             for duration in durations:
-                task = asyncio.ensure_future(harness.remote.cmd_wait.set_start(
+                task = asyncio.create_task(harness.remote.cmd_wait.set_start(
                     duration=duration, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=STD_TIMEOUT+duration))
                 # make sure the command is sent before the command data
                 # is modified by the next loop iteration
@@ -813,7 +813,7 @@ class TopicsTestCase(asynctest.TestCase):
 
             tasks = []
             for duration in durations:
-                task = asyncio.ensure_future(harness.remote.cmd_wait.set_start(
+                task = asyncio.create_task(harness.remote.cmd_wait.set_start(
                     duration=duration, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=STD_TIMEOUT+duration))
                 tasks.append(task)
                 # make sure the command is sent before the command data

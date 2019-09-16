@@ -28,6 +28,7 @@ import re
 import sys
 import time
 import types
+import warnings
 
 import yaml
 
@@ -123,8 +124,10 @@ class BaseScript(salobj.Controller, abc.ABC):
         )
 
     @classmethod
-    def main(cls, descr=None):
-        """Start the script from the command line.
+    def make_from_cmd_line(cls, descr=None):
+        """Make a script from command-line arguments.
+
+        Return None if ``--schema`` specified.
 
         Parameters
         ----------
@@ -155,17 +158,69 @@ class BaseScript(salobj.Controller, abc.ABC):
         kwargs = dict(index=args.index)
         if descr is not None:
             kwargs["descr"] = descr
-        script = cls(**kwargs)
         if args.schema:
             schema = cls.get_schema()
             if schema is not None:
                 print(yaml.safe_dump(schema))
             return
-        asyncio.get_event_loop().run_until_complete(script.done_task)
+        return cls(**kwargs)
+
+    @classmethod
+    async def amain(cls, descr=None):
+        """Run the script from the command line.
+
+        Parameters
+        ----------
+        descr : `str` (optional)
+            Short description of what the script does, for operator display.
+            Leave at None if the script already has a description, which is
+            the most common case. Primarily intended for unit tests,
+            e.g. running ``TestScript``.
+
+
+        Notes
+        -----
+        The final return code will be:
+
+        * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
+          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`
+        * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
+        * 2 otherwise (which should never happen)
+        """
+        script = cls.make_from_cmd_line(descr=descr)
+        if script is None:
+            # printed schema and exited
+            return
+        await script.done_task
         return_code = {ScriptState.DONE: 0,
                        ScriptState.STOPPED: 0,
                        ScriptState.FAILED: 1}.get(script.state.state, 2)
         sys.exit(return_code)
+
+    @classmethod
+    def main(cls, descr=None):
+        """Start the script from the command line.
+
+        Parameters
+        ----------
+        descr : `str` (optional)
+            Short description of what the script does, for operator display.
+            Leave at None if the script already has a description, which is
+            the most common case. Primarily intended for unit tests,
+            e.g. running ``TestScript``.
+
+
+        Notes
+        -----
+        The final return code will be:
+
+        * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
+          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`
+        * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
+        * 2 otherwise (which should never happen)
+        """
+        warnings.warn("Use amain instead, e.g. asyncio.run(cls.amain(descr=descr))", DeprecationWarning)
+        asyncio.get_event_loop().run_until_complete(cls.amain(descr=descr))
 
     @property
     def checkpoints(self):

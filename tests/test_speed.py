@@ -76,7 +76,7 @@ class SpeedTestCase(asynctest.TestCase):
                     await asyncio.sleep(0)
 
             t0 = time.time()
-            write_task = asyncio.ensure_future(write_loop())
+            write_task = asyncio.create_task(write_loop())
             read_tasks = [reader.done_reading for reader in readers]
             all_tasks = [write_task] + read_tasks
             try:

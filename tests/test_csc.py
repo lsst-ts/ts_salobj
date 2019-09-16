@@ -23,7 +23,8 @@ NODATA_TIMEOUT = 0.1  # timeout for when we expect no new data
 np.random.seed(47)
 
 index_gen = salobj.index_generator()
-TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent.joinpath("data", "config")
+TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent.joinpath("data")
+TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
 class Harness:
@@ -94,14 +95,41 @@ class CommunicateTestCase(asynctest.TestCase):
             await harness.remote.evt_heartbeat.next(flush=True, timeout=0.2)
             await harness.remote.evt_heartbeat.next(flush=True, timeout=0.2)
 
-    async def test_main(self):
+    async def test_amain(self):
+        """Test running from the command line using class method ``amain``.
+        """
         exe_name = "run_test_csc.py"
         exe_path = shutil.which(exe_name)
         if exe_path is None:
-            self.fail(f"Could not find bin script {exe_name}; did you setup and scons this package?")
+            self.fail(f"Could not find bin script {exe_name}; did you setup or install this package?")
 
         index = next(index_gen)
         process = await asyncio.create_subprocess_exec(exe_name, str(index))
+        async with salobj.Domain() as domain:
+            try:
+                remote = salobj.Remote(domain=domain, name="Test", index=index)
+                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=60)
+                self.assertEqual(summaryState_data.summaryState, salobj.State.STANDBY)
+
+                ackcmd = await remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
+                self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
+                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
+                self.assertEqual(summaryState_data.summaryState, salobj.State.OFFLINE)
+
+                await asyncio.wait_for(process.wait(), 5)
+
+            except Exception:
+                if process.returncode is None:
+                    process.terminate()
+                raise
+
+    async def test_deprecated_main(self):
+        """Test running from cmd line using deprecated class method ``main``.
+        """
+        exe_path = TEST_DATA_DIR / "run_test_using_deprecated_main.py"
+
+        index = next(index_gen)
+        process = await asyncio.create_subprocess_exec(str(exe_path), str(index))
         async with salobj.Domain() as domain:
             try:
                 remote = salobj.Remote(domain=domain, name="Test", index=index)
@@ -531,6 +559,11 @@ class WrongConfigPkgCsc(salobj.TestCsc):
 
 
 class TestCscConstructorTestCase(asynctest.TestCase):
+    """Test the TestCsc constructor.
+
+    Note: all of these tests must run async because the constructor
+    requires an event loop.
+    """
     def setUp(self):
         salobj.set_random_lsst_dds_domain()
 
@@ -543,21 +576,21 @@ class TestCscConstructorTestCase(asynctest.TestCase):
                 async with salobj.TestCsc(index=index, initial_state=int_state) as csc:
                     self.assertEqual(csc.summary_state, state)
 
-    def test_invalid_config_dir(self):
+    async def test_invalid_config_dir(self):
         """Test that invalid integer initial_state is rejected."""
         with self.assertRaises(ValueError):
             salobj.TestCsc(index=next(index_gen), initial_state=salobj.State.STANDBY,
                            config_dir=TEST_CONFIG_DIR / "not_a_directory")
 
-    def test_invalid_config_pkg(self):
+    async def test_invalid_config_pkg(self):
         with self.assertRaises(RuntimeError):
             InvalidPkgNameCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
 
-    def test_wrong_config_pkg(self):
+    async def test_wrong_config_pkg(self):
         with self.assertRaises(RuntimeError):
             WrongConfigPkgCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
 
-    def test_invalid_initial_state(self):
+    async def test_invalid_initial_state(self):
         """Test that invalid integer initial_state is rejected."""
         for invalid_state in (min(salobj.State) - 1,
                               max(salobj.State) + 1):
@@ -792,7 +825,7 @@ class ControllerCommandLoggingTestCase(asynctest.TestCase):
             self.assertEqual(msg.level, logging.ERROR)
 
 
-class BaseCscMainTestCase(asynctest.TestCase):
+class BaseCscMakeFromCmdLineTestCase(asynctest.TestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_domain()
         self.original_argv = sys.argv[:]
@@ -806,7 +839,7 @@ class BaseCscMainTestCase(asynctest.TestCase):
                 sys.argv = [sys.argv[0]]
                 arg1 = "astring"
                 arg2 = 2.75
-                async with NoIndexCsc.main(index=index, arg1=arg1, arg2=arg2, run_loop=False) as csc:
+                async with NoIndexCsc.make_from_cmd_line(index=index, arg1=arg1, arg2=arg2) as csc:
                     self.assertEqual(csc.arg1, arg1)
                     self.assertEqual(csc.arg2, arg2)
                     await csc.do_exitControl(data=None)
@@ -815,7 +848,7 @@ class BaseCscMainTestCase(asynctest.TestCase):
     async def test_specified_index(self):
         sys.argv = [sys.argv[0]]
         index = next(index_gen)
-        async with salobj.TestCsc.main(index=index, run_loop=False) as csc:
+        async with salobj.TestCsc.make_from_cmd_line(index=index) as csc:
             self.assertEqual(csc.salinfo.index, index)
             await csc.do_exitControl(data=None)
             await asyncio.wait_for(csc.done_task, timeout=5)
@@ -823,7 +856,7 @@ class BaseCscMainTestCase(asynctest.TestCase):
     async def test_index_from_argument_and_default_config_dir(self):
         index = next(index_gen)
         sys.argv = [sys.argv[0], str(index)]
-        async with salobj.TestCsc.main(index=True, run_loop=False) as csc:
+        async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
             self.assertEqual(csc.salinfo.index, index)
 
             desired_config_pkg_name = "ts_config_ocs"
@@ -838,7 +871,7 @@ class BaseCscMainTestCase(asynctest.TestCase):
     async def test_config_from_argument(self):
         index = next(index_gen)
         sys.argv = [sys.argv[0], str(index), "--config", str(TEST_CONFIG_DIR)]
-        async with salobj.TestCsc.main(index=True, run_loop=False) as csc:
+        async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
             self.assertEqual(csc.salinfo.index, index)
             self.assertEqual(csc.config_dir, TEST_CONFIG_DIR)
             await csc.do_exitControl(data=None)

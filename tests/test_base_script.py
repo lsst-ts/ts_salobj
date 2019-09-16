@@ -263,7 +263,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             self.assertEqual(script.checkpoints.stop, checkpoint_that_does_not_exist)
 
             run_data = script.cmd_run.DataType()
-            run_task = asyncio.ensure_future(script.do_run(run_data))
+            run_task = asyncio.create_task(script.do_run(run_data))
             niter = 0
             while script.state.state != ScriptState.PAUSED:
                 niter += 1
@@ -318,7 +318,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             self.assertEqual(script.checkpoints.stop, "")
 
             run_data = script.cmd_run.DataType()
-            asyncio.ensure_future(script.do_run(run_data))
+            asyncio.create_task(script.do_run(run_data))
             while script.state.lastCheckpoint != "start":
                 await asyncio.sleep(0)
             self.assertEqual(script.state.state, ScriptState.PAUSED)
@@ -343,7 +343,7 @@ class BaseScriptTestCase(asynctest.TestCase):
 
             checkpoint_named_start = "start"
             run_data = script.cmd_run.DataType()
-            asyncio.ensure_future(script.do_run(run_data))
+            asyncio.create_task(script.do_run(run_data))
             while script.state.lastCheckpoint != checkpoint_named_start:
                 await asyncio.sleep(0)
             self.assertEqual(script.state.state, ScriptState.RUNNING)
@@ -495,6 +495,43 @@ class BaseScriptTestCase(asynctest.TestCase):
             if process.returncode is None:
                 process.terminate()
                 warnings.warn("Killed a process that was not properly terminated")
+
+    async def test_script_deprecated_main_process(self):
+        """Test running a script using deprecated class method ``main``
+        """
+        script_path = os.path.join(self.datadir, "script_with_deprecated_main")
+
+        async with salobj.Domain() as domain:
+            index = next(index_gen)
+            remote = salobj.Remote(domain=domain, name="Script", index=index)
+            await asyncio.wait_for(remote.start_task, timeout=START_TIMEOUT)
+
+            process = await asyncio.create_subprocess_exec(script_path, str(index))
+            try:
+                self.assertIsNone(process.returncode)
+
+                state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                self.assertEqual(state.state, ScriptState.UNCONFIGURED)
+
+                logLevel_data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
+                self.assertEqual(logLevel_data.level, logging.INFO)
+
+                wait_time = 0.1
+                configure_data = remote.cmd_configure.DataType()
+                configure_data.config = f"wait_time: {wait_time}"
+                await remote.cmd_configure.start(configure_data, timeout=STD_TIMEOUT)
+
+                metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
+                self.assertEqual(metadata.duration, wait_time)
+
+                await remote.cmd_run.start(timeout=STD_TIMEOUT)
+
+                await asyncio.wait_for(process.wait(), timeout=END_TIMEOUT)
+                self.assertEqual(process.returncode, 0)
+            finally:
+                if process.returncode is None:
+                    process.terminate()
+                    warnings.warn("Killed a process that was not properly terminated")
 
 
 if __name__ == "__main__":

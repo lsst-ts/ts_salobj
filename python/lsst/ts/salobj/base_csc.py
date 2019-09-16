@@ -127,8 +127,8 @@ class BaseCsc(Controller):
         self._heartbeat_task.cancel()
 
     @classmethod
-    def main(cls, index, run_loop=True, **kwargs):
-        """Start the CSC from the command line.
+    def make_from_cmd_line(cls, index, **kwargs):
+        """Construct a CSC from command line arguments.
 
         Parameters
         ----------
@@ -137,9 +137,6 @@ class BaseCsc(Controller):
             command line argument, or specify a non-zero `int` to use
             that index.
             If the CSC is not indexed: specify `None` or 0.
-        run_loop : `bool` (optional)
-            Start an event loop? Set True for normal CSC operation.
-            False is convenient for some kinds of testing.
         **kwargs : `dict` (optional)
             Additional keyword arguments for your CSC's constructor.
             If any arguments match those from the command line
@@ -170,14 +167,59 @@ class BaseCsc(Controller):
             kwargs["index"] = int(index)
         cls.add_kwargs_from_args(args=args, kwargs=kwargs)
 
-        csc = cls(**kwargs)
-        if run_loop:
-            asyncio.get_event_loop().run_until_complete(csc.done_task)
-        return csc
+        return cls(**kwargs)
+
+    @classmethod
+    async def amain(cls, index, **kwargs):
+        """Make a CSC from command-line arguments and run it.
+
+        Parameters
+        ----------
+        index : `int`, `True`, `False` or `None`
+            If the CSC is indexed: specify `True` make index a required
+            command line argument, or specify a non-zero `int` to use
+            that index.
+            If the CSC is not indexed: specify `None` or 0.
+        **kwargs : `dict` (optional)
+            Additional keyword arguments for your CSC's constructor.
+            If any arguments match those from the command line
+            the command line values will be used.
+        """
+        csc = cls.make_from_cmd_line(index=index, **kwargs)
+        await csc.done_task
+
+    @classmethod
+    def main(cls, index, **kwargs):
+        """Start the CSC from the command line.
+
+        Parameters
+        ----------
+        index : `int`, `True`, `False` or `None`
+            If the CSC is indexed: specify `True` make index a required
+            command line argument, or specify a non-zero `int` to use
+            that index.
+            If the CSC is not indexed: specify `None` or 0.
+        **kwargs : `dict` (optional)
+            Additional keyword arguments for your CSC's constructor.
+            If any arguments match those from the command line
+            the command line values will be used.
+
+        Returns
+        -------
+        csc : ``cls``
+            The CSC.
+
+        Notes
+        -----
+        To add additional command-line arguments, override `add_arguments`
+        and `add_kwargs_from_args`.
+        """
+        warnings.warn("Use amain instead, e.g. asyncio.run(cls.amain(index=...))", DeprecationWarning)
+        asyncio.run(cls.amain(index=index, **kwargs))
 
     @classmethod
     def add_arguments(cls, parser):
-        """Add arguments to the argument parser created by `main`.
+        """Add arguments to the parser created by `make_from_cmd_line`.
 
         Parameters
         ----------

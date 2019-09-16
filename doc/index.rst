@@ -26,7 +26,7 @@ Important Classes
 * `BaseCsc` and `ConfigurableCsc` are subclasses of `Controller` that supports the standard CSC summary states and state transition commands.
   The latter also supports configuration via yaml files that are validated against a schema.
   See :ref:`Writing a CSC<lsst.ts.salobj-writing_a_csc>` for more information.
-  It is important to call `BaseCsc.close` when done with the CSC; `BaseCsc.main` does this automatically, but in other cases see :ref:`Cleanup<lsst.ts.salobj-cleanup>` for more information.
+  It is important to call `BaseCsc.close` when done with the CSC; `BaseCsc.amain` does this automatically, but in other cases see :ref:`Cleanup<lsst.ts.salobj-cleanup>` for more information.
 * `Controller` provides the capability to output SAL telemetry and event topics and receive SAL commands.
   Every Python SAL component that is not a Commandable SAL Component (CSC) should be a subclass of `Controller`.
   See :ref:`Writing a Controller<writing_a_controller>` for more information.

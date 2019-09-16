@@ -229,10 +229,12 @@ class Domain:
         """Close all registered `SalInfo` and the dds domain participant"""
         if self.participant is None:
             return
-        while self._salinfo_set:
-            salinfo = self._salinfo_set.pop()
-            await salinfo.close()
-        self.close_dds()
+        try:
+            while self._salinfo_set:
+                salinfo = self._salinfo_set.pop()
+                await salinfo.close()
+        finally:
+            self.close_dds()
         # give read loops a bit more time
         await asyncio.sleep(0.01)
         if self.num_read_loops != 0 or self.num_read_threads != 0:
