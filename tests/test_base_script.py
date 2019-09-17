@@ -40,6 +40,10 @@ index_gen = salobj.index_generator()
 
 
 class NonConfigurableScript(salobj.BaseScript):
+    """A script that takes no configuration.
+
+    In other words get_schema returns None.
+    """
     def __init__(self, index):
         super().__init__(index=index, descr="Non-configurable script")
         self.config = None
@@ -61,18 +65,31 @@ class NonConfigurableScript(salobj.BaseScript):
 
 
 class BaseScriptTestCase(asynctest.TestCase):
+    """Test `BaseScript` using simple subclasses `TestScript` and
+    `NonConfigurableScript`.
+    """
     def setUp(self):
         salobj.set_random_lsst_dds_domain()
         self.datadir = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
         self.index = next(index_gen)
 
-    async def configure_script(self, script, **kwargs):
-        """Configure a script by calling do_configure
+    async def configure_and_check(self, script, log_level=0,
+                                  pause_checkpoint="", stop_checkpoint="", **kwargs):
+        """Configure a script by calling ``do_configure`` and check the result.
 
         Parameters
         ----------
         script : `ts.salobj.TestScript`
             A test script
+        log_level : `int` (optional)
+            Log level as a `logging` level,
+            or 0 to leave the script's log level unchanged.
+        pause_checkpoint : `str` (optional)
+            Checkpoint(s) at which to pause, as a regular expression.
+            "" to not pause at any checkpoint; "*" to pause at all checkpoints.
+        stop_checkpoint : `str` (optional)
+            Checkpoint(s) at which to stop, as a regular expression.
+            "" to not stop at any checkpoint; "*" to stop at all checkpoints.
         kwargs : `dict`
             A dict with one or more of the following keys:
 
@@ -80,20 +97,18 @@ class BaseScriptTestCase(asynctest.TestCase):
             * ``fail_run`` (bool): fail before waiting?
             * ``fail_cleanup`` (bool): fail in cleanup?
 
+            If no values are specified then ``script.do_configure``
+            is called with an empty string.
+
         Raises
         ------
+        AssertionError
+            If the script's ``config``, log level, or checkpoints
+            do not match what was commanded.
+
         salobj.ExpectedError
             If ``kwargs`` includes other keywords than those
-            documented above (``script.do_configure`` will raise
-            that error). This can be useful for unit testing,
-            but to try non-dict values you'll have to encode
-            the yaml and call ``script.do_configure`` yourself.
-
-        Notes
-        -----
-        If no keyword arguments are provided then ``script.do_configure``
-        will be called with no config data (an empty string).
-        This can be useful for unit testing.
+            documented above.
         """
         if kwargs:
             # strip to remove final trailing newline
@@ -102,10 +117,17 @@ class BaseScriptTestCase(asynctest.TestCase):
             config = ""
         configure_data = script.cmd_configure.DataType()
         configure_data.config = config
+        configure_data.logLevel = log_level
+        configure_data.pauseCheckpoint = pause_checkpoint
+        configure_data.stopCheckpoint = stop_checkpoint
         await script.do_configure(configure_data)
         self.assertEqual(script.config.wait_time, kwargs.get("wait_time", 0))
         self.assertEqual(script.config.fail_run, kwargs.get("fail_run", False))
         self.assertEqual(script.config.fail_cleanup, kwargs.get("fail_cleanup", False))
+        if log_level != 0:
+            self.assertEqual(script.log.getEffectiveLevel(), log_level)
+        self.assertEqual(script.evt_checkpoints.data.pause, pause_checkpoint)
+        self.assertEqual(script.evt_checkpoints.data.stop, stop_checkpoint)
         self.assertEqual(script.state.state, ScriptState.CONFIGURED)
 
     def test_get_schema(self):
@@ -248,11 +270,20 @@ class BaseScriptTestCase(asynctest.TestCase):
                 await script.do_configure(configure_data)
             self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
 
-            # now real configuration
+            # now test valid configuration; specify nonexistent checkpoints
+            # to test that the configure command handles checkpoints at all
             wait_time = 0.5
-            await self.configure_script(script, wait_time=wait_time)
+            # specify a log level that is not the default (which is INFO)
+            # and is only slightly more verbose than INFO
+            log_level = logging.INFO - 1
+            prelim_pause_checkpoint = "preliminary nonexistent pause checkpoint"
+            prelim_stop_checkpoint = "preliminary nonexistent stop checkpoint"
+            await self.configure_and_check(script, wait_time=wait_time,
+                                           log_level=log_level,
+                                           pause_checkpoint=prelim_pause_checkpoint,
+                                           stop_checkpoint=prelim_stop_checkpoint)
 
-            # set a pause checkpoint
+            # set a pause checkpoint that exists
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
             checkpoint_named_start = "start"
             checkpoint_that_does_not_exist = "nonexistent checkpoint"
@@ -283,7 +314,7 @@ class BaseScriptTestCase(asynctest.TestCase):
     async def test_stop_at_checkpoint(self):
         async with salobj.TestScript(index=self.index) as script:
             wait_time = 0.1
-            await self.configure_script(script, wait_time=wait_time)
+            await self.configure_and_check(script, wait_time=wait_time)
 
             # set a stop checkpoint
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
@@ -307,7 +338,7 @@ class BaseScriptTestCase(asynctest.TestCase):
     async def test_stop_while_paused(self):
         async with salobj.TestScript(index=self.index) as script:
             wait_time = 5
-            await self.configure_script(script, wait_time=wait_time)
+            await self.configure_and_check(script, wait_time=wait_time)
 
             # set a stop checkpoint
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
@@ -339,7 +370,7 @@ class BaseScriptTestCase(asynctest.TestCase):
         async with salobj.TestScript(index=self.index) as script:
             wait_time = 5
             pause_time = 0.5
-            await self.configure_script(script, wait_time=wait_time)
+            await self.configure_and_check(script, wait_time=wait_time)
 
             checkpoint_named_start = "start"
             run_data = script.cmd_run.DataType()
@@ -371,9 +402,9 @@ class BaseScriptTestCase(asynctest.TestCase):
         wait_time = 0.1
         async with salobj.TestScript(index=self.index) as script:
             if fail_run:
-                await self.configure_script(script, fail_run=True)
+                await self.configure_and_check(script, fail_run=True)
             else:
-                await self.configure_script(script, fail_cleanup=True)
+                await self.configure_and_check(script, fail_cleanup=True)
 
             run_data = script.cmd_run.DataType()
             await asyncio.wait_for(script.do_run(run_data), 2)

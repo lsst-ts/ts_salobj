@@ -449,6 +449,8 @@ class BaseScript(salobj.Controller, abc.ABC):
         * Parse the ``config`` field as yaml-encoded `dict` and validate it
           (including setting default values).
         * Call `configure`.
+        * Set the pause and stop checkpoints.
+        * Set the log level if ``data.logLevel != 0``.
         * Call `set_metadata`.
         * Output the metadata event.
         * Change the script state to
@@ -473,6 +475,11 @@ class BaseScript(salobj.Controller, abc.ABC):
             errmsg = f"config({data.config}) failed"
             self.log.exception(errmsg)
             raise salobj.ExpectedError(f"{errmsg}: {e}") from e
+
+        self._set_checkpoints(pause=data.pauseCheckpoint, stop=data.stopCheckpoint)
+        if data.logLevel != 0:
+            self.log.setLevel(data.logLevel)
+            self.put_log_level()
 
         metadata = self.evt_metadata.DataType()
         # initialize to vaguely reasonable values
@@ -536,6 +543,9 @@ class BaseScript(salobj.Controller, abc.ABC):
     def do_setCheckpoints(self, data):
         """Set or clear the checkpoints at which to pause and stop.
 
+        This command is deprecated. Please set the checkpoints
+        using the `configure` command.
+
         Parameters
         ----------
         data : ``cmd_setCheckpoints.DataType``
@@ -554,19 +564,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         """
         self.assert_state("setCheckpoints", [ScriptState.UNCONFIGURED, ScriptState.CONFIGURED,
                           ScriptState.RUNNING, ScriptState.PAUSED])
-        try:
-            re.compile(data.stop)
-        except Exception as e:
-            raise salobj.ExpectedError(f"stop={data.stop!r} not a valid regex: {e}")
-        try:
-            re.compile(data.pause)
-        except Exception as e:
-            raise salobj.ExpectedError(f"pause={data.pause!r} not a valid regex: {e}")
-        self.evt_checkpoints.set_put(
-            pause=data.pause,
-            stop=data.stop,
-            force_output=True,
-        )
+        self._set_checkpoints(pause=data.pause, stop=data.stop)
 
     async def do_stop(self, data):
         """Stop the script.
@@ -588,6 +586,37 @@ class BaseScript(salobj.Controller, abc.ABC):
         else:
             self.set_state(state=ScriptState.STOPPING)
             await self._exit()
+
+    def _set_checkpoints(self, *, pause, stop):
+        """Set the pause and stop checkpoint fields and output the event.
+
+        Parameters
+        ----------
+        pause : `string`
+            Checkpoint(s) at which to pause, as a regular expression.
+            "" to not pause at any checkpoint; "*" to pause at all checkpoints.
+        stop : `string`
+            Checkpoint(s) at which to stop, as a regular expression.
+            "" to not stop at any checkpoint; "*" to stop at all checkpoints.
+
+        Raises
+        ------
+        lsst.ts.salobj.ExpectedError
+            If pause or stop are not valid regular expressions.
+        """
+        try:
+            re.compile(pause)
+        except Exception as e:
+            raise salobj.ExpectedError(f"pause={pause!r} not a valid regex: {e}")
+        try:
+            re.compile(stop)
+        except Exception as e:
+            raise salobj.ExpectedError(f"stop={stop!r} not a valid regex: {e}")
+        self.evt_checkpoints.set_put(
+            pause=pause,
+            stop=stop,
+            force_output=True,
+        )
 
     async def _heartbeat_loop(self):
         """Output heartbeat at regular intervals.
