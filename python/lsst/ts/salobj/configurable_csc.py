@@ -212,7 +212,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         await super().start()
 
     def _get_settings_version(self):
-        """Get data for evt_settingsVersions.recommendedSettingsVersion.
+        """Get data for evt_settingVersions.recommendedSettingsVersion.
 
         If config_dir is a git repository (as it should be)
         then return detailed git information. Otherwise return "".
