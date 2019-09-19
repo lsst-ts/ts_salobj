@@ -62,13 +62,15 @@ For example the ``SlewTelescopeIcrs`` script has the following files in ``ts_sta
 Python Script File
 ==================
 
-The script file should just import the script and call ``main``::
+The script file should just import the script and run ``amain``::
 
     #!/usr/bin/env python
     #...standard LSST boilerplate
+    import asyncio
+
     from lsst.ts.standardscripts.auxtel import SlewTelescopeIcrs
 
-    SlewTelescopeIcrs.main()
+    asyncio.run(SlewTelescopeIcrs.amain())
 
 Make your script executable using ``chmod +x <path>``.
 
@@ -112,7 +114,7 @@ If ``run`` needs to run a slow computation, either call ``await asyncio.sleep(0)
 or if you wish to do other things while you wait::
 
     loop = asyncio.get_running_loop()
-    thread_task = asyncio.ensure_future(loop.run_in_executor(None, slow_computation))
+    thread_task = asyncio.make_task(loop.run_in_executor(None, slow_computation))
 
     # do other work here...
     # then eventually you must wait for the background task

@@ -22,7 +22,6 @@
 __all__ = ["MAX_SEQ_NUM", "WriteTopic"]
 
 import struct
-import time
 
 import numpy as np
 
@@ -62,10 +61,18 @@ class WriteTopic(BaseTopic):
         Ignored if ``min_seq_num`` is None.
     initial_seq_num : `int` (optional)
         Initial sequence number; if `None` use min_seq_num.
+
+    Notes
+    -----
+    **Attributes**
+
+    * isopen: is this read topic open?  A `bool`. `True` until `close`
+      is called.
     """
     def __init__(self, *, salinfo, name, sal_prefix, min_seq_num=1, max_seq_num=MAX_SEQ_NUM,
                  initial_seq_num=None):
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
+        self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
         if min_seq_num is None:
@@ -73,10 +80,13 @@ class WriteTopic(BaseTopic):
         else:
             self._seq_num_generator = base.index_generator(imin=min_seq_num, imax=max_seq_num,
                                                            i0=initial_seq_num)
-        self._writer = salinfo.publisher.create_datawriter(self._topic, salinfo.domain.writer_qos)
+        qos = salinfo.domain.volatile_writer_qos if self.volatile else salinfo.domain.writer_qos
+        self._writer = salinfo.publisher.create_datawriter(self._topic, qos)
         self._has_data = False
         self._data = self.DataType()
         self._has_priority = sal_prefix == "logevent_"
+
+        salinfo.add_writer(self)
 
     @property
     def data(self):
@@ -111,6 +121,17 @@ class WriteTopic(BaseTopic):
         """Has `data` ever been set?"""
         return self._has_data
 
+    async def close(self):
+        """Shut down and release resources.
+
+        Intended to be called by SalInfo.close(),
+        since that tracks all topics.
+        """
+        if not self.isopen:
+            return
+        self.isopen = False
+        self._writer.close()
+
     def put(self, data=None, priority=0):
         """Output this topic.
 
@@ -132,8 +153,7 @@ class WriteTopic(BaseTopic):
 
         if self._has_priority:
             self.data.priority = priority
-        curr_utc = time.time()
-        self.data.private_sndStamp = base.tai_from_utc(curr_utc)
+        self.data.private_sndStamp = base.current_tai()
         self.data.private_revCode = self.rev_code
         self.data.private_host = self.salinfo.domain.host
         self.data.private_origin = self.salinfo.domain.origin

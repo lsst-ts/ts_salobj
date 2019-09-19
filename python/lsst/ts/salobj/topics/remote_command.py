@@ -163,8 +163,7 @@ class _CommandInfo:
         if timeout is None:  # for backwards compatibility
             timeout = DEFAULT_TIMEOUT
         try:
-            self._wait_task = asyncio.ensure_future(asyncio.wait_for(self._basic_next_ack(),
-                                                                     timeout=timeout))
+            self._wait_task = asyncio.ensure_future(asyncio.wait_for(self._basic_next_ack(), timeout=timeout))
             ackcmd = await self._wait_task
             # print(f"next_ackcmd got {ackcmd.ack} from _basic_next_ack")
             if ackcmd.ack in self.failed_ack_codes:

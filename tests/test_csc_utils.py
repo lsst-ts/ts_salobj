@@ -1,6 +1,7 @@
-import asyncio
 import pathlib
 import unittest
+
+import asynctest
 
 from lsst.ts import salobj
 
@@ -46,141 +47,87 @@ def print_test_cases():
         async def doit():
             await self.check_set_summary_state(initial_state=salobj.State.{initial_state.name},
                                                final_state=salobj.State.{final_state.name})
-
-        asyncio.get_event_loop().run_until_complete(doit())
 """)
 
 
-class SetSummaryStateTestCSe(unittest.TestCase):
+class SetSummaryStateTestCSe(asynctest.TestCase):
 
-    def test_standby_to_offline(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
-                                               final_state=salobj.State.OFFLINE)
+    async def test_standby_to_offline(self):
+        await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
+                                           final_state=salobj.State.OFFLINE)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+    async def test_standby_to_standby(self):
+        await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
+                                           final_state=salobj.State.STANDBY)
 
-    def test_standby_to_standby(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
-                                               final_state=salobj.State.STANDBY)
+    async def test_standby_to_disabled(self):
+        await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
+                                           final_state=salobj.State.DISABLED)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+    async def test_standby_to_enabled(self):
+        await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
+                                           final_state=salobj.State.ENABLED)
 
-    def test_standby_to_disabled(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
-                                               final_state=salobj.State.DISABLED)
+    async def test_disabled_to_offline(self):
+        await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
+                                           final_state=salobj.State.OFFLINE)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+    async def test_disabled_to_standby(self):
+        await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
+                                           final_state=salobj.State.STANDBY)
 
-    def test_standby_to_enabled(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
-                                               final_state=salobj.State.ENABLED)
+    async def test_disabled_to_disabled(self):
+        await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
+                                           final_state=salobj.State.DISABLED)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+    async def test_disabled_to_enabled(self):
+        await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
+                                           final_state=salobj.State.ENABLED)
 
-    def test_disabled_to_offline(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
-                                               final_state=salobj.State.OFFLINE)
+    async def test_enabled_to_offline(self):
+        await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
+                                           final_state=salobj.State.OFFLINE)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+    async def test_enabled_to_standby(self):
+        await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
+                                           final_state=salobj.State.STANDBY)
 
-    def test_disabled_to_standby(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
-                                               final_state=salobj.State.STANDBY)
+    async def test_enabled_to_disabled(self):
+        await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
+                                           final_state=salobj.State.DISABLED)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+    async def test_enabled_to_enabled(self):
+        await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
+                                           final_state=salobj.State.ENABLED)
 
-    def test_disabled_to_disabled(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
-                                               final_state=salobj.State.DISABLED)
+    async def test_fault_to_offline(self):
+        await self.check_set_summary_state(initial_state=salobj.State.FAULT,
+                                           final_state=salobj.State.OFFLINE)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+    async def test_fault_to_standby(self):
+        await self.check_set_summary_state(initial_state=salobj.State.FAULT,
+                                           final_state=salobj.State.STANDBY)
 
-    def test_disabled_to_enabled(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
-                                               final_state=salobj.State.ENABLED)
+    async def test_fault_to_disabled(self):
+        await self.check_set_summary_state(initial_state=salobj.State.FAULT,
+                                           final_state=salobj.State.DISABLED)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+    async def test_fault_to_enabled(self):
+        await self.check_set_summary_state(initial_state=salobj.State.FAULT,
+                                           final_state=salobj.State.ENABLED)
 
-    def test_enabled_to_offline(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
-                                               final_state=salobj.State.OFFLINE)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_enabled_to_standby(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
-                                               final_state=salobj.State.STANDBY)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_enabled_to_disabled(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
-                                               final_state=salobj.State.DISABLED)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_enabled_to_enabled(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
-                                               final_state=salobj.State.ENABLED)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_fault_to_offline(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.FAULT,
-                                               final_state=salobj.State.OFFLINE)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_fault_to_standby(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.FAULT,
-                                               final_state=salobj.State.STANDBY)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_fault_to_disabled(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.FAULT,
-                                               final_state=salobj.State.DISABLED)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_fault_to_enabled(self):
-        async def doit():
-            await self.check_set_summary_state(initial_state=salobj.State.FAULT,
-                                               final_state=salobj.State.ENABLED)
-
-        asyncio.get_event_loop().run_until_complete(doit())
-
-    def test_invalid_state(self):
+    async def test_invalid_state(self):
         """Test set_summary_state with invalid final states."""
-        async def doit():
-            for initial_state in salobj.State:
-                if initial_state == salobj.State.OFFLINE:
-                    # TestCsc cannot start in OFFLINE state
-                    continue
-                async with Harness(initial_state=initial_state) as harness:
-                    await harness.remote.evt_summaryState.next(flush=False, timeout=LONG_TIMEOUT)
-                    for bad_final_state in (min(salobj.State) - 1, salobj.State.FAULT, max(salobj.State) + 1):
-                        with self.subTest(initial_state=initial_state, bad_final_state=bad_final_state):
-                            with self.assertRaises(ValueError):
-                                await salobj.set_summary_state(remote=harness.remote, state=bad_final_state,
-                                                               timeout=STD_TIMEOUT)
-
-        asyncio.get_event_loop().run_until_complete(doit())
+        for initial_state in salobj.State:
+            if initial_state == salobj.State.OFFLINE:
+                # TestCsc cannot start in OFFLINE state
+                continue
+            async with Harness(initial_state=initial_state) as harness:
+                for bad_final_state in (min(salobj.State) - 1, salobj.State.FAULT, max(salobj.State) + 1):
+                    with self.subTest(initial_state=initial_state, bad_final_state=bad_final_state):
+                        with self.assertRaises(ValueError):
+                            await salobj.set_summary_state(remote=harness.remote, state=bad_final_state,
+                                                           timeout=STD_TIMEOUT)
 
     async def check_set_summary_state(self, initial_state, final_state):
         """Check set_summary_state for valid state transitions.

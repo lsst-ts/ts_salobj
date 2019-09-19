@@ -63,6 +63,20 @@ class TestCsc(ConfigurableCsc):
         * `salobj.State.STANDBY` if you want full emulation of a CSC.
     initial_simulation_mode : `int` (optional)
         Initial simulation mode. The only allowed value is 0.
+
+    Notes
+    -----
+    Unlike a normal CSC this one does not output telemetry at regular
+    intervals. Instead, in order to simplify unit tests, it outputs
+    the ``arrays`` and ``scalars`` telemetry topics in reponse to
+    the ``setArrays`` or ``setScalars`` command (just like the ``arrays``
+    and ``scalars`` events). That makes it more predictable when this
+    data will appear. Note that the ``heartbeat`` event is output at
+    regular intervals, as for any CSC.
+
+    **Error Codes**
+
+    * 1: the fault command was executed
     """
     __test__ = False  # stop pytest from warning that this is not a test
 
@@ -114,8 +128,8 @@ class TestCsc(ConfigurableCsc):
 
         Change the summary state to State.FAULT
         """
-        self.log.warning("executing fault")
-        self.fault()
+        self.log.warning("executing the fault command")
+        self.fault(code=1, report="executing the fault command")
 
     async def do_wait(self, data):
         """Execute the wait command.

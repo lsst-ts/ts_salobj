@@ -1,6 +1,6 @@
-import asyncio
 import unittest
 
+import asynctest
 import numpy as np
 
 from lsst.ts import salobj
@@ -30,52 +30,46 @@ class ControllerWithDoMethods(salobj.Controller):
         pass
 
 
-class ControllerConstructorTestCase(unittest.TestCase):
+class ControllerConstructorTestCase(asynctest.TestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_domain()
 
-    def test_do_callbacks_false(self):
-        async def doit():
-            index = next(index_gen)
-            async with salobj.Controller("Test", index, do_callbacks=False) as controller:
-                command_names = controller.salinfo.command_names
-                for name in command_names:
-                    with self.subTest(name=name):
-                        cmd = getattr(controller, "cmd_" + name)
-                        self.assertFalse(cmd.has_callback)
+    async def test_do_callbacks_false(self):
+        index = next(index_gen)
+        async with salobj.Controller("Test", index, do_callbacks=False) as controller:
+            command_names = controller.salinfo.command_names
+            for name in command_names:
+                with self.subTest(name=name):
+                    cmd = getattr(controller, "cmd_" + name)
+                    self.assertFalse(cmd.has_callback)
 
-        asyncio.get_event_loop().run_until_complete(doit())
+    async def test_do_callbacks_true(self):
+        index = next(index_gen)
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
+            command_names = salinfo.command_names
 
-    def test_do_callbacks_true(self):
-        async def doit():
-            index = next(index_gen)
-            async with salobj.Domain() as domain:
-                salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
-                command_names = salinfo.command_names
+            # make sure I can build one
+            async with ControllerWithDoMethods(command_names) as good_controller:
+                for cmd_name in command_names:
+                    with self.subTest(cmd_name=cmd_name):
+                        cmd = getattr(good_controller, "cmd_" + cmd_name)
+                        self.assertTrue(cmd.has_callback)
 
-                # make sure I can build one
-                async with ControllerWithDoMethods(command_names) as good_controller:
-                    for cmd_name in command_names:
-                        with self.subTest(cmd_name=cmd_name):
-                            cmd = getattr(good_controller, "cmd_" + cmd_name)
-                            self.assertTrue(cmd.has_callback)
+            skip_names = salobj.OPTIONAL_COMMAND_NAMES.copy()
+            # do_setLogLevel is provided by Controller
+            skip_names.add("setLogLevel")
+            for missing_name in command_names:
+                if missing_name in skip_names:
+                    continue
+                with self.subTest(missing_name=missing_name):
+                    bad_names = [name for name in command_names if name != missing_name]
+                    with self.assertRaises(TypeError):
+                        ControllerWithDoMethods(bad_names)
 
-                skip_names = salobj.OPTIONAL_COMMAND_NAMES.copy()
-                # do_setLogLevel is provided by Controller
-                skip_names.add("setLogLevel")
-                for missing_name in command_names:
-                    if missing_name in skip_names:
-                        continue
-                    with self.subTest(missing_name=missing_name):
-                        bad_names = [name for name in command_names if name != missing_name]
-                        with self.assertRaises(TypeError):
-                            ControllerWithDoMethods(bad_names)
-
-                extra_names = list(command_names) + ["extra_command"]
-                with self.assertRaises(TypeError):
-                    ControllerWithDoMethods(extra_names)
-
-        asyncio.get_event_loop().run_until_complete(doit())
+            extra_names = list(command_names) + ["extra_command"]
+            with self.assertRaises(TypeError):
+                ControllerWithDoMethods(extra_names)
 
 
 if __name__ == "__main__":

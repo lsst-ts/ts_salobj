@@ -21,6 +21,7 @@
 
 __all__ = ["AckCmdWriter", "ControllerCommand"]
 
+import asyncio
 import inspect
 
 from .. import sal_enums
@@ -38,22 +39,49 @@ class AckCmdWriter(write_topic.WriteTopic):
 class ControllerCommand(read_topic.ReadTopic):
     """Read a specified command topic.
 
-    Each command must be acknowledged. If you use a callback function
-    to process the command then this happens automatically (including
-    acknowledging as a failure if the callback raises an exception).
-    Otherwise you must the `ack` method to do this yourself.
-
     Parameters
     ----------
     salinfo : `SalInfo`
         SAL component information
     name : `str`
         Command name
+
+    Notes
+    -----
+    Each command must be acknowledged by writing an appropriate ``ackcmd``
+    message. If you use a callback function to process the command
+    then this happens automatically. Otherwise you must call the `ack` method
+    to acknowledge the command yourself, though an initial acknowledgement
+    with ``ack=SalRetCode.CMD_ACK`` is always automatically sent when
+    the command is read.
+
+
+    After the initial acknowledgement with ``ack=SalRetCode.CMD_ACK``,
+    automatic ackowledgement for callback functions works as follows:
+
+    * If the callback function is a coroutine then acknowledge with
+      ``ack=SalRetCode.CMD_INPROGRESS`` just before running the callback.
+    * If the callback function returns `None` then send a final
+      acknowledgement with ``ack=SalRetCode.CMD_COMPLETE``.
+    * If the callback function returns an acknowledgement
+      (instance of `SalInfo.AckType`) instead of `None`, then send that
+      as the final acknowledgement.
+    * If the callback function raises `asyncio.TimeoutError` then send a
+      final acknowledgement with ``ack=SalRetCode.CMD_TIMEOUT``.
+    * If the callback function raises `asyncio.CancelledError` then send
+      a final acknowledgement with ``ack=SalRetCode.CMD_ABORTED``.
+    * If the callback function raises `ExpectedError` then send a final
+      acknowledgement with ``ack=SalRetCode.CMD_FAILED`` and
+      ``result=f"Failed: {exception}"``.
+    * If the callback function raises any other `Exception`
+      then do the same as `ExpectedError` and also log a traceback.
     """
     def __init__(self, salinfo, name, max_history=0, queue_len=100):
         super().__init__(salinfo=salinfo, name=name, sal_prefix="command_",
                          max_history=max_history, queue_len=queue_len)
-        self._ack_writer = AckCmdWriter(salinfo=salinfo)
+        self.cmdtype = salinfo.sal_topic_names.index(self.sal_name)
+        if salinfo._ackcmd_writer is None:
+            self.salinfo._ackcmd_writer = AckCmdWriter(salinfo=salinfo)
 
     def ack(self, data, ackcmd):
         """Acknowledge a command by writing a new state.
@@ -65,9 +93,14 @@ class ControllerCommand(read_topic.ReadTopic):
         ackcmd : `salobj.AckCmdType`
             Command acknowledgement.
         """
-        self._ack_writer.set(private_seqNum=data.private_seqNum,
-                             ack=ackcmd.ack, error=ackcmd.error, result=ackcmd.result)
-        self._ack_writer.put()
+        self.salinfo._ackcmd_writer.set(private_seqNum=data.private_seqNum,
+                                        host=data.private_host,
+                                        origin=data.private_origin,
+                                        cmdtype=self.cmdtype,
+                                        ack=ackcmd.ack,
+                                        error=ackcmd.error,
+                                        result=ackcmd.result)
+        self.salinfo._ackcmd_writer.put()
 
     def ackInProgress(self, data, result=""):
         """Ackowledge this command as "in progress".
@@ -106,6 +139,8 @@ class ControllerCommand(read_topic.ReadTopic):
         return await super().next(flush=False, timeout=timeout)
 
     def _queue_one_item(self, data):
+        """Convert the value to an ``ackcmd`` and queue it.
+        """
         if data.private_seqNum <= 0:
             raise ValueError(f"private_seqNum={data.private_seqNum} must be positive")
         ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum, ack=sal_enums.SalRetCode.CMD_ACK)
@@ -131,6 +166,16 @@ class ControllerCommand(read_topic.ReadTopic):
             if ack is None:
                 ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
                                               ack=sal_enums.SalRetCode.CMD_COMPLETE, result="Done")
+            self.ack(data, ack)
+        except asyncio.CancelledError:
+            ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
+                                          ack=sal_enums.SalRetCode.CMD_ABORTED, error=1,
+                                          result=f"Aborted", truncate_result=True)
+            self.ack(data, ack)
+        except asyncio.TimeoutError:
+            ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
+                                          ack=sal_enums.SalRetCode.CMD_TIMEOUT, error=1,
+                                          result=f"Timeout", truncate_result=True)
             self.ack(data, ack)
         except Exception as e:
             ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,

@@ -28,19 +28,14 @@ Writing a CSC
       such as CPU-heavy tasks, make the method asynchronous
       and call the synchronous operation in a thread using
       the ``run_in_executor`` method of the event loop.
-    * Your CSC will report the command as failed if the ``do_<name>``
-      method raises an exception. The ``result`` field of that
-      acknowledgement will be the data in the exception.
-      Eventually the CSC may log a traceback, as well,
-      but never for `ExpectedError`.
-    * By default your CSC will report the command as completed
-      when ``do_<name>`` finishes, but you can return a different
-      acknowledgement (instance of `SalInfo.AckType`) instead,
-      and that will be used as the final command acknowledgement.
+    * Your CSC reports the command as unsuccessful if the ``do_<name>`` method raises an exception.
+      The ``ack`` value depends on the exception; see `ControllerCommand` for details.
+    * Your CSC reports the command as successful when ``do_<name>`` finishes and returns `None`.
+      If ``do_<name>`` returns an acknowledgement (instance of `SalInfo.AckType`) instead of `None`
+      then your CSC sends that as the final command acknowledgement.
     * If you want to allow more than one instance of the command running
       at a time, set ``self.cmd_<name>.allow_multiple_commands = True``
-      in your CSC's constructor. See
-      `topics.ControllerCommand`.allow_multiple_commands
+      in your CSC's constructor. See `topics.ControllerCommand`.allow_multiple_commands
       for details and limitations of this attribute.
     * ``do_`` is a reserved prefix: all ``do_<name>`` attributes must match a command name and must be callable.
 
@@ -80,8 +75,9 @@ Writing a CSC
       If any of these methods fail then the state change operation
       is aborted, the summary state does not change, and the command
       is acknowledged as failed.
-    * Your subclass may override `BaseCsc.report_summary_state` if you wish to
-      perform actions based the current summary state.
+    * Your subclass may override `BaseCsc.report_summary_state`
+      if you wish to perform actions based the current summary state.
+      This is an excellent place to :ref:`start and stop a telemetry loop<lsst.ts.salobj-telemetry_loop_example>`.
     * Output the ``errorCode`` event when your CSC goes into the
       `State.FAULT` summary state.
 
@@ -142,15 +138,74 @@ To write write an externally commandable CSC using ``lsst.ts.salobj`` do the fol
 Running a CSC
 -------------
 
-To run your CSC call the `main` method or equivalent code.
-For an example see ``bin/run_test_csc.py``.
-If you wish to provide additional command line arguments for your CSC then you may
-override the `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` class methods,
-or, if you prefer, copy the contents of `main` into your ``bin`` script
-and adapt it as required.
+To run your CSC call `asyncio.run` on the `amain` class method.
+For example::
 
-In unit tests, wait for ``self.start_task`` to be done, or for the initial
-``summaryState`` event, before expecting the CSC to be responsive.
+    import asyncio
+
+    from lsst.ts.salobj import TestCsc
+
+    asyncio.run(TestCsc.amain(index=True))
+
+If you wish to provide additional command line arguments for your CSC then you may
+override the `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` class methods.
+
+To run a CSC in a unit test there are two basic approaches: treat CSC as an asynchronous context manager
+or construct the CSC and explicitly await its start_task.
+The same choices exist for constructing a `Remote`.
+
+Here is an example using an async context manager::
+
+    index_gen = salobj.index_generator()
+
+    class MyTestCase(asynctest.TestCase)
+        def setUp(self):
+            salobj.set_random_lsst_dds_domain()
+
+        async def test_something(self):
+            index = next(index_gen)
+            async with TestCsc(index=index,
+                initial_summary_state=salobj.State.ENABLED) as csc, \
+                    async with salobj.Remote(domain=csc.domain,
+                                             name="Test", index=index) as remote:
+                # The csc and remote are ready; add your test code here...
+
+Explicitly waiting is harder to do correctly, since you should call ``close`` on your CSC even if a test fails.
+One technique I recommend is to make a "harness" class that is itself an asynchronous context manager
+that manages the CSC and `Remote` and possibly other related instances.
+This is useful if you are writing multiple tests that need these objects,
+especially if the different tests require different configurations.
+(If all tests use the same configuration, then you can use build and await
+the objects in ``async def setUp`` and close them in ``async def tearDown``).
+Here is an example::
+
+    index_gen = salobj.index_generator()
+
+    class Harness:
+        def __init__(self, initial_state, config_dir=None):
+            index = next(index_gen)
+            self.csc = TestCsc(index=index, initial_state=initial_state)
+            self.remote = salobj.Remote(domain=self.csc.domain,
+                                        name="Test", index=index)
+
+        async def __aenter__(self):
+            await self.csc.start_task
+            await self.remote.start_task
+            return self
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            await self.remote.close()
+            await self.csc.close()
+
+
+    class MyTestCase(asynctest.TestCase)
+        def setUp(self):
+            salobj.set_random_lsst_dds_domain()
+
+        async def test_something(self):
+            async with Harness(initial_state=salobj.State.ENABLED) as harness:
+                # harness.csc and harness.remote are ready; add your test code here...
+
 
 .. _lsst.ts.salobj-simulation_mode:
 
@@ -170,3 +225,38 @@ simulation mode, if supported, or raise an exception if not.
 Note that this method is called during construction of the CSC.
 The default implementation of `implement_simulation_mode` is to reject
 all non-zero values for ``simulation_mode``.
+
+.. _lsst.ts.salobj-telemetry_loop_example:
+
+----------------------
+Telemetry Loop Example
+----------------------
+
+Here is an example of how to write a telemetry loop.
+
+1. In the constructor (``__init__``): initialize::
+
+    self.telemetry_loop_task = salobj.make_done_future()
+    self.telemetry_interval = 1  # seconds between telemetry output
+
+   Initializing ``telemetry_loop_task`` to an `asyncio.Future` that is already done makes it easier to test and cancel than initializing it to `None`.
+
+2. Define a ``telemetry_loop`` method, such as::
+
+    def telemetry_task(self):
+        while True:
+            # read and write telemetry
+            #...
+            await asyncio.sleep(self.telemetry_interval)
+
+3. Start and stop the telemetry loop in `BaseCsc.report_summary_state`::
+
+    def report_summary_state(self):
+        super().report_summary_state()
+        if self.summary_state in (salobj.State.DISABLED, salobj.State.ENSABLED):
+            if self.telemetry_loop_task.done():
+                # telemetry loop is not running; start it
+                self.telemetry_loop_task = asyncio.create_task(self.telemetry_loop())
+        else:
+            # cancel is a no-op if the task is done, so no need to test for that
+            self.telemetry_loop_task.cancel()

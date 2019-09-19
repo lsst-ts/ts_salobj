@@ -57,7 +57,7 @@ class Controller:
     -----
     .. _writing_a_controller:
 
-    Writing a Controller:
+    **Writing a Controller**
 
     (To write a CSC see :ref:`Writing a CSC<lsst.ts.salobj-writing_a_csc>`,
     instead)
@@ -71,18 +71,15 @@ class Controller:
       these are automatically provided to CSCs, but not other controllers.
     * Implement `close_tasks`.
 
+    **Attributes**
 
-    Attributes:
-
-    Each `Controller` has the following attributes:
-
-    - ``log``: a `logging.Logger`
-    - ``salinfo``: a `SalInfo`
-    - ``cmd_<command_name>``: a `topics.ControllerCommand`,
+    * ``log``: a `logging.Logger`
+    * ``salinfo``: a `SalInfo`
+    * ``cmd_<command_name>``: a `topics.ControllerCommand`,
       for each command supported by the SAL component.
-    - ``evt_<event_name>``: a `topics.ControllerEvent`
+    * ``evt_<event_name>``: a `topics.ControllerEvent`
       for each log event topic supported by the SAL component.
-    - ``tel_<telemetry_name>``: a `topics.ControllerTelemetry`
+    * ``tel_<telemetry_name>``: a `topics.ControllerTelemetry`
       for each telemetry topic supported by the SAL component.
 
     Here is an example that makes a Test controller and displays
@@ -123,7 +120,7 @@ class Controller:
 
     .. _required_logging_attributes:
 
-    Required Logging Attributes:
+    **Required Logging Attributes**
 
     Each `Controller` must support the following topics,
     as specified in ts_xml in ``SALGenerics.xml``:

@@ -88,26 +88,51 @@ class ReadTopic(BaseTopic):
     max_history : `int`
         Maximum number of historical items to read:
 
-        * 0 is strongly recommended for commands and the ackcmd reader
+        * 0 is required for commands and the ackcmd reader
         * 1 is recommended for events and telemetry
     queue_len : `int` (optional)
         The maximum number of items that can be read and not dealt with
         by a callback function or `next` before older data will be dropped.
 
+    Raises
+    ------
+    ValueError
+        If max_history < 0.
+    ValueError
+        If max_history > 0 and the topic is volatile (command or ackcmd).
+    ValueError
+        If queue_len <= 0.
+    ValueError
+        If max_history > queue_len.
+
     Notes
     -----
+    **Attributes**
+
+    * isopen: is this read topic open?  A `bool`. `True` until `close`
+      is called.
+
+    **Queues**
+
     There are actually two queues: an internal queue whose length
     is set by ``queue_len`` and a dds queue whose length is set by
     low level configuration. Data can be lost in two ways:
-    - If this class cannot read data from the dds queue fast enough
-    then older data will be dropped from the dds queue. You will get a warning
-    log message if the reader starts to fall behind.
-    - As data is read it is put on the internal queue. if a callback
-    function or `next` does not process data quickly enough then
-    older data is dropped from the internal queue. If you have a callback
-    function you will get several warning log messages as this internal queue
-    fills up. You get no warning otherwise because this class has no way
-    of knowing if you intend to read all data using `next`.
+
+    - If this class cannot read data from the dds queue fast enough, then
+      older data will be dropped from the dds queue. You will get a warning
+      log message if the reader starts to fall behind.
+    - As data is read it is put on the internal queue. if a callback function
+      or `next` does not process data quickly enough then older data
+      is dropped from the internal queue. If you have a callback function
+      you will get several warning log messages as this internal queue
+      fills up. You get no warning otherwise because this class has no way
+      of knowing whether or not you intend to read all data using `next`.
+
+    **Reading**
+
+    Reading is performed by the `SalInfo` which has single read loop that
+    reads all topics. This is more efficient than having each `ReadTopic` read
+    its own data.
     """
     def __init__(self, *, salinfo, name, sal_prefix, max_history, queue_len=100):
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
@@ -115,6 +140,8 @@ class ReadTopic(BaseTopic):
         self._allow_multiple_callbacks = False
         if max_history < 0:
             raise ValueError(f"max_history={max_history} must be >= 0")
+        if max_history > 0 and self.volatile:
+            raise ValueError(f"max_history={max_history} must be 0 for volatile topics")
         if queue_len <= 0:
             raise ValueError(f"queue_len={queue_len} must be positive")
         if max_history > queue_len:
@@ -129,18 +156,18 @@ class ReadTopic(BaseTopic):
         self._callback_loop_task = base.make_done_future()
         self._length_checker = QueueLengthChecker(queue_len)
         self._warned_readloop = False
-        self._reader = salinfo.subscriber.create_datareader(self._topic, salinfo.domain.reader_qos)
-        if name == "ackcmd" or sal_prefix == "command_":
-            # TODO DM-20313: remove this workaround for DM-20312:
-            # SALPY 3.10 disposes of ackcmd and command samples
-            # immediately after writing them, so don't require ALIVE
-            read_mask = [dds.DDSStateKind.NOT_READ_SAMPLE_STATE]
-        else:
-            read_mask = [dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
-                         dds.DDSStateKind.ALIVE_INSTANCE_STATE]
+        qos = salinfo.domain.volatile_reader_qos if self.volatile else salinfo.domain.reader_qos
+        self._reader = salinfo.subscriber.create_datareader(self._topic, qos)
+        read_mask = [dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
+                     dds.DDSStateKind.ALIVE_INSTANCE_STATE]
+        queries = []
         if salinfo.index > 0:
-            query = f"{salinfo.name}ID = {salinfo.index}"
-            read_condition = dds.QueryCondition(self._reader, read_mask, query)
+            queries.append(f"{salinfo.name}ID = {salinfo.index}")
+        if name == "ackcmd":
+            queries += [f"origin = {salinfo.domain.origin}", f"host = {salinfo.domain.host}"]
+        if queries:
+            full_query = " AND ".join(queries)
+            read_condition = dds.QueryCondition(self._reader, read_mask, full_query)
         else:
             read_condition = self._reader.create_readcondition(read_mask)
         self._read_condition = read_condition
@@ -220,7 +247,7 @@ class ReadTopic(BaseTopic):
 
     @property
     def has_data(self):
-        """Has `data` ever been read?"""
+        """Has any data been seen for this topic?"""
         return self._current_data is not None
 
     @property
@@ -231,7 +258,7 @@ class ReadTopic(BaseTopic):
         """Shut down and release resources.
 
         Intended to be called by SalInfo.close(),
-        since that frees all DDS resources.
+        since that tracks all topics.
         """
         if not self.isopen:
             return
@@ -242,10 +269,40 @@ class ReadTopic(BaseTopic):
         while self._callback_tasks:
             task = self._callback_tasks.pop()
             task.cancel()
+        self._reader.close()
         self._data_queue.clear()
 
+    async def aget(self, timeout=None):
+        """Get the current value, if any, else wait for the next value.
+
+        Parameters
+        ----------
+        timeout : `float` (optional)
+            Time limit, in seconds. If None then no time limit.
+
+        Returns
+        -------
+        data : `DataType`
+            The current or next value.
+
+        Raises
+        ------
+        RuntimeError
+            If a callback function is present.
+
+        Notes
+        -----
+        Do not modify the returned data. To make a copy that you can modify
+        use ``copy.copy(value)``.
+        """
+        if self.has_callback:
+            raise RuntimeError("Not allowed because there is a callback function")
+        if self._current_data is not None:
+            return self._current_data
+        return await self._next(timeout=timeout)
+
     def flush(self):
-        """Flush the queue of unread messages.
+        """Flush the queue of unread data.
 
         Raises
         ------
@@ -276,14 +333,13 @@ class ReadTopic(BaseTopic):
         return self._current_data
 
     def get_oldest(self):
-        """Pop and return the oldest data from the queue, or `None`
-        if all data has been read.
+        """Pop and return the oldest value from the queue, or `None`
+        if the queue is empty.
 
         Returns
         -------
         data : ``self.DataType`` or `None`
-            Return ``self.data`` if unread data was found on the queue,
-            else ``None``.
+            The oldest value found on the queue, if any, else `None`.
 
         Raises
         ------
@@ -302,13 +358,13 @@ class ReadTopic(BaseTopic):
         return None
 
     async def next(self, *, flush, timeout=None):
-        """Wait for data, returning old data if found.
+        """Wait for a value, possibly returning the oldest queued value.
 
         Parameters
         ----------
         flush : `bool`
             If True then flush the queue before starting a read.
-            If False then pop and return the oldest item from the queue,
+            If False then pop and return the oldest value from the queue,
             if any, else wait for new data.
         timeout : `float` (optional)
             Time limit, in seconds. If None then no time limit.
@@ -325,8 +381,8 @@ class ReadTopic(BaseTopic):
 
         Notes
         -----
-        Do not modify the data or assume that it will be static.
-        If you need a private copy, then copy it yourself.
+        Do not modify the returned data. To make a copy that you can modify
+        use ``copy.copy(value)``.
         """
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")
@@ -372,9 +428,12 @@ class ReadTopic(BaseTopic):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
     def _queue_data(self, data_list):
-        """Convert items of data and add them to the internal queue.
+        """Queue multiple one or more values.
 
-        Also update self._current_data and fire self._next_task if waiting.
+        This is a no-op if ``data_list`` is empty.
+
+        Also update ``self._current_data`` and fire `self._next_task`
+        (if pending).
         """
         if not data_list:
             return
@@ -385,4 +444,9 @@ class ReadTopic(BaseTopic):
             self._next_task.set_result(None)
 
     def _queue_one_item(self, data):
+        """Add a single value to the internal queue.
+
+        Subclasses may override to massage the value before queuing.
+        `ControllerCommand` does this.
+        """
         self._data_queue.append(data)

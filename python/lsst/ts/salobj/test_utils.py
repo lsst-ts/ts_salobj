@@ -31,7 +31,7 @@ from .base import AckError, AckTimeoutError
 
 
 @contextlib.contextmanager
-def assertRaisesAckError(ack=None, error=None):
+def assertRaisesAckError(ack=None, error=None, result_contains=None):
     """Assert that code raises a salobj.AckError
 
     Parameters
@@ -39,8 +39,10 @@ def assertRaisesAckError(ack=None, error=None):
     ack : `int` (optional)
         Ack code, almost always a `SalRetCode` ``CMD_<x>`` constant.
         If None then the ack code is not checked.
-    error : `int`
+    error : `int` (optional)
         Error code. If None then the error value is not checked.
+    result_contains : `str` (optional)
+        If not None then the result value must contain this string.
     """
     try:
         yield
@@ -50,6 +52,8 @@ def assertRaisesAckError(ack=None, error=None):
             raise AssertionError(f"ackcmd.ack={e.ackcmd.ack} instead of {ack}")
         if error is not None and e.ackcmd.error != error:
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
+        if result_contains is not None and result_contains not in e.ackcmd.result:
+            raise AssertionError(f"ackcmd.result={e.ackcmd.result} does not contain {result_contains}")
 
 
 @contextlib.contextmanager
@@ -61,7 +65,7 @@ def assertRaisesAckTimeoutError(ack=None, error=None):
     ack : `int` (optional)
         Ack code of the last ack seen, almost always a `SalRetCode`
         ``CMD_<x>`` constant. If None then the ack code is not checked.
-    error : `int`
+    error : `int` (optional)
         Error code. If None then the error value is not checked.
     """
     try:
@@ -83,6 +87,9 @@ def set_random_lsst_dds_domain():
 
     The set name will contain the hostname and current time
     as well as a random integer.
+
+    The random value is generated using the `random` library,
+    so call ``random.seed(...)`` to seed this value.
     """
     hostname = socket.gethostname()
     curr_time = time.time()
