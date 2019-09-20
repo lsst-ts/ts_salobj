@@ -55,7 +55,9 @@ Cleanup
 It is important to call `Controller.close` or `Domain.close` when done with it (and this automatically closes the resources used by `Remote`).
 `Controller` creates and manages its own `Domain` but if you don't have a `Controller` then you will have to create and manage one yourself.
 Both `Controller` and `Domain` can be used as asynchronous context managers to call ``close`` automatically.
-Here are some examples::
+Here are some examples:
+
+  .. code-block:: python
 
     # if you have a controller or CSC
     async with BaseCsc(name="ATDomeTrajectory", index=0) as dome_trajectory:
