@@ -309,7 +309,7 @@ class BaseCsc(Controller):
     async def do_setSimulationMode(self, data):
         """Enter or leave simulation mode.
 
-        The CSC must be in `State.STANDBY` or `State.DISABLED` state.
+        The CSC must be in `State.STANDBY` state.
 
         Parameters
         ----------
@@ -320,8 +320,8 @@ class BaseCsc(Controller):
         -----
         To implement simulation mode: override `implement_simulation_mode`.
         """
-        if self.summary_state not in (State.STANDBY, State.DISABLED):
-            raise base.ExpectedError(f"Cannot set simulation_mode in state {self.summary_state!r}")
+        if self.summary_state != State.STANDBY:
+            raise base.ExpectedError(f"State is {self.summary_state!r}; must be STANDBY")
         await self.set_simulation_mode(data.mode)
 
     @property

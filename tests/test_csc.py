@@ -475,9 +475,9 @@ class CommunicateTestCase(asynctest.TestCase):
             # check that simulation mode can be set
             await self.check_simulate_mode_ok(harness)
 
-            # enter DISABLED state and check simulation mode can be set
+            # enter DISABLED state and check simulation mode cannot be set
             harness.csc.summary_state = salobj.State.DISABLED
-            await self.check_simulate_mode_ok(harness)
+            await self.check_simulate_mode_bad(harness)
 
             # enter enabled mode and check simulation mode cannot be set
             harness.csc.summary_state = salobj.State.ENABLED
