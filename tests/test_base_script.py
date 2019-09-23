@@ -484,13 +484,10 @@ class BaseScriptTestCase(asynctest.TestCase):
                         self.assertEqual(logLevel_data.level, logging.INFO)
 
                         wait_time = 0.1
-                        configure_data = remote.cmd_configure.DataType()
                         config = f"wait_time: {wait_time}"
                         if fail:
                             config = config + f"\n{fail}: True"
-                        print(f"config={config}")
-                        configure_data.config = config
-                        await remote.cmd_configure.start(configure_data, timeout=STD_TIMEOUT)
+                        await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
 
                         metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                         self.assertEqual(metadata.duration, wait_time)
@@ -548,9 +545,8 @@ class BaseScriptTestCase(asynctest.TestCase):
                 self.assertEqual(logLevel_data.level, logging.INFO)
 
                 wait_time = 0.1
-                configure_data = remote.cmd_configure.DataType()
-                configure_data.config = f"wait_time: {wait_time}"
-                await remote.cmd_configure.start(configure_data, timeout=STD_TIMEOUT)
+                config = f"wait_time: {wait_time}"
+                await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
 
                 metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(metadata.duration, wait_time)
