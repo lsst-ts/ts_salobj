@@ -139,7 +139,9 @@ Running a CSC
 -------------
 
 To run your CSC call `asyncio.run` on the `amain` class method.
-For example::
+For example:
+
+  .. code-block:: python
 
     import asyncio
 
@@ -154,7 +156,9 @@ To run a CSC in a unit test there are two basic approaches: treat CSC as an asyn
 or construct the CSC and explicitly await its start_task.
 The same choices exist for constructing a `Remote`.
 
-Here is an example using an async context manager::
+Here is an example using an async context manager:
+
+  .. code-block:: python
 
     index_gen = salobj.index_generator()
 
@@ -177,7 +181,9 @@ This is useful if you are writing multiple tests that need these objects,
 especially if the different tests require different configurations.
 (If all tests use the same configuration, then you can use build and await
 the objects in ``async def setUp`` and close them in ``async def tearDown``).
-Here is an example::
+Here is an example:
+
+  .. code-block:: python
 
     index_gen = salobj.index_generator()
 
@@ -234,29 +240,41 @@ Telemetry Loop Example
 
 Here is an example of how to write a telemetry loop.
 
-1. In the constructor (``__init__``): initialize::
+1. In the constructor (``__init__``): initialize:
+
+  .. code-block:: python
 
     self.telemetry_loop_task = salobj.make_done_future()
     self.telemetry_interval = 1  # seconds between telemetry output
 
-   Initializing ``telemetry_loop_task`` to an `asyncio.Future` that is already done makes it easier to test and cancel than initializing it to `None`.
+  Initializing ``telemetry_loop_task`` to an `asyncio.Future` that is already done makes it easier to test and cancel than initializing it to `None`.
 
-2. Define a ``telemetry_loop`` method, such as::
+2. Define a ``telemetry_loop`` method, such as:
 
-    def telemetry_task(self):
+  .. code-block:: python
+
+    async def telemetry_loop(self):
         while True:
-            # read and write telemetry
-            #...
+            #...read and write telemetry...
             await asyncio.sleep(self.telemetry_interval)
 
-3. Start and stop the telemetry loop in `BaseCsc.report_summary_state`::
+3. Start and stop the telemetry loop in `BaseCsc.report_summary_state`:
+
+  .. code-block:: python
 
     def report_summary_state(self):
         super().report_summary_state()
-        if self.summary_state in (salobj.State.DISABLED, salobj.State.ENSABLED):
+        if self.summary_state in (salobj.State.DISABLED, salobj.State.ENABLED):
             if self.telemetry_loop_task.done():
-                # telemetry loop is not running; start it
                 self.telemetry_loop_task = asyncio.create_task(self.telemetry_loop())
         else:
-            # cancel is a no-op if the task is done, so no need to test for that
             self.telemetry_loop_task.cancel()
+
+4. Finally, cancel any tasks you start in `BaseCsc.close_tasks`.
+   This is not strictly needed if you cancel your tasks in ``report_summary_state`` when exiting, but it allows you to close CSCs in the ENABLED or DISABLED state in unit tests without generating annoying warnings about pending tasks.
+
+  .. code-block:: python
+
+    async def close_tasks(self):
+        await super().close_tasks()
+        self.telemetry_loop_task.cancel()

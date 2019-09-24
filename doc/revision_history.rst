@@ -19,8 +19,10 @@ Update for ts_sal v4. This version cannot communicate with ts_sal v3 or ts_salob
 Deprecated APIs:
 
 * Specifying ``code=None`` for `BaseCsc.fault` is deprecated. Please always specify an error code so the ``errorCode`` event can be output.
-* ``BaseCsc.main`` and ``BaseScript.main`` are deprecated. Please replace ``cls.main(...)`` with ``asyncio.run(cls.amain(...))``.
+* `BaseCsc.main` and `BaseScript.main` are deprecated. Please replace ``cls.main(...)`` with ``asyncio.run(cls.amain(...))``.
   This makes it much clearer that the call may not return quickly, avoids explicitly creating event loops, and takes advantage of the (new to Python 3.7) preferred way to run asynchronous code.
+* Script commands ``setCheckpoints`` and ``setLogLevel`` are deprecated.
+  Specify checkpoints and log level using the new ``pauseCheckpoint``, ``stopCheckpoint`` and ``logLevel`` fields in the ``configure`` command.
 * Code that constructs a `Remote` or `Controller` without a running event loop should be rewritten because it will break when we replace the remaining usage of `asyncio.ensure_future` with the preferred `asyncio.make_task`. For example:
 
   .. code-block:: python
