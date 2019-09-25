@@ -16,6 +16,11 @@ Update for ts_sal v4. This version cannot communicate with ts_sal v3 or ts_salob
   This means they cannot read late-joiner data, which eliminates a source of potential problems from stale commands or command acknowledgements.
 * The DDS queues now hold 100 samples instead of 1000.
 
+Another backward incompatible change is that the setSimulationMode command can no only be issued in the STANDBY state.
+This makes it much easier to implement simulation mode in CSCs that connect to external controllers,
+because one can make the connection in the appropriate mode when in DISABLED or ENABLED state, without having to worry about changing it.
+This change may break some existing unit tests for CSCs that support simulation mode.
+
 Deprecated APIs:
 
 * Specifying ``code=None`` for `BaseCsc.fault` is deprecated. Please always specify an error code so the ``errorCode`` event can be output.

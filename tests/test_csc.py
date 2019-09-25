@@ -243,10 +243,6 @@ class CommunicateTestCase(asynctest.TestCase):
         * exitControl: STANDBY or FAULT to OFFLINE (quit)
         """
         async with Harness(initial_state=salobj.State.STANDBY) as harness:
-            fault_data = harness.csc.cmd_fault.DataType()
-            standby_data = harness.csc.cmd_standby.DataType()
-            exitControl_data = harness.csc.cmd_exitControl.DataType()
-
             for state in salobj.State:
                 if state == salobj.State.OFFLINE:
                     continue
@@ -254,17 +250,17 @@ class CommunicateTestCase(asynctest.TestCase):
                 self.assertEqual(harness.csc.summary_state, state)
 
                 # make sure we can go from any non-OFFLINE state to FAULT
-                await harness.remote.cmd_fault.start(fault_data, timeout=STD_TIMEOUT)
+                await harness.remote.cmd_fault.start(timeout=STD_TIMEOUT)
                 self.assertEqual(harness.csc.summary_state, salobj.State.FAULT)
 
                 data = await harness.remote.evt_errorCode.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(data.errorCode, 1)
 
-                await harness.remote.cmd_standby.start(standby_data, timeout=STD_TIMEOUT)
+                await harness.remote.cmd_standby.start(timeout=STD_TIMEOUT)
                 self.assertEqual(harness.csc.summary_state, salobj.State.STANDBY)
 
             # send exitControl; new state is OFFLINE
-            await harness.remote.cmd_exitControl.start(exitControl_data, timeout=STD_TIMEOUT)
+            await harness.remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
             self.assertEqual(harness.csc.summary_state, salobj.State.OFFLINE)
 
             await asyncio.wait_for(harness.csc.done_task, 5)
@@ -479,9 +475,9 @@ class CommunicateTestCase(asynctest.TestCase):
             # check that simulation mode can be set
             await self.check_simulate_mode_ok(harness)
 
-            # enter DISABLED state and check simulation mode can be set
+            # enter DISABLED state and check simulation mode cannot be set
             harness.csc.summary_state = salobj.State.DISABLED
-            await self.check_simulate_mode_ok(harness)
+            await self.check_simulate_mode_bad(harness)
 
             # enter enabled mode and check simulation mode cannot be set
             harness.csc.summary_state = salobj.State.ENABLED
@@ -507,33 +503,28 @@ class CommunicateTestCase(asynctest.TestCase):
             self.assertEqual(csc.simulation_mode, 0)
 
     async def check_simulate_mode_ok(self, harness):
-        """Check that we can set simulation mode to 0 but not other values."""
-        setsm_data = harness.remote.cmd_setSimulationMode.DataType()
-
-        setsm_data.mode = 0
-        await harness.remote.cmd_setSimulationMode.start(setsm_data, timeout=STD_TIMEOUT)
+        """Check that we can set simulation mode to 0 but not other values.
+        """
+        await harness.remote.cmd_setSimulationMode.set_start(mode=0, timeout=STD_TIMEOUT)
         sm_data = await harness.remote.evt_simulationMode.next(flush=False, timeout=STD_TIMEOUT)
         self.assertEqual(sm_data.mode, 0)
 
         for bad_mode in (1, 10, -1):
-            setsm_data.mode = 1
             with self.subTest(bad_mode=bad_mode):
                 with salobj.assertRaisesAckError():
-                    await harness.remote.cmd_setSimulationMode.start(setsm_data, timeout=STD_TIMEOUT)
+                    await harness.remote.cmd_setSimulationMode.set_start(mode=bad_mode, timeout=STD_TIMEOUT)
 
     async def check_simulate_mode_bad(self, harness):
-        """Check that we cannot set simulation mode to 0 or any other value."""
-        setsm_data = harness.remote.cmd_setSimulationMode.DataType()
-
+        """Check that we cannot set simulation mode to 0 or any other value.
+        """
         for bad_mode in (0, 1, 10, -1):
-            setsm_data.mode = 1
             with self.subTest(bad_mode=bad_mode):
                 with salobj.assertRaisesAckError():
-                    await harness.remote.cmd_setSimulationMode.start(setsm_data, timeout=STD_TIMEOUT)
+                    await harness.remote.cmd_setSimulationMode.set_start(mode=bad_mode, timeout=STD_TIMEOUT)
 
 
 class NoIndexCsc(salobj.TestCsc):
-    """A CSC whose constructor has no index argument"""
+    """A CSC whose constructor has no index argument."""
     def __init__(self, arg1, arg2, config_dir=None):
         super().__init__(index=next(index_gen), config_dir=TEST_CONFIG_DIR)
         self.arg1 = arg1

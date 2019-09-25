@@ -232,6 +232,22 @@ Note that this method is called during construction of the CSC.
 The default implementation of `implement_simulation_mode` is to reject
 all non-zero values for ``simulation_mode``.
 
+--------------------
+External Connections
+--------------------
+
+If your CSC communicates with some other controller or system (by means other than SAL),
+I suggest you make or break the connection in `BaseCsc.report_summary_state` (or a method called from there) as follows:
+
+* If the current state is DISABLED or ENABLED state and not already connected, then make the connection.
+  If you support simulation mode then read that to determine if this is a real or a simulated connection.
+* If the current state is something else then disconnect.
+
+Examples include the following (both of which have a simulation mode):
+
+* ts_ATDome talks to a TCP/IP controller
+* ts_FiberSpectrograph controls fiber spectrographs over USB.
+
 .. _lsst.ts.salobj-telemetry_loop_example:
 
 ----------------------
