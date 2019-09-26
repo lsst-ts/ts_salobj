@@ -464,8 +464,7 @@ class CommunicateTestCase(asynctest.TestCase):
     async def test_simulation_mode(self):
         """Test simulation mode command and event.
 
-        Changing simulation mode can only be done in states STANDBY
-        and DISABLED.
+        Changing simulation mode can only be done in STANDBY state.
         """
         # start in STANDBY and verify that simulation mode is reported
         async with Harness(initial_state=salobj.State.STANDBY) as harness:
@@ -475,17 +474,11 @@ class CommunicateTestCase(asynctest.TestCase):
             # check that simulation mode can be set
             await self.check_simulate_mode_ok(harness)
 
-            # enter DISABLED state and check simulation mode cannot be set
-            harness.csc.summary_state = salobj.State.DISABLED
-            await self.check_simulate_mode_bad(harness)
-
-            # enter enabled mode and check simulation mode cannot be set
-            harness.csc.summary_state = salobj.State.ENABLED
-            await self.check_simulate_mode_bad(harness)
-
-            # enter fault state and check simulate mode cannot be set
-            harness.csc.summary_state = salobj.State.FAULT
-            await self.check_simulate_mode_bad(harness)
+            # check that simulation mode cannot be set in other states
+            for state in (salobj.State.DISABLED, salobj.State.ENABLED, salobj.State.FAULT):
+                with self.subTest(state=state):
+                    await salobj.set_summary_state(remote=harness.remote, state=salobj.State.DISABLED)
+                    await self.check_simulate_mode_bad(harness)
 
     async def test_initial_simulation_mode(self):
         """Test initial_simulation_mode argument of TestCsc constructor.
