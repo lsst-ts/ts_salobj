@@ -84,7 +84,8 @@ class BaseCsc(Controller):
           and is available for the subclass to override.
           If this fails then revert ``self.summary_state``, log an error,
           and acknowledge the command as failed.
-        * Call `report_summary_state` to report the new summary state.
+        * Call `handle_summary_state` and `report_summary_state`
+          to handle report the new summary state.
           If this fails then leave the summary state updated
           (since the new value *may* have been reported),
           but acknowledge the command as failed.
@@ -110,7 +111,7 @@ class BaseCsc(Controller):
 
         * Call `set_simulation_mode`. If this fails, set ``self.start_task``
           to the exception, call `stop`, making the CSC unusable, and return.
-        * Call `report_summary_state`
+        * Call `handle_summary_state` and `report_summary_state`.
         * Set ``self.start_task`` done.
         """
         await super().start()
@@ -120,6 +121,7 @@ class BaseCsc(Controller):
             await self.close(exception=e)
             raise
 
+        await self.handle_summary_state()
         self.report_summary_state()
 
     async def close_tasks(self):
@@ -510,6 +512,7 @@ class BaseCsc(Controller):
 
         try:
             self._faulting = True
+            self._summary_state = State.FAULT
             if code is None:
                 warnings.warn("specifying code=None is deprecated",
                               DeprecationWarning)
@@ -520,12 +523,12 @@ class BaseCsc(Controller):
                 except Exception:
                     self.log.exception(f"Failed to output errorCode: code={code!r}; report={report!r}")
             try:
-                self.summary_state = State.FAULT
+                self.report_summary_state()
             except Exception:
-                self.log.exception("Summary_state setter failed while going to FAULT; "
+                self.log.exception("report_summary_state failed while going to FAULT; "
                                    "some code may not have run.")
-                self._summary_state = State.FAULT
                 self.evt_summaryState.set_put(summaryState=self._summary_state)
+            asyncio.ensure_future(self.handle_summary_state())
         finally:
             self._faulting = False
 
@@ -537,8 +540,17 @@ class BaseCsc(Controller):
 
     @property
     def summary_state(self):
-        """Set or get the summary state as a `State` enum.
+        """Get the summary state as a `State` enum.
+        """
+        return self._summary_state
 
+    async def set_summary_state(self, summary_state):
+        """Set the summary state
+
+        Parameters
+        ----------
+        summary_state : `State` or `int`
+            The new summary state
         If you set the state then it is reported as a summaryState event.
         You can set summary_state to a `State` constant or to
         the integer equivalent.
@@ -548,14 +560,34 @@ class BaseCsc(Controller):
         ValueError
             If the new summary state is an invalid integer.
         """
-        return self._summary_state
-
-    @summary_state.setter
-    def summary_state(self, summary_state):
         # cast summary_state from an int or State to a State,
         # and reject invalid int values with ValueError
         self._summary_state = State(summary_state)
         self.report_summary_state()
+        await self.handle_summary_state()
+
+    @summary_state.setter
+    def summary_state(self, summary_state):
+        warnings.warn("Please do not set summary state directly", DeprecationWarning)
+        # cast summary_state from an int or State to a State,
+        # and reject invalid int values with ValueError
+        self._summary_state = State(summary_state)
+        self.report_summary_state()
+        asyncio.ensure_future(self.handle_summary_state())
+
+    async def handle_summary_state(self):
+        """Called when the summary state has changed.
+
+        Override to perform tasks such as starting and stopping telemetry
+        (see :ref:`example<lsst.ts.salobj-telemetry_loop_example>`).
+
+        Notes
+        -----
+        The versions in `BaseCsc` and `ConfigurableCsc` do nothing,
+        so if you subclass one of those you do not need to call
+        ``await super().handle_summary_state()``.
+        """
+        pass
 
     def report_summary_state(self):
         """Report a new value for summary_state, including current state.
@@ -595,6 +627,7 @@ class BaseCsc(Controller):
             self._summary_state = curr_state
             self.log.exception(f"end_{cmd_name} failed; reverting to state {curr_state!r}")
             raise
+        await self.handle_summary_state()
         self.report_summary_state()
 
     async def _heartbeat_loop(self):

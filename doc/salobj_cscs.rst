@@ -75,9 +75,9 @@ Writing a CSC
       If any of these methods fail then the state change operation
       is aborted, the summary state does not change, and the command
       is acknowledged as failed.
-    * Your subclass may override `BaseCsc.report_summary_state`
-      if you wish to perform actions based the current summary state.
-      This is an excellent place to :ref:`start and stop a telemetry loop<lsst.ts.salobj-telemetry_loop_example>`.
+    * Your subclass may override `BaseCsc.handle_summary_state` to perform actions
+      based the current summary state. This is an excellent place to
+      :ref:`start and stop a telemetry loop<lsst.ts.salobj-telemetry_loop_example>`.
     * Output the ``errorCode`` event when your CSC goes into the
       `State.FAULT` summary state.
 
@@ -237,7 +237,7 @@ External Connections
 --------------------
 
 If your CSC communicates with some other controller or system (by means other than SAL),
-I suggest you make or break the connection in `BaseCsc.report_summary_state` (or a method called from there) as follows:
+I suggest you make or break the connection in `BaseCsc.handle_summary_state` (or a method called from there) as follows:
 
 * If the current state is DISABLED or ENABLED state and not already connected, then make the connection.
   If you support simulation mode then read that to determine if this is a real or a simulated connection.
@@ -274,12 +274,11 @@ Here is an example of how to write a telemetry loop.
             #...read and write telemetry...
             await asyncio.sleep(self.telemetry_interval)
 
-3. Start and stop the telemetry loop in `BaseCsc.report_summary_state`:
+3. Start and stop the telemetry loop in `BaseCsc.handle_summary_state`:
 
   .. code-block:: python
 
-    def report_summary_state(self):
-        super().report_summary_state()
+    def handle_summary_state(self):
         if self.summary_state in (salobj.State.DISABLED, salobj.State.ENABLED):
             if self.telemetry_loop_task.done():
                 self.telemetry_loop_task = asyncio.create_task(self.telemetry_loop())

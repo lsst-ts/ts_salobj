@@ -104,6 +104,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     * If ``initial_summary_state`` is `State.DISABLED` or `State.ENABLED`
       then call `ConfigurableCsc.configure`.
     * Call `BaseCsc.set_simulation_mode`
+    * Call `BaseCsc.handle_summary_state`
     * Call `BaseCsc.report_summary_state`
     * Set ``start_task`` done
     """
