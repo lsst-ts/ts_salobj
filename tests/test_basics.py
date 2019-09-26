@@ -6,6 +6,7 @@ import unittest
 import asynctest
 
 import astropy.time
+from astropy.coordinates import Angle
 import astropy.units as u
 
 from lsst.ts import salobj
@@ -269,6 +270,56 @@ class BasicsTestCase(asynctest.TestCase):
         # but pytest can introduce unexpected delays
         self.assertLess(abs(tai1 - tai0), 0.1)
         self.assertGreaterEqual(tai1, tai0)
+
+    def test_angle_diff(self):
+        for angle1, angle2, expected_diff in (
+            (5.15, 0, 5.15),
+            (5.21, 359.20, 6.01),
+            (270, -90, 0),
+        ):
+            with self.subTest(angle1=angle1, angle2=angle2, expected_diff=expected_diff):
+                diff = salobj.angle_diff(angle1, angle2)
+                self.assertAlmostEqual(diff.deg, expected_diff)
+                diff = salobj.angle_diff(angle2, angle1)
+                self.assertAlmostEqual(diff.deg, -expected_diff)
+                diff = salobj.angle_diff(Angle(angle1, u.deg), angle2)
+                self.assertAlmostEqual(diff.deg, expected_diff)
+                diff = salobj.angle_diff(angle1, Angle(angle2, u.deg))
+                self.assertAlmostEqual(diff.deg, expected_diff)
+                diff = salobj.angle_diff(Angle(angle1, u.deg), Angle(angle2, u.deg))
+                self.assertAlmostEqual(diff.deg, expected_diff)
+
+    def test_assertAnglesAlmostEqual(self):
+        for angle1, angle2 in (
+            (5.15, 5.14),
+            (-0.20, 359.81),
+            (270, -90.1),
+        ):
+            epsilon = Angle(1e-15, u.deg)
+            with self.subTest(angle1=angle1, angle2=angle2):
+                diff = abs(salobj.angle_diff(angle1, angle2))
+                bad_diff = diff - epsilon
+                self.assertGreater(bad_diff.deg, 0)
+                with self.assertRaises(AssertionError):
+                    salobj.assertAnglesAlmostEqual(angle1, angle2, bad_diff)
+                with self.assertRaises(AssertionError):
+                    salobj.assertAnglesAlmostEqual(angle1, angle2, bad_diff.deg)
+                with self.assertRaises(AssertionError):
+                    salobj.assertAnglesAlmostEqual(angle2, angle1, bad_diff)
+                with self.assertRaises(AssertionError):
+                    salobj.assertAnglesAlmostEqual(Angle(angle1, u.deg), angle2, bad_diff)
+                with self.assertRaises(AssertionError):
+                    salobj.assertAnglesAlmostEqual(angle1, Angle(angle2, u.deg), bad_diff)
+                with self.assertRaises(AssertionError):
+                    salobj.assertAnglesAlmostEqual(Angle(angle1, u.deg), Angle(angle2, u.deg), bad_diff)
+
+                good_diff = diff + epsilon
+                salobj.assertAnglesAlmostEqual(angle1, angle2, good_diff)
+                salobj.assertAnglesAlmostEqual(angle1, angle2, good_diff.deg)
+                salobj.assertAnglesAlmostEqual(angle2, angle1, good_diff)
+                salobj.assertAnglesAlmostEqual(Angle(angle1, u.deg), angle2, good_diff)
+                salobj.assertAnglesAlmostEqual(angle1, Angle(angle2, u.deg), good_diff)
+                salobj.assertAnglesAlmostEqual(Angle(angle1, u.deg), Angle(angle2, u.deg), good_diff)
 
 
 if __name__ == "__main__":
