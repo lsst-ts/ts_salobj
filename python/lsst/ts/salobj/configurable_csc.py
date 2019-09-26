@@ -206,7 +206,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         # If starting up in Enabled or Disabled state then the CSC must be
         # configured now, because it won't be configured by
         # the start command (do_start method).
-        if self.summary_state in (State.DISABLED, State.ENABLED):
+        if self.disabled_or_enabled:
             default_config_dict = self.config_validator.validate(None)
             default_config = types.SimpleNamespace(**default_config_dict)
             await self.configure(config=default_config)

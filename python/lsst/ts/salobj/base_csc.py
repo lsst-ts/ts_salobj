@@ -539,6 +539,17 @@ class BaseCsc(Controller):
             raise base.ExpectedError(f"{action} not allowed in state {self.summary_state!r}")
 
     @property
+    def disabled_or_enabled(self):
+        """Return True if the summary state is `State.DISABLED` or
+        `State.ENABLED`.
+
+        This is useful in `handle_summary_state` to determine if
+        you should start or stop a telemetry loop,
+        and connect to or disconnect from an external controller
+        """
+        return self.summary_state in (State.DISABLED, State.ENABLED)
+
+    @property
     def summary_state(self):
         """Get the summary state as a `State` enum.
         """

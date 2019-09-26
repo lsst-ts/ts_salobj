@@ -279,7 +279,7 @@ Here is an example of how to write a telemetry loop.
   .. code-block:: python
 
     def handle_summary_state(self):
-        if self.summary_state in (salobj.State.DISABLED, salobj.State.ENABLED):
+        if self.disabled_or_enabled:
             if self.telemetry_loop_task.done():
                 self.telemetry_loop_task = asyncio.create_task(self.telemetry_loop())
         else:
