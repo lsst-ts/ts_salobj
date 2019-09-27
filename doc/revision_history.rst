@@ -26,6 +26,11 @@ Deprecated APIs:
 * Specifying ``code=None`` for `BaseCsc.fault` is deprecated. Please always specify an error code so the ``errorCode`` event can be output.
 * `BaseCsc.main` and `BaseScript.main` are deprecated. Please replace ``cls.main(...)`` with ``asyncio.run(cls.amain(...))``.
   This makes it much clearer that the call may not return quickly, avoids explicitly creating event loops, and takes advantage of the (new to Python 3.7) preferred way to run asynchronous code.
+* Setting ``BaseCsc.summary_state`` is deprecated.
+  In unit tests use the standard state transition commands or call the `set_summary_state` function.
+  In CSCs you should not be setting summary state directly; of the existing CSC code I've seen,
+  most of it sends the CSC to a FAULT state, for which you should call `BaseCsc.fault`,
+  and the rest doesn't need to set the summary state at all.
 * Script commands ``setCheckpoints`` and ``setLogLevel`` are deprecated.
   Specify checkpoints and log level using the new ``pauseCheckpoint``, ``stopCheckpoint`` and ``logLevel`` fields in the ``configure`` command.
 * Code that constructs a `Remote` or `Controller` without a running event loop should be rewritten because it will break when we replace the remaining usage of `asyncio.ensure_future` with the preferred `asyncio.make_task`. For example:
@@ -46,6 +51,10 @@ New capabilities:
 * Add function `current_tai` to return the current time in TAI unix seconds (LSST's standard for SAL timestamps).
 * Enhance function `tai_from_utc` to support alternate formats for UTC using new argument `format="unix"`.
 * Add `ReadTopic.aget` to return the current sample, if any, else wait for the next sample (DM-20975).
+* Add coroutine ``BaseCsc.handle_summary_state``.
+  This is the preferred way to handle changes to summary state instead of overriding synchronous method `BaseCsc.report_summary_state`.
+* Add property ``BaseCsc.disabled_or_enabled`` which returns true if the current summary state is `State.DISABLED` or `State.ENABLED`.
+  This is useful in `handle_summary_state` to determine if you should start or stop a telemetry loop.
 * Add ``result_contains`` argument to `assertRaisesAckError`.
 * Enhance `ControllerCommand` automatic acknowledgement for callback functions so that the ``ack`` value is `SalRetCode`.CMD_ABORTED if the callback raises `asyncio.CancelledError` and `SalRetCode`.CMD_TIMEOUT if the callback raises `asyncio.TimeoutError`.
 

@@ -104,6 +104,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     * If ``initial_summary_state`` is `State.DISABLED` or `State.ENABLED`
       then call `ConfigurableCsc.configure`.
     * Call `BaseCsc.set_simulation_mode`
+    * Call `BaseCsc.handle_summary_state`
     * Call `BaseCsc.report_summary_state`
     * Set ``start_task`` done
     """
@@ -205,7 +206,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         # If starting up in Enabled or Disabled state then the CSC must be
         # configured now, because it won't be configured by
         # the start command (do_start method).
-        if self.summary_state in (State.DISABLED, State.ENABLED):
+        if self.disabled_or_enabled:
             default_config_dict = self.config_validator.validate(None)
             default_config = types.SimpleNamespace(**default_config_dict)
             await self.configure(config=default_config)
