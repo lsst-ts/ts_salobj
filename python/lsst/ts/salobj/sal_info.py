@@ -139,21 +139,17 @@ class SalInfo:
 
         publisher_qos = domain.qos_provider.get_publisher_qos()
         publisher_qos.set_policies([partition_qos_policy])
+        # DDS publisher; used to create topic writers. A dds.Publisher.
         self.publisher = domain.participant.create_publisher(publisher_qos)
-        """DDS publisher; used to create topic writers. A dds.Publisher.
-        """
 
         subscriber_qos = domain.qos_provider.get_subscriber_qos()
         subscriber_qos.set_policies([partition_qos_policy])
+        # DDS subscriber; used to create topic readers. A dds.Subscriber.
         self.subscriber = domain.participant.create_subscriber(subscriber_qos)
-        """DDS subscriber; used to create topic readers. A dds.Subscriber.
-        """
 
+        # A task that is set done when SalInfo.start is done
+        # (or to an exception if start fails).
         self.start_task = asyncio.Future()
-        """A task that is set done when SalInfo.start is done.
-
-        (or to the exception if that fails).
-        """
 
         self.log = logging.getLogger(self.name)
         self.log.setLevel(INITIAL_LOG_LEVEL)

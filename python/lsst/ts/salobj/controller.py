@@ -134,9 +134,9 @@ class Controller:
         try:
             self.salinfo = SalInfo(domain=domain, name=name, index=index)
             self.log = self.salinfo.log
+            self.start_called = False
+            # Task that is set done when the controller is closed
             self.done_task = asyncio.Future()
-            """This task is set done when the controller is closed."""
-
             self._isopen = True
             command_names = self.salinfo.command_names
             if do_callbacks:
