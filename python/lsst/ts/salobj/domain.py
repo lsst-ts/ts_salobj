@@ -25,6 +25,7 @@ import asyncio
 import ipaddress
 import os
 import random
+import struct
 import weakref
 import warnings
 
@@ -139,15 +140,19 @@ class Domain:
         # set of SalInfo
         self._salinfo_set = weakref.WeakSet()
 
-        host = os.environ.get("LSST_DDS_IP")
-        if host is None:
+        host_name = os.environ.get("LSST_DDS_IP")
+        if host_name is None:
             host = random.randint(1, MAX_RANDOM_HOST)
         else:
             try:
-                host = int(ipaddress.IPv4Address(host))
+                unsigned_host = int(ipaddress.IPv4Address(host_name))
             except ipaddress.AddressValueError as e:
-                raise ValueError(f"Could not parse $LSST_DDS_IP={host} "
+                raise ValueError(f"Could not parse $LSST_DDS_IP={host_name} "
                                  "as a numeric IP address (e.g. '192.168.0.1')") from e
+            # Convert the unsigned long to a signed long
+            packed = struct.pack('=L', unsigned_host)
+            host = struct.unpack('=l', packed)[0]
+
         self.host = host
         self.origin = os.getpid()
         self.idl_dir = idl.get_idl_dir()
