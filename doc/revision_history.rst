@@ -57,6 +57,8 @@ New capabilities:
   This is useful in `handle_summary_state` to determine if you should start or stop a telemetry loop.
 * Add ``result_contains`` argument to `assertRaisesAckError`.
 * Enhance `ControllerCommand` automatic acknowledgement for callback functions so that the ``ack`` value is `SalRetCode`.CMD_ABORTED if the callback raises `asyncio.CancelledError` and `SalRetCode`.CMD_TIMEOUT if the callback raises `asyncio.TimeoutError`.
+* `Controller.start` now waits for all remotes to start (except those constructed with ``start=False``, which is rare).
+* Added `start_called` attribute to `SalInfo`, `Controller` and `Remote`.
 
 Other improvements:
 
