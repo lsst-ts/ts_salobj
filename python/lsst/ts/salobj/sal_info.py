@@ -127,6 +127,7 @@ class SalInfo:
         self.domain = domain
         self.name = name
         self.index = 0 if index is None else int(index)
+        self.start_called = False
 
         # Create the publisher and subscriber. Both depend on the DDS
         # partition, and so are created here instead of in Domain,
@@ -173,7 +174,6 @@ class SalInfo:
         self._guardcond = dds.GuardCondition()
         self._waitset = dds.WaitSet()
         self._waitset.attach(self._guardcond)
-        self._start_called = False
         self._read_loop_task = None
 
         self.idl_loc = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
@@ -339,7 +339,7 @@ class SalInfo:
         RuntimeError
             If called after `start` has been called.
         """
-        if self._start_called:
+        if self.start_called:
             raise RuntimeError(f"Cannot add topics after the start called")
         if topic._read_condition in self._readers:
             raise RuntimeError(f"{topic} already added")
@@ -366,9 +366,9 @@ class SalInfo:
         RuntimeError
             If `start` has already been called.
         """
-        if self._start_called:
+        if self.start_called:
             raise RuntimeError("Start already called")
-        self._start_called = True
+        self.start_called = True
         try:
             loop = asyncio.get_event_loop()
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:

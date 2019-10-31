@@ -178,6 +178,22 @@ class Controller:
 
     async def start(self):
         """Finish construction."""
+        if self.start_called:
+            raise RuntimeError("Start already called")
+        self.start_called = True
+
+        # Allow each remote constructor to begin running its start method.
+        await asyncio.sleep(0)
+
+        # Wait for all remote salinfos to start.
+        start_tasks = []
+        for salinfo in self.domain.salinfo_set:
+            if not salinfo.start_called:
+                # This is either self.salinfo or (very unusual) a remote
+                # constructed with start=False.
+                continue
+            start_tasks.append(salinfo.start_task)
+        await asyncio.gather(*start_tasks)
         await self.salinfo.start()
         self.put_log_level()
 
