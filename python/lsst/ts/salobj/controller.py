@@ -48,7 +48,7 @@ class Controller:
     index : `int` or `None` (optional)
         SAL component index, or 0 or None if the component is not indexed.
         A value is required if the component is indexed.
-    do_callbacks : `bool`
+    do_callbacks : `bool` (optional)
         Set ``do_<name>`` methods as callbacks for commands?
         If True then there must be exactly one ``do_<name>`` method
         for each command.
