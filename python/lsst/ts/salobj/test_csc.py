@@ -74,6 +74,10 @@ class TestCsc(ConfigurableCsc):
     data will appear. Note that the ``heartbeat`` event is output at
     regular intervals, as for any CSC.
 
+    Also, unlike most normal configurable CSCs, this one does not need to be
+    configured in order to be used (though self.config will be None).
+    Thus it is safe to start this CSC in the `salobj.State.ENABLED` state.
+
     **Error Codes**
 
     * 1: the fault command was executed
