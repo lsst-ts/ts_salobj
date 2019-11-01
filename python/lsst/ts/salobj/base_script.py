@@ -87,34 +87,28 @@ class BaseScript(salobj.Controller, abc.ABC):
             self.config_validator = salobj.DefaultingValidator(schema=schema)
         self._run_task = None
         self._pause_future = None
+        # A task that is set to None (or an exception if cleanup fails)
+        # when the task is done.
         self.done_task = asyncio.Future()
-        """A task that is set to None, or an exception if cleanup fails,
-        when the task is done.
-        """
         self._is_exiting = False
         self.evt_description.set(
             classname=type(self).__name__,
             description=str(descr),
         )
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+        # Delay (sec) to allow sending the final state and acknowleding
+        # the command before exiting.
         self.final_state_delay = 0.3
-        """Delay (sec) to allow sending the final state and acknowledging
-        the command before exiting."""
 
         self.timestamps = dict()
 
     async def start(self):
-        self_name = f"Script:{self.salinfo.index}"
         remote_names = set()
-        start_tasks = []
         for salinfo in self.domain.salinfo_set:
-            name = f"{salinfo.name}:{salinfo.index}"
-            if name == self_name:
+            if salinfo is self.salinfo:
                 continue
-            remote_names.add(name)
-            start_tasks.append(salinfo.start_task)
+            remote_names.add(f"{salinfo.name}:{salinfo.index}")
 
-        await asyncio.gather(*start_tasks)
         await super().start()
 
         self.evt_state.set_put(state=ScriptState.UNCONFIGURED)

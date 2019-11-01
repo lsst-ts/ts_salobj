@@ -48,7 +48,7 @@ class Controller:
     index : `int` or `None` (optional)
         SAL component index, or 0 or None if the component is not indexed.
         A value is required if the component is indexed.
-    do_callbacks : `bool`
+    do_callbacks : `bool` (optional)
         Set ``do_<name>`` methods as callbacks for commands?
         If True then there must be exactly one ``do_<name>`` method
         for each command.
@@ -134,9 +134,9 @@ class Controller:
         try:
             self.salinfo = SalInfo(domain=domain, name=name, index=index)
             self.log = self.salinfo.log
+            self.start_called = False
+            # Task that is set done when the controller is closed
             self.done_task = asyncio.Future()
-            """This task is set done when the controller is closed."""
-
             self._isopen = True
             command_names = self.salinfo.command_names
             if do_callbacks:
@@ -178,6 +178,22 @@ class Controller:
 
     async def start(self):
         """Finish construction."""
+        if self.start_called:
+            raise RuntimeError("Start already called")
+        self.start_called = True
+
+        # Allow each remote constructor to begin running its start method.
+        await asyncio.sleep(0)
+
+        # Wait for all remote salinfos to start.
+        start_tasks = []
+        for salinfo in self.domain.salinfo_set:
+            if not salinfo.start_called:
+                # This is either self.salinfo or (very unusual) a remote
+                # constructed with start=False.
+                continue
+            start_tasks.append(salinfo.start_task)
+        await asyncio.gather(*start_tasks)
         await self.salinfo.start()
         self.put_log_level()
 

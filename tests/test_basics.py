@@ -124,15 +124,25 @@ class BasicsTestCase(asynctest.TestCase):
 
     async def test_domain_host_origin(self):
         for bad_ip in ("57", "192.168", "192.168.0", "www.lsst.org"):
-            os.environ["LSST_DDS_IP"] = bad_ip
-            with self.assertRaises(ValueError):
-                salobj.Domain()
+            with self.subTest(bad_ip=bad_ip):
+                os.environ["LSST_DDS_IP"] = bad_ip
+                with self.assertRaises(ValueError):
+                    salobj.Domain()
 
-        # a value from the ipaddress documentation
-        os.environ["LSST_DDS_IP"] = "192.168.0.1"
-        async with salobj.Domain() as domain:
-            self.assertEqual(domain.host, 3232235521)
-            self.assertEqual(domain.origin, os.getpid())
+        for host_name, expected_host in (
+            # Values small enough that they fit into a signed long.
+            ("0.0.0.1", 1),
+            ("127.255.255.255", 2147483647),
+            # Values large enough that they do not fit into a signed long,
+            # so they must be cast to a negative value.
+            ("128.0.0.0", -2147483648),
+            ("255.255.255.255", -1),
+        ):
+            with self.subTest(host_name=host_name, expected_host=expected_host):
+                os.environ["LSST_DDS_IP"] = host_name
+                async with salobj.Domain() as domain:
+                    self.assertEqual(domain.host, expected_host)
+                    self.assertEqual(domain.origin, os.getpid())
 
         del os.environ["LSST_DDS_IP"]
         async with salobj.Domain() as domain:

@@ -128,6 +128,8 @@ class Remote:
     """
     def __init__(self, domain, name, index=None, *, readonly=False,
                  include=None, exclude=None, evt_max_history=1, tel_max_history=1, start=True):
+        self.start_called = False
+
         if include is not None and exclude is not None:
             raise ValueError("Cannot specify both include and exclude")
         include_set = set(include) if include is not None else None
@@ -168,6 +170,9 @@ class Remote:
             raise
 
     async def start(self):
+        if self.start_called:
+            raise RuntimeError("Start can only be called once")
+        self.start_called = True
         await self.salinfo.start()
 
     async def close(self):
