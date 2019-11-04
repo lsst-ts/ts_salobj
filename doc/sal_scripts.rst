@@ -62,13 +62,17 @@ For example the ``SlewTelescopeIcrs`` script has the following files in ``ts_sta
 Python Script File
 ==================
 
-The script file should just import the script and call ``main``::
+The script file should just import the script and run ``amain``:
+
+  .. code-block:: python
 
     #!/usr/bin/env python
     #...standard LSST boilerplate
+    import asyncio
+
     from lsst.ts.standardscripts.auxtel import SlewTelescopeIcrs
 
-    SlewTelescopeIcrs.main()
+    asyncio.run(SlewTelescopeIcrs.amain())
 
 Make your script executable using ``chmod +x <path>``.
 
@@ -101,7 +105,9 @@ run method
 Perform the main work of the script.
 See `BaseScript.run` for details.
 
-If ``run`` needs to run a slow computation, either call ``await asyncio.sleep(0)`` occasionally to give other coroutines a chance to run (0 is sufficient to free the event loop), or run the computation in a thread using `run_in_executor`_ e.g.::
+If ``run`` needs to run a slow computation, either call ``await asyncio.sleep(0)`` occasionally to give other coroutines a chance to run (0 is sufficient to free the event loop), or run the computation in a thread using `run_in_executor`_ e.g.:
+
+  .. code-block:: python
 
     def slow_computation(self):
         ...
@@ -109,10 +115,12 @@ If ``run`` needs to run a slow computation, either call ``await asyncio.sleep(0)
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, slow_computation)
 
-or if you wish to do other things while you wait::
+or if you wish to do other things while you wait:
+
+  .. code-block:: python
 
     loop = asyncio.get_running_loop()
-    thread_task = asyncio.ensure_future(loop.run_in_executor(None, slow_computation))
+    thread_task = asyncio.make_task(loop.run_in_executor(None, slow_computation))
 
     # do other work here...
     # then eventually you must wait for the background task
@@ -127,7 +135,9 @@ In your run method you may call ``await self.checkpoint(name_of_checkpoint)`` to
 By providing a diferent name for each checkpoint you allow users to specify exactly where they would like the script to pause or stop.
 In addition, each checkpoint is reported as the ``lastCheckpoint`` attribute of the ``state`` event, so providing informative names can be helpful in tracking the progress of a script.
 We suggest you make checkpoint names fairly short, obvious and unique, but none of these rules is enforced.
-If you have a checkpoint in a loop you may wish to modify the name for each iteration, e.g.::
+If you have a checkpoint in a loop you may wish to modify the name for each iteration, e.g.:
+
+  .. code-block:: python
 
     for iter in range(num_exposures):
         await self.checkpoint(f"start exposure {iter}")

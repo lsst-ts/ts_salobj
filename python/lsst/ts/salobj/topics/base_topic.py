@@ -48,51 +48,50 @@ class BaseTopic(abc.ABC):
     ------
     RuntimeError
         If the topic cannot be constructed.
+
+    Notes
+    -----
+
+    **Attributes**
+
+    * salinfo: the ``salinfo`` constructor argument; a `SalInfo`.
+    * name: the ``name`` constructor argument; a `str`.
+    * sal_name: the topic name used by SAL; a `str`.
+      For example: "logevent_summaryState".
+    * log: a `logging.Logger`.
+    * volatile: is this topic volatile (does it want no historical data)?
+      A `bool`.
+    * attr_name: name of topic attribute in `Controller` and `Remote`; a `str`.
+      For example: "evt_summaryState".
+    * rev_code: revision hash code for the topic; a `str`.
+      This code changes whenever the schema for the topic changes,
+      and it is part of the DDS topic name. For example: "90255bf1"
+    * dds_name: name of topic seen by DDS; a `str`.
+      For example: "Test_logevent_summaryState_90255bf1".
     """
     def __init__(self, *, salinfo, name, sal_prefix):
         try:
             self.salinfo = salinfo
-            """The ``salinfo`` constructor argument.
-            """
-
             self.name = str(name)
-            """The ``name`` constructor argument.
-            """
-
             self.sal_name = sal_prefix + self.name
             self.log = salinfo.log.getChild(self.sal_name)
+            self.volatile = name == "ackcmd" or sal_prefix == "command_"
 
-            if name == "ackcmd":
-                attr_prefix = "ack_"
-                dds_name = f"{salinfo.name}_ackcmd"
-                rev_name = f"{salinfo.name}::ackcmd"
-                rev_code = ""
-            else:
-                attr_prefix = _ATTR_PREFIXES.get(sal_prefix)
-                if attr_prefix is None:
-                    raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
-
-                rev_name = salinfo.revnames.get(self.sal_name)
-                if rev_name is None:
-                    raise ValueError(f"Could not find {self.salinfo.name} topic {self.sal_name}")
-                dds_name = rev_name.replace("::", "_")
-                rev_code = dds_name[-8:]
-
+            attr_prefix = "ack_" if name == "ackcmd" else _ATTR_PREFIXES.get(sal_prefix)
+            if attr_prefix is None:
+                raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
             self.attr_name = attr_prefix + name
-            """Name of topic attribute in `Controller` and `Remote`.
-            """
 
-            self.dds_name = dds_name
-            """Name of topic in DDS.
-            """
+            revname = salinfo.revnames.get(self.sal_name)
+            if revname is None:
+                raise ValueError(f"Could not find {self.salinfo.name} topic {self.sal_name}")
+            self.dds_name = revname.replace("::", "_")
+            self.rev_code = self.dds_name[-8:]
 
-            self.rev_code = rev_code
-            """Revision code suffix on DDS topic name.
-            """
+            self._type = ddsutil.get_dds_classes_from_idl(salinfo.idl_loc, revname)
+            qos = salinfo.domain.volatile_topic_qos if self.volatile else salinfo.domain.topic_qos
+            self._topic = self._type.register_topic(salinfo.domain.participant, self.dds_name, qos)
 
-            self._type = ddsutil.get_dds_classes_from_idl(salinfo.idl_loc, rev_name)
-            self._topic = self._type.register_topic(salinfo.domain.participant, dds_name,
-                                                    salinfo.domain.topic_qos)
         except Exception as e:
             raise RuntimeError(f"Failed to create topic {salinfo.name}.{name}") from e
 

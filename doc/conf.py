@@ -10,4 +10,4 @@ import lsst.ts.salobj
 _g = globals()
 _g.update(build_package_configs(
     project_name='ts_salobj',
-    version=lsst.ts.salobj.version.__version__))
+    version=lsst.ts.salobj.__version__))

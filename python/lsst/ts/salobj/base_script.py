@@ -28,6 +28,7 @@ import re
 import sys
 import time
 import types
+import warnings
 
 import yaml
 
@@ -64,12 +65,18 @@ class BaseScript(salobj.Controller, abc.ABC):
     descr : `str`
         Short description of what the script does, for operator display.
 
-    Attributes
-    ----------
-    log : `logging.Logger`
-        A Python log. You can safely log to it from different threads.
-        Note that it can take up to ``LOG_MESSAGES_INTERVAL`` seconds
-        before a log message is sent.
+    Notes
+    -----
+
+    **Attributes**
+
+    * ``log``: a `logging.Logger`.
+    * ``done_task``: a task that is done when the script has fully executed;
+      an `asyncio.Task`.
+    * ``final_state_delay``: final delay (in seconds) before exiting; `float`.
+      Must be long enough to allow final events to be output.
+    * ``timestamps``: a dict of ``ScriptState: TAI unix timestamp``.
+      Used to set timestamp data in the ``script`` event.
     """
     def __init__(self, index, descr):
         super().__init__("Script", index, do_callbacks=True)
@@ -80,35 +87,28 @@ class BaseScript(salobj.Controller, abc.ABC):
             self.config_validator = salobj.DefaultingValidator(schema=schema)
         self._run_task = None
         self._pause_future = None
+        # A task that is set to None (or an exception if cleanup fails)
+        # when the task is done.
         self.done_task = asyncio.Future()
-        """A task that is set to None, or an exception if cleanup fails,
-        when the task is done.
-        """
         self._is_exiting = False
         self.evt_description.set(
             classname=type(self).__name__,
             description=str(descr),
         )
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+        # Delay (sec) to allow sending the final state and acknowleding
+        # the command before exiting.
         self.final_state_delay = 0.3
-        """Delay (sec) to allow sending the final state and acknowledging
-        the command before exiting."""
 
         self.timestamps = dict()
-        """Dict of ScriptState: timestamp"""
 
     async def start(self):
-        self_name = f"Script:{self.salinfo.index}"
         remote_names = set()
-        start_tasks = []
         for salinfo in self.domain.salinfo_set:
-            name = f"{salinfo.name}:{salinfo.index}"
-            if name == self_name:
+            if salinfo is self.salinfo:
                 continue
-            remote_names.add(name)
-            start_tasks.append(salinfo.start_task)
+            remote_names.add(f"{salinfo.name}:{salinfo.index}")
 
-        await asyncio.gather(*start_tasks)
         await super().start()
 
         self.evt_state.set_put(state=ScriptState.UNCONFIGURED)
@@ -118,8 +118,10 @@ class BaseScript(salobj.Controller, abc.ABC):
         )
 
     @classmethod
-    def main(cls, descr=None):
-        """Start the script from the command line.
+    def make_from_cmd_line(cls, descr=None):
+        """Make a script from command-line arguments.
+
+        Return None if ``--schema`` specified.
 
         Parameters
         ----------
@@ -150,17 +152,69 @@ class BaseScript(salobj.Controller, abc.ABC):
         kwargs = dict(index=args.index)
         if descr is not None:
             kwargs["descr"] = descr
-        script = cls(**kwargs)
         if args.schema:
             schema = cls.get_schema()
             if schema is not None:
                 print(yaml.safe_dump(schema))
             return
-        asyncio.get_event_loop().run_until_complete(script.done_task)
+        return cls(**kwargs)
+
+    @classmethod
+    async def amain(cls, descr=None):
+        """Run the script from the command line.
+
+        Parameters
+        ----------
+        descr : `str` (optional)
+            Short description of what the script does, for operator display.
+            Leave at None if the script already has a description, which is
+            the most common case. Primarily intended for unit tests,
+            e.g. running ``TestScript``.
+
+
+        Notes
+        -----
+        The final return code will be:
+
+        * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
+          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`
+        * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
+        * 2 otherwise (which should never happen)
+        """
+        script = cls.make_from_cmd_line(descr=descr)
+        if script is None:
+            # printed schema and exited
+            return
+        await script.done_task
         return_code = {ScriptState.DONE: 0,
                        ScriptState.STOPPED: 0,
                        ScriptState.FAILED: 1}.get(script.state.state, 2)
         sys.exit(return_code)
+
+    @classmethod
+    def main(cls, descr=None):
+        """Start the script from the command line.
+
+        Parameters
+        ----------
+        descr : `str` (optional)
+            Short description of what the script does, for operator display.
+            Leave at None if the script already has a description, which is
+            the most common case. Primarily intended for unit tests,
+            e.g. running ``TestScript``.
+
+
+        Notes
+        -----
+        The final return code will be:
+
+        * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
+          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`
+        * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
+        * 2 otherwise (which should never happen)
+        """
+        warnings.warn("Use amain instead, e.g. asyncio.run(cls.amain(descr=descr))", DeprecationWarning)
+        asyncio.get_event_loop().run_until_complete(cls.amain(descr=descr))
 
     @property
     def checkpoints(self):
@@ -389,6 +443,8 @@ class BaseScript(salobj.Controller, abc.ABC):
         * Parse the ``config`` field as yaml-encoded `dict` and validate it
           (including setting default values).
         * Call `configure`.
+        * Set the pause and stop checkpoints.
+        * Set the log level if ``data.logLevel != 0``.
         * Call `set_metadata`.
         * Output the metadata event.
         * Change the script state to
@@ -413,6 +469,11 @@ class BaseScript(salobj.Controller, abc.ABC):
             errmsg = f"config({data.config}) failed"
             self.log.exception(errmsg)
             raise salobj.ExpectedError(f"{errmsg}: {e}") from e
+
+        self._set_checkpoints(pause=data.pauseCheckpoint, stop=data.stopCheckpoint)
+        if data.logLevel != 0:
+            self.log.setLevel(data.logLevel)
+            self.put_log_level()
 
         metadata = self.evt_metadata.DataType()
         # initialize to vaguely reasonable values
@@ -476,6 +537,9 @@ class BaseScript(salobj.Controller, abc.ABC):
     def do_setCheckpoints(self, data):
         """Set or clear the checkpoints at which to pause and stop.
 
+        This command is deprecated. Please set the checkpoints
+        using the `configure` command.
+
         Parameters
         ----------
         data : ``cmd_setCheckpoints.DataType``
@@ -494,19 +558,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         """
         self.assert_state("setCheckpoints", [ScriptState.UNCONFIGURED, ScriptState.CONFIGURED,
                           ScriptState.RUNNING, ScriptState.PAUSED])
-        try:
-            re.compile(data.stop)
-        except Exception as e:
-            raise salobj.ExpectedError(f"stop={data.stop!r} not a valid regex: {e}")
-        try:
-            re.compile(data.pause)
-        except Exception as e:
-            raise salobj.ExpectedError(f"pause={data.pause!r} not a valid regex: {e}")
-        self.evt_checkpoints.set_put(
-            pause=data.pause,
-            stop=data.stop,
-            force_output=True,
-        )
+        self._set_checkpoints(pause=data.pause, stop=data.stop)
 
     async def do_stop(self, data):
         """Stop the script.
@@ -528,6 +580,37 @@ class BaseScript(salobj.Controller, abc.ABC):
         else:
             self.set_state(state=ScriptState.STOPPING)
             await self._exit()
+
+    def _set_checkpoints(self, *, pause, stop):
+        """Set the pause and stop checkpoint fields and output the event.
+
+        Parameters
+        ----------
+        pause : `string`
+            Checkpoint(s) at which to pause, as a regular expression.
+            "" to not pause at any checkpoint; "*" to pause at all checkpoints.
+        stop : `string`
+            Checkpoint(s) at which to stop, as a regular expression.
+            "" to not stop at any checkpoint; "*" to stop at all checkpoints.
+
+        Raises
+        ------
+        lsst.ts.salobj.ExpectedError
+            If pause or stop are not valid regular expressions.
+        """
+        try:
+            re.compile(pause)
+        except Exception as e:
+            raise salobj.ExpectedError(f"pause={pause!r} not a valid regex: {e}")
+        try:
+            re.compile(stop)
+        except Exception as e:
+            raise salobj.ExpectedError(f"stop={stop!r} not a valid regex: {e}")
+        self.evt_checkpoints.set_put(
+            pause=pause,
+            stop=stop,
+            force_output=True,
+        )
 
     async def _heartbeat_loop(self):
         """Output heartbeat at regular intervals.

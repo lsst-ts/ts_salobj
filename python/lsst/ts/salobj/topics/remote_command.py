@@ -65,17 +65,12 @@ class _CommandInfo:
         Sequence number of command.
     wait_done : `bool`
         Wait until the command is done to finish the task?
+        If false then wait for the next ack instead.
     """
     def __init__(self, remote_command, seq_num, wait_done):
         self.remote_command = remote_command
         self.seq_num = int(seq_num)
-        """Command acknowledgement"""
-
         self.wait_done = bool(wait_done)
-        """Wait until the command is done?
-
-        If false then wait for the next ack.
-        """
 
         self._wait_task = asyncio.Future()
         self._next_ack_task = asyncio.Future()
@@ -163,8 +158,7 @@ class _CommandInfo:
         if timeout is None:  # for backwards compatibility
             timeout = DEFAULT_TIMEOUT
         try:
-            self._wait_task = asyncio.ensure_future(asyncio.wait_for(self._basic_next_ack(),
-                                                                     timeout=timeout))
+            self._wait_task = asyncio.ensure_future(asyncio.wait_for(self._basic_next_ack(), timeout=timeout))
             ackcmd = await self._wait_task
             # print(f"next_ackcmd got {ackcmd.ack} from _basic_next_ack")
             if ackcmd.ack in self.failed_ack_codes:

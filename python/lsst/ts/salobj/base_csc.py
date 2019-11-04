@@ -24,6 +24,7 @@ __all__ = ["BaseCsc"]
 import argparse
 import asyncio
 import sys
+import warnings
 
 from . import base
 from .sal_enums import State
@@ -57,7 +58,14 @@ class BaseCsc(Controller):
 
     Notes
     -----
-    The constructor does the following:
+    **Attributes**
+
+    * ``heartbeat_interval``: interval between heartbeat events, in seconds;
+      a `float`.
+
+    **Constructor**
+
+    The constructor does the following, beyond the parent class constructor:
 
     * For each command defined for the component, find a ``do_<name>`` method
       (which must be present) and add it as a callback to the
@@ -76,7 +84,8 @@ class BaseCsc(Controller):
           and is available for the subclass to override.
           If this fails then revert ``self.summary_state``, log an error,
           and acknowledge the command as failed.
-        * Call `report_summary_state` to report the new summary state.
+        * Call `handle_summary_state` and `report_summary_state`
+          to handle report the new summary state.
           If this fails then leave the summary state updated
           (since the new value *may* have been reported),
           but acknowledge the command as failed.
@@ -92,16 +101,17 @@ class BaseCsc(Controller):
         super().__init__(name=name, index=index, do_callbacks=True)
         self._initial_simulation_mode = int(initial_simulation_mode)
         self._summary_state = State(initial_state)
+        self._faulting = False
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+        # Interval between heartbeat events (sec)
         self.heartbeat_interval = HEARTBEAT_INTERVAL
-        """Interval between heartbeat events (sec)."""
 
     async def start(self):
         """Finish constructing the CSC.
 
         * Call `set_simulation_mode`. If this fails, set ``self.start_task``
           to the exception, call `stop`, making the CSC unusable, and return.
-        * Call `report_summary_state`
+        * Call `handle_summary_state` and `report_summary_state`.
         * Set ``self.start_task`` done.
         """
         await super().start()
@@ -111,6 +121,7 @@ class BaseCsc(Controller):
             await self.close(exception=e)
             raise
 
+        await self.handle_summary_state()
         self.report_summary_state()
 
     async def close_tasks(self):
@@ -118,8 +129,8 @@ class BaseCsc(Controller):
         self._heartbeat_task.cancel()
 
     @classmethod
-    def main(cls, index, run_loop=True, **kwargs):
-        """Start the CSC from the command line.
+    def make_from_cmd_line(cls, index, **kwargs):
+        """Construct a CSC from command line arguments.
 
         Parameters
         ----------
@@ -127,10 +138,7 @@ class BaseCsc(Controller):
             If the CSC is indexed: specify `True` make index a required
             command line argument, or specify a non-zero `int` to use
             that index.
-            If the CSC is not indexed: specify `None` or `False`.
-        run_loop : `bool` (optional)
-            Start an event loop? Set True for normal CSC operation.
-            False is convenient for some kinds of testing.
+            If the CSC is not indexed: specify `None` or 0.
         **kwargs : `dict` (optional)
             Additional keyword arguments for your CSC's constructor.
             If any arguments match those from the command line
@@ -155,20 +163,65 @@ class BaseCsc(Controller):
         args = parser.parse_args()
         if index is True:
             kwargs["index"] = args.index
-        elif index in (None, False):
+        elif not index:
             pass
         else:
             kwargs["index"] = int(index)
         cls.add_kwargs_from_args(args=args, kwargs=kwargs)
 
-        csc = cls(**kwargs)
-        if run_loop:
-            asyncio.get_event_loop().run_until_complete(csc.done_task)
-        return csc
+        return cls(**kwargs)
+
+    @classmethod
+    async def amain(cls, index, **kwargs):
+        """Make a CSC from command-line arguments and run it.
+
+        Parameters
+        ----------
+        index : `int`, `True`, `False` or `None`
+            If the CSC is indexed: specify `True` make index a required
+            command line argument, or specify a non-zero `int` to use
+            that index.
+            If the CSC is not indexed: specify `None` or 0.
+        **kwargs : `dict` (optional)
+            Additional keyword arguments for your CSC's constructor.
+            If any arguments match those from the command line
+            the command line values will be used.
+        """
+        csc = cls.make_from_cmd_line(index=index, **kwargs)
+        await csc.done_task
+
+    @classmethod
+    def main(cls, index, **kwargs):
+        """Start the CSC from the command line.
+
+        Parameters
+        ----------
+        index : `int`, `True`, `False` or `None`
+            If the CSC is indexed: specify `True` make index a required
+            command line argument, or specify a non-zero `int` to use
+            that index.
+            If the CSC is not indexed: specify `None` or 0.
+        **kwargs : `dict` (optional)
+            Additional keyword arguments for your CSC's constructor.
+            If any arguments match those from the command line
+            the command line values will be used.
+
+        Returns
+        -------
+        csc : ``cls``
+            The CSC.
+
+        Notes
+        -----
+        To add additional command-line arguments, override `add_arguments`
+        and `add_kwargs_from_args`.
+        """
+        warnings.warn("Use amain instead, e.g. asyncio.run(cls.amain(index=...))", DeprecationWarning)
+        asyncio.run(cls.amain(index=index, **kwargs))
 
     @classmethod
     def add_arguments(cls, parser):
-        """Add arguments to the argument parser created by `main`.
+        """Add arguments to the parser created by `make_from_cmd_line`.
 
         Parameters
         ----------
@@ -258,7 +311,7 @@ class BaseCsc(Controller):
     async def do_setSimulationMode(self, data):
         """Enter or leave simulation mode.
 
-        The CSC must be in `State.STANDBY` or `State.DISABLED` state.
+        The CSC must be in `State.STANDBY` state.
 
         Parameters
         ----------
@@ -269,8 +322,8 @@ class BaseCsc(Controller):
         -----
         To implement simulation mode: override `implement_simulation_mode`.
         """
-        if self.summary_state not in (State.STANDBY, State.DISABLED):
-            raise base.ExpectedError(f"Cannot set simulation_mode in state {self.summary_state!r}")
+        if self.summary_state != State.STANDBY:
+            raise base.ExpectedError(f"State is {self.summary_state!r}; must be STANDBY")
         await self.set_simulation_mode(data.mode)
 
     @property
@@ -440,22 +493,44 @@ class BaseCsc(Controller):
         pass
 
     def fault(self, code=None, report="", traceback=""):
-        """Enter the fault state.
+        """Enter the fault state and output the ``errorCode`` event.
 
         Parameters
         ----------
         code : `int` (optional)
-            Error code for the ``errorCode`` event; if None then ``errorCode``
-            is not output and you should output it yourself.
+            Error code for the ``errorCode`` event.
+            If `None` then ``errorCode`` is not output and you should
+            output it yourself. Specifying `None` is deprecated;
+            please always specify an integer error code.
         report : `str` (optional)
             Description of the error.
         traceback : `str` (optional)
             Description of the traceback, if any.
         """
-        if code is not None:
-            self.evt_errorCode.set_put(errorCode=code, errorReport=report,
-                                       traceback=traceback, force_output=True)
-        self.summary_state = State.FAULT
+        if self._faulting:
+            return
+
+        try:
+            self._faulting = True
+            self._summary_state = State.FAULT
+            if code is None:
+                warnings.warn("specifying code=None is deprecated",
+                              DeprecationWarning)
+            else:
+                try:
+                    self.evt_errorCode.set_put(errorCode=code, errorReport=report,
+                                               traceback=traceback, force_output=True)
+                except Exception:
+                    self.log.exception(f"Failed to output errorCode: code={code!r}; report={report!r}")
+            try:
+                self.report_summary_state()
+            except Exception:
+                self.log.exception("report_summary_state failed while going to FAULT; "
+                                   "some code may not have run.")
+                self.evt_summaryState.set_put(summaryState=self._summary_state)
+            asyncio.ensure_future(self.handle_summary_state())
+        finally:
+            self._faulting = False
 
     def assert_enabled(self, action):
         """Assert that an action that requires ENABLED state can be run.
@@ -464,9 +539,29 @@ class BaseCsc(Controller):
             raise base.ExpectedError(f"{action} not allowed in state {self.summary_state!r}")
 
     @property
-    def summary_state(self):
-        """Set or get the summary state as a `State` enum.
+    def disabled_or_enabled(self):
+        """Return True if the summary state is `State.DISABLED` or
+        `State.ENABLED`.
 
+        This is useful in `handle_summary_state` to determine if
+        you should start or stop a telemetry loop,
+        and connect to or disconnect from an external controller
+        """
+        return self.summary_state in (State.DISABLED, State.ENABLED)
+
+    @property
+    def summary_state(self):
+        """Get the summary state as a `State` enum.
+        """
+        return self._summary_state
+
+    async def set_summary_state(self, summary_state):
+        """Set the summary state
+
+        Parameters
+        ----------
+        summary_state : `State` or `int`
+            The new summary state
         If you set the state then it is reported as a summaryState event.
         You can set summary_state to a `State` constant or to
         the integer equivalent.
@@ -476,14 +571,34 @@ class BaseCsc(Controller):
         ValueError
             If the new summary state is an invalid integer.
         """
-        return self._summary_state
-
-    @summary_state.setter
-    def summary_state(self, summary_state):
         # cast summary_state from an int or State to a State,
         # and reject invalid int values with ValueError
         self._summary_state = State(summary_state)
         self.report_summary_state()
+        await self.handle_summary_state()
+
+    @summary_state.setter
+    def summary_state(self, summary_state):
+        warnings.warn("Please do not set summary state directly", DeprecationWarning)
+        # cast summary_state from an int or State to a State,
+        # and reject invalid int values with ValueError
+        self._summary_state = State(summary_state)
+        self.report_summary_state()
+        asyncio.ensure_future(self.handle_summary_state())
+
+    async def handle_summary_state(self):
+        """Called when the summary state has changed.
+
+        Override to perform tasks such as starting and stopping telemetry
+        (see :ref:`example<lsst.ts.salobj-telemetry_loop_example>`).
+
+        Notes
+        -----
+        The versions in `BaseCsc` and `ConfigurableCsc` do nothing,
+        so if you subclass one of those you do not need to call
+        ``await super().handle_summary_state()``.
+        """
+        pass
 
     def report_summary_state(self):
         """Report a new value for summary_state, including current state.
@@ -523,6 +638,7 @@ class BaseCsc(Controller):
             self._summary_state = curr_state
             self.log.exception(f"end_{cmd_name} failed; reverting to state {curr_state!r}")
             raise
+        await self.handle_summary_state()
         self.report_summary_state()
 
     async def _heartbeat_loop(self):

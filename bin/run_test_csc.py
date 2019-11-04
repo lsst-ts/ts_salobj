@@ -21,7 +21,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """An example of how to run a CSC"""
+import asyncio
 
 from lsst.ts.salobj import TestCsc
 
-TestCsc.main(index=True)
+asyncio.run(TestCsc.amain(index=True))

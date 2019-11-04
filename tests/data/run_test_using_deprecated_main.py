@@ -20,10 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
+# run `TestCsc` using deprecated class method `main`
+from lsst.ts.salobj import TestCsc
 
-from lsst.ts.salobj import TestScript
-
-
-if __name__ == "__main__":
-    asyncio.run(TestScript.amain(descr="standard script1"))
+TestCsc.main(index=True)

@@ -6,6 +6,17 @@ from lsst.ts import salobj
 
 
 class MinimalSalobjController(salobj.Controller):
+    """Minimal Test controller using ts_salobj, for unit tests.
+
+    Responds to one command: setLogLevel.
+
+    Parameters
+    ----------
+    index : `int`
+        SAL index.
+    initial_log_level : `int`
+        Initial log level.
+    """
     def __init__(self, index, initial_log_level):
         print(f"SalobjController: starting with index={index}, "
               f"initial_log_level={initial_log_level}")
@@ -13,6 +24,23 @@ class MinimalSalobjController(salobj.Controller):
         self.cmd_setLogLevel.callback = self.do_setLogLevel
         self.evt_logLevel.set(level=initial_log_level)
         self.tel_scalars.set(int0=initial_log_level)
+
+    @classmethod
+    def make_from_cmd_line(cls):
+        """Make an instance from the command line.
+        """
+        parser = argparse.ArgumentParser(f"Run a minimal Salobj Test controller")
+        parser.add_argument("index", type=int, help="Script SAL Component index")
+        parser.add_argument("initial_log_level", type=int, help="Initial log level")
+        args = parser.parse_args()
+        return MinimalSalobjController(index=args.index, initial_log_level=args.initial_log_level)
+
+    @classmethod
+    async def amain(cls):
+        """Make and run a controller.
+        """
+        controller = cls.make_from_cmd_line()
+        await controller.done_task
 
     async def start(self):
         """Finish construction."""
@@ -32,14 +60,9 @@ class MinimalSalobjController(salobj.Controller):
         self.tel_scalars.set_put(int0=data.level)
         if data.level == 0:
             print("SalobjController: quitting")
-            asyncio.ensure_future(self.close())
+            asyncio.create_task(self.close())
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(f"Run a minimal Salobj Test controller")
-    parser.add_argument("index", type=int, help="Script SAL Component index")
-    parser.add_argument("initial_log_level", type=int, help="Initial log level")
-    args = parser.parse_args()
-    controller = MinimalSalobjController(index=args.index, initial_log_level=args.initial_log_level)
-    asyncio.get_event_loop().run_until_complete(controller.done_task)
+    asyncio.run(MinimalSalobjController.amain())
     print("SalobjController: done")

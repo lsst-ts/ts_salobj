@@ -48,7 +48,7 @@ class Controller:
     index : `int` or `None` (optional)
         SAL component index, or 0 or None if the component is not indexed.
         A value is required if the component is indexed.
-    do_callbacks : `bool`
+    do_callbacks : `bool` (optional)
         Set ``do_<name>`` methods as callbacks for commands?
         If True then there must be exactly one ``do_<name>`` method
         for each command.
@@ -57,7 +57,7 @@ class Controller:
     -----
     .. _writing_a_controller:
 
-    Writing a Controller:
+    **Writing a Controller**
 
     (To write a CSC see :ref:`Writing a CSC<lsst.ts.salobj-writing_a_csc>`,
     instead)
@@ -71,18 +71,15 @@ class Controller:
       these are automatically provided to CSCs, but not other controllers.
     * Implement `close_tasks`.
 
+    **Attributes**
 
-    Attributes:
-
-    Each `Controller` has the following attributes:
-
-    - ``log``: a `logging.Logger`
-    - ``salinfo``: a `SalInfo`
-    - ``cmd_<command_name>``: a `topics.ControllerCommand`,
+    * ``log``: a `logging.Logger`
+    * ``salinfo``: a `SalInfo`
+    * ``cmd_<command_name>``: a `topics.ControllerCommand`,
       for each command supported by the SAL component.
-    - ``evt_<event_name>``: a `topics.ControllerEvent`
+    * ``evt_<event_name>``: a `topics.ControllerEvent`
       for each log event topic supported by the SAL component.
-    - ``tel_<telemetry_name>``: a `topics.ControllerTelemetry`
+    * ``tel_<telemetry_name>``: a `topics.ControllerTelemetry`
       for each telemetry topic supported by the SAL component.
 
     Here is an example that makes a Test controller and displays
@@ -123,7 +120,7 @@ class Controller:
 
     .. _required_logging_attributes:
 
-    Required Logging Attributes:
+    **Required Logging Attributes**
 
     Each `Controller` must support the following topics,
     as specified in ts_xml in ``SALGenerics.xml``:
@@ -137,9 +134,9 @@ class Controller:
         try:
             self.salinfo = SalInfo(domain=domain, name=name, index=index)
             self.log = self.salinfo.log
+            self.start_called = False
+            # Task that is set done when the controller is closed
             self.done_task = asyncio.Future()
-            """This task is set done when the controller is closed."""
-
             self._isopen = True
             command_names = self.salinfo.command_names
             if do_callbacks:
@@ -181,6 +178,22 @@ class Controller:
 
     async def start(self):
         """Finish construction."""
+        if self.start_called:
+            raise RuntimeError("Start already called")
+        self.start_called = True
+
+        # Allow each remote constructor to begin running its start method.
+        await asyncio.sleep(0)
+
+        # Wait for all remote salinfos to start.
+        start_tasks = []
+        for salinfo in self.domain.salinfo_set:
+            if not salinfo.start_called:
+                # This is either self.salinfo or (very unusual) a remote
+                # constructed with start=False.
+                continue
+            start_tasks.append(salinfo.start_task)
+        await asyncio.gather(*start_tasks)
         await self.salinfo.start()
         self.put_log_level()
 

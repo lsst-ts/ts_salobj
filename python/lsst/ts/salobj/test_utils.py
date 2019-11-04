@@ -19,7 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["assertRaisesAckError", "assertRaisesAckTimeoutError", "set_random_lsst_dds_domain"]
+__all__ = ["angle_diff", "assertAnglesAlmostEqual",
+           "assertRaisesAckError", "assertRaisesAckTimeoutError",
+           "set_random_lsst_dds_domain"]
 
 import contextlib
 import os
@@ -27,11 +29,57 @@ import random
 import socket
 import time
 
+from astropy.coordinates import Angle
+import astropy.units as u
+
 from .base import AckError, AckTimeoutError
+
+MIDDLE_WRAP_ANGLE = Angle(180, u.deg)
+
+
+def angle_diff(angle1, angle2):
+    """Return angle1 - angle2 wrapped into the range [-180, 180] deg.
+
+    Parameters
+    ----------
+    angle1 : `astropy.coordinates.Angle` or `float`
+        Angle 1; if a float then in degrees
+    angle2 : `astropy.coordinates.Angle` or `float`
+        Angle 2; if a float then in degrees
+
+    Returns
+    -------
+    diff : `astropy.coordinates.Angle`
+        angle1 - angle2 wrapped into the range [-180, 180] deg.
+    """
+    return (Angle(angle1, u.deg) - Angle(angle2, u.deg)).wrap_at(MIDDLE_WRAP_ANGLE)
+
+
+def assertAnglesAlmostEqual(angle1, angle2, max_diff=1e-5):
+    """Raise AssertionError if angle1 and angle2 are too different,
+    ignoring wrap.
+
+    Parameters
+    ----------
+    angle1 : `astropy.coordinates.Angle` or `float`
+        Angle 1; if a float then in degrees
+    angle2 : `astropy.coordinates.Angle` or `float`
+        Angle 2; if a float then in degrees
+    max_diff : `astropy.coordinates.Angle` or `float`
+        Maximum allowed difference; if a float then in degrees
+
+    Raises
+    ------
+    AssertionError
+        If `angle_diff` of angle1 and angle2 exceeds max_diff.
+    """
+    diff = abs(angle_diff(angle1, angle2))
+    if diff > Angle(max_diff, u.deg):
+        raise AssertionError(f"{angle1} and {angle2} differ by {diff} > {max_diff}")
 
 
 @contextlib.contextmanager
-def assertRaisesAckError(ack=None, error=None):
+def assertRaisesAckError(ack=None, error=None, result_contains=None):
     """Assert that code raises a salobj.AckError
 
     Parameters
@@ -39,8 +87,10 @@ def assertRaisesAckError(ack=None, error=None):
     ack : `int` (optional)
         Ack code, almost always a `SalRetCode` ``CMD_<x>`` constant.
         If None then the ack code is not checked.
-    error : `int`
+    error : `int` (optional)
         Error code. If None then the error value is not checked.
+    result_contains : `str` (optional)
+        If not None then the result value must contain this string.
     """
     try:
         yield
@@ -50,6 +100,8 @@ def assertRaisesAckError(ack=None, error=None):
             raise AssertionError(f"ackcmd.ack={e.ackcmd.ack} instead of {ack}")
         if error is not None and e.ackcmd.error != error:
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
+        if result_contains is not None and result_contains not in e.ackcmd.result:
+            raise AssertionError(f"ackcmd.result={e.ackcmd.result} does not contain {result_contains}")
 
 
 @contextlib.contextmanager
@@ -61,7 +113,7 @@ def assertRaisesAckTimeoutError(ack=None, error=None):
     ack : `int` (optional)
         Ack code of the last ack seen, almost always a `SalRetCode`
         ``CMD_<x>`` constant. If None then the ack code is not checked.
-    error : `int`
+    error : `int` (optional)
         Error code. If None then the error value is not checked.
     """
     try:
@@ -83,6 +135,9 @@ def set_random_lsst_dds_domain():
 
     The set name will contain the hostname and current time
     as well as a random integer.
+
+    The random value is generated using the `random` library,
+    so call ``random.seed(...)`` to seed this value.
     """
     hostname = socket.gethostname()
     curr_time = time.time()

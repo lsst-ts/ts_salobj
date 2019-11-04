@@ -57,7 +57,7 @@ class SalInfo:
     name : `str`
         SAL component name.
     index : `int` (optional)
-        Component index; 0 if this component is not indexed.
+        Component index; 0 or None if this component is not indexed.
 
     Raises
     ------
@@ -67,6 +67,8 @@ class SalInfo:
         If the IDL file cannot be found for the specified ``name``.
     TypeError
         If ``domain`` is not a `Domain`.
+    ValueError
+        If ``index`` is nonzero and the component is not indexed.
 
     Notes
     -----
@@ -79,6 +81,37 @@ class SalInfo:
     * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec)
       for waiting for historical (late-joiner) data.
 
+    **Attributes**
+
+    * ``domain``: the ``domain`` constructor argument; a `Domain`.
+    * ``name``: the ``name`` constructor argument; a `str`.
+    * ``index``: the ``index`` constructor argument; an `int`.
+    * ``idl_loc``: path to the IDL file for this SAL component;
+      a `pathlib.Path`.
+    * ``indexed``: `True` if this SAL component is indexed (meaning a non-zero
+        index is allowed), `False` if not.
+    * ``isopen``: is this read topic open?  A `bool`. `True` until `close`
+      is called.
+    * ``log``: a `logging.Logger`.
+    * ``partition_name``: the DDS partition name, from environment variable
+      LSST_DDS_DOMAIN; a `str`.
+    * ``publisher``: a DDS publisher, used to create DDS writers;
+      a `dds.Publisher`.
+    * ``subscriber``: a DDS subscriber, used to create DDS readers;
+      a `dds.Subscriber`.
+    * ``start_task``: a task which is finished when `start` is done;
+      an `asyncio.Task`.
+    * ``command_names``: a tuple of command names without the ``"command_"``
+      prefix
+    * ``event_names``: a tuple of event names, without the ``"logevent_"``
+      prefix
+    * ``telemetry_names``: a tuple of telemetry topic names
+    * ``sal_topic_names``: a tuple of SAL topic names, e.g.
+      "logevent_summaryState", in alphabetical order
+    * ``revnames``: a dict of topic name: name_revision
+
+    **Usage**
+
     Call `start` after constructing this `SalInfo` and all `Remote` objects.
     Until `start` is called no data will be read.
 
@@ -86,11 +119,6 @@ class SalInfo:
     for cleanup using a weak reference to avoid circular dependencies.
     You may safely close a `SalInfo` before closing its domain,
     and this is recommended if you create and destroy many remotes.
-
-    Contents include:
-
-    * A registry of DDS read condition: DDS reader for reading data.
-    * A registry of `topics.BaseTopic` instances for cleanup.
     """
     def __init__(self, domain, name, index=0):
         if not isinstance(domain, Domain):
@@ -98,9 +126,8 @@ class SalInfo:
         self.isopen = True
         self.domain = domain
         self.name = name
-        if index is None:
-            index = 0
-        self.index = int(index)
+        self.index = 0 if index is None else int(index)
+        self.start_called = False
 
         # Create the publisher and subscriber. Both depend on the DDS
         # partition, and so are created here instead of in Domain,
@@ -113,47 +140,52 @@ class SalInfo:
 
         publisher_qos = domain.qos_provider.get_publisher_qos()
         publisher_qos.set_policies([partition_qos_policy])
+        # DDS publisher; used to create topic writers. A dds.Publisher.
         self.publisher = domain.participant.create_publisher(publisher_qos)
-        """DDS publisher; used to create topic writers. A dds.Publisher.
-        """
 
         subscriber_qos = domain.qos_provider.get_subscriber_qos()
         subscriber_qos.set_policies([partition_qos_policy])
+        # DDS subscriber; used to create topic readers. A dds.Subscriber.
         self.subscriber = domain.participant.create_subscriber(subscriber_qos)
-        """DDS subscriber; used to create topic readers. A dds.Subscriber.
-        """
 
+        # A task that is set done when SalInfo.start is done
+        # (or to an exception if start fails).
         self.start_task = asyncio.Future()
-        """A task that is set done when SalInfo.start is done.
-
-        (or to the exception if that fails).
-        """
 
         self.log = logging.getLogger(self.name)
         self.log.setLevel(INITIAL_LOG_LEVEL)
 
         # dict of private_seqNum: salobj.topics.CommandInfo
         self._running_cmds = dict()
-        # dict of dds.ReadCondition: salobj Topic
+        # dict of dds.ReadCondition: salobj ReadTopic
         self._readers = dict()
+        # list of salobj WriteTopic
+        self._writers = list()
         # the first RemoteCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdReader
         # and set its callback to self._ackcmd_callback
         self._ackcmd_reader = None
+        # the first ControllerCommand created should set this to
+        # an lsst.ts.salobj.topics.AckCmdWriter
+        self._ackcmd_writer = None
         # wait_timeout is a failsafe for shutdown; normally all you have to do
         # is call `close` to trigger the guard condition and stop the wait
         self._wait_timeout = dds.DDSDuration(sec=10)
         self._guardcond = dds.GuardCondition()
         self._waitset = dds.WaitSet()
         self._waitset.attach(self._guardcond)
-        self._start_called = False
         self._read_loop_task = None
 
         self.idl_loc = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
         if not self.idl_loc.is_file():
             raise RuntimeError(f"Cannot find IDL file {self.idl_loc} for name={self.name!r}")
-        self.parse_idl()
-        self.ackcmd_type = ddsutil.get_dds_classes_from_idl(self.idl_loc, f"{self.name}::ackcmd")
+        self.parse_idl()  # adds self.indexed, self.revnames, etc.
+        if self.index != 0 and not self.indexed:
+            raise ValueError(f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component")
+        ackcmd_revname = self.revnames.get("ackcmd")
+        if ackcmd_revname is None:
+            raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
+        self._ackcmd_type = ddsutil.get_dds_classes_from_idl(self.idl_loc, ackcmd_revname)
         domain.add_salinfo(self)
 
     def _ackcmd_callback(self, data):
@@ -183,7 +215,7 @@ class SalInfo:
         result : `str`
             Explanatory message, or "" for no message.
         """
-        return self.ackcmd_type.topic_data_class
+        return self._ackcmd_type.topic_data_class
 
     def makeAckCmd(self, private_seqNum, ack, error=0, result="", truncate_result=False):
         """Make an AckCmdType object from keyword arguments.
@@ -228,38 +260,47 @@ class SalInfo:
     def parse_idl(self):
         """Parse the SAL-generated IDL file.
 
-        Set the following attributes:
+        Set the following attributes (see the class doc string for details):
 
-        * command_names: a tuple of command names without the ``"command_"``
-          prefix
-        * event_names: a tuple of event names, without the ``"logevent_"``
-          prefix
-        * telemetry_names: a tuple of telemetry topic names
-        * revnames: a dict of topic name: name_revision
+        * indexed
+        * command_names
+        * event_names
+        * telemetry_names
+        * sal_topic_names
+        * revnames
         """
-        pattern = re.compile(r" *struct +(?P<name_rev>(?P<name>.+)_(?:[a-zA-Z0-9]+)) +{ *")
+        struct_pattern = re.compile(r"\s*struct\s+(?P<name_rev>(?P<name>.+)_(?:[a-zA-Z0-9]+)) +{")
+        index_pattern = re.compile(rf"\s*long\s+{self.name}ID;")
         command_names = []
         event_names = []
         telemetry_names = []
+        sal_topic_names = []
         revnames = {}
+        # assume the component is not indexed until we find a <name>ID field
+        self.indexed = False
         with open(self.idl_loc, "r") as f:
             for line in f:
-                match = pattern.match(line.strip())
-                if not match:
+                struct_match = struct_pattern.match(line)
+                if not struct_match:
+                    index_match = index_pattern.match(line)
+                    if index_match is not None:
+                        self.indexed = True
                     continue
-                name = match.group("name")
-                name_rev = match.group("name_rev")
+                name = struct_match.group("name")
+                name_rev = struct_match.group("name_rev")
                 revnames[name] = f"{self.name}::{name_rev}"
 
                 if name.startswith("command_"):
                     command_names.append(name[8:])
                 elif name.startswith("logevent_"):
                     event_names.append(name[9:])
-                else:
+                elif name != "ackcmd":
                     telemetry_names.append(name)
+                sal_topic_names.append(name)
         self.command_names = tuple(command_names)
         self.event_names = tuple(event_names)
         self.telemetry_names = tuple(telemetry_names)
+        self.sal_topic_names = tuple(sorted(sal_topic_names))
         self.revnames = revnames
 
     async def close(self):
@@ -273,6 +314,9 @@ class SalInfo:
         while self._readers:
             read_cond, reader = self._readers.popitem()
             await reader.close()
+        while self._writers:
+            writer = self._writers.pop()
+            await writer.close()
         while self._running_cmds:
             private_seqNum, cmd_info = self._running_cmds.popitem()
             try:
@@ -282,19 +326,35 @@ class SalInfo:
         self.domain.remove_salinfo(self)
 
     def add_reader(self, topic):
-        """Add a ReadTopic so it can be read.
+        """Add a ReadTopic, so it can be read by the read loop and closed
+        by `close`.
 
         Parameters
         ----------
         topic : `topics.ReadTopic`
-            Reader topic.
+            Topic to read and (eventually) close.
+
+        Raises
+        ------
+        RuntimeError
+            If called after `start` has been called.
         """
-        if self._start_called:
+        if self.start_called:
             raise RuntimeError(f"Cannot add topics after the start called")
         if topic._read_condition in self._readers:
             raise RuntimeError(f"{topic} already added")
         self._readers[topic._read_condition] = topic
         self._waitset.attach(topic._read_condition)
+
+    def add_writer(self, topic):
+        """Add a WriteTopic, so it can be closed by `close`.
+
+        Parameters
+        ----------
+        topic : `topics.WriteTopic`
+            Write topic to (eventually) close.
+        """
+        self._writers.append(topic)
 
     async def start(self):
         """Start the read loop.
@@ -306,9 +366,9 @@ class SalInfo:
         RuntimeError
             If `start` has already been called.
         """
-        if self._start_called:
+        if self.start_called:
             raise RuntimeError("Start already called")
-        self._start_called = True
+        self.start_called = True
         try:
             loop = asyncio.get_event_loop()
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
@@ -321,31 +381,38 @@ class SalInfo:
                     self.log.info(f"Read historical data in {dt:0.2f} sec")
                 else:
                     self.log.warning(f"Could not read historical data in {dt:0.2f} sec")
-                for read_cond, topic in list(self._readers.items()):
+
+                # read historical (late-joiner) data
+                for read_cond, reader in list(self._readers.items()):
                     if not self.isopen:  # shutting down
                         return
-                    if not topic.isopen or topic.max_history == 0:
-                        # reader closed or gets no history
+                    if reader.volatile or not reader.isopen or not read_cond.triggered():
+                        # reader gets no historical data, is closed,
+                        # or has no data to be read
                         continue
                     try:
-                        data_list = topic._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
+                        data_list = reader._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
                     except dds.DDSException as e:
-                        self.log.warning(f"dds error while reading late joiner data for {topic}; "
+                        self.log.warning(f"dds error while reading late joiner data for {reader}; "
                                          f"trying again: {e}")
                         time.sleep(0.001)
-                        data_list = topic._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
-                    self.log.debug(f"Read {len(data_list)} history items for {topic}")
+                        try:
+                            data_list = reader._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
+                        except dds.DDSException as e:
+                            raise RuntimeError(f"dds error while reading late joiner data for {reader}; "
+                                               "giving up") from e
+                    self.log.debug(f"Read {len(data_list)} history items for {reader}")
                     sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
-                    # TODO DM-20313: enable this code
-                    # which was commented out to work around DM-20312:
-                    # if len(sd_list) < len(data_list):
-                    #     ninvalid = len(data_list) - len(sd_list)
-                    #     self.log.warning(f"Bug: read {ninvalid} late joiner "
-                    #                      f"items for {topic}")
-                    if topic.max_history > 0:
-                        sd_list = sd_list[-topic.max_history:]
+                    if len(sd_list) < len(data_list):
+                        ninvalid = len(data_list) - len(sd_list)
+                        self.log.warning(f"Read {ninvalid} invalid late-joiner items from {reader}. "
+                                         "The invalid items were safely skipped, but please examine "
+                                         "the code in SalInfo.start to see if it needs an update "
+                                         "for changes to OpenSplice dds.")
+                    if reader.max_history > 0:
+                        sd_list = sd_list[-reader.max_history:]
                         if sd_list:
-                            topic._queue_data(sd_list)
+                            reader._queue_data(sd_list)
             self._read_loop_task = asyncio.ensure_future(self._read_loop())
             self.start_task.set_result(None)
         except Exception as e:
@@ -364,26 +431,26 @@ class SalInfo:
                         # shutting down; clean everything up
                         return
                     for condition in conditions:
-                        topic = self._readers.get(condition)
-                        if topic is None:
+                        reader = self._readers.get(condition)
+                        if reader is None or not reader.isopen:
                             continue
                         # odds are we will only get one value per read,
                         # but read more so we can tell if we are falling behind
-                        data_list = topic._reader.take_cond(condition, topic._data_queue.maxlen)
+                        data_list = reader._reader.take_cond(condition, reader._data_queue.maxlen)
                         if len(data_list) == 1:
-                            topic._warned_readloop = False
-                        if len(data_list) >= 10 and not topic._warned_readloop:
-                            topic._warned_readloop = True
-                            self.log.warning(f"{topic!r} falling behind; read {len(data_list)} messages")
+                            reader._warned_readloop = False
+                        if len(data_list) >= 10 and not reader._warned_readloop:
+                            reader._warned_readloop = True
+                            self.log.warning(f"{reader!r} falling behind; read {len(data_list)} messages")
                         sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
-                        # TODO DM-20313: enable this code
-                        # which was commented out to work around DM-20312:
-                        # if len(sd_list) < len(data_list):
-                        #     ninvalid = len(data_list) - len(sd_list)
-                        #     self.log.warning(f"Bug: read {ninvalid} invalid "
-                        #                      f"items for {topic}")
+                        if len(sd_list) < len(data_list):
+                            ninvalid = len(data_list) - len(sd_list)
+                            self.log.warning(f"Read {ninvalid} invalid items from {reader}. "
+                                             "The invalid items were safely skipped, but please examine "
+                                             "the code in SalInfo._read_loop to see if it needs an update "
+                                             "for changes to OpenSplice dds.")
                         if sd_list:
-                            topic._queue_data(sd_list)
+                            reader._queue_data(sd_list)
                         await asyncio.sleep(0)  # free the event loop
         except asyncio.CancelledError:
             raise
@@ -441,7 +508,7 @@ class SalInfo:
         for reader in list(self._readers.values()):
             if not self.isopen:  # shutting down
                 return False
-            if not reader.isopen:
+            if reader.volatile or not reader.isopen:
                 continue
             num_checked += 1
             isok = reader._reader.wait_for_historical_data(wait_timeout)

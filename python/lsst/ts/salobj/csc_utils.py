@@ -109,13 +109,10 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
         raise ValueError("Cannot go into FAULT state using state transition commands")
 
     # get current summary state
-    state_data = remote.evt_summaryState.get()
-    if state_data is None:
-        # get failed; try waiting for it, in case the CSC is starting up
-        try:
-            state_data = await remote.evt_summaryState.next(flush=False, timeout=timeout)
-        except asyncio.TimeoutError:
-            raise RuntimeError(f"Cannot get summaryState from {remote.salinfo.name}")
+    try:
+        state_data = await remote.evt_summaryState.aget(timeout=timeout)
+    except asyncio.TimeoutError:
+        raise RuntimeError(f"Cannot get summaryState from {remote.salinfo.name}")
     current_state = State(state_data.summaryState)
 
     states = [current_state]
@@ -131,7 +128,10 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
 
         for command, state in command_state_list:
             cmd = getattr(remote, f"cmd_{command}")
-            await cmd.start(timeout=timeout)
+            try:
+                await cmd.start(timeout=timeout)
+            except Exception as e:
+                raise RuntimeError(f"Error on cmd=cmd_{command}, initial_state={current_state}") from e
             states.append(state)
     finally:
         remote.cmd_start.data.settingsToApply = old_settings_to_apply

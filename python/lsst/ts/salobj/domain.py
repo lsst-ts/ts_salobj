@@ -22,8 +22,10 @@
 __all__ = ["Domain", "DDS_READ_QUEUE_LEN"]
 
 import asyncio
+import ipaddress
 import os
 import random
+import struct
 import weakref
 import warnings
 
@@ -32,9 +34,11 @@ import dds
 from lsst.ts import idl
 
 # Length of DDS read queue
-# I would prefer to set this in the QoS file,
-# but dds does not make the information available
-DDS_READ_QUEUE_LEN = 1000  # length of DDS read queue
+# Warning: this must be equal to or longer than the queue length in the
+# QoS XML file.
+# This information is not available from dds objects, so I set queue depth
+# instead of using the value specified in the QoS XML file.
+DDS_READ_QUEUE_LEN = 100  # length of DDS read queue
 
 MAX_RANDOM_HOST = (1 << 31) - 1
 
@@ -44,11 +48,43 @@ class Domain:
 
     Notes
     -----
-    Environment variables:
+    **Environment Variables**
 
-    * LSST_DDS_IP used to set the private_host field of samples
-      when writing them. Must be an integer. Optional.
-      If absent then use a random positive number
+    * LSST_DDS_IP (optional) is used to set the ``host`` attribute.
+      If provided, it must be a dotted numeric IP address, e.g. "192.168.0.1".
+      The ``host`` attribute is set to the integer equivalent, or a positive
+      random integer if the environment variable is not provided.
+      This value is used to set the ``private_host`` field of topics
+      when writing them.
+
+    **Attributes**
+
+    * ``participant``: DDS domain participant, a `dds.DomainParticipant`.
+    * ``host``: value for the ``private_host`` field of output samples;
+      an `int`.
+      See environment variable ``LSST_DDS_IP`` for details.
+    * ``origin``: process ID (an int). Used to set the ``private_origin``
+      field of output samples.
+    * ``idl_dir``: root directory of the ``ts_idl`` package; a `pathlib.Path`.
+    * ``qos_provider``: quality of service provider; a `dds.QosProvider`.
+    * ``topic_qos``: quality of service for non-volatile DDS topics
+      (those that want late-joiner data); a `dds.Qos`.
+    * ``volatile_topic_qos``: quality of service for volatile topics
+      (those that do not want any late-joiner data); a `dds.Qos`.
+      Note: we cannot just make readers volatile to avoid late-joiner data,
+      as volatile readers receive late-joiner data from non-volatile writers.
+      So we make readers, writers, and topics all volatile. See OpenSplice
+      issue 19934; according to ADLink it is a feature, not a bug.
+    * ``reader_qos``: quality of service for non-volatile DDS readers;
+      a `dds.Qos`.
+    * ``volatile_reader_qos``: quality of service for volatile DDS readers;
+      a `dds.Qos`.
+    * ``writer_qos``: quality of service for non-volatile DDS writers;
+      a `dds.Qos`.
+    * ``volatile_writer_qos``: quality of service for volatile DDS writers;
+      a `dds.Qos`.
+
+    **Cleanup**
 
     It is important to close a `Domain` when you are done with it, especially
     in unit tests, because otherwise unreleased resources may cause problems.
@@ -104,46 +140,51 @@ class Domain:
         # set of SalInfo
         self._salinfo_set = weakref.WeakSet()
 
-        host = os.environ.get("LSST_DDS_IP")
-        if host is None:
+        host_name = os.environ.get("LSST_DDS_IP")
+        if host_name is None:
             host = random.randint(1, MAX_RANDOM_HOST)
         else:
             try:
-                host = int(host)
-            except ValueError:
-                raise ValueError(f"Could not parse $LSST_DDS_IP={host} as an integer")
+                unsigned_host = int(ipaddress.IPv4Address(host_name))
+            except ipaddress.AddressValueError as e:
+                raise ValueError(f"Could not parse $LSST_DDS_IP={host_name} "
+                                 "as a numeric IP address (e.g. '192.168.0.1')") from e
+            # Convert the unsigned long to a signed long
+            packed = struct.pack('=L', unsigned_host)
+            host = struct.unpack('=l', packed)[0]
+
         self.host = host
-        """Value for the private_host field of output samples."""
-
         self.origin = os.getpid()
-        """Value for the private_origin field of output samples."""
-
         self.idl_dir = idl.get_idl_dir()
 
         qos_path = idl.get_qos_path()
-        self.qos_provider = dds.QosProvider(qos_path.as_uri(), 'DDS DefaultQosProfile')
-        """Quality of service provider, a dds.QosProvider"""
+        self.qos_provider = dds.QosProvider(qos_path.as_uri(), "DDS DefaultQosProfile")
 
         participant_qos = self.qos_provider.get_participant_qos()
         self.participant = dds.DomainParticipant(qos=participant_qos)
-        """Domain participant, a dds.DomainParticipant"""
 
         # Create quality of service objects that do not depend on
         # the DDS partition. The two that do (publisher and subscriber)
         # are created in SalInfo, so that different SalInfo can be used
         # with different partitions.
         try:
+            volatile_policy = dds.DurabilityQosPolicy(dds.DDSDurabilityKind.VOLATILE)
+
             self.topic_qos = self.qos_provider.get_topic_qos()
-            """Quality of service for topics, a dds.Qos"""
+
+            self.volatile_topic_qos = self.qos_provider.get_topic_qos()
+            self.volatile_topic_qos.set_policies([volatile_policy])
 
             self.writer_qos = self.qos_provider.get_writer_qos()
-            """Quality of service for topic writers, a dds.Qos"""
+            self.volatile_writer_qos = self.qos_provider.get_writer_qos()
+            self.volatile_writer_qos.set_policies([volatile_policy])
 
             read_queue_policy = dds.HistoryQosPolicy(depth=DDS_READ_QUEUE_LEN,
                                                      kind=dds.DDSHistoryKind.KEEP_LAST)
             self.reader_qos = self.qos_provider.get_reader_qos()
             self.reader_qos.set_policies([read_queue_policy])
-            """Quality of service for topic readers, a dds.Qos"""
+            self.volatile_reader_qos = self.qos_provider.get_reader_qos()
+            self.volatile_reader_qos.set_policies([read_queue_policy, volatile_policy])
         except Exception:
             # very unlikely, but just in case...
             self.participant.close()
@@ -193,10 +234,12 @@ class Domain:
         """Close all registered `SalInfo` and the dds domain participant"""
         if self.participant is None:
             return
-        while self._salinfo_set:
-            salinfo = self._salinfo_set.pop()
-            await salinfo.close()
-        self.close_dds()
+        try:
+            while self._salinfo_set:
+                salinfo = self._salinfo_set.pop()
+                await salinfo.close()
+        finally:
+            self.close_dds()
         # give read loops a bit more time
         await asyncio.sleep(0.01)
         if self.num_read_loops != 0 or self.num_read_threads != 0:

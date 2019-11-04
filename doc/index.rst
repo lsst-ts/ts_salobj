@@ -18,14 +18,15 @@ Using lsst.ts.salobj
 .. toctree::
     salobj_cscs
     sal_scripts
-    :maxdepth: 1
+    :maxdepth: 2
 
-**Important classes:**
+Important Classes
+-----------------
 
 * `BaseCsc` and `ConfigurableCsc` are subclasses of `Controller` that supports the standard CSC summary states and state transition commands.
   The latter also supports configuration via yaml files that are validated against a schema.
   See :ref:`Writing a CSC<lsst.ts.salobj-writing_a_csc>` for more information.
-  It is important to call `BaseCsc.close` when done with the CSC; `BaseCsc.main` does this automatically, but in other cases see :ref:`Cleanup<lsst.ts.salobj-cleanup>` for more information.
+  It is important to call `BaseCsc.close` when done with the CSC; `BaseCsc.amain` does this automatically, but in other cases see :ref:`Cleanup<lsst.ts.salobj-cleanup>` for more information.
 * `Controller` provides the capability to output SAL telemetry and event topics and receive SAL commands.
   Every Python SAL component that is not a Commandable SAL Component (CSC) should be a subclass of `Controller`.
   See :ref:`Writing a Controller<writing_a_controller>` for more information.
@@ -48,12 +49,15 @@ Examples:
 
 .. _lsst.ts.salobj-cleanup:
 
-**Cleanup:**
+Cleanup
+-------
 
 It is important to call `Controller.close` or `Domain.close` when done with it (and this automatically closes the resources used by `Remote`).
 `Controller` creates and manages its own `Domain` but if you don't have a `Controller` then you will have to create and manage one yourself.
 Both `Controller` and `Domain` can be used as asynchronous context managers to call ``close`` automatically.
-Here are some examples::
+Here are some examples:
+
+  .. code-block:: python
 
     # if you have a controller or CSC
     async with BaseCsc(name="ATDomeTrajectory", index=0) as dome_trajectory:
@@ -69,7 +73,8 @@ Contributing
 ============
 
 ``lsst.ts.salobj`` is developed at https://github.com/lsst-ts/ts_salobj.
-You can find Jira issues for this module under the `ts_salobj <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20component%20%3D%20ts_salobj>`_ component.
+You can find Jira issues for this module using `labels=ts_salobj <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20labels%20%20%3D%20ts_salobj>`_.
+
 
 .. _lsst.ts.salobj-pyapi:
 
@@ -85,3 +90,10 @@ Python API reference
 .. automodapi:: lsst.ts.salobj.topics.base_topic
     :no-main-docstr:
     :no-inheritance-diagram:
+
+Revision History
+================
+
+.. toctree::
+    revision_history
+    :maxdepth: 1

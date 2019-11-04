@@ -68,6 +68,18 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
     Notes
     -----
+    **Attributes**
+
+    * ``config_dir``: configuration directory; a `pathlib.Path`.
+      Directory containing configuration files.
+    * ``config_validator``: validator for configuration files that also sets
+      default values for omitted items; a `DefaultingValidator`.
+    * ``schema_version``: configuration schema version, as specified
+      in the schema as the final word of the ``title``; a `str`.
+      Used to find the ``config_dir``.
+
+    **Configuration**
+
     Configuration is handled by the ``start`` command, as follows:
 
     * The ``settingsToApply`` field specifies a path to a configuration file
@@ -83,13 +95,16 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
       which subclasses must override. Note that ``configure`` is called just
       before summary state changes from `State.STANDBY` to `State.DISABLED`.
 
-    The constructor does the following:
+    **Constructor**
+
+    The constructor does the following, beyond the parent class constructor:
 
     * Set summary state, then run the `ConfigurableCsc.start` asynchronously,
       which does the following:
     * If ``initial_summary_state`` is `State.DISABLED` or `State.ENABLED`
       then call `ConfigurableCsc.configure`.
     * Call `BaseCsc.set_simulation_mode`
+    * Call `BaseCsc.handle_summary_state`
     * Call `BaseCsc.report_summary_state`
     * Set ``start_task`` done
     """
@@ -191,14 +206,14 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         # If starting up in Enabled or Disabled state then the CSC must be
         # configured now, because it won't be configured by
         # the start command (do_start method).
-        if self.summary_state in (State.DISABLED, State.ENABLED):
+        if self.disabled_or_enabled:
             default_config_dict = self.config_validator.validate(None)
             default_config = types.SimpleNamespace(**default_config_dict)
             await self.configure(config=default_config)
         await super().start()
 
     def _get_settings_version(self):
-        """Get data for evt_settingsVersions.recommendedSettingsVersion.
+        """Get data for evt_settingVersions.recommendedSettingsVersion.
 
         If config_dir is a git repository (as it should be)
         then return detailed git information. Otherwise return "".
