@@ -590,7 +590,8 @@ class BaseCsc(Controller):
         """Called when the summary state has changed.
 
         Override to perform tasks such as starting and stopping telemetry
-        (see :ref:`example<lsst.ts.salobj-telemetry_loop_example>`).
+        (`example <https://ts-salobj.lsst.io/salobj_cscs.html
+        #telemetry-loop-example>`_).
 
         Notes
         -----
