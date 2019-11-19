@@ -40,6 +40,7 @@ Important Classes
   `Controller` creates and manages a `Domain`, but if you have no controller and wish to construct one or more `Remote`\s then you will have to create and manage a `Domain` yourself.
   See :ref:`Cleanup<lsst.ts.salobj-cleanup>` for more information.
 * `BaseScript` is a base class for :ref:`Python SAL Scripts<lsst.ts.salobj_python_sal_scripts>`.
+* `AsyncS3Bucket` is a class for asynchronously uploading and downloading files to/from s3 buckets.
 
 Examples:
 
