@@ -1,3 +1,4 @@
+from .async_s3_bucket import *
 from .sal_enums import *
 from .base import *
 from .idl_metadata import *
