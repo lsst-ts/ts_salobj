@@ -1,5 +1,6 @@
 from .sal_enums import *
 from .base import *
+from .idl_metadata import *
 from .domain import *
 from .sal_info import *
 from .sal_log_handler import *

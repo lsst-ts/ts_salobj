@@ -214,45 +214,6 @@ class BasicsTestCase(asynctest.TestCase):
                 with self.assertRaises(ValueError):
                     salobj.name_to_name_index(bad_name)
 
-    async def test_salinfo_constructor(self):
-        with self.assertRaises(TypeError):
-            salobj.SalInfo(domain=None, name="Test")
-
-        async with salobj.Domain() as domain:
-            with self.assertRaises(RuntimeError):
-                salobj.SalInfo(domain=domain, name="invalid_component_name")
-
-            salinfo = salobj.SalInfo(domain=domain, name="Test")
-            self.assertEqual(salinfo.name, "Test")
-
-    async def test_salinfo_attributes(self):
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test")
-
-            # expected_commands omits a few commands that TestCsc
-            # does not support, but that are in generics.
-            expected_commands = ["disable", "enable", "exitControl", "standby", "start",
-                                 "setArrays", "setLogLevel", "setScalars", "setSimulationMode",
-                                 "fault", "wait"]
-            self.assertTrue(set(expected_commands).issubset(set(salinfo.command_names)))
-
-            # expected_events omits a few events that TestCsc
-            # does not support, but that are in generics.
-            expected_events = ["errorCode", "heartbeat", "logLevel", "logMessage", "settingVersions",
-                               "simulationMode", "summaryState",
-                               "scalars", "arrays"]
-            self.assertTrue(set(expected_events).issubset(set(salinfo.event_names)))
-
-            # telemetry topic names should match; there are no generics
-            expected_telemetry = ["arrays", "scalars"]
-            self.assertEqual(set(expected_telemetry), set(salinfo.telemetry_names))
-
-            expected_sal_topic_names = ["ackcmd"]
-            expected_sal_topic_names += [f"command_{name}" for name in salinfo.command_names]
-            expected_sal_topic_names += [f"logevent_{name}" for name in salinfo.event_names]
-            expected_sal_topic_names += [name for name in salinfo.telemetry_names]
-            self.assertEqual(sorted(expected_sal_topic_names), list(salinfo.sal_topic_names))
-
     def check_tai_from_utc(self, utc_ap, desired_tai_minus_utc):
         """Check tai_from_utc at a specific UTC date.
 

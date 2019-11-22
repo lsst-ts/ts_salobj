@@ -47,7 +47,7 @@ class SpeedTestCase(asynctest.TestCase):
             t0 = time.time()
             for topic_name in topic_names:
                 revname = salinfo.revnames.get(topic_name)
-                ddsutil.get_dds_classes_from_idl(salinfo.idl_loc, revname)
+                ddsutil.get_dds_classes_from_idl(salinfo.metadata.idl_path, revname)
             dt = time.time() - t0
             ntopics = len(topic_names)
             print(f"Took {dt:0.2f} to create {ntopics} topics: {ntopics/dt:0.1f} topics/sec")

@@ -64,6 +64,10 @@ class TopicsTestCase(asynctest.TestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_domain()
 
+    def check_topic_metadata(self, topic):
+        self.assertEqual(topic.metadata.sal_name, topic.sal_name)
+        self.assertIs(topic.metadata, topic.salinfo.metadata.topic_info[topic.sal_name])
+
     async def test_attributes(self):
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
             for obj in (harness.remote, harness.csc):
@@ -75,6 +79,7 @@ class TopicsTestCase(asynctest.TestCase):
                     self.assertEqual(cmd.dds_name,
                                      cmd.salinfo.name + "_" + cmd.sal_name + "_" + cmd.rev_code)
                     self.assertTrue(cmd.volatile)
+                    self.check_topic_metadata(cmd)
 
                 for evt_name in obj.salinfo.event_names:
                     evt = getattr(obj, f"evt_{evt_name}")
@@ -84,6 +89,7 @@ class TopicsTestCase(asynctest.TestCase):
                     self.assertEqual(evt.dds_name,
                                      evt.salinfo.name + "_" + evt.sal_name + "_" + evt.rev_code)
                     self.assertFalse(evt.volatile)
+                    self.check_topic_metadata(evt)
 
                 for tel_name in obj.salinfo.telemetry_names:
                     tel = getattr(obj, f"tel_{tel_name}")
@@ -93,6 +99,7 @@ class TopicsTestCase(asynctest.TestCase):
                     self.assertEqual(tel.dds_name,
                                      tel.salinfo.name + "_" + tel.sal_name + "_" + tel.rev_code)
                     self.assertFalse(tel.volatile)
+                    self.check_topic_metadata(tel)
 
             # cannot add new topics to the existing salinfos
             # (because the read loop has started) so create a new one
