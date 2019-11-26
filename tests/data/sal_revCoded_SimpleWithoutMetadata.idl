@@ -1,0 +1,48 @@
+module Simple {
+struct command_setArrays_1234abcd {
+      long  TestID;
+      string<8> private_revCode; //private
+      double    private_sndStamp; //private
+      double    private_rcvStamp; //private
+      long      private_seqNum; //private
+      long      private_origin; //private
+      long      private_host; //private
+	  boolean	boolean0[5];
+	  short	short0[5];
+	  long	long0[5];
+	  long long	longLong0[5];
+	  octet	octet0[5];
+	  unsigned short	unsignedShort0[5];
+	  unsigned long	unsignedLong0[5];
+	  float	float0[5];
+	  double	double0[5];
+	};
+#pragma keylist command_setArrays_1234abcd TestID
+	 const long arrays_Int0ValueEnum_Zero=0;
+	 const long arrays_Int0ValueEnum_Two=2;
+	 const long arrays_Int0ValueEnum_Four=04;
+	 const long arrays_Int0ValueEnum_Five=0x05;
+struct logevent_scalars_1234abcd {
+      long  TestID;
+      string<8> private_revCode; //private
+      double    private_sndStamp; //private
+      double    private_rcvStamp; //private
+      long      private_seqNum; //private
+      long      private_origin; //private
+      long      private_host; //private
+      boolean   boolean0;
+      string    char0;
+      short short0;
+      long  long0;
+      long long longLong0;
+      octet octet0;
+      unsigned short    unsignedShort0;
+      unsigned long unsignedLong0;
+      float float0;
+      double    double0;
+      string<20>    string0;
+      long  priority;
+    };
+#pragma keylist logevent_scalars_1234abcd TestID
+};
+
