@@ -102,7 +102,7 @@ class BaseCsc(Controller):
         self._initial_simulation_mode = int(initial_simulation_mode)
         self._summary_state = State(initial_state)
         self._faulting = False
-        self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+        self._heartbeat_task = base.make_done_future()
         # Interval between heartbeat events (sec)
         self.heartbeat_interval = HEARTBEAT_INTERVAL
 
@@ -116,6 +116,7 @@ class BaseCsc(Controller):
         """
         await super().start()
         try:
+            self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
             await self.set_simulation_mode(self._initial_simulation_mode)
         except Exception as e:
             await self.close(exception=e)
