@@ -221,6 +221,9 @@ class SalInfo:
         # (or to an exception if start fails).
         self.start_task = asyncio.Future()
 
+        # A task that is set Done when SalInfo.close is done.
+        self.done_task = base.make_done_future()
+
         self.log = logging.getLogger(self.name)
         self.log.setLevel(INITIAL_LOG_LEVEL)
 
@@ -243,7 +246,7 @@ class SalInfo:
         self._guardcond = dds.GuardCondition()
         self._waitset = dds.WaitSet()
         self._waitset.attach(self._guardcond)
-        self._read_loop_task = None
+        self._read_loop_task = base.make_done_future()
 
         idl_path = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
         if not idl_path.is_file():
@@ -373,26 +376,36 @@ class SalInfo:
         self.revnames = revnames
 
     async def close(self):
-        """Shut down and clean up resources. A no-op if already closed."""
+        """Shut down and clean up resources.
+
+        May be called multiple times. The first call closes the SalInfo;
+        subsequent calls wait until the SalInfo is closed.
+        """
         if not self.isopen:
+            await self.done_task
             return
         self.isopen = False
-        self._guardcond.trigger()
-        if self._read_loop_task is not None:
+        try:
+            self._guardcond.trigger()
+            # Give the read loop time to exit.
+            await asyncio.sleep(0.01)
             self._read_loop_task.cancel()
-        while self._readers:
-            read_cond, reader = self._readers.popitem()
-            await reader.close()
-        while self._writers:
-            writer = self._writers.pop()
-            await writer.close()
-        while self._running_cmds:
-            private_seqNum, cmd_info = self._running_cmds.popitem()
-            try:
-                cmd_info.abort("shutting down")
-            except Exception:
-                pass
-        self.domain.remove_salinfo(self)
+            while self._readers:
+                read_cond, reader = self._readers.popitem()
+                await reader.close()
+            while self._writers:
+                writer = self._writers.pop()
+                await writer.close()
+            while self._running_cmds:
+                private_seqNum, cmd_info = self._running_cmds.popitem()
+                try:
+                    cmd_info.abort("shutting down")
+                except Exception:
+                    pass
+            self.domain.remove_salinfo(self)
+        finally:
+            if not self.done_task.done():
+                self.done_task.set_result(None)
 
     def add_reader(self, topic):
         """Add a ReadTopic, so it can be read by the read loop and closed
