@@ -9,13 +9,20 @@ Revision History
 v5.1.0
 ======
 
-Provide IDL metadata, including descriptions of topics and descriptions and units of fields, via a new `SalInfo` ``metadata`` attribute, an instance of `IdlMetadata`.
-Some of the metadata will only be available when SAL 4.6 is released.
+Major changes:
 
-Add the `AsyncS3Bucket` class for writing to Amazon Web Services s3 buckets.
+* Provide IDL metadata, including descriptions of topics and descriptions and units of fields, via a new `SalInfo` ``metadata`` attribute, an instance of `IdlMetadata`.
+  Some of the metadata is only available in IDL files built with SAL 4.6.
+* Add the `AsyncS3Bucket` class for writing to Amazon Web Services s3 buckets.
 
-Change a link in the doc string for `BaseCsc.handle_summary_state` to avoid Sphinx errors in subclasses in other packages.
+Minor changes:
 
+* Change a link in the doc string for `BaseCsc.handle_summary_state` to avoid Sphinx errors in subclasses in other packages.
+* Add a `done_task` attribute to `Domain`.
+* Add an `isopen` attribute to `Controller`.
+* Improve close methods for `Domain`, `SalInfo`, `Controller` and `Remote` to reduce warnings in unit tests.
+  Subsequent calls wait until the first call finishes and `SalInfo` allows time for its read loop to finish.
+  
 Deprecated APIs:
 
 * `SalInfo.idl_loc` should now be `SalInfo.metadata.idl_path`.
