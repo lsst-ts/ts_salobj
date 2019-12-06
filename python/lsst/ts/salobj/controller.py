@@ -137,7 +137,7 @@ class Controller:
             self.start_called = False
             # Task that is set done when the controller is closed
             self.done_task = asyncio.Future()
-            self._isopen = True
+            self.isopen = True
             command_names = self.salinfo.command_names
             if do_callbacks:
                 self._assert_do_methods_present(command_names)
@@ -204,7 +204,11 @@ class Controller:
     async def close(self, exception=None):
         """Shut down, clean up resources and set done_task done.
 
-        Subclasses will typically override `close_tasks`.
+        May be called multiple times. The first call closes the Controller;
+        subsequent calls wait until the Controller is closed.
+
+        Subclasses should override `close_tasks` instead of `close`,
+        unless you have a good reason to do otherwise.
 
         Parameters
         ----------
@@ -220,18 +224,26 @@ class Controller:
         all background tasks, pauses briefly to allow final SAL messages
         to be sent, then closes the dds domain.
         """
-        if not self._isopen:
+        if not self.isopen:
+            # Closed or closing. Wait for done_task to be finished,
+            # ignoring any exception. If you want to know about the exception
+            # you can examine done_task yourself.
+            try:
+                await self.done_task
+            except Exception:
+                pass
             return
-        self._isopen = False
+        self.isopen = False
         try:
-            # Give time to output final log messages
+            await self.close_tasks()
+        except Exception:
+            self.log.exception(f"Controller.close_tasks failed")
+        try:
+            # Give time to output final messages.
             await asyncio.sleep(0.1)
             self.log.removeHandler(self._sal_log_handler)
             self._sal_log_handler = None
-            await self.close_tasks()
-            # Give a little extra time to close
-            await asyncio.sleep(0.1)
-            await self.salinfo.domain.close()
+            await self.domain.close()
         finally:
             if not self.done_task.done():
                 if exception:

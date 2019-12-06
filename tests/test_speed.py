@@ -1,3 +1,24 @@
+# This file is part of ts_salobj.
+#
+# Developed for the LSST Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import asyncio
 import time
 import unittest
@@ -26,7 +47,7 @@ class SpeedTestCase(asynctest.TestCase):
             t0 = time.time()
             for topic_name in topic_names:
                 revname = salinfo.revnames.get(topic_name)
-                ddsutil.get_dds_classes_from_idl(salinfo.idl_loc, revname)
+                ddsutil.get_dds_classes_from_idl(salinfo.metadata.idl_path, revname)
             dt = time.time() - t0
             ntopics = len(topic_names)
             print(f"Took {dt:0.2f} to create {ntopics} topics: {ntopics/dt:0.1f} topics/sec")

@@ -19,14 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["SalInfo", "MAX_RESULT_LEN"]
+__all__ = ["FieldMetadata", "TopicMetadata", "SalInfo", "MAX_RESULT_LEN"]
 
 import asyncio
 import concurrent
 import logging
 import os
-import re
 import time
+import warnings
 
 import dds
 # TODO when we upgrade to OpenSplice 6.10, use its ddsutil:
@@ -34,6 +34,7 @@ import dds
 from . import ddsutil
 
 from . import base
+from . import idl_metadata
 from .domain import Domain, DDS_READ_QUEUE_LEN
 
 MAX_RESULT_LEN = 256  # max length for result field of an Ack
@@ -45,6 +46,75 @@ INITIAL_LOG_LEVEL = logging.INFO
 # default time to wait for historical data (sec)
 # override by setting env var $LSST_DDS_HISTORYSYNC
 DEFAULT_LSST_DDS_HISTORYSYNC = 60
+
+
+class FieldMetadata:
+    """Information about a field.
+
+    Parameters
+    ----------
+    name : `str`
+        Field name.
+    description : `str` or `None`
+        Description; `None` if not specified.
+    units : `str` or `None`
+        Units; `None` if not specified.
+    type_name : `str`
+        Data type name from the IDL file, e.g.
+        "string<8>", "float", "double".
+        This may not match the Python data type of the field.
+        For instance dds maps most integer types to `int`,
+        and both "float" and "double" to `double`.
+    array_length : `int`
+        Number of elements if an array; None if not an array.
+    str_length : `int`
+        Maximum allowed string length; None if unspecified (no limit)
+        or not a string.
+    """
+    def __init__(self, name, description, units, type_name, array_length, str_length):
+        self.name = name
+        self.description = description
+        self.units = units
+        self.type_name = type_name
+        self.array_length = array_length
+        self.str_length = str_length
+
+    def __repr__(self):
+        return f"FieldMetadata(name={repr(self.name)}, " \
+            f"description={repr(self.description)}, " \
+            f"units={repr(self.units)}, " \
+            f"type_name={repr(self.type_name)}," \
+            f"array_length={self.array_length}" \
+            f"str_length={self.str_length})"
+
+    def __str__(self):
+        return f"description={repr(self.description)}, units={repr(self.units)}"
+
+
+class TopicMetadata:
+    """Metadata about a topic.
+
+    Parameters
+    ----------
+    sal_name : `str`
+        SAL topic name, e.g. `logevent_summaryState`.
+    description : `str` or `None`
+        Topic description, or `None` if unknown.
+
+    Notes
+    -----
+    **Attributes**
+
+    field_info : `dict` [`str`, `FieldMetadata`]
+        Dict of field name: field metadata.
+    """
+    def __init__(self, sal_name, description):
+        self.sal_name = sal_name
+        self.description = description
+        self.field_info = dict()
+
+    def __repr__(self):
+        return f"TopicMetadata(sal_name={repr(self.sal_name)}, description={self.description})"
 
 
 class SalInfo:
@@ -86,8 +156,6 @@ class SalInfo:
     * ``domain``: the ``domain`` constructor argument; a `Domain`.
     * ``name``: the ``name`` constructor argument; a `str`.
     * ``index``: the ``index`` constructor argument; an `int`.
-    * ``idl_loc``: path to the IDL file for this SAL component;
-      a `pathlib.Path`.
     * ``indexed``: `True` if this SAL component is indexed (meaning a non-zero
         index is allowed), `False` if not.
     * ``isopen``: is this read topic open?  A `bool`. `True` until `close`
@@ -109,6 +177,7 @@ class SalInfo:
     * ``sal_topic_names``: a tuple of SAL topic names, e.g.
       "logevent_summaryState", in alphabetical order
     * ``revnames``: a dict of topic name: name_revision
+    * ``topic_info``: a dict of SAL topic name: `TopicMetadata`
 
     **Usage**
 
@@ -152,6 +221,9 @@ class SalInfo:
         # (or to an exception if start fails).
         self.start_task = asyncio.Future()
 
+        # A task that is set Done when SalInfo.close is done.
+        self.done_task = base.make_done_future()
+
         self.log = logging.getLogger(self.name)
         self.log.setLevel(INITIAL_LOG_LEVEL)
 
@@ -174,18 +246,19 @@ class SalInfo:
         self._guardcond = dds.GuardCondition()
         self._waitset = dds.WaitSet()
         self._waitset.attach(self._guardcond)
-        self._read_loop_task = None
+        self._read_loop_task = base.make_done_future()
 
-        self.idl_loc = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
-        if not self.idl_loc.is_file():
-            raise RuntimeError(f"Cannot find IDL file {self.idl_loc} for name={self.name!r}")
-        self.parse_idl()  # adds self.indexed, self.revnames, etc.
+        idl_path = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
+        if not idl_path.is_file():
+            raise RuntimeError(f"Cannot find IDL file {idl_path} for name={self.name!r}")
+        self.metadata = idl_metadata.parse_idl(name=self.name, idl_path=idl_path)
+        self.parse_metadata()  # Adds self.indexed, self.revnames, etc.
         if self.index != 0 and not self.indexed:
             raise ValueError(f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component")
         ackcmd_revname = self.revnames.get("ackcmd")
         if ackcmd_revname is None:
             raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
-        self._ackcmd_type = ddsutil.get_dds_classes_from_idl(self.idl_loc, ackcmd_revname)
+        self._ackcmd_type = ddsutil.get_dds_classes_from_idl(idl_path, ackcmd_revname)
         domain.add_salinfo(self)
 
     def _ackcmd_callback(self, data):
@@ -216,6 +289,15 @@ class SalInfo:
             Explanatory message, or "" for no message.
         """
         return self._ackcmd_type.topic_data_class
+
+    @property
+    def idl_loc(self):
+        """Path to the IDL file for this SAL component; a `pathlib.Path`.
+
+        Deprecated; use ``metadata.idl_path`` instead.
+        """
+        warnings.warn("Use salinfo.metadata.idl_path instead", DeprecationWarning)
+        return self.metadata.idl_path
 
     def makeAckCmd(self, private_seqNum, ack, error=0, result="", truncate_result=False):
         """Make an AckCmdType object from keyword arguments.
@@ -257,8 +339,8 @@ class SalInfo:
     def __repr__(self):
         return f"SalBase({self.name}, {self.index})"
 
-    def parse_idl(self):
-        """Parse the SAL-generated IDL file.
+    def parse_metadata(self):
+        """Parse the IDL metadata to generate some attributes.
 
         Set the following attributes (see the class doc string for details):
 
@@ -269,61 +351,61 @@ class SalInfo:
         * sal_topic_names
         * revnames
         """
-        struct_pattern = re.compile(r"\s*struct\s+(?P<name_rev>(?P<name>.+)_(?:[a-zA-Z0-9]+)) +{")
-        index_pattern = re.compile(rf"\s*long\s+{self.name}ID;")
         command_names = []
         event_names = []
         telemetry_names = []
-        sal_topic_names = []
         revnames = {}
-        # assume the component is not indexed until we find a <name>ID field
-        self.indexed = False
-        with open(self.idl_loc, "r") as f:
-            for line in f:
-                struct_match = struct_pattern.match(line)
-                if not struct_match:
-                    index_match = index_pattern.match(line)
-                    if index_match is not None:
-                        self.indexed = True
-                    continue
-                name = struct_match.group("name")
-                name_rev = struct_match.group("name_rev")
-                revnames[name] = f"{self.name}::{name_rev}"
+        for topic_metadata in self.metadata.topic_info.values():
+            sal_topic_name = topic_metadata.sal_name
+            if sal_topic_name.startswith("command_"):
+                command_names.append(sal_topic_name[8:])
+            elif sal_topic_name.startswith("logevent_"):
+                event_names.append(sal_topic_name[9:])
+            elif sal_topic_name != "ackcmd":
+                telemetry_names.append(sal_topic_name)
+            revnames[sal_topic_name] = f"{self.name}::{sal_topic_name}_{topic_metadata.version_hash}"
 
-                if name.startswith("command_"):
-                    command_names.append(name[8:])
-                elif name.startswith("logevent_"):
-                    event_names.append(name[9:])
-                elif name != "ackcmd":
-                    telemetry_names.append(name)
-                sal_topic_names.append(name)
+        # Examine last topic (or any topic) to see if component is indexed.
+        indexed_field_name = f"{self.name}ID"
+        self.indexed = indexed_field_name in topic_metadata.field_info
+
         self.command_names = tuple(command_names)
         self.event_names = tuple(event_names)
         self.telemetry_names = tuple(telemetry_names)
-        self.sal_topic_names = tuple(sorted(sal_topic_names))
+        self.sal_topic_names = tuple(sorted(self.metadata.topic_info.keys()))
         self.revnames = revnames
 
     async def close(self):
-        """Shut down and clean up resources. A no-op if already closed."""
+        """Shut down and clean up resources.
+
+        May be called multiple times. The first call closes the SalInfo;
+        subsequent calls wait until the SalInfo is closed.
+        """
         if not self.isopen:
+            await self.done_task
             return
         self.isopen = False
-        self._guardcond.trigger()
-        if self._read_loop_task is not None:
+        try:
+            self._guardcond.trigger()
+            # Give the read loop time to exit.
+            await asyncio.sleep(0.01)
             self._read_loop_task.cancel()
-        while self._readers:
-            read_cond, reader = self._readers.popitem()
-            await reader.close()
-        while self._writers:
-            writer = self._writers.pop()
-            await writer.close()
-        while self._running_cmds:
-            private_seqNum, cmd_info = self._running_cmds.popitem()
-            try:
-                cmd_info.abort("shutting down")
-            except Exception:
-                pass
-        self.domain.remove_salinfo(self)
+            while self._readers:
+                read_cond, reader = self._readers.popitem()
+                await reader.close()
+            while self._writers:
+                writer = self._writers.pop()
+                await writer.close()
+            while self._running_cmds:
+                private_seqNum, cmd_info = self._running_cmds.popitem()
+                try:
+                    cmd_info.abort("shutting down")
+                except Exception:
+                    pass
+            self.domain.remove_salinfo(self)
+        finally:
+            if not self.done_task.done():
+                self.done_task.set_result(None)
 
     def add_reader(self, topic):
         """Add a ReadTopic, so it can be read by the read loop and closed

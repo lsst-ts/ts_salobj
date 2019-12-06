@@ -1,0 +1,50 @@
+// SAL_VERSION=4.1.0 XML_VERSION=1.0.0
+
+module Simple {
+struct command_setArrays_1234abcd {  // @Metadata=(Description="Description of command_setArrays")
+      long  TestID; // @Metadata=(Units="unitless",Description="Description of TestID")
+      string<8> private_revCode; //private // @Metadata=(Units="unitless",Description="Description of private_revCode")
+      double    private_sndStamp; //private // @Metadata=(Units="secs",Description="Description of private_sndStamp")
+      double    private_rcvStamp; //private // @Metadata=(Units="secs",Description="Description of private_rcvStamp")
+      long      private_seqNum; //private // @Metadata=(Units="unitless",Description="Description of private_seqNum")
+      long      private_origin; //private // @Metadata=(Units="unitless",Description="Description of private_origin")
+      long      private_host; //private // @Metadata=(Units="unitless",Description="Description of private_host")
+	  boolean	boolean0[5]; // @Metadata=(Units="unitless",Description="Description of boolean0")
+	  short	short0[5]; // @Metadata=(Units="unitless",Description="Description of short0")
+	  long	long0[5]; // @Metadata=(Units="unitless",Description="Description of long0")
+	  long long	longLong0[5]; // @Metadata=(Units="unitless",Description="Description of longLong0")
+	  octet	octet0[5]; // @Metadata=(Units="unitless",Description="Description of octet0")
+	  unsigned short	unsignedShort0[5]; // @Metadata=(Units="unitless",Description="Description of unsignedShort0")
+	  unsigned long	unsignedLong0[5]; // @Metadata=(Units="unitless",Description="Description of unsignedLong0")
+	  float	float0[5]; // @Metadata=(Units="unitless",Description="Description of float0")
+	  double	double0[5]; // @Metadata=(Units="unitless",Description="Description of double0")
+	};
+#pragma keylist command_setArrays_1234abcd TestID
+	 const long arrays_Int0ValueEnum_Zero=0;
+	 const long arrays_Int0ValueEnum_Two=2;
+	 const long arrays_Int0ValueEnum_Four=04;
+	 const long arrays_Int0ValueEnum_Five=0x05;
+struct logevent_scalars_1234abcd {  // @Metadata=(Description="Description of logevent_scalars")
+      long  TestID; // @Metadata=(Units="unitless",Description="Description of TestID")
+      string<8> private_revCode; //private // @Metadata=(Units="unitless",Description="Description of private_revCode")
+      double    private_sndStamp; //private // @Metadata=(Units="secs",Description="Description of private_sndStamp")
+      double    private_rcvStamp; //private // @Metadata=(Units="secs",Description="Description of private_rcvStamp")
+      long      private_seqNum; //private // @Metadata=(Units="unitless",Description="Description of private_seqNum")
+      long      private_origin; //private // @Metadata=(Units="unitless",Description="Description of private_origin")
+      long      private_host; //private // @Metadata=(Units="unitless",Description="Description of private_host")
+      boolean   boolean0; // @Metadata=(Units="unitless",Description="Description of boolean0")
+      string    char0; // @Metadata=(Units="unitless",Description="Description of char0")
+      short short0; // @Metadata=(Units="unitless",Description="Description of short0")
+      long  long0; // @Metadata=(Units="unitless",Description="Description of long0")
+      long long longLong0; // @Metadata=(Units="unitless",Description="Description of longLong0")
+      octet octet0; // @Metadata=(Units="unitless",Description="Description of octet0")
+      unsigned short    unsignedShort0; // @Metadata=(Units="unitless",Description="Description of unsignedShort0")
+      unsigned long unsignedLong0; // @Metadata=(Units="unitless",Description="Description of unsignedLong0")
+      float float0; // @Metadata=(Units="unitless",Description="Description of float0")
+      double    double0; // @Metadata=(Units="unitless",Description="Description of double0")
+      string<20>    string0; // @Metadata=(Units="unitless",Description="Description of string0")
+      long  priority; // @Metadata=(Units="unitless",Description="Description of priority")
+    };
+#pragma keylist logevent_scalars_1234abcd TestID
+};
+

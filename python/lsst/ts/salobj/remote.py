@@ -180,6 +180,9 @@ class Remote:
 
         Close the contained `SalInfo`, but not the `Domain`,
         because that may be used by other objects.
+
+        May be called multiple times. The first call closes the SalInfo;
+        subsequent calls wait until the Remote is closed.
         """
         await self.salinfo.close()
 

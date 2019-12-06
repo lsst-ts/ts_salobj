@@ -88,7 +88,7 @@ class BaseTopic(abc.ABC):
             self.dds_name = revname.replace("::", "_")
             self.rev_code = self.dds_name[-8:]
 
-            self._type = ddsutil.get_dds_classes_from_idl(salinfo.idl_loc, revname)
+            self._type = ddsutil.get_dds_classes_from_idl(salinfo.metadata.idl_path, revname)
             qos = salinfo.domain.volatile_topic_qos if self.volatile else salinfo.domain.topic_qos
             self._topic = self._type.register_topic(salinfo.domain.participant, self.dds_name, qos)
 
@@ -99,6 +99,12 @@ class BaseTopic(abc.ABC):
     def DataType(self):
         """The class of data for this topic."""
         return self._type.topic_data_class
+
+    @property
+    def metadata(self):
+        """Get topic metadata as a `TopicMetadata`, if available, else `None`.
+        """
+        return self.salinfo.metadata.topic_info.get(self.sal_name)
 
     def __repr__(self):
         return f"{type(self).__name__}({self.salinfo.name}, {self.salinfo.index}, {self.name})"

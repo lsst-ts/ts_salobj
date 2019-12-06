@@ -36,10 +36,11 @@ Important Classes
   If your SAL component needs to do this then it should create one `Remote` for each SAL component it wants to interact with.
   See the example above.
 * `Domain` contains the dds domain participant (which includes a cache of topic data) and quality of service objects for the various categories.
-  There should be one `Domain` per process or unit test method.
-  `Controller` creates and manages a `Domain`, but if you have no controller (as may be the case for some unit tests and Jupyter notebooks) then you will have to create and manage it yourself.
+  There should be only one `Domain` per process or unit test method, if practical, though some unit tests create a few more.
+  `Controller` creates and manages a `Domain`, but if you have no controller and wish to construct one or more `Remote`\s then you will have to create and manage a `Domain` yourself.
   See :ref:`Cleanup<lsst.ts.salobj-cleanup>` for more information.
 * `BaseScript` is a base class for :ref:`Python SAL Scripts<lsst.ts.salobj_python_sal_scripts>`.
+* `AsyncS3Bucket` is a class for asynchronously uploading and downloading files to/from s3 buckets.
 
 Examples:
 
@@ -52,20 +53,21 @@ Examples:
 Cleanup
 -------
 
-It is important to call `Controller.close` or `Domain.close` when done with it (and this automatically closes the resources used by `Remote`).
-`Controller` creates and manages its own `Domain` but if you don't have a `Controller` then you will have to create and manage one yourself.
+It is important to call `Controller.close` or `Domain.close` when done with any controller or domain you construct, unless your process is exiting.
+Note that closing a `Domain` automatically cleans up the resources used by all `Remote`\s constructed using that domain.
+
 Both `Controller` and `Domain` can be used as asynchronous context managers to call ``close`` automatically.
-Here are some examples:
+For example:
 
   .. code-block:: python
 
-    # if you have a controller or CSC
-    async with BaseCsc(name="ATDomeTrajectory", index=0) as dome_trajectory:
-        dome = Remote(domain=dome_trajectory.domain, name="ATDome", index=0)
+    # If you have a controller or CSC:
+    async with TestCsc(index=1) as csc:
+        dome = Remote(domain=csc.domain, name="Test", index=0)
 
-    # if you don't have a controller or CSC
+    # If you don't have a controller or CSC:
     async with Domain() as domain:
-        dome = Remote(domain=dome_traj.domain, name="ATDome", index=0)
+        dome = Remote(domain=domain, name="Test", index=1)
 
 .. _lsst.ts.salobj-contributing:
 
