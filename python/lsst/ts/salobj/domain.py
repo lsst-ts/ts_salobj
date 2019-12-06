@@ -137,6 +137,8 @@ class Domain:
         self.num_read_loops = 0
         self.num_read_threads = 0
 
+        self.done_task = asyncio.Future()
+
         # set of SalInfo
         self._salinfo_set = weakref.WeakSet()
 
@@ -231,8 +233,13 @@ class Domain:
             return False
 
     async def close(self):
-        """Close all registered `SalInfo` and the dds domain participant"""
+        """Close all registered `SalInfo` and the dds domain participant.
+
+        May be called multiple times. The first call closes the Domain;
+        subsequent calls wait until the Domain is closed.
+        """
         if self.participant is None:
+            await self.done_task
             return
         try:
             while self._salinfo_set:
@@ -240,11 +247,10 @@ class Domain:
                 await salinfo.close()
         finally:
             self.close_dds()
-        # give read loops a bit more time
-        await asyncio.sleep(0.01)
         if self.num_read_loops != 0 or self.num_read_threads != 0:
             warnings.warning(f"After Domain.close num_read_loops={self.num_read_loops} and "
                              f"num_read_threads={self.num_read_threads}; both should be 0")
+        self.done_task.set_result(None)
 
     def close_dds(self):
         """Close the dds DomainParticipant."""

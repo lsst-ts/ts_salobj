@@ -222,11 +222,7 @@ class ReadTopic(BaseTopic):
 
     @callback.setter
     def callback(self, func):
-        # cancel the callback loop and clear out existing callbacks
-        self._callback_loop_task.cancel()
-        for task in self._callback_tasks:
-            task.cancel()
-            self._callback_tasks = set()
+        self._cancel_callbacks()
 
         if func is None:
             # clear the existing callback
@@ -263,12 +259,9 @@ class ReadTopic(BaseTopic):
         if not self.isopen:
             return
         self.isopen = False
+        self._cancel_callbacks()
         self._callback = None
-        self._callback_loop_task.cancel()
         self._next_task.cancel()
-        while self._callback_tasks:
-            task = self._callback_tasks.pop()
-            task.cancel()
         self._reader.close()
         self._data_queue.clear()
 
@@ -411,10 +404,19 @@ class ReadTopic(BaseTopic):
             data = await self._next()
             result = self._run_callback(data)
             if self.allow_multiple_callbacks:
+                # Purge done callback tasks and add a new one.
                 self._callback_tasks = {task for task in self._callback_tasks if not task.done()}
                 self._callback_tasks.add(asyncio.ensure_future(result))
             else:
                 await result
+
+    def _cancel_callbacks(self):
+        """Cancel the callback loop and all existing callback tasks.
+        """
+        self._callback_loop_task.cancel()
+        while self._callback_tasks:
+            task = self._callback_tasks.pop()
+            task.cancel()
 
     async def _run_callback(self, data):
         try:
