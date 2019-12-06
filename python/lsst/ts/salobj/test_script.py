@@ -39,6 +39,7 @@ class TestScript(BaseScript):
 
     Wait for the specified time, then exit. See `configure` for details.
     """
+
     __test__ = False  # stop pytest from warning that this is not a test
 
     def __init__(self, index, descr=""):
@@ -93,10 +94,11 @@ class TestScript(BaseScript):
         await asyncio.sleep(0.1)
         self.config = config
 
-        self.log.info(f"wait_time={self.config.wait_time}, "
-                      f"fail_run={self.config.fail_run}, "
-                      f"fail_cleanup={self.config.fail_cleanup}, "
-                      )
+        self.log.info(
+            f"wait_time={self.config.wait_time}, "
+            f"fail_run={self.config.fail_run}, "
+            f"fail_cleanup={self.config.fail_cleanup}, "
+        )
         self.log.info("Configure succeeded")
 
     def set_metadata(self, metadata):
@@ -106,7 +108,9 @@ class TestScript(BaseScript):
         self.log.info("Run started")
         await self.checkpoint("start")
         if self.config.fail_run:
-            raise salobj.ExpectedError(f"Failed in run after wait: fail_run={self.config.fail_run}")
+            raise salobj.ExpectedError(
+                f"Failed in run after wait: fail_run={self.config.fail_run}"
+            )
         await asyncio.sleep(self.config.wait_time)
         await self.checkpoint("end")
         self.log.info("Run succeeded")
@@ -114,5 +118,7 @@ class TestScript(BaseScript):
     async def cleanup(self):
         self.log.info("Cleanup started")
         if self.config.fail_cleanup:
-            raise salobj.ExpectedError(f"Failed in cleanup: fail_cleanup={self.config.fail_cleanup}")
+            raise salobj.ExpectedError(
+                f"Failed in cleanup: fail_cleanup={self.config.fail_cleanup}"
+            )
         self.log.info("Cleanup succeeded")

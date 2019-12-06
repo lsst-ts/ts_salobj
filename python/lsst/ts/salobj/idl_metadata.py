@@ -42,6 +42,7 @@ class IdlMetadata:
     topic_info : `dict` [`str`: `TopicMetadata`]
         Dict of SAL topic name: topic metadata.
     """
+
     def __init__(self, name, idl_path, sal_version, xml_version, topic_info):
         self.name = name
         self.idl_path = idl_path
@@ -50,9 +51,11 @@ class IdlMetadata:
         self.topic_info = topic_info
 
     def __repr__(self):
-        return f"IdlMetadata(idl_path={self.idl_path}, " \
-            f"sal_version={repr(self.sal_version)}, " \
+        return (
+            f"IdlMetadata(idl_path={self.idl_path}, "
+            f"sal_version={repr(self.sal_version)}, "
             f"xml_version={repr(self.xml_version)})"
+        )
 
 
 class TopicMetadata:
@@ -74,6 +77,7 @@ class TopicMetadata:
     field_info : `dict` [`str`, `FieldMetadata`]
         Dict of field name: field metadata.
     """
+
     def __init__(self, sal_name, version_hash, description):
         self.sal_name = sal_name
         self.version_hash = version_hash
@@ -107,6 +111,7 @@ class FieldMetadata:
         Maximum allowed string length; None if unspecified (no limit)
         or not a string.
     """
+
     def __init__(self, name, description, units, type_name, array_length, str_length):
         self.name = name
         self.description = description
@@ -116,12 +121,14 @@ class FieldMetadata:
         self.str_length = str_length
 
     def __repr__(self):
-        return f"FieldMetadata(name={repr(self.name)}, " \
-            f"description={repr(self.description)}, " \
-            f"units={repr(self.units)}, " \
-            f"type_name={repr(self.type_name)}," \
-            f"array_length={self.array_length}" \
+        return (
+            f"FieldMetadata(name={repr(self.name)}, "
+            f"description={repr(self.description)}, "
+            f"units={repr(self.units)}, "
+            f"type_name={repr(self.type_name)},"
+            f"array_length={self.array_length}"
             f"str_length={self.str_length})"
+        )
 
     def __str__(self):
         return f"description={repr(self.description)}, units={repr(self.units)}"
@@ -143,29 +150,34 @@ def parse_idl(name, idl_path):
         Parsed metadata.
     """
     # List of field types used in IDL, excluding "unsigned".
-    type_names = ("string",
-                  "boolean",
-                  "float",
-                  "double",
-                  "octet",
-                  "short",
-                  "int",
-                  "long",
-                  "long long")
+    type_names = (
+        "string",
+        "boolean",
+        "float",
+        "double",
+        "octet",
+        "short",
+        "int",
+        "long",
+        "long long",
+    )
     type_names_str = "|".join(type_names)
 
     sal_version_pattern = re.compile(
-        r"//\sSAL_VERSION=(?P<sal_version>\S+) XML_VERSION=(?P<xml_version>\S+)")
+        r"//\sSAL_VERSION=(?P<sal_version>\S+) XML_VERSION=(?P<xml_version>\S+)"
+    )
     topic_start_pattern = re.compile(
-        r'\s*struct\s+(?P<sal_topic_name>.+)_(?P<version_hash>[a-zA-Z0-9]+) +{'
-        r'\s*(?:// @Metadata=\((?:Description="(?P<description>.*)")?\))?')
+        r"\s*struct\s+(?P<sal_topic_name>.+)_(?P<version_hash>[a-zA-Z0-9]+) +{"
+        r'\s*(?:// @Metadata=\((?:Description="(?P<description>.*)")?\))?'
+    )
     topic_end_pattern = re.compile(r"\s};")
     field_pattern = re.compile(
-        fr'\s*(?P<type_name>(?:unsigned )?(?:{type_names_str}))(?:<(?P<str_length>\d+)>)?'
-        r'\s+(?P<field_name>[a-zA-Z][a-zA-Z0-9_-]*)(?:\[(?P<array_length>\d+)\])?;'
-        r'\s*(?://\s*private)?'
+        fr"\s*(?P<type_name>(?:unsigned )?(?:{type_names_str}))(?:<(?P<str_length>\d+)>)?"
+        r"\s+(?P<field_name>[a-zA-Z][a-zA-Z0-9_-]*)(?:\[(?P<array_length>\d+)\])?;"
+        r"\s*(?://\s*private)?"
         r'\s*(?:// @Metadata=\((?:Units="(?P<units>[^"]*)"),?'
-        r'\s*(?:Description="(?P<description>.*)")?\))?')
+        r'\s*(?:Description="(?P<description>.*)")?\))?'
+    )
 
     # dict of sal_topic_name: `TopicMetadata`
     topic_info = dict()
@@ -196,12 +208,16 @@ def parse_idl(name, idl_path):
 
                 sal_topic_name = topic_match.group("sal_topic_name")
                 if sal_topic_name in topic_info:
-                    raise RuntimeError(f"Already parsed data for topic {sal_topic_name}")
+                    raise RuntimeError(
+                        f"Already parsed data for topic {sal_topic_name}"
+                    )
                 version_hash = topic_match.group("version_hash")
                 topic_description = topic_match.group("description")
-                topic_metadata = TopicMetadata(sal_name=sal_topic_name,
-                                               version_hash=version_hash,
-                                               description=topic_description)
+                topic_metadata = TopicMetadata(
+                    sal_name=sal_topic_name,
+                    version_hash=version_hash,
+                    description=topic_description,
+                )
                 topic_info[sal_topic_name] = topic_metadata
             else:
                 # Look for the next field or the end of this topic.
@@ -220,12 +236,15 @@ def parse_idl(name, idl_path):
                         description=field_match.group("description"),
                         units=field_match.group("units"),
                         array_length=array_length,
-                        str_length=str_length)
+                        str_length=str_length,
+                    )
                 elif topic_end_pattern.match(line):
                     topic_metadata = None
 
-    return IdlMetadata(name=name,
-                       idl_path=idl_path,
-                       sal_version=sal_version,
-                       xml_version=xml_version,
-                       topic_info=topic_info)
+    return IdlMetadata(
+        name=name,
+        idl_path=idl_path,
+        sal_version=sal_version,
+        xml_version=xml_version,
+        topic_info=topic_info,
+    )

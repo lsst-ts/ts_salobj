@@ -35,21 +35,26 @@ async def main():
         description="Purge SAL Command Messages for a CSC component. "
         "This is a workaround for a SAL bug."
         "If no commands, events or telemetry are specified "
-        "then all topics are purged")
-    parser.add_argument("component",
-                        help="Name of SAL component (e.g. ATDome).")
-    parser.add_argument("-c", "--commands", nargs="+", default=None,
-                        help="Command topics to purge.")
-    parser.add_argument("-e", "--events", nargs="+", default=None,
-                        help="Event topics to purge.")
-    parser.add_argument("-t", "--telemetry", nargs="+", default=None,
-                        help="Telemetry topics to purge.")
+        "then all topics are purged"
+    )
+    parser.add_argument("component", help="Name of SAL component (e.g. ATDome).")
+    parser.add_argument(
+        "-c", "--commands", nargs="+", default=None, help="Command topics to purge."
+    )
+    parser.add_argument(
+        "-e", "--events", nargs="+", default=None, help="Event topics to purge."
+    )
+    parser.add_argument(
+        "-t", "--telemetry", nargs="+", default=None, help="Telemetry topics to purge."
+    )
     args = parser.parse_args()
 
-    await purge_topics(component=args.component,
-                       commands=args.commands,
-                       events=args.events,
-                       telemetry=args.telemetry)
+    await purge_topics(
+        component=args.component,
+        commands=args.commands,
+        events=args.events,
+        telemetry=args.telemetry,
+    )
 
 
 def purge_one_topic(component, category, topic_name, sleep):
@@ -67,9 +72,11 @@ def purge_one_topic(component, category, topic_name, sleep):
         Amount of time to sleep after purging the topic
         before closing the domain (sec).
     """
-    TopicClass = dict(command=salobj.topics.ControllerCommand,
-                      event=salobj.topics.RemoteEvent,
-                      telemetry=salobj.topics.RemoteTelemetry)[category]
+    TopicClass = dict(
+        command=salobj.topics.ControllerCommand,
+        event=salobj.topics.RemoteEvent,
+        telemetry=salobj.topics.RemoteTelemetry,
+    )[category]
 
     async def doit():
         async with salobj.Domain() as domain:
@@ -85,7 +92,9 @@ def purge_one_topic(component, category, topic_name, sleep):
     asyncio.new_event_loop().run_until_complete(doit())
 
 
-async def purge_topics(component, commands=None, events=None, telemetry=None, sleep=SLEEP_TIME):
+async def purge_topics(
+    component, commands=None, events=None, telemetry=None, sleep=SLEEP_TIME
+):
     """Purge commands for a given SAL component.
 
     Parameters
@@ -115,16 +124,25 @@ async def purge_topics(component, commands=None, events=None, telemetry=None, sl
         with concurrent.futures.ProcessPoolExecutor() as pool:
             coros = []
             for topic_name in commands:
-                coros.append(loop.run_in_executor(pool, purge_one_topic,
-                                                  component, "command", topic_name, sleep))
+                coros.append(
+                    loop.run_in_executor(
+                        pool, purge_one_topic, component, "command", topic_name, sleep
+                    )
+                )
 
             for topic_name in events:
-                coros.append(loop.run_in_executor(pool, purge_one_topic,
-                                                  component, "event", topic_name, sleep))
+                coros.append(
+                    loop.run_in_executor(
+                        pool, purge_one_topic, component, "event", topic_name, sleep
+                    )
+                )
 
             for topic_name in telemetry:
-                coros.append(loop.run_in_executor(pool, purge_one_topic,
-                                                  component, "telemetry", topic_name, sleep))
+                coros.append(
+                    loop.run_in_executor(
+                        pool, purge_one_topic, component, "telemetry", topic_name, sleep
+                    )
+                )
 
         await asyncio.gather(*coros)
 

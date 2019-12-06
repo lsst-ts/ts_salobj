@@ -19,9 +19,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["AckError", "AckTimeoutError", "ExpectedError",
-           "index_generator", "make_done_future", "MAX_SAL_INDEX",
-           "name_to_name_index", "current_tai", "tai_from_utc"]
+__all__ = [
+    "AckError",
+    "AckTimeoutError",
+    "ExpectedError",
+    "index_generator",
+    "make_done_future",
+    "MAX_SAL_INDEX",
+    "name_to_name_index",
+    "current_tai",
+    "tai_from_utc",
+]
 
 import asyncio
 import re
@@ -39,8 +47,10 @@ _NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-]+)(:(?P<index>\d+))?$")
 
 def _ackcmd_str(ackcmd):
     """Format an Ack as a string"""
-    return f"(ackcmd private_seqNum={ackcmd.private_seqNum}, " \
+    return (
+        f"(ackcmd private_seqNum={ackcmd.private_seqNum}, "
         f"ack={sal_enums.as_salRetCode(ackcmd.ack)!r}, error={ackcmd.error}, result={ackcmd.result!r})"
+    )
 
 
 class AckError(Exception):
@@ -53,6 +63,7 @@ class AckError(Exception):
     ackcmd : ``AckType``
         Command acknowledgement.
     """
+
     def __init__(self, msg, ackcmd):
         super().__init__(msg)
         self.ackcmd = ackcmd
@@ -72,6 +83,7 @@ class AckTimeoutError(AckError):
     If no command acknowledgement was received then
     the ack code will be `SalRetCode.CMD_NOACK`.
     """
+
     pass
 
 
@@ -80,6 +92,7 @@ class ExpectedError(Exception):
 
     For example, a command is invalid in the current state.
     """
+
     pass
 
 

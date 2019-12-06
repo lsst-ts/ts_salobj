@@ -108,8 +108,16 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     * Call `BaseCsc.report_summary_state`
     * Set ``start_task`` done
     """
-    def __init__(self, name, index, schema_path, config_dir=None,
-                 initial_state=State.STANDBY, initial_simulation_mode=0):
+
+    def __init__(
+        self,
+        name,
+        index,
+        schema_path,
+        config_dir=None,
+        initial_state=State.STANDBY,
+        initial_simulation_mode=0,
+    ):
 
         if not pathlib.Path(schema_path).is_file():
             raise ValueError(f"schema_path={schema_path} is not a file")
@@ -126,15 +134,21 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         except Exception as e:
             raise ValueError(f"Schema {schema_path} invalid") from e
 
-        super().__init__(name=name, index=index, initial_state=initial_state,
-                         initial_simulation_mode=initial_simulation_mode)
+        super().__init__(
+            name=name,
+            index=index,
+            initial_state=initial_state,
+            initial_simulation_mode=initial_simulation_mode,
+        )
 
         if config_dir is None:
             config_dir = self.get_default_config_dir()
         else:
             config_dir = pathlib.Path(config_dir)
             if not config_dir.is_dir():
-                raise ValueError(f"config_dir={config_dir} does not exists or is not a directory")
+                raise ValueError(
+                    f"config_dir={config_dir} does not exists or is not a directory"
+                )
         self.config_dir = config_dir
 
     @property
@@ -162,7 +176,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     def config_dir(self, config_dir):
         config_dir = pathlib.Path(config_dir).resolve()
         if not config_dir.is_dir():
-            raise ValueError(f"config_dir={config_dir} does not exist or is not a directory")
+            raise ValueError(
+                f"config_dir={config_dir} does not exist or is not a directory"
+            )
         self._config_dir = config_dir
 
     def read_config_dir(self):
@@ -184,17 +200,21 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         if len(labels_str) > MAX_LABELS_LEN:
             nitems = len(labels)
             nitems_to_drop = len(labels_str[MAX_LABELS_LEN:].split(","))
-            self.log.warning(f"Config labels do not all fit into {MAX_LABELS_LEN} characters; "
-                             f"dropping {nitems_to_drop} of {nitems} items")
+            self.log.warning(
+                f"Config labels do not all fit into {MAX_LABELS_LEN} characters; "
+                f"dropping {nitems_to_drop} of {nitems} items"
+            )
             # use max just in case; nitems_to_drop should always be <= nitems
-            labels_str = ",".join(labels[0:max(0, nitems - nitems_to_drop)])
+            labels_str = ",".join(labels[0 : max(0, nitems - nitems_to_drop)])
 
         settings_version = self._get_settings_version()
 
-        self.evt_settingVersions.set_put(recommendedSettingsLabels=",".join(labels),
-                                         recommendedSettingsVersion=settings_version,
-                                         settingsUrl=f"{self.config_dir.as_uri()}",
-                                         force_output=True)
+        self.evt_settingVersions.set_put(
+            recommendedSettingsLabels=",".join(labels),
+            recommendedSettingsVersion=settings_version,
+            settingsUrl=f"{self.config_dir.as_uri()}",
+            force_output=True,
+        )
 
     async def start(self):
         """Finish constructing the CSC.
@@ -222,7 +242,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             git_info = subprocess.check_output(
                 args=["git", "describe", "--all", "--long", "--always", "--dirty"],
                 stderr=subprocess.STDOUT,
-                cwd=self.config_dir)
+                cwd=self.config_dir,
+            )
         except subprocess.CalledProcessError:
             self.log.warning(f"Could not get git info for config_dir={self.config_dir}")
             return ""
@@ -273,7 +294,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         if invalid_labels:
             self.log.warning(f"Ignoring invalid labels {invalid_labels}")
         if missing_files:
-            self.log.warning(f"Labeled config files {missing_files} not found in {self.config_dir}")
+            self.log.warning(
+                f"Labeled config files {missing_files} not found in {self.config_dir}"
+            )
         return output_dict
 
     def report_summary_state(self):
@@ -308,24 +331,33 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                 config_file_name, githash = name_version
                 config_file_path = self.config_dir / config_file_name
                 try:
-                    print(f"config_file_path={config_file_path}; "
-                          f"githash={githash}; config_dir={self.config_dir}")
+                    print(
+                        f"config_file_path={config_file_path}; "
+                        f"githash={githash}; config_dir={self.config_dir}"
+                    )
                     config_yaml = subprocess.check_output(
                         args=["git", "show", f"{githash}:./{config_file_name}"],
                         stderr=subprocess.STDOUT,
-                        cwd=self.config_dir)
+                        cwd=self.config_dir,
+                    )
                 except subprocess.CalledProcessError as e:
-                    raise base.ExpectedError(f"Could not read config {config_name}: {e.output}")
+                    raise base.ExpectedError(
+                        f"Could not read config {config_name}: {e.output}"
+                    )
             elif len(name_version) == 1:
                 config_file_name = self.config_label_dict.get(config_name, config_name)
                 config_file_path = self.config_dir / config_file_name
                 if not config_file_path.is_file():
-                    raise base.ExpectedError(f"Cannot find config file {config_file_name} "
-                                             f"in {self.config_dir}")
+                    raise base.ExpectedError(
+                        f"Cannot find config file {config_file_name} "
+                        f"in {self.config_dir}"
+                    )
                 with open(config_file_path, "r") as f:
                     config_yaml = f.read()
             else:
-                raise base.ExpectedError(f"Could not parse {config_name} as name or name:version")
+                raise base.ExpectedError(
+                    f"Could not parse {config_name} as name or name:version"
+                )
 
             user_config_dict = yaml.safe_load(config_yaml)
         else:
@@ -333,10 +365,14 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         try:
             full_config_dict = self.config_validator.validate(user_config_dict)
         except Exception as e:
-            raise base.ExpectedError(f"schema {config_file_path} failed validation: {e}")
+            raise base.ExpectedError(
+                f"schema {config_file_path} failed validation: {e}"
+            )
         config = types.SimpleNamespace(**full_config_dict)
         await self.configure(config)
-        self.evt_appliedSettingsMatchStart.set_put(appliedSettingsMatchStartIsTrue=True, force_output=True)
+        self.evt_appliedSettingsMatchStart.set_put(
+            appliedSettingsMatchStartIsTrue=True, force_output=True
+        )
 
     @abc.abstractmethod
     async def configure(self, config):
@@ -395,22 +431,30 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         try:
             config_pkg_dir = os.environ[config_env_var_name]
         except KeyError:
-            raise RuntimeError(f"Environment variable {config_env_var_name} not defined")
+            raise RuntimeError(
+                f"Environment variable {config_env_var_name} not defined"
+            )
         config_pkg_dir = pathlib.Path(config_pkg_dir).resolve()
         if not config_pkg_dir.is_dir():
-            raise RuntimeError(f"{config_pkg_dir!r} = ${config_env_var_name} "
-                               "does not exists or is not a directory")
+            raise RuntimeError(
+                f"{config_pkg_dir!r} = ${config_env_var_name} "
+                "does not exists or is not a directory"
+            )
 
         config_dir = config_pkg_dir / self.salinfo.name / self.schema_version
         if not config_dir.is_dir():
-            raise RuntimeError(f"{config_dir} = ${config_env_var_name}/SAL_component_name/schema_version "
-                               "does not exist or is not a directory")
+            raise RuntimeError(
+                f"{config_dir} = ${config_env_var_name}/SAL_component_name/schema_version "
+                "does not exist or is not a directory"
+            )
         return config_dir
 
     @classmethod
     def add_arguments(cls, parser):
-        parser.add_argument(f"--configdir",
-                            help="Directory containing configuration files for the start command.")
+        parser.add_argument(
+            f"--configdir",
+            help="Directory containing configuration files for the start command.",
+        )
 
     @classmethod
     def add_kwargs_from_args(cls, args, kwargs):

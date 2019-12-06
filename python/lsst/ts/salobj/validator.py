@@ -48,6 +48,7 @@ class DefaultingValidator:
     * final_validator: a standard validator that does not alter
       the data being validated.
     """
+
     def __init__(self, schema, ValidatorClass=jsonschema.Draft7Validator):
         ValidatorClass.check_schema(schema)
         self.final_validator = ValidatorClass(schema=schema)
@@ -77,8 +78,18 @@ class DefaultingValidator:
             """
             # most of these items cause infinite recursion if allowed through
             # and none are needed for setting defaults
-            skip_properties = set(("additionalItems", "additionalProperties", "definitions", "default",
-                                   "items", "patternProperties", "property", "properties"))
+            skip_properties = set(
+                (
+                    "additionalItems",
+                    "additionalProperties",
+                    "definitions",
+                    "default",
+                    "items",
+                    "patternProperties",
+                    "property",
+                    "properties",
+                )
+            )
             for property, subschema in properties.items():
                 if not isinstance(subschema, dict):
                     continue
@@ -90,9 +101,7 @@ class DefaultingValidator:
                 if default is not InvalidDefault:
                     instance.setdefault(property, subschema["default"])
 
-            for error in validate_properties(
-                validator, properties, instance, schema,
-            ):
+            for error in validate_properties(validator, properties, instance, schema,):
                 yield error
 
         WrappedValidator = jsonschema.validators.extend(

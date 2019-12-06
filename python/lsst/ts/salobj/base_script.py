@@ -33,7 +33,12 @@ import warnings
 import yaml
 
 from lsst.ts import salobj
-from lsst.ts.idl.enums.Script import MetadataCoordSys, MetadataRotSys, MetadataDome, ScriptState
+from lsst.ts.idl.enums.Script import (
+    MetadataCoordSys,
+    MetadataRotSys,
+    MetadataDome,
+    ScriptState,
+)
 
 
 HEARTBEAT_INTERVAL = 5  # seconds
@@ -78,6 +83,7 @@ class BaseScript(salobj.Controller, abc.ABC):
     * ``timestamps``: a dict of ``ScriptState: TAI unix timestamp``.
       Used to set timestamp data in the ``script`` event.
     """
+
     def __init__(self, index, descr):
         super().__init__("Script", index, do_callbacks=True)
         schema = self.get_schema()
@@ -92,8 +98,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         self.done_task = asyncio.Future()
         self._is_exiting = False
         self.evt_description.set(
-            classname=type(self).__name__,
-            description=str(descr),
+            classname=type(self).__name__, description=str(descr),
         )
         self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
         # Delay (sec) to allow sending the final state and acknowleding
@@ -113,8 +118,7 @@ class BaseScript(salobj.Controller, abc.ABC):
 
         self.evt_state.set_put(state=ScriptState.UNCONFIGURED)
         self.evt_description.set_put(
-            remotes=",".join(sorted(remote_names)),
-            force_output=True,
+            remotes=",".join(sorted(remote_names)), force_output=True,
         )
 
     @classmethod
@@ -142,12 +146,18 @@ class BaseScript(salobj.Controller, abc.ABC):
         * 2 otherwise (which should never happen)
         """
         parser = argparse.ArgumentParser(f"Run {cls.__name__} from the command line")
-        parser.add_argument("index", type=int,
-                            help="Script SAL Component index; must be unique among running Scripts")
-        parser.add_argument("--schema", action="store_true",
-                            help="Print the configuration schema to stdout and quit "
-                            "without running the script. "
-                            "The index argument is ignored, though it is still required.")
+        parser.add_argument(
+            "index",
+            type=int,
+            help="Script SAL Component index; must be unique among running Scripts",
+        )
+        parser.add_argument(
+            "--schema",
+            action="store_true",
+            help="Print the configuration schema to stdout and quit "
+            "without running the script. "
+            "The index argument is ignored, though it is still required.",
+        )
         args = parser.parse_args()
         kwargs = dict(index=args.index)
         if descr is not None:
@@ -186,9 +196,11 @@ class BaseScript(salobj.Controller, abc.ABC):
             # printed schema and exited
             return
         await script.done_task
-        return_code = {ScriptState.DONE: 0,
-                       ScriptState.STOPPED: 0,
-                       ScriptState.FAILED: 1}.get(script.state.state, 2)
+        return_code = {
+            ScriptState.DONE: 0,
+            ScriptState.STOPPED: 0,
+            ScriptState.FAILED: 1,
+        }.get(script.state.state, 2)
         sys.exit(return_code)
 
     @classmethod
@@ -213,7 +225,10 @@ class BaseScript(salobj.Controller, abc.ABC):
         * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
         * 2 otherwise (which should never happen)
         """
-        warnings.warn("Use amain instead, e.g. asyncio.run(cls.amain(descr=descr))", DeprecationWarning)
+        warnings.warn(
+            "Use amain instead, e.g. asyncio.run(cls.amain(descr=descr))",
+            DeprecationWarning,
+        )
         asyncio.get_event_loop().run_until_complete(cls.amain(descr=descr))
 
     @property
@@ -251,8 +266,14 @@ class BaseScript(salobj.Controller, abc.ABC):
         except ValueError:
             return f"UNKNOWN({self.state.state})"
 
-    def set_state(self, state=None, reason=None, keep_old_reason=False, last_checkpoint=None,
-                  force_output=False):
+    def set_state(
+        self,
+        state=None,
+        reason=None,
+        keep_old_reason=False,
+        last_checkpoint=None,
+        force_output=False,
+    ):
         """Set the script state.
 
         Parameters
@@ -280,7 +301,8 @@ class BaseScript(salobj.Controller, abc.ABC):
             state=state,
             reason=reason,
             lastCheckpoint=last_checkpoint,
-            force_output=force_output)
+            force_output=force_output,
+        )
 
     async def checkpoint(self, name=""):
         """Await this at any "nice" point your script can be paused or stopped.
@@ -300,17 +322,22 @@ class BaseScript(salobj.Controller, abc.ABC):
             incorrectly set the state.
         """
         if not self.state.state == ScriptState.RUNNING:
-            raise RuntimeError(f"checkpoint error: state={self.state_name} instead of RUNNING; "
-                               "did you call checkpoint from somewhere other than `run`?")
+            raise RuntimeError(
+                f"checkpoint error: state={self.state_name} instead of RUNNING; "
+                "did you call checkpoint from somewhere other than `run`?"
+            )
         if self._run_task is None:
             raise RuntimeError(f"checkpoint error: state is RUNNING but no run_task")
         if self._run_task.done():
-            raise RuntimeError(f"checkpoint error: state is RUNNING but run_task is done")
+            raise RuntimeError(
+                f"checkpoint error: state is RUNNING but run_task is done"
+            )
 
         if re.fullmatch(self.checkpoints.stop, name):
             self.set_state(ScriptState.STOPPING, last_checkpoint=name)
             raise asyncio.CancelledError(
-                f"stop by request: checkpoint {name} matches {self.checkpoints.stop}")
+                f"stop by request: checkpoint {name} matches {self.checkpoints.stop}"
+            )
         elif re.fullmatch(self.checkpoints.pause, name):
             self._pause_future = asyncio.Future()
             self.set_state(ScriptState.PAUSED, last_checkpoint=name)
@@ -420,7 +447,8 @@ class BaseScript(salobj.Controller, abc.ABC):
         if self.state.state not in states:
             states_str = ", ".join(s.name for s in states)
             raise salobj.ExpectedError(
-                f"Cannot {action}: state={self.state_name} instead of {states_str}")
+                f"Cannot {action}: state={self.state_name} instead of {states_str}"
+            )
 
     async def do_configure(self, data):
         """Configure the currently loaded script.
@@ -454,8 +482,10 @@ class BaseScript(salobj.Controller, abc.ABC):
         try:
             if self.config_validator is None:
                 if data.config:
-                    raise RuntimeError("This script has no configuration; "
-                                       f"config={data.config} must be empty.")
+                    raise RuntimeError(
+                        "This script has no configuration; "
+                        f"config={data.config} must be empty."
+                    )
                 config = types.SimpleNamespace()
             else:
                 if data.config:
@@ -556,8 +586,15 @@ class BaseScript(salobj.Controller, abc.ABC):
             * `lsst.ts.idl.enums.Script.ScriptState.RUNNING`
             * `lsst.ts.idl.enums.Script.ScriptState.PAUSED`
         """
-        self.assert_state("setCheckpoints", [ScriptState.UNCONFIGURED, ScriptState.CONFIGURED,
-                          ScriptState.RUNNING, ScriptState.PAUSED])
+        self.assert_state(
+            "setCheckpoints",
+            [
+                ScriptState.UNCONFIGURED,
+                ScriptState.CONFIGURED,
+                ScriptState.RUNNING,
+                ScriptState.PAUSED,
+            ],
+        )
         self._set_checkpoints(pause=data.pause, stop=data.stop)
 
     async def do_stop(self, data):
@@ -607,9 +644,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         except Exception as e:
             raise salobj.ExpectedError(f"stop={stop!r} not a valid regex: {e}")
         self.evt_checkpoints.set_put(
-            pause=pause,
-            stop=stop,
-            force_output=True,
+            pause=pause, stop=stop, force_output=True,
         )
 
     async def _heartbeat_loop(self):
@@ -652,6 +687,8 @@ class BaseScript(salobj.Controller, abc.ABC):
         except Exception as e:
             if not isinstance(e, salobj.ExpectedError):
                 self.log.exception("Error in run")
-            self.set_state(ScriptState.FAILED, reason=f"failed in _exit: {e}", keep_old_reason=True)
+            self.set_state(
+                ScriptState.FAILED, reason=f"failed in _exit: {e}", keep_old_reason=True
+            )
             await asyncio.sleep(self.final_state_delay)
             asyncio.ensure_future(self.close(e))

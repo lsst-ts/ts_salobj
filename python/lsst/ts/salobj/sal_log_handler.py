@@ -34,6 +34,7 @@ class SalLogHandler(logging.Handler):
         :ref:`Required Logger Attribute<required_logging_attributes>`
         ``evt_logEvent``.
     """
+
     def __init__(self, controller):
         self.controller = controller
         super().__init__()

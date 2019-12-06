@@ -129,6 +129,7 @@ class Controller:
     * logLevel event
     * logMessage event
     """
+
     def __init__(self, name, index=None, *, do_callbacks=False):
         domain = Domain()
         try:
@@ -273,8 +274,7 @@ class Controller:
     def put_log_level(self):
         """Output the logLevel event.
         """
-        self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(),
-                                  force_output=True)
+        self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(), force_output=True)
 
     def _assert_do_methods_present(self, command_names):
         """Assert that all needed do_<name> methods are present,
@@ -290,13 +290,21 @@ class Controller:
         supported_command_names = [name[3:] for name in do_names]
         if set(command_names) != set(supported_command_names):
             err_msgs = []
-            unsupported_commands = set(command_names) - set(supported_command_names) - OPTIONAL_COMMAND_NAMES
+            unsupported_commands = (
+                set(command_names)
+                - set(supported_command_names)
+                - OPTIONAL_COMMAND_NAMES
+            )
             if unsupported_commands:
-                needed_do_str = ", ".join(f"do_{name}" for name in sorted(unsupported_commands))
+                needed_do_str = ", ".join(
+                    f"do_{name}" for name in sorted(unsupported_commands)
+                )
                 err_msgs.append(f"must add {needed_do_str} methods")
             extra_commands = sorted(set(supported_command_names) - set(command_names))
             if extra_commands:
-                extra_do_str = ", ".join(f"do_{name}" for name in sorted(extra_commands))
+                extra_do_str = ", ".join(
+                    f"do_{name}" for name in sorted(extra_commands)
+                )
                 err_msgs.append(f"must remove {extra_do_str} methods")
             if not err_msgs:
                 return

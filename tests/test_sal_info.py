@@ -47,16 +47,34 @@ class SalInfoTestCase(asynctest.TestCase):
 
             # expected_commands omits a few commands that TestCsc
             # does not support, but that are in generics.
-            expected_commands = ["disable", "enable", "exitControl", "standby", "start",
-                                 "setArrays", "setLogLevel", "setScalars", "setSimulationMode",
-                                 "fault", "wait"]
+            expected_commands = [
+                "disable",
+                "enable",
+                "exitControl",
+                "standby",
+                "start",
+                "setArrays",
+                "setLogLevel",
+                "setScalars",
+                "setSimulationMode",
+                "fault",
+                "wait",
+            ]
             self.assertTrue(set(expected_commands).issubset(set(salinfo.command_names)))
 
             # expected_events omits a few events that TestCsc
             # does not support, but that are in generics.
-            expected_events = ["errorCode", "heartbeat", "logLevel", "logMessage", "settingVersions",
-                               "simulationMode", "summaryState",
-                               "scalars", "arrays"]
+            expected_events = [
+                "errorCode",
+                "heartbeat",
+                "logLevel",
+                "logMessage",
+                "settingVersions",
+                "simulationMode",
+                "summaryState",
+                "scalars",
+                "arrays",
+            ]
             self.assertTrue(set(expected_events).issubset(set(salinfo.event_names)))
 
             # telemetry topic names should match; there are no generics
@@ -64,10 +82,16 @@ class SalInfoTestCase(asynctest.TestCase):
             self.assertEqual(set(expected_telemetry), set(salinfo.telemetry_names))
 
             expected_sal_topic_names = ["ackcmd"]
-            expected_sal_topic_names += [f"command_{name}" for name in salinfo.command_names]
-            expected_sal_topic_names += [f"logevent_{name}" for name in salinfo.event_names]
+            expected_sal_topic_names += [
+                f"command_{name}" for name in salinfo.command_names
+            ]
+            expected_sal_topic_names += [
+                f"logevent_{name}" for name in salinfo.event_names
+            ]
             expected_sal_topic_names += [name for name in salinfo.telemetry_names]
-            self.assertEqual(sorted(expected_sal_topic_names), list(salinfo.sal_topic_names))
+            self.assertEqual(
+                sorted(expected_sal_topic_names), list(salinfo.sal_topic_names)
+            )
 
     async def test_salinfo_metadata(self):
         """Test some of the metadata in SalInfo.
@@ -90,8 +114,13 @@ class SalInfoTestCase(asynctest.TestCase):
                 "logevent_arrays",
                 "logevent_scalars",
                 "arrays",
-                "scalars")
-            self.assertTrue(set(some_expected_topic_names).issubset(set(salinfo.metadata.topic_info.keys())))
+                "scalars",
+            )
+            self.assertTrue(
+                set(some_expected_topic_names).issubset(
+                    set(salinfo.metadata.topic_info.keys())
+                )
+            )
 
 
 if __name__ == "__main__":

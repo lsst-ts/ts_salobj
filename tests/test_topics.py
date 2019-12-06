@@ -44,7 +44,9 @@ index_gen = salobj.index_generator()
 class Harness:
     def __init__(self, initial_state, config_dir=None, CscClass=salobj.TestCsc):
         index = next(index_gen)
-        self.csc = CscClass(index=index, config_dir=config_dir, initial_state=initial_state)
+        self.csc = CscClass(
+            index=index, config_dir=config_dir, initial_state=initial_state
+        )
         if SHOW_LOG_MESSAGES:
             handler = logging.StreamHandler()
             self.csc.log.addHandler(handler)
@@ -76,8 +78,10 @@ class TopicsTestCase(asynctest.TestCase):
                     self.assertEqual(cmd.name, cmd_name)
                     self.assertEqual(cmd.attr_name, "cmd_" + cmd_name)
                     self.assertEqual(cmd.sal_name, "command_" + cmd_name)
-                    self.assertEqual(cmd.dds_name,
-                                     cmd.salinfo.name + "_" + cmd.sal_name + "_" + cmd.rev_code)
+                    self.assertEqual(
+                        cmd.dds_name,
+                        cmd.salinfo.name + "_" + cmd.sal_name + "_" + cmd.rev_code,
+                    )
                     self.assertTrue(cmd.volatile)
                     self.check_topic_metadata(cmd)
 
@@ -86,8 +90,10 @@ class TopicsTestCase(asynctest.TestCase):
                     self.assertEqual(evt.name, evt_name)
                     self.assertEqual(evt.attr_name, "evt_" + evt_name)
                     self.assertEqual(evt.sal_name, "logevent_" + evt_name)
-                    self.assertEqual(evt.dds_name,
-                                     evt.salinfo.name + "_" + evt.sal_name + "_" + evt.rev_code)
+                    self.assertEqual(
+                        evt.dds_name,
+                        evt.salinfo.name + "_" + evt.sal_name + "_" + evt.rev_code,
+                    )
                     self.assertFalse(evt.volatile)
                     self.check_topic_metadata(evt)
 
@@ -96,23 +102,31 @@ class TopicsTestCase(asynctest.TestCase):
                     self.assertEqual(tel.name, tel_name)
                     self.assertEqual(tel.attr_name, "tel_" + tel_name)
                     self.assertEqual(tel.sal_name, tel_name)
-                    self.assertEqual(tel.dds_name,
-                                     tel.salinfo.name + "_" + tel.sal_name + "_" + tel.rev_code)
+                    self.assertEqual(
+                        tel.dds_name,
+                        tel.salinfo.name + "_" + tel.sal_name + "_" + tel.rev_code,
+                    )
                     self.assertFalse(tel.volatile)
                     self.check_topic_metadata(tel)
 
             # cannot add new topics to the existing salinfos
             # (because the read loop has started) so create a new one
-            salinfo = salobj.SalInfo(domain=harness.csc.salinfo.domain,
-                                     name=harness.csc.salinfo.name,
-                                     index=harness.csc.salinfo.index)
-            for ackcmd in (salobj.topics.AckCmdReader(salinfo=salinfo),
-                           salobj.topics.AckCmdWriter(salinfo=salinfo)):
+            salinfo = salobj.SalInfo(
+                domain=harness.csc.salinfo.domain,
+                name=harness.csc.salinfo.name,
+                index=harness.csc.salinfo.index,
+            )
+            for ackcmd in (
+                salobj.topics.AckCmdReader(salinfo=salinfo),
+                salobj.topics.AckCmdWriter(salinfo=salinfo),
+            ):
                 self.assertEqual(ackcmd.name, "ackcmd")
                 self.assertEqual(ackcmd.attr_name, "ack_" + ackcmd.name)
                 self.assertEqual(ackcmd.sal_name, ackcmd.name)
-                self.assertEqual(ackcmd.dds_name,
-                                 ackcmd.salinfo.name + "_" + ackcmd.sal_name + "_" + ackcmd.rev_code)
+                self.assertEqual(
+                    ackcmd.dds_name,
+                    ackcmd.salinfo.name + "_" + ackcmd.sal_name + "_" + ackcmd.rev_code,
+                )
                 self.assertTrue(ackcmd.volatile)
 
     async def test_base_topic_constructor_good(self):
@@ -120,15 +134,21 @@ class TopicsTestCase(asynctest.TestCase):
             salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
 
             for cmd_name in salinfo.command_names:
-                cmd = salobj.topics.BaseTopic(salinfo=salinfo, name=cmd_name, sal_prefix="command_")
+                cmd = salobj.topics.BaseTopic(
+                    salinfo=salinfo, name=cmd_name, sal_prefix="command_"
+                )
                 self.assertEqual(cmd.name, cmd_name)
 
             for evt_name in salinfo.event_names:
-                evt = salobj.topics.BaseTopic(salinfo=salinfo, name=evt_name, sal_prefix="logevent_")
+                evt = salobj.topics.BaseTopic(
+                    salinfo=salinfo, name=evt_name, sal_prefix="logevent_"
+                )
                 self.assertEqual(evt.name, evt_name)
 
             for tel_name in salinfo.telemetry_names:
-                tel = salobj.topics.BaseTopic(salinfo=salinfo, name=tel_name, sal_prefix="")
+                tel = salobj.topics.BaseTopic(
+                    salinfo=salinfo, name=tel_name, sal_prefix=""
+                )
                 self.assertEqual(tel.name, tel_name)
 
     async def test_base_topic_constructor_errors(self):
@@ -143,31 +163,41 @@ class TopicsTestCase(asynctest.TestCase):
                     "command",  # no trailing underscore
                 ):
                     with self.assertRaises(RuntimeError):
-                        salobj.topics.BaseTopic(salinfo=salinfo, name=good_name, sal_prefix=bad_prefix)
+                        salobj.topics.BaseTopic(
+                            salinfo=salinfo, name=good_name, sal_prefix=bad_prefix
+                        )
 
             for good_prefix in ("", "command_", "logevent_"):
                 for bad_name in ("", "no_such_topic"):
                     with self.assertRaises(RuntimeError):
-                        salobj.topics.BaseTopic(salinfo=salinfo, name=bad_name, sal_prefix=good_prefix)
+                        salobj.topics.BaseTopic(
+                            salinfo=salinfo, name=bad_name, sal_prefix=good_prefix
+                        )
 
             for cmd_name in salinfo.command_names:
                 for non_cmd_prefix in ("", "logevent_"):
                     with self.assertRaises(RuntimeError):
-                        salobj.topics.BaseTopic(salinfo=salinfo, name=cmd_name, sal_prefix=non_cmd_prefix)
+                        salobj.topics.BaseTopic(
+                            salinfo=salinfo, name=cmd_name, sal_prefix=non_cmd_prefix
+                        )
 
             # there is overlap between event and telemetry names
             # so just use the command_ prefix as the invalid prefix
             non_evt_prefix = "command_"
             for evt_name in salinfo.event_names:
                 with self.assertRaises(RuntimeError):
-                    salobj.topics.BaseTopic(salinfo=salinfo, name=evt_name, sal_prefix=non_evt_prefix)
+                    salobj.topics.BaseTopic(
+                        salinfo=salinfo, name=evt_name, sal_prefix=non_evt_prefix
+                    )
 
             # there is overlap between event and telemetry names
             # so just use the command_ prefix as the invalid prefix
             non_tel_prefix = "command_"
             for tel_name in salinfo.telemetry_names:
                 with self.assertRaises(RuntimeError):
-                    salobj.topics.BaseTopic(salinfo=salinfo, name=tel_name, sal_prefix=non_tel_prefix)
+                    salobj.topics.BaseTopic(
+                        salinfo=salinfo, name=tel_name, sal_prefix=non_tel_prefix
+                    )
 
     async def test_command_isolation(self):
         """Test that multiple RemoteCommands for one command only see
@@ -193,8 +223,10 @@ class TopicsTestCase(asynctest.TestCase):
             await salinfo2.start()
 
             def reader_callback(data):
-                ackcmd = cmdreader.salinfo.AckCmdType(private_seqNum=data.private_seqNum,
-                                                      ack=salobj.SalRetCode.CMD_COMPLETE)
+                ackcmd = cmdreader.salinfo.AckCmdType(
+                    private_seqNum=data.private_seqNum,
+                    ack=salobj.SalRetCode.CMD_COMPLETE,
+                )
                 cmdreader.ack(data=data, ackcmd=ackcmd)
 
             cmdreader.callback = reader_callback
@@ -221,19 +253,27 @@ class TopicsTestCase(asynctest.TestCase):
             self.assertTrue(harness.csc.tel_scalars.has_data)
             harness.csc.assert_scalars_equal(tel_data1, harness.csc.tel_scalars.data)
             harness.csc.tel_scalars.put()
-            data = await harness.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.tel_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.tel_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
             harness.csc.assert_scalars_equal(data, harness.csc.tel_scalars.data)
 
             # put random telemetry data specifying the data
             tel_data2 = harness.csc.make_random_tel_scalars()
             harness.csc.tel_scalars.put(tel_data2)
             harness.csc.assert_scalars_equal(tel_data2, harness.csc.tel_scalars.data)
-            data = await harness.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.tel_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             harness.csc.assert_scalars_equal(data, harness.csc.tel_scalars.data)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.tel_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
     async def test_controller_event_put(self):
         """Test ControllerEvent.put using data=None and providing data.
@@ -254,11 +294,15 @@ class TopicsTestCase(asynctest.TestCase):
             harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
             send_tai0 = salobj.current_tai()
             harness.csc.evt_scalars.put()
-            data = await harness.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.evt_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             rcv_tai0 = salobj.current_tai()
             harness.csc.assert_scalars_equal(data, harness.csc.evt_scalars.data)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.evt_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
             self.assertEqual(evt_data1.private_host, harness.csc.domain.host)
             self.assertEqual(evt_data1.private_origin, harness.csc.domain.origin)
             self.assertAlmostEqual(evt_data1.private_sndStamp, send_tai0, places=1)
@@ -268,10 +312,14 @@ class TopicsTestCase(asynctest.TestCase):
             evt_data2 = harness.csc.make_random_evt_scalars()
             harness.csc.evt_scalars.put(evt_data2)
             harness.csc.assert_scalars_equal(evt_data2, harness.csc.evt_scalars.data)
-            data = await harness.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.evt_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             harness.csc.assert_scalars_equal(data, harness.csc.evt_scalars.data)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.evt_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
     async def test_controller_telemetry_set_set_put(self):
         """Test ControllerTelemetry.set_put.
@@ -289,29 +337,41 @@ class TopicsTestCase(asynctest.TestCase):
             harness.csc.tel_scalars.put()
             self.assertTrue(harness.csc.tel_scalars.has_data)
             harness.csc.assert_scalars_equal(tel_data1, harness.csc.tel_scalars.data)
-            data = await harness.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.tel_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             harness.csc.assert_scalars_equal(data, tel_data1)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.tel_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             # set_put the same data again; the telemetry should be sent
             harness.csc.tel_scalars.set_put(**dict_data1)
             self.assertTrue(harness.csc.tel_scalars.has_data)
             harness.csc.assert_scalars_equal(tel_data1, harness.csc.tel_scalars.data)
-            data = await harness.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.tel_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             harness.csc.assert_scalars_equal(data, tel_data1)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.tel_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             # use None for values to set_put; same telemetry should be sent
             none_dict = dict((key, None) for key in dict_data1)
             harness.csc.tel_scalars.set_put(**none_dict)
             self.assertTrue(harness.csc.tel_scalars.has_data)
             harness.csc.assert_scalars_equal(tel_data1, harness.csc.tel_scalars.data)
-            data = await harness.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.tel_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             harness.csc.assert_scalars_equal(data, tel_data1)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.tel_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             # try an invalid key
             with self.assertRaises(AttributeError):
@@ -332,7 +392,7 @@ class TopicsTestCase(asynctest.TestCase):
             self.assertEqual(list(harness.csc.tel_arrays.data.int0), list(good_int0))
 
             # try an array that is too short
-            bad_int0 = np.arange(nint0-1, dtype=int)
+            bad_int0 = np.arange(nint0 - 1, dtype=int)
             with self.assertRaises(ValueError):
                 harness.csc.tel_arrays.set_put(int0=bad_int0)
 
@@ -359,61 +419,85 @@ class TopicsTestCase(asynctest.TestCase):
             self.assertTrue(harness.csc.evt_scalars.has_data)
             self.assertTrue(did_put)
             harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
-            data = await harness.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.evt_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             harness.csc.assert_scalars_equal(data, evt_data1)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.evt_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             # set_put with None values; the event should *not* be sent
             none_dict = dict((key, None) for key in dict_data1)
             did_put = harness.csc.evt_scalars.set_put(**none_dict)
             self.assertFalse(did_put)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.evt_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             # set_put with None values and force_output=True
             none_dict = dict((key, None) for key in dict_data1)
             did_put = harness.csc.evt_scalars.set_put(**none_dict, force_output=True)
             self.assertTrue(did_put)
             harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
-            data = await harness.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.evt_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             harness.csc.assert_scalars_equal(data, evt_data1)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.evt_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             # set_put the same data again; the event should *not* be sent
             did_put = harness.csc.evt_scalars.set_put(**dict_data1)
             self.assertFalse(did_put)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.evt_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             # set_put the same data again with force_output=True
             did_put = harness.csc.evt_scalars.set_put(**dict_data1, force_output=True)
             self.assertTrue(did_put)
             harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
-            data = await harness.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.evt_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             harness.csc.assert_scalars_equal(data, evt_data1)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.evt_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             # change one field of the data and set_put again
             dict_data1["int0"] = dict_data1["int0"] + 1
             did_put = harness.csc.evt_scalars.set_put(**dict_data1)
             self.assertTrue(did_put)
             with self.assertRaises(AssertionError):
-                harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
+                harness.csc.assert_scalars_equal(
+                    evt_data1, harness.csc.evt_scalars.data
+                )
             evt_data1.int0 += 1
             harness.csc.assert_scalars_equal(evt_data1, harness.csc.evt_scalars.data)
-            data = await harness.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            data = await harness.remote.evt_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             harness.csc.assert_scalars_equal(data, evt_data1)
             with self.assertRaises(asyncio.TimeoutError):
-                await harness.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await harness.remote.evt_scalars.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             # try an invalid key
             with self.assertRaises(AttributeError):
                 harness.csc.evt_scalars.set_put(no_such_attribute=None)
             with self.assertRaises(AttributeError):
-                harness.csc.evt_scalars.set_put(no_such_attribute=None, force_output=True)
+                harness.csc.evt_scalars.set_put(
+                    no_such_attribute=None, force_output=True
+                )
 
             # try an invalid value
             with self.assertRaises(ValueError):
@@ -430,7 +514,7 @@ class TopicsTestCase(asynctest.TestCase):
             self.assertEqual(list(harness.csc.evt_arrays.data.int0), list(good_int0))
 
             # try an array that is too short
-            bad_int0 = np.arange(nint0-1, dtype=int)
+            bad_int0 = np.arange(nint0 - 1, dtype=int)
             with self.assertRaises(ValueError):
                 harness.csc.evt_arrays.set_put(int0=bad_int0)
 
@@ -460,7 +544,9 @@ class TopicsTestCase(asynctest.TestCase):
         self.assertIsNone(harness.remote.tel_scalars.get())
 
         # send the setScalars command with random data
-        cmd_data_list = [harness.csc.make_random_cmd_scalars() for i in range(num_commands)]
+        cmd_data_list = [
+            harness.csc.make_random_cmd_scalars() for i in range(num_commands)
+        ]
         for cmd_data in cmd_data_list:
             await harness.remote.cmd_setScalars.start(cmd_data, timeout=STD_TIMEOUT)
         return cmd_data_list
@@ -473,11 +559,17 @@ class TopicsTestCase(asynctest.TestCase):
                 await harness.remote.tel_scalars.aget(timeout=NODATA_TIMEOUT)
 
             # start waiting for both events, then trigger multiple events
-            evt_task = asyncio.create_task(harness.remote.evt_scalars.aget(timeout=STD_TIMEOUT))
-            tel_task = asyncio.create_task(harness.remote.tel_scalars.aget(timeout=STD_TIMEOUT))
+            evt_task = asyncio.create_task(
+                harness.remote.evt_scalars.aget(timeout=STD_TIMEOUT)
+            )
+            tel_task = asyncio.create_task(
+                harness.remote.tel_scalars.aget(timeout=STD_TIMEOUT)
+            )
 
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
+            cmd_data_list = await self.set_and_get_scalars(
+                harness, num_commands=num_commands
+            )
 
             # the pending aget calls should receive the first event sent
             evt_data, tel_data = await asyncio.gather(evt_task, tel_task)
@@ -504,7 +596,9 @@ class TopicsTestCase(asynctest.TestCase):
     async def test_get(self):
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
+            cmd_data_list = await self.set_and_get_scalars(
+                harness, num_commands=num_commands
+            )
             # wait for all events
             await asyncio.sleep(EVENT_DELAY)
 
@@ -527,7 +621,9 @@ class TopicsTestCase(asynctest.TestCase):
         """
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
+            cmd_data_list = await self.set_and_get_scalars(
+                harness, num_commands=num_commands
+            )
             # wait for all events
             await asyncio.sleep(EVENT_DELAY)
 
@@ -554,12 +650,16 @@ class TopicsTestCase(asynctest.TestCase):
     async def test_next(self):
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
+            cmd_data_list = await self.set_and_get_scalars(
+                harness, num_commands=num_commands
+            )
 
             evt_data_list = []
             while True:
                 try:
-                    evt_data = await harness.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                    evt_data = await harness.remote.evt_scalars.next(
+                        flush=False, timeout=NODATA_TIMEOUT
+                    )
                     self.assertIsNotNone(evt_data)
                     evt_data_list.append(evt_data)
                 except asyncio.TimeoutError:
@@ -571,7 +671,9 @@ class TopicsTestCase(asynctest.TestCase):
             tel_data_list = []
             while True:
                 try:
-                    tel_data = await harness.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                    tel_data = await harness.remote.tel_scalars.next(
+                        flush=False, timeout=NODATA_TIMEOUT
+                    )
                     self.assertIsNotNone(tel_data)
                     tel_data_list.append(tel_data)
                 except asyncio.TimeoutError:
@@ -609,7 +711,9 @@ class TopicsTestCase(asynctest.TestCase):
             with self.assertRaises(RuntimeError):
                 await harness.remote.tel_scalars.next(flush=False)
 
-            cmd_data_list = await self.set_and_get_scalars(harness, num_commands=num_commands)
+            cmd_data_list = await self.set_and_get_scalars(
+                harness, num_commands=num_commands
+            )
             # give the wait loops time to finish
             await asyncio.sleep(EVENT_DELAY)
 
@@ -632,7 +736,9 @@ class TopicsTestCase(asynctest.TestCase):
                 # telemetry/event mismatch
                 harness.csc.tel_scalars.put(harness.csc.evt_scalars.DataType())
             with self.assertRaises(TypeError):
-                await harness.remote.cmd_wait.start(harness.csc.cmd_setScalars.DataType())
+                await harness.remote.cmd_wait.start(
+                    harness.csc.cmd_setScalars.DataType()
+                )
 
     async def test_put_id(self):
         """Test that one can set the TestID field of a write topic
@@ -652,9 +758,12 @@ class TopicsTestCase(asynctest.TestCase):
 
     async def test_command_timeout(self):
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
-            with salobj.assertRaisesAckTimeoutError(ack=salobj.SalRetCode.CMD_INPROGRESS):
-                await harness.remote.cmd_wait.set_start(duration=5, ack=salobj.SalRetCode.CMD_COMPLETE,
-                                                        timeout=0.5)
+            with salobj.assertRaisesAckTimeoutError(
+                ack=salobj.SalRetCode.CMD_INPROGRESS
+            ):
+                await harness.remote.cmd_wait.set_start(
+                    duration=5, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=0.5
+                )
 
     async def test_controller_command_get_next(self):
         """Test ControllerCommand get and next methods.
@@ -670,7 +779,9 @@ class TopicsTestCase(asynctest.TestCase):
             harness.csc.cmd_wait.callback = None
 
             duration = 1
-            task1 = asyncio.create_task(harness.remote.cmd_wait.set_start(duration=duration))
+            task1 = asyncio.create_task(
+                harness.remote.cmd_wait.set_start(duration=duration)
+            )
             next_data = await harness.csc.cmd_wait.next(timeout=STD_TIMEOUT)
             get_data = harness.csc.cmd_wait.get()
             self.assertIsNotNone(get_data)
@@ -682,7 +793,9 @@ class TopicsTestCase(asynctest.TestCase):
                 await harness.csc.cmd_wait.next(timeout=NODATA_TIMEOUT)
 
             duration = 2
-            task2 = asyncio.create_task(harness.remote.cmd_wait.set_start(duration=duration))
+            task2 = asyncio.create_task(
+                harness.remote.cmd_wait.set_start(duration=duration)
+            )
             await asyncio.sleep(0.5)
             get_data = harness.csc.cmd_wait.get(flush=False)
             next_data = await harness.csc.cmd_wait.next(timeout=STD_TIMEOUT)
@@ -707,6 +820,7 @@ class TopicsTestCase(asynctest.TestCase):
 
             def foo():
                 pass
+
             harness.csc.cmd_wait.callback = foo
             self.assertEqual(harness.csc.cmd_wait.callback, foo)
 
@@ -715,7 +829,9 @@ class TopicsTestCase(asynctest.TestCase):
         """
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
 
-            ackcmd = await harness.remote.cmd_wait.set_start(duration=0, timeout=STD_TIMEOUT)
+            ackcmd = await harness.remote.cmd_wait.set_start(
+                duration=0, timeout=STD_TIMEOUT
+            )
             self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
 
     async def test_controller_command_return_ackcmd(self):
@@ -729,9 +845,9 @@ class TopicsTestCase(asynctest.TestCase):
             result = "return failed ackcmd"
 
             def return_ack(data):
-                return harness.csc.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
-                                                      ack=failed_ack,
-                                                      result=result)
+                return harness.csc.salinfo.makeAckCmd(
+                    private_seqNum=data.private_seqNum, ack=failed_ack, result=result
+                )
 
             harness.csc.cmd_wait.callback = return_ack
             with salobj.assertRaisesAckError(ack=failed_ack, result_contains=result):
@@ -746,9 +862,11 @@ class TopicsTestCase(asynctest.TestCase):
         def fail_expected_exception(data):
             raise salobj.ExpectedError(msg)
 
-        await self.check_controller_command_callback_failure(callback=fail_expected_exception,
-                                                             ack=salobj.SalRetCode.CMD_FAILED,
-                                                             result_contains=msg)
+        await self.check_controller_command_callback_failure(
+            callback=fail_expected_exception,
+            ack=salobj.SalRetCode.CMD_FAILED,
+            result_contains=msg,
+        )
 
     async def test_controller_command_exception(self):
         """Test exception raised by remote command when controller command
@@ -759,31 +877,39 @@ class TopicsTestCase(asynctest.TestCase):
         def fail_exception(data):
             raise Exception(msg)
 
-        await self.check_controller_command_callback_failure(callback=fail_exception,
-                                                             ack=salobj.SalRetCode.CMD_FAILED,
-                                                             result_contains=msg)
+        await self.check_controller_command_callback_failure(
+            callback=fail_exception,
+            ack=salobj.SalRetCode.CMD_FAILED,
+            result_contains=msg,
+        )
 
     async def test_controller_command_timeout(self):
         """Test exception raised by remote command when controller command
         callback times out.
         """
+
         def fail_timeout(data):
             raise asyncio.TimeoutError()
 
-        await self.check_controller_command_callback_failure(callback=fail_timeout,
-                                                             ack=salobj.SalRetCode.CMD_TIMEOUT)
+        await self.check_controller_command_callback_failure(
+            callback=fail_timeout, ack=salobj.SalRetCode.CMD_TIMEOUT
+        )
 
     async def test_controller_command_cancel(self):
         """Test exception raised by remote command when controller command
         callback is cancelled.
         """
+
         def fail_cancel(data):
             raise asyncio.CancelledError()
 
-        await self.check_controller_command_callback_failure(callback=fail_cancel,
-                                                             ack=salobj.SalRetCode.CMD_ABORTED)
+        await self.check_controller_command_callback_failure(
+            callback=fail_cancel, ack=salobj.SalRetCode.CMD_ABORTED
+        )
 
-    async def check_controller_command_callback_failure(self, callback, ack, result_contains=None):
+    async def check_controller_command_callback_failure(
+        self, callback, ack, result_contains=None
+    ):
         """Check the exception raised by remote command when the
         controller command raises or returns a failed ackcmd.
 
@@ -813,8 +939,13 @@ class TopicsTestCase(asynctest.TestCase):
             t0 = time.time()
             tasks = []
             for duration in durations:
-                task = asyncio.create_task(harness.remote.cmd_wait.set_start(
-                    duration=duration, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=STD_TIMEOUT+duration))
+                task = asyncio.create_task(
+                    harness.remote.cmd_wait.set_start(
+                        duration=duration,
+                        ack=salobj.SalRetCode.CMD_COMPLETE,
+                        timeout=STD_TIMEOUT + duration,
+                    )
+                )
                 # make sure the command is sent before the command data
                 # is modified by the next loop iteration
                 await asyncio.sleep(0)
@@ -841,8 +972,13 @@ class TopicsTestCase(asynctest.TestCase):
 
             tasks = []
             for duration in durations:
-                task = asyncio.create_task(harness.remote.cmd_wait.set_start(
-                    duration=duration, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=STD_TIMEOUT+duration))
+                task = asyncio.create_task(
+                    harness.remote.cmd_wait.set_start(
+                        duration=duration,
+                        ack=salobj.SalRetCode.CMD_COMPLETE,
+                        timeout=STD_TIMEOUT + duration,
+                    )
+                )
                 tasks.append(task)
                 # make sure the command is sent before the command data
                 # is modified by the next loop iteration
@@ -867,7 +1003,9 @@ class TopicsTestCase(asynctest.TestCase):
             # send the setScalars command with random data
             # but first set a callback for event that should be triggered
             harness.remote.evt_scalars.callback = scalars_callback
-            await harness.remote.cmd_setScalars.start(cmd_scalars_data, timeout=STD_TIMEOUT)
+            await harness.remote.cmd_setScalars.start(
+                cmd_scalars_data, timeout=STD_TIMEOUT
+            )
             # give the callback time to be called
             await asyncio.sleep(EVENT_DELAY)
             harness.csc.assert_scalars_equal(callback_data, cmd_scalars_data)
@@ -887,29 +1025,39 @@ class TopicsTestCase(asynctest.TestCase):
             # send the setScalars command with random data
             # but first set a callback for event that should be triggered
             harness.remote.evt_scalars.callback = scalars_callback
-            await harness.remote.cmd_setScalars.start(cmd_scalars_data, timeout=STD_TIMEOUT)
+            await harness.remote.cmd_setScalars.start(
+                cmd_scalars_data, timeout=STD_TIMEOUT
+            )
             # give the callback time to be called
             await asyncio.sleep(EVENT_DELAY)
             harness.csc.assert_scalars_equal(callback_data, cmd_scalars_data)
 
     async def test_command_next_ack(self):
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
-            ackcmd1 = await harness.remote.cmd_wait.set_start(duration=0.1, wait_done=False,
-                                                              timeout=STD_TIMEOUT)
+            ackcmd1 = await harness.remote.cmd_wait.set_start(
+                duration=0.1, wait_done=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(ackcmd1.ack, salobj.SalRetCode.CMD_ACK)
-            ackcmd2 = await harness.remote.cmd_wait.next_ackcmd(ackcmd1, wait_done=False,
-                                                                timeout=STD_TIMEOUT)
+            ackcmd2 = await harness.remote.cmd_wait.next_ackcmd(
+                ackcmd1, wait_done=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(ackcmd2.ack, salobj.SalRetCode.CMD_INPROGRESS)
-            ackcmd3 = await harness.remote.cmd_wait.next_ackcmd(ackcmd2, wait_done=True,
-                                                                timeout=STD_TIMEOUT)
+            ackcmd3 = await harness.remote.cmd_wait.next_ackcmd(
+                ackcmd2, wait_done=True, timeout=STD_TIMEOUT
+            )
             self.assertEqual(ackcmd3.ack, salobj.SalRetCode.CMD_COMPLETE)
 
             # now try a timeout
-            ackcmd1 = await harness.remote.cmd_wait.set_start(duration=5, wait_done=False,
-                                                              timeout=STD_TIMEOUT)
+            ackcmd1 = await harness.remote.cmd_wait.set_start(
+                duration=5, wait_done=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(ackcmd1.ack, salobj.SalRetCode.CMD_ACK)
-            with salobj.assertRaisesAckTimeoutError(ack=salobj.SalRetCode.CMD_INPROGRESS):
-                await harness.remote.cmd_wait.next_ackcmd(ackcmd1, wait_done=True, timeout=NODATA_TIMEOUT)
+            with salobj.assertRaisesAckTimeoutError(
+                ack=salobj.SalRetCode.CMD_INPROGRESS
+            ):
+                await harness.remote.cmd_wait.next_ackcmd(
+                    ackcmd1, wait_done=True, timeout=NODATA_TIMEOUT
+                )
 
     async def test_command_seq_num(self):
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
@@ -921,7 +1069,7 @@ class TopicsTestCase(asynctest.TestCase):
                 cmd.put()
                 seq_num2 = cmd.data.private_seqNum
                 if seq_num < cmd.max_seq_num:
-                    self.assertEqual(seq_num2, seq_num+1)
+                    self.assertEqual(seq_num2, seq_num + 1)
                 if prev_max_seq_num is None:
                     self.assertEqual(cmd.min_seq_num, 1)
                 else:
@@ -940,8 +1088,8 @@ class TopicsTestCase(asynctest.TestCase):
             # write late joiner data (before we have readers);
             # only the last value should be seen
             for i in (3, 4, 5):
-                writer1.set_put(errorCode=10+i)
-                writer2.set_put(errorCode=20+i)
+                writer1.set_put(errorCode=10 + i)
+                writer2.set_put(errorCode=20 + i)
 
             # create readers and set callbacks for them
             reader1 = salobj.topics.RemoteEvent(salinfo=salinfo1, name="errorCode")
@@ -952,8 +1100,8 @@ class TopicsTestCase(asynctest.TestCase):
             # write more data now that we have readers;
             # they should see all of it
             for i in (6, 7, 8):
-                writer1.set_put(errorCode=10+i)
-                writer2.set_put(errorCode=20+i)
+                writer1.set_put(errorCode=10 + i)
+                writer2.set_put(errorCode=20 + i)
 
             read_codes1 = []
             read_codes2 = []
@@ -995,9 +1143,9 @@ class TopicsTestCase(asynctest.TestCase):
             for i in (3, 4, 5):
                 writer0.set_put(errorCode=i)
                 await asyncio.sleep(0.01)
-                writer1.set_put(errorCode=10+i)
+                writer1.set_put(errorCode=10 + i)
                 await asyncio.sleep(0.01)
-                writer2.set_put(errorCode=20+i)
+                writer2.set_put(errorCode=20 + i)
                 await asyncio.sleep(0.01)
 
             # create readers and set callbacks for them
@@ -1016,9 +1164,9 @@ class TopicsTestCase(asynctest.TestCase):
             for i in (6, 7, 8):
                 writer0.set_put(errorCode=i)
                 await asyncio.sleep(0.01)
-                writer1.set_put(errorCode=10+i)
+                writer1.set_put(errorCode=10 + i)
                 await asyncio.sleep(0.01)
-                writer2.set_put(errorCode=20+i)
+                writer2.set_put(errorCode=20 + i)
                 await asyncio.sleep(0.01)
 
             read_codes0 = []

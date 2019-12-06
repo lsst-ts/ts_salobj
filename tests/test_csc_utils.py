@@ -39,7 +39,9 @@ class Harness:
     def __init__(self, initial_state):
         index = next(index_gen)
         salobj.set_random_lsst_dds_domain()
-        self.csc = salobj.TestCsc(index=index, config_dir=TEST_CONFIG_DIR, initial_state=initial_state)
+        self.csc = salobj.TestCsc(
+            index=index, config_dir=TEST_CONFIG_DIR, initial_state=initial_state
+        )
         self.remote = salobj.Remote(domain=self.csc.domain, name="Test", index=index)
 
     async def __aenter__(self):
@@ -64,78 +66,95 @@ def print_test_cases():
                 continue
             initial_name = initial_state.name.lower()
             final_name = final_state.name.lower()
-            print(f"""    def test_{initial_name}_to_{final_name}(self):
+            print(
+                f"""    def test_{initial_name}_to_{final_name}(self):
         async def doit():
             await self.check_set_summary_state(initial_state=salobj.State.{initial_state.name},
                                                final_state=salobj.State.{final_state.name})
-""")
+"""
+            )
 
 
 class SetSummaryStateTestCSe(asynctest.TestCase):
-
     async def test_standby_to_offline(self):
-        await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
-                                           final_state=salobj.State.OFFLINE)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.STANDBY, final_state=salobj.State.OFFLINE
+        )
 
     async def test_standby_to_standby(self):
-        await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
-                                           final_state=salobj.State.STANDBY)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.STANDBY, final_state=salobj.State.STANDBY
+        )
 
     async def test_standby_to_disabled(self):
-        await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
-                                           final_state=salobj.State.DISABLED)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.STANDBY, final_state=salobj.State.DISABLED
+        )
 
     async def test_standby_to_enabled(self):
-        await self.check_set_summary_state(initial_state=salobj.State.STANDBY,
-                                           final_state=salobj.State.ENABLED)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.STANDBY, final_state=salobj.State.ENABLED
+        )
 
     async def test_disabled_to_offline(self):
-        await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
-                                           final_state=salobj.State.OFFLINE)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.DISABLED, final_state=salobj.State.OFFLINE
+        )
 
     async def test_disabled_to_standby(self):
-        await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
-                                           final_state=salobj.State.STANDBY)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.DISABLED, final_state=salobj.State.STANDBY
+        )
 
     async def test_disabled_to_disabled(self):
-        await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
-                                           final_state=salobj.State.DISABLED)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.DISABLED, final_state=salobj.State.DISABLED
+        )
 
     async def test_disabled_to_enabled(self):
-        await self.check_set_summary_state(initial_state=salobj.State.DISABLED,
-                                           final_state=salobj.State.ENABLED)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.DISABLED, final_state=salobj.State.ENABLED
+        )
 
     async def test_enabled_to_offline(self):
-        await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
-                                           final_state=salobj.State.OFFLINE)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.ENABLED, final_state=salobj.State.OFFLINE
+        )
 
     async def test_enabled_to_standby(self):
-        await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
-                                           final_state=salobj.State.STANDBY)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.ENABLED, final_state=salobj.State.STANDBY
+        )
 
     async def test_enabled_to_disabled(self):
-        await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
-                                           final_state=salobj.State.DISABLED)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.ENABLED, final_state=salobj.State.DISABLED
+        )
 
     async def test_enabled_to_enabled(self):
-        await self.check_set_summary_state(initial_state=salobj.State.ENABLED,
-                                           final_state=salobj.State.ENABLED)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.ENABLED, final_state=salobj.State.ENABLED
+        )
 
     async def test_fault_to_offline(self):
-        await self.check_set_summary_state(initial_state=salobj.State.FAULT,
-                                           final_state=salobj.State.OFFLINE)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.FAULT, final_state=salobj.State.OFFLINE
+        )
 
     async def test_fault_to_standby(self):
-        await self.check_set_summary_state(initial_state=salobj.State.FAULT,
-                                           final_state=salobj.State.STANDBY)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.FAULT, final_state=salobj.State.STANDBY
+        )
 
     async def test_fault_to_disabled(self):
-        await self.check_set_summary_state(initial_state=salobj.State.FAULT,
-                                           final_state=salobj.State.DISABLED)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.FAULT, final_state=salobj.State.DISABLED
+        )
 
     async def test_fault_to_enabled(self):
-        await self.check_set_summary_state(initial_state=salobj.State.FAULT,
-                                           final_state=salobj.State.ENABLED)
+        await self.check_set_summary_state(
+            initial_state=salobj.State.FAULT, final_state=salobj.State.ENABLED
+        )
 
     async def test_invalid_state(self):
         """Test set_summary_state with invalid final states."""
@@ -144,11 +163,20 @@ class SetSummaryStateTestCSe(asynctest.TestCase):
                 # TestCsc cannot start in OFFLINE state
                 continue
             async with Harness(initial_state=initial_state) as harness:
-                for bad_final_state in (min(salobj.State) - 1, salobj.State.FAULT, max(salobj.State) + 1):
-                    with self.subTest(initial_state=initial_state, bad_final_state=bad_final_state):
+                for bad_final_state in (
+                    min(salobj.State) - 1,
+                    salobj.State.FAULT,
+                    max(salobj.State) + 1,
+                ):
+                    with self.subTest(
+                        initial_state=initial_state, bad_final_state=bad_final_state
+                    ):
                         with self.assertRaises(ValueError):
-                            await salobj.set_summary_state(remote=harness.remote, state=bad_final_state,
-                                                           timeout=STD_TIMEOUT)
+                            await salobj.set_summary_state(
+                                remote=harness.remote,
+                                state=bad_final_state,
+                                timeout=STD_TIMEOUT,
+                            )
 
     async def check_set_summary_state(self, initial_state, final_state):
         """Check set_summary_state for valid state transitions.
@@ -162,18 +190,21 @@ class SetSummaryStateTestCSe(asynctest.TestCase):
         """
         async with Harness(initial_state=initial_state) as harness:
             self.assertEqual(harness.csc.summary_state, initial_state)
-            data = await harness.remote.evt_summaryState.next(flush=False,
-                                                              timeout=STD_TIMEOUT)
+            data = await harness.remote.evt_summaryState.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(data.summaryState, initial_state)
 
-            states = await salobj.set_summary_state(remote=harness.remote,
-                                                    state=final_state,
-                                                    settingsToApply="all_fields")
+            states = await salobj.set_summary_state(
+                remote=harness.remote, state=final_state, settingsToApply="all_fields"
+            )
             self.assertEqual(states[0], initial_state)
             self.assertEqual(states[-1], final_state)
             self.assertEqual(harness.csc.summary_state, final_state)
-            if initial_state in (salobj.State.FAULT, salobj.State.STANDBY) \
-                    and final_state in (salobj.State.DISABLED, salobj.State.ENABLED):
+            if initial_state in (
+                salobj.State.FAULT,
+                salobj.State.STANDBY,
+            ) and final_state in (salobj.State.DISABLED, salobj.State.ENABLED):
                 # The start command was sent
                 self.assertIsNotNone(harness.csc.config)
                 self.assertEqual(harness.csc.config.string0, "an arbitrary string")
@@ -181,15 +212,18 @@ class SetSummaryStateTestCSe(asynctest.TestCase):
                 # the constructor default-configured the CSC
                 self.assertIsNotNone(harness.csc.config)
                 # default value hard-coded in schema/Test.yaml
-                self.assertEqual(harness.csc.config.string0, "default value for string0")
+                self.assertEqual(
+                    harness.csc.config.string0, "default value for string0"
+                )
             else:
                 self.assertIsNone(harness.csc.config)
             # the initial state was read by the remote
             # in set_summary_state (and in the test),
             # so only check for subsequent states
             for expected_state in states[1:]:
-                data = await harness.remote.evt_summaryState.next(flush=False,
-                                                                  timeout=STD_TIMEOUT)
+                data = await harness.remote.evt_summaryState.next(
+                    flush=False, timeout=STD_TIMEOUT
+                )
                 self.assertEqual(data.summaryState, expected_state)
 
 

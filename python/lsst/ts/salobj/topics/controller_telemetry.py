@@ -34,6 +34,7 @@ class ControllerTelemetry(write_topic.WriteTopic):
     name : `str`
         Command name
     """
+
     def __init__(self, salinfo, name):
         super().__init__(salinfo=salinfo, name=name, sal_prefix="")
 

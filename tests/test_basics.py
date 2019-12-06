@@ -46,44 +46,69 @@ class BasicsTestCase(asynctest.TestCase):
             ack = 23
             error = -6
             result = "a result"
-            err = salobj.AckError("a message",
-                                  ackcmd=salinfo.makeAckCmd(private_seqNum=private_seqNum, ack=ack,
-                                                            error=error, result=result))
+            err = salobj.AckError(
+                "a message",
+                ackcmd=salinfo.makeAckCmd(
+                    private_seqNum=private_seqNum, ack=ack, error=error, result=result
+                ),
+            )
             self.assertEqual(err.ackcmd.private_seqNum, private_seqNum)
             self.assertEqual(err.ackcmd.ack, ack)
             self.assertEqual(err.ackcmd.error, error)
             self.assertEqual(err.ackcmd.result, result)
 
-            for ExceptionClass in (Exception, TypeError, KeyError, RuntimeError, AssertionError):
+            for ExceptionClass in (
+                Exception,
+                TypeError,
+                KeyError,
+                RuntimeError,
+                AssertionError,
+            ):
                 with self.assertRaises(ExceptionClass):
                     with salobj.assertRaisesAckError():
-                        raise ExceptionClass("assertRaisesAckError should ignore other exception types")
+                        raise ExceptionClass(
+                            "assertRaisesAckError should ignore other exception types"
+                        )
 
             with self.assertRaises(AssertionError):
                 with salobj.assertRaisesAckError(ack=5):
-                    raise salobj.AckError("mismatched ack",
-                                          ackcmd=salinfo.makeAckCmd(private_seqNum=1, ack=1))
+                    raise salobj.AckError(
+                        "mismatched ack",
+                        ackcmd=salinfo.makeAckCmd(private_seqNum=1, ack=1),
+                    )
 
             with self.assertRaises(AssertionError):
                 with salobj.assertRaisesAckError(error=47):
-                    raise salobj.AckError("mismatched error",
-                                          ackcmd=salinfo.makeAckCmd(private_seqNum=2, ack=25, error=2))
+                    raise salobj.AckError(
+                        "mismatched error",
+                        ackcmd=salinfo.makeAckCmd(private_seqNum=2, ack=25, error=2),
+                    )
 
             with salobj.assertRaisesAckError():
-                raise salobj.AckError("no ack or error specified",
-                                      ackcmd=salinfo.makeAckCmd(private_seqNum=3, ack=1, error=2))
+                raise salobj.AckError(
+                    "no ack or error specified",
+                    ackcmd=salinfo.makeAckCmd(private_seqNum=3, ack=1, error=2),
+                )
 
             result = "result for this exception"
             # test result_contains with the full result string
             with salobj.assertRaisesAckError(ack=1, error=2, result_contains=result):
-                raise salobj.AckError("match ack, error and full result",
-                                      ackcmd=salinfo.makeAckCmd(private_seqNum=4, ack=1, error=2,
-                                                                result=result))
+                raise salobj.AckError(
+                    "match ack, error and full result",
+                    ackcmd=salinfo.makeAckCmd(
+                        private_seqNum=4, ack=1, error=2, result=result
+                    ),
+                )
             # test result_contains with a substring of the result string
-            with salobj.assertRaisesAckError(ack=1, error=2, result_contains=result[2:-2]):
-                raise salobj.AckError("match ack, error and a substring of result",
-                                      ackcmd=salinfo.makeAckCmd(private_seqNum=4, ack=1, error=2,
-                                                                result=result))
+            with salobj.assertRaisesAckError(
+                ack=1, error=2, result_contains=result[2:-2]
+            ):
+                raise salobj.AckError(
+                    "match ack, error and a substring of result",
+                    ackcmd=salinfo.makeAckCmd(
+                        private_seqNum=4, ack=1, error=2, result=result
+                    ),
+                )
 
     async def test_ack_error_repr(self):
         """Test AckError.__str__ and AckError.__repr__"""
@@ -94,8 +119,12 @@ class BasicsTestCase(asynctest.TestCase):
             ack = 23
             error = -6
             result = "a result"
-            err = salobj.AckError(msg, ackcmd=salinfo.makeAckCmd(private_seqNum=private_seqNum,
-                                                                 ack=ack, error=error, result=result))
+            err = salobj.AckError(
+                msg,
+                ackcmd=salinfo.makeAckCmd(
+                    private_seqNum=private_seqNum, ack=ack, error=error, result=result
+                ),
+            )
             str_err = str(err)
             for item in (msg, private_seqNum, ack, error, result):
                 self.assertIn(str(item), str_err)
@@ -109,18 +138,30 @@ class BasicsTestCase(asynctest.TestCase):
             salinfo = salobj.SalInfo(domain, "Test", index=1)
             ack = salobj.SalRetCode.CMD_FAILED
             error = 15
-            long_result = "this string is longer than MAX_RESULT_LEN characters " \
-                "this string is longer than MAX_RESULT_LEN characters " \
-                "this string is longer than MAX_RESULT_LEN characters " \
-                "this string is longer than MAX_RESULT_LEN characters " \
+            long_result = (
                 "this string is longer than MAX_RESULT_LEN characters "
+                "this string is longer than MAX_RESULT_LEN characters "
+                "this string is longer than MAX_RESULT_LEN characters "
+                "this string is longer than MAX_RESULT_LEN characters "
+                "this string is longer than MAX_RESULT_LEN characters "
+            )
             self.assertGreater(len(long_result), salobj.MAX_RESULT_LEN)
             with self.assertRaises(ValueError):
-                salinfo.makeAckCmd(private_seqNum=1,
-                                   ack=ack, error=error, result=long_result, truncate_result=False)
-            ackcmd = salinfo.makeAckCmd(private_seqNum=2,
-                                        ack=ack, error=error, result=long_result, truncate_result=True)
-            self.assertEqual(ackcmd.result, long_result[0:salobj.MAX_RESULT_LEN])
+                salinfo.makeAckCmd(
+                    private_seqNum=1,
+                    ack=ack,
+                    error=error,
+                    result=long_result,
+                    truncate_result=False,
+                )
+            ackcmd = salinfo.makeAckCmd(
+                private_seqNum=2,
+                ack=ack,
+                error=error,
+                result=long_result,
+                truncate_result=True,
+            )
+            self.assertEqual(ackcmd.result, long_result[0 : salobj.MAX_RESULT_LEN])
             self.assertEqual(ackcmd.ack, ack)
             self.assertEqual(ackcmd.error, error)
 
@@ -207,7 +248,7 @@ class BasicsTestCase(asynctest.TestCase):
         for bad_name in (
             (" Script:15"),  # leading space
             ("Script:15 "),  # trailing space
-            ("Script:"),   # colon with no index
+            ("Script:"),  # colon with no index
             ("Script:zero"),  # index is not an integer
         ):
             with self.subTest(bad_name=bad_name):
@@ -250,8 +291,12 @@ class BasicsTestCase(asynctest.TestCase):
             (37, utc0_ap + 0.1 * u.second),
             (37, utc0_ap + 1 * u.second),
         ):
-            with self.subTest(utc_ap=utc_ap, desired_tai_minus_utc=desired_tai_minus_utc):
-                self.check_tai_from_utc(utc_ap=utc_ap, desired_tai_minus_utc=desired_tai_minus_utc)
+            with self.subTest(
+                utc_ap=utc_ap, desired_tai_minus_utc=desired_tai_minus_utc
+            ):
+                self.check_tai_from_utc(
+                    utc_ap=utc_ap, desired_tai_minus_utc=desired_tai_minus_utc
+                )
 
     def test_current_tai(self):
         utc0 = time.time()
@@ -269,7 +314,9 @@ class BasicsTestCase(asynctest.TestCase):
             (5.21, 359.20, 6.01),
             (270, -90, 0),
         ):
-            with self.subTest(angle1=angle1, angle2=angle2, expected_diff=expected_diff):
+            with self.subTest(
+                angle1=angle1, angle2=angle2, expected_diff=expected_diff
+            ):
                 diff = salobj.angle_diff(angle1, angle2)
                 self.assertAlmostEqual(diff.deg, expected_diff)
                 diff = salobj.angle_diff(angle2, angle1)
@@ -299,11 +346,17 @@ class BasicsTestCase(asynctest.TestCase):
                 with self.assertRaises(AssertionError):
                     salobj.assertAnglesAlmostEqual(angle2, angle1, bad_diff)
                 with self.assertRaises(AssertionError):
-                    salobj.assertAnglesAlmostEqual(Angle(angle1, u.deg), angle2, bad_diff)
+                    salobj.assertAnglesAlmostEqual(
+                        Angle(angle1, u.deg), angle2, bad_diff
+                    )
                 with self.assertRaises(AssertionError):
-                    salobj.assertAnglesAlmostEqual(angle1, Angle(angle2, u.deg), bad_diff)
+                    salobj.assertAnglesAlmostEqual(
+                        angle1, Angle(angle2, u.deg), bad_diff
+                    )
                 with self.assertRaises(AssertionError):
-                    salobj.assertAnglesAlmostEqual(Angle(angle1, u.deg), Angle(angle2, u.deg), bad_diff)
+                    salobj.assertAnglesAlmostEqual(
+                        Angle(angle1, u.deg), Angle(angle2, u.deg), bad_diff
+                    )
 
                 good_diff = diff + epsilon
                 salobj.assertAnglesAlmostEqual(angle1, angle2, good_diff)
@@ -311,7 +364,9 @@ class BasicsTestCase(asynctest.TestCase):
                 salobj.assertAnglesAlmostEqual(angle2, angle1, good_diff)
                 salobj.assertAnglesAlmostEqual(Angle(angle1, u.deg), angle2, good_diff)
                 salobj.assertAnglesAlmostEqual(angle1, Angle(angle2, u.deg), good_diff)
-                salobj.assertAnglesAlmostEqual(Angle(angle1, u.deg), Angle(angle2, u.deg), good_diff)
+                salobj.assertAnglesAlmostEqual(
+                    Angle(angle1, u.deg), Angle(angle2, u.deg), good_diff
+                )
 
 
 if __name__ == "__main__":
