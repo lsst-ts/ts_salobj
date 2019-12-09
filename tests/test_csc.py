@@ -482,25 +482,6 @@ class CommunicateTestCase(asynctest.TestCase):
 
             await asyncio.wait_for(harness.csc.done_task, 5)
 
-    async def test_simulation_mode(self):
-        """Test simulation mode command and event.
-
-        Changing simulation mode can only be done in STANDBY state.
-        """
-        # start in STANDBY and verify that simulation mode is reported
-        async with Harness(initial_state=salobj.State.STANDBY) as harness:
-            sm_data = await harness.remote.evt_simulationMode.next(flush=False, timeout=LONG_TIMEOUT)
-            self.assertEqual(sm_data.mode, 0)
-
-            # check that simulation mode can be set
-            await self.check_simulate_mode_ok(harness)
-
-            # check that simulation mode cannot be set in other states
-            for state in (salobj.State.DISABLED, salobj.State.ENABLED, salobj.State.FAULT):
-                with self.subTest(state=state):
-                    await salobj.set_summary_state(remote=harness.remote, state=salobj.State.DISABLED)
-                    await self.check_simulate_mode_bad(harness)
-
     async def test_initial_simulation_mode(self):
         """Test initial_simulation_mode argument of TestCsc constructor.
 
@@ -515,26 +496,6 @@ class CommunicateTestCase(asynctest.TestCase):
         async with salobj.TestCsc(index=1, config_dir=TEST_CONFIG_DIR, initial_simulation_mode=0) as csc:
             await csc.start_task
             self.assertEqual(csc.simulation_mode, 0)
-
-    async def check_simulate_mode_ok(self, harness):
-        """Check that we can set simulation mode to 0 but not other values.
-        """
-        await harness.remote.cmd_setSimulationMode.set_start(mode=0, timeout=STD_TIMEOUT)
-        sm_data = await harness.remote.evt_simulationMode.next(flush=False, timeout=STD_TIMEOUT)
-        self.assertEqual(sm_data.mode, 0)
-
-        for bad_mode in (1, 10, -1):
-            with self.subTest(bad_mode=bad_mode):
-                with salobj.assertRaisesAckError():
-                    await harness.remote.cmd_setSimulationMode.set_start(mode=bad_mode, timeout=STD_TIMEOUT)
-
-    async def check_simulate_mode_bad(self, harness):
-        """Check that we cannot set simulation mode to 0 or any other value.
-        """
-        for bad_mode in (0, 1, 10, -1):
-            with self.subTest(bad_mode=bad_mode):
-                with salobj.assertRaisesAckError():
-                    await harness.remote.cmd_setSimulationMode.set_start(mode=bad_mode, timeout=STD_TIMEOUT)
 
 
 class NoIndexCsc(salobj.TestCsc):

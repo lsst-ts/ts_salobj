@@ -30,7 +30,7 @@ from .sal_log_handler import SalLogHandler
 
 # This supports is a hack to allow support for ts_sal before and after
 # generics. TODO TSS-3259 remove this and the code that uses it.
-OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue"))
+OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue", "setSimulationMode"))
 
 
 class Controller:
