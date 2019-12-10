@@ -482,21 +482,6 @@ class CommunicateTestCase(asynctest.TestCase):
 
             await asyncio.wait_for(harness.csc.done_task, 5)
 
-    async def test_initial_simulation_mode(self):
-        """Test initial_simulation_mode argument of TestCsc constructor.
-
-        The only allowed value is 0.
-        """
-        for initial_simulation_mode in (1, 3):
-            with self.assertRaises(salobj.ExpectedError):
-                async with salobj.TestCsc(index=1, config_dir=TEST_CONFIG_DIR,
-                                          initial_simulation_mode=initial_simulation_mode) as csc:
-                    pass
-
-        async with salobj.TestCsc(index=1, config_dir=TEST_CONFIG_DIR, initial_simulation_mode=0) as csc:
-            await csc.start_task
-            self.assertEqual(csc.simulation_mode, 0)
-
 
 class NoIndexCsc(salobj.TestCsc):
     """A CSC whose constructor has no index argument."""
@@ -504,6 +489,15 @@ class NoIndexCsc(salobj.TestCsc):
         super().__init__(index=next(index_gen), config_dir=TEST_CONFIG_DIR)
         self.arg1 = arg1
         self.arg2 = arg2
+
+
+class SeveralSimulationModesCsc(salobj.TestCsc):
+    """A variant of TestCsc with several allowed simulation modes."""
+    AllowedSimulationModes = (0, 1, 3)
+
+    async def implement_simulation_mode(self, simulation_mode):
+        if simulation_mode not in self.AllowedSimulationModes:
+            raise salobj.ExpectedError(f"invalid simulation_mode={simulation_mode}")
 
 
 class InvalidPkgNameCsc(salobj.TestCsc):
@@ -551,6 +545,61 @@ class TestCscConstructorTestCase(asynctest.TestCase):
     async def test_invalid_config_pkg(self):
         with self.assertRaises(RuntimeError):
             InvalidPkgNameCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
+
+    async def test_simulation_mode(self):
+        """Test simulation_mode and initial_simulation_mode constructor
+        arguments.
+        """
+        # Test valid simulation modes.
+        for simulation_mode in SeveralSimulationModesCsc.AllowedSimulationModes:
+            with self.subTest(simulation_mode=simulation_mode):
+                async with SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
+                                                     simulation_mode=simulation_mode) as csc:
+                    await csc.start_task
+                    self.assertEqual(csc.simulation_mode, simulation_mode)
+
+                if simulation_mode == 0:
+                    # No deprecation warning expected.
+                    async with SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
+                                                         initial_simulation_mode=simulation_mode) as csc:
+                        await csc.start_task
+                        self.assertEqual(csc.simulation_mode, simulation_mode)
+                else:
+                    # Deprecation warning expected.
+                    with self.assertWarns(DeprecationWarning):
+                        async with SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
+                                                             initial_simulation_mode=simulation_mode) as csc:
+                            await csc.start_task
+                            self.assertEqual(csc.simulation_mode, simulation_mode)
+
+        # Test that simulation_mode and initial_simulation_mode cannot both be
+        # nonzero. This is caught by the constructor, so there is no need to
+        # wait for the CSC to start.
+        for mode1, mode2 in itertools.product((1, 2), (1, 2)):
+            with self.subTest(mode1=mode1, mode2=mode2):
+                with self.assertRaises(ValueError):
+                    SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
+                                              simulation_mode=mode1,
+                                              initial_simulation_mode=mode2)
+
+        # Test invalid simulation modes. These are are caught by the
+        # ``implement_simulation_mode`` method, which is called by the
+        # ``start`` method, so we must wait for the CSC to start.
+        for bad_simulation_mode in (min(SeveralSimulationModesCsc.AllowedSimulationModes) - 1,
+                                    max(SeveralSimulationModesCsc.AllowedSimulationModes) + 1):
+            with self.subTest(bad_simulation_mode=bad_simulation_mode):
+                with self.assertRaises(salobj.ExpectedError):
+                    async with SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
+                                                         simulation_mode=bad_simulation_mode):
+                        pass
+
+                # The constructor issues a deprecation warning,
+                # then later the ``start`` method raises.
+                with self.assertWarns(DeprecationWarning):
+                    with self.assertRaises(salobj.ExpectedError):
+                        async with SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
+                                                             initial_simulation_mode=bad_simulation_mode):
+                            pass
 
     async def test_wrong_config_pkg(self):
         with self.assertRaises(RuntimeError):

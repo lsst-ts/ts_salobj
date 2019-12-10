@@ -55,16 +55,20 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     initial_state : `State` or `int` (optional)
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
+    simulation_mode : `int` (optional)
+        Simulation mode. The default is 0: do not simulate.
     initial_simulation_mode : `int` (optional)
-        Initial simulation mode. This is provided for unit testing,
-        as real CSCs should start up not simulating, the default.
+        A deprecated synonym for ``simulation_mode``.
 
     Raises
     ------
     ValueError
-        If ``config_dir`` is not a directory.
+        If ``config_dir`` is not a directory,
+        ``initial_state`` is invalid, or
+        ``simulation_mode`` and ``initial_simulation_mode`` are both nonzero.
     salobj.ExpectedError
-        If ``initial_state`` or ``initial_simulation_mode`` is invalid.
+        If ``simulation_mode`` is invalid.
+        Note: you will only see this error if you await `start_task`.
 
     Notes
     -----
@@ -109,7 +113,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     * Set ``start_task`` done
     """
     def __init__(self, name, index, schema_path, config_dir=None,
-                 initial_state=State.STANDBY, initial_simulation_mode=0):
+                 initial_state=State.STANDBY,
+                 simulation_mode=0, initial_simulation_mode=0):
 
         if not pathlib.Path(schema_path).is_file():
             raise ValueError(f"schema_path={schema_path} is not a file")
@@ -127,6 +132,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             raise ValueError(f"Schema {schema_path} invalid") from e
 
         super().__init__(name=name, index=index, initial_state=initial_state,
+                         simulation_mode=simulation_mode,
                          initial_simulation_mode=initial_simulation_mode)
 
         if config_dir is None:
