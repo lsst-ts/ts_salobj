@@ -6,6 +6,18 @@
 Revision History
 ################
 
+v5.2.0
+======
+
+Major changes:
+
+* CSCs no longer support the `setSimulationMode` command, as per RFC-639.
+
+Deprecated APIs:
+
+* BaseCsc and ConfigurableCsc: the `initial_simulation_mode` constructor argument is deprecated in favor of the new `simulation_mode` argument.
+  It is an error to specify both.
+
 v5.1.0
 ======
 
