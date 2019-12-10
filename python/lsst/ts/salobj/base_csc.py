@@ -47,14 +47,20 @@ class BaseCsc(Controller):
     initial_state : `State` or `int` (optional)
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
+    simulation_mode : `int` (optional)
+        Simulation mode. The default is 0: do not simulate.
     initial_simulation_mode : `int` (optional)
-        Initial simulation mode. This is provided for unit testing,
-        as real CSCs should start up not simulating, the default.
+        A deprecated synonym for simulation_mode.
 
     Raises
     ------
+    ValueError
+        If ``initial_state`` is invalid, or
+        ``simulation_mode`` and ``initial_simulation_mode`` are both nonzero.
     salobj.ExpectedError
-        If initial_state or initial_simulation_mode is invalid.
+        If ``simulation_mode`` is invalid.
+        Note: you will only see this error if you await `start_task`.
+
 
     Notes
     -----
@@ -94,12 +100,20 @@ class BaseCsc(Controller):
     * Set the summary state.
     * Run `start` asynchronously.
     """
-    def __init__(self, name, index=None, initial_state=State.STANDBY, initial_simulation_mode=0):
+    def __init__(self, name, index=None, initial_state=State.STANDBY,
+                 simulation_mode=0, initial_simulation_mode=0):
         # cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
+        if initial_simulation_mode != 0:
+            if simulation_mode != 0:
+                raise ValueError("Cannot specify both simulation_mode and initial_simulation_mode")
+            warnings.warn("The initial_simulation_mode argument is deprecated; "
+                          "please specify simulation_mode instead",
+                          DeprecationWarning)
+            simulation_mode = initial_simulation_mode
         initial_state = State(initial_state)
         super().__init__(name=name, index=index, do_callbacks=True)
-        self._initial_simulation_mode = int(initial_simulation_mode)
+        self._requested_simulation_mode = int(simulation_mode)
         self._summary_state = State(initial_state)
         self._faulting = False
         self._heartbeat_task = base.make_done_future()
@@ -117,7 +131,7 @@ class BaseCsc(Controller):
         await super().start()
         try:
             self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
-            await self.set_simulation_mode(self._initial_simulation_mode)
+            await self.set_simulation_mode(self._requested_simulation_mode)
         except Exception as e:
             await self.close(exception=e)
             raise
@@ -309,24 +323,6 @@ class BaseCsc(Controller):
         """
         await self._do_change_state(data, "start", [State.STANDBY], State.DISABLED)
 
-    async def do_setSimulationMode(self, data):
-        """Enter or leave simulation mode.
-
-        The CSC must be in `State.STANDBY` state.
-
-        Parameters
-        ----------
-        data : ``cmd_setSimulationMode.DataType``
-            Command data
-
-        Notes
-        -----
-        To implement simulation mode: override `implement_simulation_mode`.
-        """
-        if self.summary_state != State.STANDBY:
-            raise base.ExpectedError(f"State is {self.summary_state!r}; must be STANDBY")
-        await self.set_simulation_mode(data.mode)
-
     @property
     def simulation_mode(self):
         """Get the current simulation mode.
@@ -368,6 +364,9 @@ class BaseCsc(Controller):
         ------
         ExpectedError
             If ``simulation_mode`` is not a supported value.
+        ValueError
+            If ``simulation_mode`` and ``initial_simulation_mode``
+            are both nonzero. Only one can be specified.
 
         Notes
         -----
@@ -379,10 +378,6 @@ class BaseCsc(Controller):
         * If ``simulation_mode`` is 0 then go out of simulation mode.
         * If ``simulation_mode`` is nonzero then enter the requested
           simulation mode.
-
-        Do not check the current summary state, nor set the
-        ``simulation_mode`` property nor report the new mode.
-        All of that is handled `do_setSimulationMode`.
         """
         if simulation_mode != 0:
             raise base.ExpectedError(

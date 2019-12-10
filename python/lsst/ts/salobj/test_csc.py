@@ -61,8 +61,20 @@ class TestCsc(ConfigurableCsc):
 
         * `salobj.State.ENABLED` if you want the CSC immediately usable.
         * `salobj.State.STANDBY` if you want full emulation of a CSC.
+    simulation_mode : `int` (optional)
+        Simulation mode. The only allowed value is 0.
     initial_simulation_mode : `int` (optional)
-        Initial simulation mode. The only allowed value is 0.
+        A deprecated synonym for ``simulation_mode``.
+
+    Raises
+    ------
+    ValueError
+        If ``config_dir`` is not a directory,
+        ``initial_state`` is invalid, or
+        ``simulation_mode`` and ``initial_simulation_mode`` are both nonzero.
+    salobj.ExpectedError
+        If ``simulation_mode`` is invalid.
+        Note: you will only see this error if you await `start_task`.
 
     Notes
     -----
@@ -84,10 +96,12 @@ class TestCsc(ConfigurableCsc):
     """
     __test__ = False  # stop pytest from warning that this is not a test
 
-    def __init__(self, index, config_dir=None, initial_state=State.STANDBY, initial_simulation_mode=0):
+    def __init__(self, index, config_dir=None, initial_state=State.STANDBY,
+                 simulation_mode=0, initial_simulation_mode=0):
         schema_path = pathlib.Path(__file__).resolve().parents[4].joinpath("schema", "Test.yaml")
         super().__init__("Test", schema_path=schema_path, config_dir=config_dir,
                          index=index, initial_state=initial_state,
+                         simulation_mode=simulation_mode,
                          initial_simulation_mode=initial_simulation_mode)
         self.cmd_wait.allow_multiple_callbacks = True
         self.config = None
