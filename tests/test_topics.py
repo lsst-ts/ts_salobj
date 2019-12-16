@@ -653,7 +653,7 @@ class TopicsTestCase(asynctest.TestCase):
     async def test_command_timeout(self):
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
             with salobj.assertRaisesAckTimeoutError(ack=salobj.SalRetCode.CMD_INPROGRESS):
-                await harness.remote.cmd_wait.set_start(duration=5, ack=salobj.SalRetCode.CMD_COMPLETE,
+                await harness.remote.cmd_wait.set_start(timespan=5, ack=salobj.SalRetCode.CMD_COMPLETE,
                                                         timeout=0.5)
 
     async def test_controller_command_get_next(self):
@@ -669,26 +669,26 @@ class TopicsTestCase(asynctest.TestCase):
 
             harness.csc.cmd_wait.callback = None
 
-            duration = 1
-            task1 = asyncio.create_task(harness.remote.cmd_wait.set_start(duration=duration))
+            timespan = 1
+            task1 = asyncio.create_task(harness.remote.cmd_wait.set_start(timespan=timespan))
             next_data = await harness.csc.cmd_wait.next(timeout=STD_TIMEOUT)
             get_data = harness.csc.cmd_wait.get()
             self.assertIsNotNone(get_data)
-            self.assertEqual(get_data.duration, duration)
-            self.assertEqual(next_data.duration, duration)
+            self.assertEqual(get_data.timespan, timespan)
+            self.assertEqual(next_data.timespan, timespan)
 
             # show that get() flushes the queue
             with self.assertRaises(asyncio.TimeoutError):
                 await harness.csc.cmd_wait.next(timeout=NODATA_TIMEOUT)
 
-            duration = 2
-            task2 = asyncio.create_task(harness.remote.cmd_wait.set_start(duration=duration))
+            timespan = 2
+            task2 = asyncio.create_task(harness.remote.cmd_wait.set_start(timespan=timespan))
             await asyncio.sleep(0.5)
             get_data = harness.csc.cmd_wait.get(flush=False)
             next_data = await harness.csc.cmd_wait.next(timeout=STD_TIMEOUT)
             self.assertIsNotNone(get_data)
-            self.assertEqual(get_data.duration, duration)
-            self.assertEqual(next_data.duration, duration)
+            self.assertEqual(get_data.timespan, timespan)
+            self.assertEqual(next_data.timespan, timespan)
 
             task1.cancel()
             task2.cancel()
@@ -715,7 +715,7 @@ class TopicsTestCase(asynctest.TestCase):
         """
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
 
-            ackcmd = await harness.remote.cmd_wait.set_start(duration=0, timeout=STD_TIMEOUT)
+            ackcmd = await harness.remote.cmd_wait.set_start(timespan=0, timeout=STD_TIMEOUT)
             self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
 
     async def test_controller_command_return_ackcmd(self):
@@ -809,23 +809,23 @@ class TopicsTestCase(asynctest.TestCase):
             self.assertTrue(harness.csc.cmd_wait.has_callback)
             self.assertTrue(harness.csc.cmd_wait.allow_multiple_callbacks)
 
-            durations = (0.4, 0.2)  # seconds
+            timespans = (0.4, 0.2)  # seconds
             t0 = time.time()
             tasks = []
-            for duration in durations:
+            for timespan in timespans:
                 task = asyncio.create_task(harness.remote.cmd_wait.set_start(
-                    duration=duration, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=STD_TIMEOUT+duration))
+                    timespan=timespan, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=STD_TIMEOUT+timespan))
                 # make sure the command is sent before the command data
                 # is modified by the next loop iteration
                 await asyncio.sleep(0)
                 tasks.append(task)
             ackcmds = await asyncio.gather(*tasks)
-            measured_duration = time.time() - t0
+            measured_timespan = time.time() - t0
             for ackcmd in ackcmds:
                 self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
 
-            expected_duration = max(*durations)
-            self.assertLess(abs(measured_duration - expected_duration), 0.1)
+            expected_timespan = max(*timespans)
+            self.assertLess(abs(measured_timespan - expected_timespan), 0.1)
 
     async def test_multiple_sequential_commands(self):
         """Test that commands prohibiting multiple callbacks are executed
@@ -836,24 +836,24 @@ class TopicsTestCase(asynctest.TestCase):
             harness.csc.cmd_wait.allow_multiple_callbacks = False
             self.assertFalse(harness.csc.cmd_wait.allow_multiple_callbacks)
 
-            durations = (0.4, 0.2)  # seconds
+            timespans = (0.4, 0.2)  # seconds
             t0 = time.time()
 
             tasks = []
-            for duration in durations:
+            for timespan in timespans:
                 task = asyncio.create_task(harness.remote.cmd_wait.set_start(
-                    duration=duration, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=STD_TIMEOUT+duration))
+                    timespan=timespan, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=STD_TIMEOUT+timespan))
                 tasks.append(task)
                 # make sure the command is sent before the command data
                 # is modified by the next loop iteration
                 await asyncio.sleep(0)
             ackcmds = await asyncio.gather(*tasks)
-            measured_duration = time.time() - t0
+            measured_timespan = time.time() - t0
             for ackcmd in ackcmds:
                 self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
 
-            expected_duration = np.sum(durations)
-            self.assertLess(abs(measured_duration - expected_duration), 0.1)
+            expected_timespan = np.sum(timespans)
+            self.assertLess(abs(measured_timespan - expected_timespan), 0.1)
 
     async def test_asynchronous_event_callback(self):
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
@@ -894,7 +894,7 @@ class TopicsTestCase(asynctest.TestCase):
 
     async def test_command_next_ack(self):
         async with Harness(initial_state=salobj.State.ENABLED) as harness:
-            ackcmd1 = await harness.remote.cmd_wait.set_start(duration=0.1, wait_done=False,
+            ackcmd1 = await harness.remote.cmd_wait.set_start(timespan=0.1, wait_done=False,
                                                               timeout=STD_TIMEOUT)
             self.assertEqual(ackcmd1.ack, salobj.SalRetCode.CMD_ACK)
             ackcmd2 = await harness.remote.cmd_wait.next_ackcmd(ackcmd1, wait_done=False,
@@ -905,7 +905,7 @@ class TopicsTestCase(asynctest.TestCase):
             self.assertEqual(ackcmd3.ack, salobj.SalRetCode.CMD_COMPLETE)
 
             # now try a timeout
-            ackcmd1 = await harness.remote.cmd_wait.set_start(duration=5, wait_done=False,
+            ackcmd1 = await harness.remote.cmd_wait.set_start(timespan=5, wait_done=False,
                                                               timeout=STD_TIMEOUT)
             self.assertEqual(ackcmd1.ack, salobj.SalRetCode.CMD_ACK)
             with salobj.assertRaisesAckTimeoutError(ack=salobj.SalRetCode.CMD_INPROGRESS):

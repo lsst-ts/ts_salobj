@@ -306,10 +306,10 @@ class BaseScriptTestCase(asynctest.TestCase):
             script.do_resume(resume_data)
             await asyncio.wait_for(run_task, 2)
             await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
-            duration = script.timestamps[ScriptState.ENDING] - script.timestamps[ScriptState.RUNNING]
-            desired_duration = wait_time
-            print(f"test_pause duration={duration:0.2f}")
-            self.assertLess(abs(duration - desired_duration), 0.2)
+            timespan = script.timestamps[ScriptState.ENDING] - script.timestamps[ScriptState.RUNNING]
+            desired_timespan = wait_time
+            print(f"test_pause timespan={timespan:0.2f}")
+            self.assertLess(abs(timespan - desired_timespan), 0.2)
 
     async def test_stop_at_checkpoint(self):
         async with salobj.TestScript(index=self.index) as script:
@@ -329,11 +329,11 @@ class BaseScriptTestCase(asynctest.TestCase):
             await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
             self.assertEqual(script.state.lastCheckpoint, checkpoint_named_end)
             self.assertEqual(script.state.state, ScriptState.STOPPED)
-            duration = script.timestamps[ScriptState.STOPPING] - script.timestamps[ScriptState.RUNNING]
+            timespan = script.timestamps[ScriptState.STOPPING] - script.timestamps[ScriptState.RUNNING]
             # waited and then stopped at the "end" checkpoint
-            desired_duration = wait_time
-            print(f"test_stop_at_checkpoint duration={duration:0.2f}")
-            self.assertLess(abs(duration - desired_duration), 0.2)
+            desired_timespan = wait_time
+            print(f"test_stop_at_checkpoint timespan={timespan:0.2f}")
+            self.assertLess(abs(timespan - desired_timespan), 0.2)
 
     async def test_stop_while_paused(self):
         async with salobj.TestScript(index=self.index) as script:
@@ -358,13 +358,13 @@ class BaseScriptTestCase(asynctest.TestCase):
             await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
             self.assertEqual(script.state.lastCheckpoint, checkpoint_named_start)
             self.assertEqual(script.state.state, ScriptState.STOPPED)
-            duration = script.timestamps[ScriptState.STOPPING] - script.timestamps[ScriptState.RUNNING]
+            timespan = script.timestamps[ScriptState.STOPPING] - script.timestamps[ScriptState.RUNNING]
             # the script ran quickly because we stopped the script
             # just as soon as it paused at the "start" checkpoint
-            desired_duration = 0
-            print(f"test_stop_while_paused duration={duration:0.2f}")
-            self.assertGreater(duration, 0.0)
-            self.assertLess(abs(duration - desired_duration), 0.2)
+            desired_timespan = 0
+            print(f"test_stop_while_paused timespan={timespan:0.2f}")
+            self.assertGreater(timespan, 0.0)
+            self.assertLess(abs(timespan - desired_timespan), 0.2)
 
     async def test_stop_while_running(self):
         async with salobj.TestScript(index=self.index) as script:
@@ -384,11 +384,11 @@ class BaseScriptTestCase(asynctest.TestCase):
             await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
             self.assertEqual(script.state.lastCheckpoint, checkpoint_named_start)
             self.assertEqual(script.state.state, ScriptState.STOPPED)
-            duration = script.timestamps[ScriptState.STOPPING] - script.timestamps[ScriptState.RUNNING]
+            timespan = script.timestamps[ScriptState.STOPPING] - script.timestamps[ScriptState.RUNNING]
             # we waited `pause_time` seconds after the "start" checkpoint
-            desired_duration = pause_time
-            print(f"test_stop_while_running duration={duration:0.2f}")
-            self.assertLess(abs(duration - desired_duration), 0.2)
+            desired_timespan = pause_time
+            print(f"test_stop_while_running timespan={timespan:0.2f}")
+            self.assertLess(abs(timespan - desired_timespan), 0.2)
 
     async def check_fail(self, fail_run):
         """Check failure in run or cleanup.
@@ -418,12 +418,12 @@ class BaseScriptTestCase(asynctest.TestCase):
                     await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
                 self.assertEqual(script.state.lastCheckpoint, "end")
                 end_run_state = ScriptState.ENDING
-            duration = script.timestamps[end_run_state] - script.timestamps[ScriptState.RUNNING]
+            timespan = script.timestamps[end_run_state] - script.timestamps[ScriptState.RUNNING]
             # if fail_run then failed before waiting,
             # otherwise failed after
-            desired_duration = 0 if fail_run else wait_time
-            print(f"test_fail duration={duration:0.3f} with fail_run={fail_run}")
-            self.assertLess(abs(duration - desired_duration), 0.2)
+            desired_timespan = 0 if fail_run else wait_time
+            print(f"test_fail timespan={timespan:0.3f} with fail_run={fail_run}")
+            self.assertLess(abs(timespan - desired_timespan), 0.2)
 
     async def test_fail_run(self):
         await self.check_fail(fail_run=True)
@@ -490,7 +490,7 @@ class BaseScriptTestCase(asynctest.TestCase):
                         await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
 
                         metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
-                        self.assertEqual(metadata.duration, wait_time)
+                        self.assertEqual(metadata.timespan, wait_time)
 
                         await remote.cmd_run.start(timeout=STD_TIMEOUT)
 
@@ -549,7 +549,7 @@ class BaseScriptTestCase(asynctest.TestCase):
                 await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
 
                 metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
-                self.assertEqual(metadata.duration, wait_time)
+                self.assertEqual(metadata.timespan, wait_time)
 
                 await remote.cmd_run.start(timeout=STD_TIMEOUT)
 

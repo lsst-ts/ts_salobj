@@ -481,7 +481,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         metadata.rotationSystem = MetadataRotSys.NONE
         metadata.filters = ""  # any
         metadata.dome = MetadataDome.EITHER
-        metadata.duration = 0
+        metadata.timespan = 0
         self.set_metadata(metadata)
         self.evt_metadata.put(metadata)
         self.set_state(ScriptState.CONFIGURED)

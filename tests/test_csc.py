@@ -831,7 +831,7 @@ class ControllerCommandLoggingTestCase(asynctest.TestCase):
                 await harness.remote.evt_logMessage.next(flush=False, timeout=NODATA_TIMEOUT)
 
             with salobj.assertRaisesAckError():
-                await harness.remote.cmd_wait.set_start(duration=5, timeout=STD_TIMEOUT)
+                await harness.remote.cmd_wait.set_start(timespan=5, timeout=STD_TIMEOUT)
 
             msg = await harness.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
             self.assertIn(harness.csc.exc_msg, msg.traceback)

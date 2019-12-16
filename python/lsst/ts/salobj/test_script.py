@@ -100,7 +100,7 @@ class TestScript(BaseScript):
         self.log.info("Configure succeeded")
 
     def set_metadata(self, metadata):
-        metadata.duration = self.config.wait_time
+        metadata.timespan = self.config.wait_time
 
     async def run(self):
         self.log.info("Run started")

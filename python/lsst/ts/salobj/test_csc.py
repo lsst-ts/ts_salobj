@@ -156,7 +156,7 @@ class TestCsc(ConfigurableCsc):
         using the specified ack code.
         """
         self.assert_enabled("wait")
-        await asyncio.sleep(data.duration)
+        await asyncio.sleep(data.timespan)
 
     @property
     def field_type(self):
