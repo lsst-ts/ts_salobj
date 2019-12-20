@@ -248,8 +248,8 @@ class Domain:
         finally:
             self.close_dds()
         if self.num_read_loops != 0 or self.num_read_threads != 0:
-            warnings.warning(f"After Domain.close num_read_loops={self.num_read_loops} and "
-                             f"num_read_threads={self.num_read_threads}; both should be 0")
+            warnings.warn(f"After Domain.close num_read_loops={self.num_read_loops} and "
+                          f"num_read_threads={self.num_read_threads}; both should be 0")
         self.done_task.set_result(None)
 
     def close_dds(self):
