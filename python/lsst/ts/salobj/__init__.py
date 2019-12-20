@@ -15,6 +15,7 @@ from .csc_utils import *
 from .testutils import *
 from .testcsc import *
 from .testscript import *
+from .base_csc_test_case import *
 # Backwards compatibility
 from . import testutils as test_utils
 
