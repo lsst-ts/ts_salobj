@@ -131,7 +131,7 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
             try:
                 await cmd.start(timeout=timeout)
             except Exception as e:
-                raise RuntimeError(f"Error on cmd=cmd_{command}, initial_state={current_state}") from e
+                raise RuntimeError(f"Error on cmd=cmd_{command}, initial_state={current_state}: {e}") from e
             states.append(state)
     finally:
         remote.cmd_start.data.settingsToApply = old_settings_to_apply
