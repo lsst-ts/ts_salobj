@@ -78,7 +78,8 @@ class DefaultingValidator:
             # most of these items cause infinite recursion if allowed through
             # and none are needed for setting defaults
             skip_properties = set(("additionalItems", "additionalProperties", "definitions", "default",
-                                   "items", "patternProperties", "property", "properties"))
+                                   "items", "patternProperties", "property", "properties",
+                                   "readOnly", "uniqueItems"))
             for property, subschema in properties.items():
                 if not isinstance(subschema, dict):
                     continue
