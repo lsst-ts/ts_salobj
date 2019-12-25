@@ -30,7 +30,7 @@ from lsst.ts import salobj
 
 class ValidatorTestCase(unittest.TestCase):
     def setUp(self):
-        schemapath = pathlib.Path(__file__).resolve().parents[1].joinpath("schema", "Test.yaml")
+        schemapath = pathlib.Path(__file__).resolve().parents[1] / "schema" / "Test.yaml"
         with open(schemapath, "r") as f:
             rawschema = f.read()
         self.schema = yaml.safe_load(rawschema)
