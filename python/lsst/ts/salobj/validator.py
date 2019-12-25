@@ -85,6 +85,14 @@ class DefaultingValidator:
                     continue
                 if "default" in subschema:
                     instance.setdefault(prop, subschema["default"])
+                elif subschema.get("type") == "object" and "properties" in subschema:
+                    # Handle defaults for one level deep sub-object.
+                    subdefaults = {}
+                    for subpropname, subpropvalue in subschema["properties"].items():
+                        if "default" in subpropvalue:
+                            subdefaults[subpropname] = subpropvalue["default"]
+                    if subdefaults:
+                        instance.setdefault(prop, subdefaults)
 
             for error in validate_properties(
                 validator, properties, instance, schema,
