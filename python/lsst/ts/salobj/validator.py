@@ -24,10 +24,6 @@ __all__ = ["DefaultingValidator"]
 import jsonschema
 
 
-class InvalidDefault:
-    pass
-
-
 class DefaultingValidator:
     """A wrapper for jsonschema validators that applies default values.
 
@@ -87,8 +83,7 @@ class DefaultingValidator:
                     continue
                 if prop in skip_properties:
                     continue
-                default = subschema.get("default", InvalidDefault)
-                if default is not InvalidDefault:
+                if "default" in subschema:
                     instance.setdefault(prop, subschema["default"])
 
             for error in validate_properties(
