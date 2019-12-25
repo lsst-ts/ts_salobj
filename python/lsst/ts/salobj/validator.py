@@ -80,16 +80,16 @@ class DefaultingValidator:
             skip_properties = set(("additionalItems", "additionalProperties", "definitions", "default",
                                    "items", "patternProperties", "property", "properties",
                                    "readOnly", "uniqueItems"))
-            for property, subschema in properties.items():
+            for prop, subschema in properties.items():
                 if not isinstance(subschema, dict):
                     continue
                 if not isinstance(instance, dict):
                     continue
-                if property in skip_properties:
+                if prop in skip_properties:
                     continue
                 default = subschema.get("default", InvalidDefault)
                 if default is not InvalidDefault:
-                    instance.setdefault(property, subschema["default"])
+                    instance.setdefault(prop, subschema["default"])
 
             for error in validate_properties(
                 validator, properties, instance, schema,
