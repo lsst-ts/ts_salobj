@@ -2,7 +2,7 @@
 """
 from lsst.ts import salobj
 
-salobj.test_utils.set_random_lsst_dds_domain()
+salobj.set_random_lsst_dds_domain()
 salinfo = salobj.SalInfo("Test", 1)
 command_names = salinfo.command_names
 event_names = salinfo.event_names

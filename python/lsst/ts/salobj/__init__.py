@@ -12,9 +12,12 @@ from .controller import *
 from .remote import *
 from .base_script import *
 from .csc_utils import *
-from .test_utils import *
-from .test_csc import *
-from .test_script import *
+from .testutils import *
+from .testcsc import *
+from .testscript import *
+from .base_csc_test_case import *
+# Backwards compatibility
+from . import testutils as test_utils
 
 try:
     from .version import *

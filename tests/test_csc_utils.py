@@ -19,8 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
-import contextlib
 import itertools
 import pathlib
 import unittest
@@ -36,28 +34,12 @@ index_gen = salobj.index_generator()
 TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent.joinpath("data", "config")
 
 
-class SetSummaryStateTestCSe(asynctest.TestCase):
-    @contextlib.asynccontextmanager
-    async def make_csc(self, initial_state):
-        """Construct a CSC and Remote and wait for them to start.
-
-        Sets attributes self.csc and self.remote.
-
-        Parameters
-        ----------
-        initial_state : `State` or `int`
-            The initial state of the CSC.
-        """
-        index = next(index_gen)
-        salobj.set_random_lsst_dds_domain()
-        self.csc = salobj.TestCsc(index=index, config_dir=TEST_CONFIG_DIR, initial_state=initial_state)
-        self.remote = salobj.Remote(domain=self.csc.domain, name="Test", index=index)
-        await asyncio.gather(self.csc.start_task, self.remote.start_task)
-        try:
-            yield
-        finally:
-            await self.remote.close()
-            await self.csc.close()
+class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
+    def basic_make_csc(self, initial_state, config_dir, simulation_mode):
+        return salobj.TestCsc(self.next_index(),
+                              initial_state=initial_state,
+                              config_dir=config_dir,
+                              simulation_mode=simulation_mode)
 
     async def test_set_summary_state_valid(self):
         """Test set_summary_state with valid states."""
@@ -78,7 +60,8 @@ class SetSummaryStateTestCSe(asynctest.TestCase):
             if initial_state == salobj.State.OFFLINE:
                 # TestCsc cannot start in OFFLINE state.
                 continue
-            async with self.make_csc(initial_state=initial_state):
+            async with self.make_csc(initial_state=initial_state,
+                                     config_dir=TEST_CONFIG_DIR):
                 for bad_final_state in (min(salobj.State) - 1, salobj.State.FAULT, max(salobj.State) + 1):
                     with self.subTest(initial_state=initial_state, bad_final_state=bad_final_state):
                         with self.assertRaises(ValueError):
@@ -95,11 +78,10 @@ class SetSummaryStateTestCSe(asynctest.TestCase):
         final_state : `State`
             Final summary state.
         """
-        async with self.make_csc(initial_state=initial_state):
+        async with self.make_csc(initial_state=initial_state,
+                                 config_dir=TEST_CONFIG_DIR):
             self.assertEqual(self.csc.summary_state, initial_state)
-            data = await self.remote.evt_summaryState.next(flush=False,
-                                                           timeout=STD_TIMEOUT)
-            self.assertEqual(data.summaryState, initial_state)
+            await self.assert_next_summary_state(initial_state)
 
             states = await salobj.set_summary_state(remote=self.remote,
                                                     state=final_state,
@@ -123,9 +105,7 @@ class SetSummaryStateTestCSe(asynctest.TestCase):
             # The initial state was read by the remote in set_summary_state
             # (and in the test), so only check for subsequent states.
             for expected_state in states[1:]:
-                data = await self.remote.evt_summaryState.next(flush=False,
-                                                               timeout=STD_TIMEOUT)
-                self.assertEqual(data.summaryState, expected_state)
+                await self.assert_next_summary_state(expected_state)
 
 
 if __name__ == "__main__":
