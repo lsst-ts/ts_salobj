@@ -11,14 +11,15 @@ v5.3.0
 
 Major changes:
 
-* Add BaseCscTestCase as a useful base class for CSC unit tests.
+* Add `BaseCscTestCase` as a useful base class for CSC unit tests.
   Update the unit tests to use it.
 
 Minor changes:
 
-* CSCs will now reject optional generic commands, if not implemented, instead of silently ignoring them.
+* `DefaultingValidator` now handles defaults in sub-objects (one level deep).
+* CSCs will now reject optional generic commands if not implemented (meaning there is no ``do_``\ *command* method for them), instead of silently ignoring them.
   The optional generic commands are ``abort``, ``enterControl``, ``setValue``, and the deprecated command ``setSimulationMode``.
-* The ``action`` argument to ``BaseCsc.assert_enabled`` is now optional. There is no point to setting it when calling it from ``do_...`` methods as the user knows what command was rejected.
+* The ``action`` argument of `BaseCsc.assert_enabled` is now optional. There is no point to setting it when calling it from ``do_``\ *command* methods as the user knows what command was rejected.
 * If a command is rejected because a CSC is in ``FAULT`` state, the error message contains the current value of the ``errorReport`` field of the ``errorCode`` event.
 * `SalInfo` could not be created for a SAL component that had no commands (because such a component also has no ackcmd topic).
 
