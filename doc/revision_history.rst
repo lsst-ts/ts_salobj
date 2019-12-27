@@ -18,6 +18,8 @@ Minor changes:
 
 * CSCs will now reject optional generic commands, if not implemented, instead of silently ignoring them.
   The optional generic commands are ``abort``, ``enterControl``, ``setValue``, and the deprecated command ``setSimulationMode``.
+* The ``action`` argument to ``BaseCsc.assert_enabled`` is now optional. There is no point to setting it when calling it from ``do_...`` methods as the user knows what command was rejected.
+* If a command is rejected because a CSC is in ``FAULT`` state, the error message contains the current value of the ``errorReport`` field of the ``errorCode`` event.
 
 Deprecated APIs:
 
