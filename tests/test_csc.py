@@ -304,6 +304,11 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                                           errorReport=report,
                                           traceback=traceback)
 
+            # Try a disallowed command and check that the error report
+            # is part of the traceback.
+            with salobj.assertRaisesAckError(result_contains=report):
+                await self.remote.cmd_wait.set_start(duration=5, timeout=STD_TIMEOUT)
+
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.STANDBY)
 

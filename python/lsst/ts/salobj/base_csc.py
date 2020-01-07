@@ -528,11 +528,23 @@ class BaseCsc(Controller):
         finally:
             self._faulting = False
 
-    def assert_enabled(self, action):
+    def assert_enabled(self, action=""):
         """Assert that an action that requires ENABLED state can be run.
+
+        Parameters
+        ----------
+        action : `str` (optional)
+            Action attempted. Not needed if this is called at the beginning
+            of a ``do_...`` method, since the user will know what command
+            was called.
         """
         if self.summary_state != State.ENABLED:
-            raise base.ExpectedError(f"{action} not allowed in state {self.summary_state!r}")
+            what = f"{action} not allowed" if action else "Not allowed"
+            if self.summary_state == State.FAULT:
+                why = f"in Fault state; errorCode.errorReport={self.evt_errorCode.data.errorReport}"
+            else:
+                why = f"in state={self.summary_state!r}"
+            raise base.ExpectedError(f"{what} {why}")
 
     @property
     def disabled_or_enabled(self):
