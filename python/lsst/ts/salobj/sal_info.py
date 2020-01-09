@@ -142,7 +142,7 @@ class SalInfo:
 
     Notes
     -----
-    Environment variables:
+    **Environment Variables**
 
     * ``LSST_DDS_DOMAIN`` (required): the DDS partition name.
       Since this is parsed by SalInfo, different instances of SalInfo
@@ -255,10 +255,12 @@ class SalInfo:
         self.parse_metadata()  # Adds self.indexed, self.revnames, etc.
         if self.index != 0 and not self.indexed:
             raise ValueError(f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component")
-        ackcmd_revname = self.revnames.get("ackcmd")
-        if ackcmd_revname is None:
-            raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
-        self._ackcmd_type = ddsutil.get_dds_classes_from_idl(idl_path, ackcmd_revname)
+
+        if len(self.command_names) > 0:
+            ackcmd_revname = self.revnames.get("ackcmd")
+            if ackcmd_revname is None:
+                raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
+            self._ackcmd_type = ddsutil.get_dds_classes_from_idl(idl_path, ackcmd_revname)
         domain.add_salinfo(self)
 
     def _ackcmd_callback(self, data):
@@ -287,7 +289,15 @@ class SalInfo:
             Error code; 0 for no error.
         result : `str`
             Explanatory message, or "" for no message.
+
+        Raises
+        ------
+        RuntimeError
+            If the SAL component has no commands (because if there
+            are no commands then there is no ackcmd topic).
         """
+        if len(self.command_names) == 0:
+            raise RuntimeError("This component has no commands, so no ackcmd topic")
         return self._ackcmd_type.topic_data_class
 
     @property
@@ -328,6 +338,9 @@ class SalInfo:
         ValueError
             If ``len(result) > `MAX_RESULT_LEN`` and ``truncate_result``
             is false.
+        RuntimeError
+            If the SAL component has no commands (because if there
+            are no commands then there is no ackcmd topic).
         """
         if len(result) > MAX_RESULT_LEN:
             if truncate_result:
