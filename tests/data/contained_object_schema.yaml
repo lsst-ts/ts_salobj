@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: https://github.com/lsst-ts/ts_scheduler/blob/master/schema/Scheduler.yaml
+title: Scheduler v1
+description: Schema with contained object
+type: object
+properties:
+  number1:
+    type: number
+    default: 1
+  subobject:
+    type: object
+    properties:
+      subnumber1:
+        type: number
+        default: 2
+additionalProperties: false

@@ -30,7 +30,7 @@ from lsst.ts import salobj
 
 class ValidatorTestCase(unittest.TestCase):
     def setUp(self):
-        schemapath = pathlib.Path(__file__).resolve().parents[1].joinpath("schema", "Test.yaml")
+        schemapath = pathlib.Path(__file__).resolve().parents[1] / "schema" / "Test.yaml"
         with open(schemapath, "r") as f:
             rawschema = f.read()
         self.schema = yaml.safe_load(rawschema)
@@ -128,6 +128,24 @@ class ValidatorTestCase(unittest.TestCase):
             with self.subTest(bad_type_data=bad_type_data):
                 with self.assertRaises(jsonschema.exceptions.ValidationError):
                     self.validator.validate(bad_type_data)
+
+
+class DefaultingTestCase(unittest.TestCase):
+    def setUp(self):
+        self.schemadir = pathlib.Path(__file__).resolve().parents[0] / "data"
+
+    def test_contained_object(self):
+        schemapath = self.schemadir / "contained_object_schema.yaml"
+        with open(schemapath, "r") as f:
+            rawschema = f.read()
+        self.schema = yaml.safe_load(rawschema)
+        self.validator = salobj.DefaultingValidator(schema=self.schema)
+        default_values = self.validator.validate({})
+        print(f"default_values={default_values}")
+        self.assertEqual(default_values["number1"], 1)
+        self.assertEqual(default_values["subobject"]["subnumber1"], 2)
+        import types
+        print(types.SimpleNamespace(**default_values))
 
 
 if __name__ == "__main__":

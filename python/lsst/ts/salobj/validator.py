@@ -24,10 +24,6 @@ __all__ = ["DefaultingValidator"]
 import jsonschema
 
 
-class InvalidDefault:
-    pass
-
-
 class DefaultingValidator:
     """A wrapper for jsonschema validators that applies default values.
 
@@ -78,17 +74,25 @@ class DefaultingValidator:
             # most of these items cause infinite recursion if allowed through
             # and none are needed for setting defaults
             skip_properties = set(("additionalItems", "additionalProperties", "definitions", "default",
-                                   "items", "patternProperties", "property", "properties"))
-            for property, subschema in properties.items():
+                                   "items", "patternProperties", "property", "properties",
+                                   "readOnly", "uniqueItems"))
+            for prop, subschema in properties.items():
                 if not isinstance(subschema, dict):
                     continue
                 if not isinstance(instance, dict):
                     continue
-                if property in skip_properties:
+                if prop in skip_properties:
                     continue
-                default = subschema.get("default", InvalidDefault)
-                if default is not InvalidDefault:
-                    instance.setdefault(property, subschema["default"])
+                if "default" in subschema:
+                    instance.setdefault(prop, subschema["default"])
+                elif subschema.get("type") == "object" and "properties" in subschema:
+                    # Handle defaults for one level deep sub-object.
+                    subdefaults = {}
+                    for subpropname, subpropvalue in subschema["properties"].items():
+                        if "default" in subpropvalue:
+                            subdefaults[subpropname] = subpropvalue["default"]
+                    if subdefaults:
+                        instance.setdefault(prop, subdefaults)
 
             for error in validate_properties(
                 validator, properties, instance, schema,
