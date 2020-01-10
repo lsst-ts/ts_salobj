@@ -1,11 +1,6 @@
-Object-oriented interface to [Service Abstraction Layer (SAL) components](https://docushare.lsstcorp.org/docushare/dsweb/Get/Document-21527/).
+Object-oriented interface to `Service Abstraction Layer <https://docushare.lsstcorp.org/docushare/dsweb/Get/Document-21527/>`_ (SAL) components.
 
-Each SAL component can be represented as an instance of:
-
-* ``lsst.ts.salobj.Remote`` to issue commands to a remote SAL component and read events and telemetry from it.
-* ``lsst.ts.salobj.ConfigurableCsc`` for a Commandable SAL Component (CSC) that is configured in the standard fashion.
-* ``lsst.ts.salobj.BaseCsc`` for a CSC that does not need configuration.
-* ``lsst.ts.salobj.Controller`` for a non-CSC to receive commands and output events and telemetry.
+`Documentation <https://ts-salobj.lsst.io>`_
 
 The package is compatible with setuptools, as well as LSST DM's ``eups`` package management system and ``scons`` build system.
 Assuming you have the basic LSST DM stack installed you can do the following, from within the package directory:

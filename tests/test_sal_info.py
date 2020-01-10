@@ -93,6 +93,72 @@ class SalInfoTestCase(asynctest.TestCase):
                 "scalars")
             self.assertTrue(set(some_expected_topic_names).issubset(set(salinfo.metadata.topic_info.keys())))
 
+    async def test_make_ack_cmd(self):
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(domain=domain, name="Test")
+
+            # Use all defaults
+            seqNum = 55
+            ack = salobj.SalRetCode.CMD_COMPLETE
+            ackcmd = salinfo.makeAckCmd(private_seqNum=seqNum,
+                                        ack=ack)
+            self.assertEqual(ackcmd.private_seqNum, seqNum)
+            self.assertEqual(ackcmd.ack, ack)
+            self.assertEqual(ackcmd.error, 0)
+            self.assertEqual(ackcmd.result, "")
+
+            # Specify an error code and result
+            for truncate_result in (False, True):
+                with self.subTest(truncate_result=truncate_result):
+                    seqNum = 27
+                    ack = salobj.SalRetCode.CMD_FAILED
+                    error = 127
+                    result = "why not?"
+                    ackcmd = salinfo.makeAckCmd(private_seqNum=seqNum,
+                                                ack=ack,
+                                                error=error,
+                                                result=result,
+                                                truncate_result=truncate_result)
+                    self.assertEqual(ackcmd.private_seqNum, seqNum)
+                    self.assertEqual(ackcmd.ack, ack)
+                    self.assertEqual(ackcmd.error, error)
+                    self.assertEqual(ackcmd.result, result)
+
+            # Test behavior with too-long result strings
+            seqNum = 27
+            ack = salobj.SalRetCode.CMD_FAILED
+            error = 127
+            result = "a"*(salobj.MAX_RESULT_LEN + 5)
+            with self.assertRaises(ValueError):
+                salinfo.makeAckCmd(private_seqNum=seqNum,
+                                   ack=ack,
+                                   error=error,
+                                   result=result,
+                                   truncate_result=False)
+            ackcmd = salinfo.makeAckCmd(private_seqNum=seqNum,
+                                        ack=ack,
+                                        error=error,
+                                        result=result,
+                                        truncate_result=True)
+            self.assertEqual(ackcmd.private_seqNum, seqNum)
+            self.assertEqual(ackcmd.ack, ack)
+            self.assertEqual(ackcmd.error, error)
+            self.assertNotEqual(ackcmd.result, result)
+            self.assertEqual(ackcmd.result, result[0:salobj.MAX_RESULT_LEN])
+
+    async def test_no_commands(self):
+        """Test a SAL component with no commands.
+        """
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(domain=domain, name="LOVE")
+            self.assertEqual(salinfo.command_names, ())
+            with self.assertRaises(RuntimeError):
+                salinfo.AckCmdType
+            with self.assertRaises(RuntimeError):
+                salinfo.makeAckCmd(private_seqNum=1,
+                                   ack=salobj.SalRetCode.CMD_COMPLETE,
+                                   result="Done")
+
 
 if __name__ == "__main__":
     unittest.main()

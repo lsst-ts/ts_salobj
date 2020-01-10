@@ -23,6 +23,7 @@ __all__ = ["Controller", "OPTIONAL_COMMAND_NAMES"]
 
 import asyncio
 
+from . import base
 from .domain import Domain
 from .sal_info import SalInfo
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
@@ -145,11 +146,16 @@ class Controller:
                 cmd = ControllerCommand(self.salinfo, cmd_name)
                 setattr(self, cmd.attr_name, cmd)
                 if do_callbacks:
-                    func = getattr(self, f"do_{cmd_name}", None)
+                    cmd_attr_name = f"do_{cmd_name}"
+                    func = getattr(self, cmd_attr_name, None)
                     if func:
-                        cmd.callback = getattr(self, f"do_{cmd_name}")
+                        cmd.callback = getattr(self, cmd_attr_name)
                     elif cmd_name not in OPTIONAL_COMMAND_NAMES:
-                        raise RuntimeError(f"Can't find method do_{cmd_name}")
+                        raise RuntimeError(f"Can't find method {cmd_attr_name}")
+                    else:
+                        def reject_command(data):
+                            raise base.ExpectedError("Not supported by this CSC")
+                        cmd.callback = reject_command
 
             for evt_name in self.salinfo.event_names:
                 evt = ControllerEvent(self.salinfo, evt_name)

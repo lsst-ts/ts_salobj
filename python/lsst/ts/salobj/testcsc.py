@@ -108,7 +108,7 @@ class TestCsc(ConfigurableCsc):
 
     def do_setArrays(self, data):
         """Execute the setArrays command."""
-        self.assert_enabled("setArrays")
+        self.assert_enabled()
         self.log.info("executing setArrays")
         data_dict = self.as_dict(data, self.arrays_fields)
         self.evt_arrays.set(**data_dict)
@@ -118,7 +118,7 @@ class TestCsc(ConfigurableCsc):
 
     def do_setScalars(self, data):
         """Execute the setScalars command."""
-        self.assert_enabled("setScalars")
+        self.assert_enabled()
         self.log.info("executing setScalars")
         data_dict = self.as_dict(data, self.scalars_fields)
         self.evt_scalars.set(**data_dict)
@@ -155,7 +155,7 @@ class TestCsc(ConfigurableCsc):
         Wait for the specified time and then acknowledge the command
         using the specified ack code.
         """
-        self.assert_enabled("wait")
+        self.assert_enabled()
         await asyncio.sleep(data.duration)
 
     @property
