@@ -228,6 +228,12 @@ class BaseScript(salobj.Controller, abc.ABC):
         return self.evt_checkpoints.data
 
     @property
+    def group_id(self):
+        """Get the group ID (a `str`), or "" if not set.
+        """
+        return self.evt_groupId.data.groupId
+
+    @property
     def state(self):
         """Get the current state.
 
@@ -244,7 +250,7 @@ class BaseScript(salobj.Controller, abc.ABC):
 
     @property
     def state_name(self):
-        """Get the current `state`.state as a name.
+        """Get the name of the current `state`.state.
         """
         try:
             return ScriptState(self.state.state).name
@@ -433,7 +439,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         Raises
         ------
         salobj.ExpectedError
-            If `state`.state is not
+            If ``self.state.state`` is not
             `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED`.
 
         Notes
@@ -488,7 +494,9 @@ class BaseScript(salobj.Controller, abc.ABC):
         await asyncio.sleep(0.001)
 
     async def do_run(self, data):
-        """Run the configured script and quit.
+        """Run the script and quit.
+
+        The script must have been configured and the group ID set.
 
         Parameters
         ----------
@@ -498,10 +506,13 @@ class BaseScript(salobj.Controller, abc.ABC):
         Raises
         ------
         salobj.ExpectedError
-            If `state`.state is not
+            If ``self.state.state`` is not
             `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
+            If ``self.group_id`` is blank.
         """
         self.assert_state("run", [ScriptState.CONFIGURED])
+        if not self.group_id:
+            raise salobj.ExpectedError("Group ID not set")
         try:
             self.set_state(ScriptState.RUNNING)
             self._run_task = asyncio.ensure_future(self.run())
@@ -528,7 +539,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         Raises
         ------
         salobj.ExpectedError
-            If `state`.state is not
+            If ``self.state.state`` is not
             `lsst.ts.idl.enums.Script.ScriptState.PAUSED`.
         """
         self.assert_state("resume", [ScriptState.PAUSED])
@@ -549,7 +560,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         Raises
         ------
         salobj.ExpectedError
-            If `state`.state is not one of:
+            If ``self.state.state`` is not one of:
 
             * `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED`
             * `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`
@@ -559,6 +570,27 @@ class BaseScript(salobj.Controller, abc.ABC):
         self.assert_state("setCheckpoints", [ScriptState.UNCONFIGURED, ScriptState.CONFIGURED,
                           ScriptState.RUNNING, ScriptState.PAUSED])
         self._set_checkpoints(pause=data.pause, stop=data.stop)
+
+    async def do_setGroupId(self, data):
+        """Set or clear the group_id attribute.
+
+        The script must be in the Configured state.
+        This command may be called multiple times. It is typically called
+        when the script reaches the top position on the script queue.
+
+        Parameters
+        ----------
+        data : ``cmd_setGroupId.DataType``
+            Group ID, or "" to clear the group ID.
+
+        Raises
+        ------
+        salobj.ExpectedError
+            If ``state.state`` is not
+            `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
+        """
+        self.assert_state("setGroupId", [ScriptState.CONFIGURED])
+        self.evt_groupId.set_put(groupId=data.groupId, force_output=True)
 
     async def do_stop(self, data):
         """Stop the script.

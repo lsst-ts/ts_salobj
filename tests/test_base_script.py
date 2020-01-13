@@ -75,7 +75,8 @@ class BaseScriptTestCase(asynctest.TestCase):
 
     async def configure_and_check(self, script, log_level=0,
                                   pause_checkpoint="", stop_checkpoint="", **kwargs):
-        """Configure a script by calling ``do_configure`` and check the result.
+        """Configure a script by calling ``do_configure`` and set group ID
+        and check the result.
 
         Parameters
         ----------
@@ -129,6 +130,20 @@ class BaseScriptTestCase(asynctest.TestCase):
         self.assertEqual(script.evt_checkpoints.data.pause, pause_checkpoint)
         self.assertEqual(script.evt_checkpoints.data.stop, stop_checkpoint)
         self.assertEqual(script.state.state, ScriptState.CONFIGURED)
+
+        # Cannot run: groupId is not set.
+        self.assertEqual(script.groupId, "")
+        run_data = script.cmd_run.DataType()
+        with self.assertRaises(salobj.ExpectedError):
+            await script.do_run(run_data)
+
+        # Set and check group ID.
+        group_id = "arbitrary group ID"
+        group_id_data = script.cmd_setGroupId.DataType()
+        group_id_data.groupId = group_id
+        await script.do_setGroupId(group_id_data)
+        self.assertEqual(script.groupId, group_id)
+        self.assertEqual(script.evt_groupId.data.groupId, group_id)
 
     def test_get_schema(self):
         schema = salobj.TestScript.get_schema()
@@ -237,44 +252,44 @@ class BaseScriptTestCase(asynctest.TestCase):
 
     async def test_pause(self):
         async with salobj.TestScript(index=self.index) as script:
-            # cannot run in UNCONFIGURED state
+            # Cannot run in UNCONFIGURED state.
             run_data = script.cmd_run.DataType()
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_run(run_data)
 
-            # test configure with data for a non-existent argument
+            # Test configure with data for a non-existent argument.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "no_such_arg: 1"
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
             self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
 
-            # test configure with invalid yaml
+            # Test configure with invalid yaml.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "a : : 2"
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
             self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
 
-            # test configure with yaml that makes a string, not a dict
+            # Test configure with yaml that makes a string, not a dict.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "just_a_string"
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
             self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
 
-            # test configure with yaml that makes a list, not a dict
+            # Test configure with yaml that makes a list, not a dict.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "['not', 'a', 'dict']"
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
             self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
 
-            # now test valid configuration; specify nonexistent checkpoints
-            # to test that the configure command handles checkpoints at all
+            # Now test valid configuration; specify nonexistent checkpoints
+            # to test that the configure command handles checkpoints at all.
             wait_time = 0.5
-            # specify a log level that is not the default (which is INFO)
-            # and is only slightly more verbose than INFO
+            # Specify a log level that is not the default (which is INFO)
+            # and is only slightly more verbose than INFO.
             log_level = logging.INFO - 1
             prelim_pause_checkpoint = "preliminary nonexistent pause checkpoint"
             prelim_stop_checkpoint = "preliminary nonexistent stop checkpoint"
@@ -283,7 +298,7 @@ class BaseScriptTestCase(asynctest.TestCase):
                                            pause_checkpoint=prelim_pause_checkpoint,
                                            stop_checkpoint=prelim_stop_checkpoint)
 
-            # set a pause checkpoint that exists
+            # Set a pause checkpoint that exists.
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
             checkpoint_named_start = "start"
             checkpoint_that_does_not_exist = "nonexistent checkpoint"
@@ -293,6 +308,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             self.assertEqual(script.checkpoints.pause, checkpoint_named_start)
             self.assertEqual(script.checkpoints.stop, checkpoint_that_does_not_exist)
 
+            # Run the script.
             run_data = script.cmd_run.DataType()
             run_task = asyncio.create_task(script.do_run(run_data))
             niter = 0
@@ -492,6 +508,11 @@ class BaseScriptTestCase(asynctest.TestCase):
                         metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                         self.assertEqual(metadata.duration, wait_time)
 
+                        group_id = "a non-blank group ID"
+                        await remote.cmd_setGroupId.set_start(groupId=group_id, timeout=STD_TIMEOUT)
+                        group_id_data = await remote.evt_groupId.next(flush=False, timeout=STD_TIMEOUT)
+                        self.assertEqual(group_id_data.groupId, group_id)
+
                         await remote.cmd_run.start(timeout=STD_TIMEOUT)
 
                         await asyncio.wait_for(process.wait(), timeout=END_TIMEOUT)
@@ -550,6 +571,11 @@ class BaseScriptTestCase(asynctest.TestCase):
 
                 metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(metadata.duration, wait_time)
+
+                group_id = "a non-blank group ID"
+                await remote.cmd_setGroupId.set_start(groupId=group_id, timeout=STD_TIMEOUT)
+                group_id_data = await remote.evt_groupId.next(flush=False, timeout=STD_TIMEOUT)
+                self.assertEqual(group_id_data.groupId, group_id)
 
                 await remote.cmd_run.start(timeout=STD_TIMEOUT)
 
