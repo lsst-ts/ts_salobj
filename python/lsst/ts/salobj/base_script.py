@@ -531,7 +531,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         await asyncio.sleep(0.001)
         await self._exit()
 
-    def do_resume(self, data):
+    async def do_resume(self, data):
         """Resume the currently paused script.
 
         Parameters
@@ -548,7 +548,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         self.assert_state("resume", [ScriptState.PAUSED])
         self._pause_future.set_result(None)
 
-    def do_setCheckpoints(self, data):
+    async def do_setCheckpoints(self, data):
         """Set or clear the checkpoints at which to pause and stop.
 
         This command is deprecated. Please set the checkpoints

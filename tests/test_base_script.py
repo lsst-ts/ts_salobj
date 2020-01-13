@@ -184,7 +184,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             ):
                 data.pause = pause
                 data.stop = stop
-                script.do_setCheckpoints(data)
+                await script.do_setCheckpoints(data)
                 self.assertEqual(script.checkpoints.pause, pause)
                 self.assertEqual(script.checkpoints.stop, stop)
 
@@ -194,7 +194,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             initial_stop = "initial_stop"
             data.pause = initial_pause
             data.stop = initial_stop
-            script.do_setCheckpoints(data)
+            await script.do_setCheckpoints(data)
             for bad_pause, bad_stop in (
                 ("(", ""),
                 ("", "("),
@@ -203,7 +203,7 @@ class BaseScriptTestCase(asynctest.TestCase):
                 data.pause = bad_pause
                 data.stop = bad_stop
                 with self.assertRaises(salobj.ExpectedError):
-                    script.do_setCheckpoints(data)
+                    await script.do_setCheckpoints(data)
                 self.assertEqual(script.checkpoints.pause, initial_pause)
                 self.assertEqual(script.checkpoints.stop, initial_stop)
 
@@ -333,7 +333,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             checkpoint_that_does_not_exist = "nonexistent checkpoint"
             setCheckpoints_data.pause = checkpoint_named_start
             setCheckpoints_data.stop = checkpoint_that_does_not_exist
-            script.do_setCheckpoints(setCheckpoints_data)
+            await script.do_setCheckpoints(setCheckpoints_data)
             self.assertEqual(script.checkpoints.pause, checkpoint_named_start)
             self.assertEqual(script.checkpoints.stop, checkpoint_that_does_not_exist)
 
@@ -348,7 +348,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             self.assertEqual(script.checkpoints.pause, checkpoint_named_start)
             self.assertEqual(script.checkpoints.stop, checkpoint_that_does_not_exist)
             resume_data = script.cmd_resume.DataType()
-            script.do_resume(resume_data)
+            await script.do_resume(resume_data)
             await asyncio.wait_for(run_task, 2)
             await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
             duration = script.timestamps[ScriptState.ENDING] - script.timestamps[ScriptState.RUNNING]
@@ -365,7 +365,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
             checkpoint_named_end = "end"
             setCheckpoints_data.stop = checkpoint_named_end
-            script.do_setCheckpoints(setCheckpoints_data)
+            await script.do_setCheckpoints(setCheckpoints_data)
             self.assertEqual(script.checkpoints.pause, "")
             self.assertEqual(script.checkpoints.stop, checkpoint_named_end)
 
@@ -389,7 +389,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
             checkpoint_named_start = "start"
             setCheckpoints_data.pause = checkpoint_named_start
-            script.do_setCheckpoints(setCheckpoints_data)
+            await script.do_setCheckpoints(setCheckpoints_data)
             self.assertEqual(script.checkpoints.pause, checkpoint_named_start)
             self.assertEqual(script.checkpoints.stop, "")
 
