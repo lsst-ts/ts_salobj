@@ -132,7 +132,7 @@ class BaseScriptTestCase(asynctest.TestCase):
         self.assertEqual(script.state.state, ScriptState.CONFIGURED)
 
         # Cannot run: groupId is not set.
-        self.assertEqual(script.groupId, "")
+        self.assertEqual(script.group_id, "")
         run_data = script.cmd_run.DataType()
         with self.assertRaises(salobj.ExpectedError):
             await script.do_run(run_data)
@@ -142,8 +142,8 @@ class BaseScriptTestCase(asynctest.TestCase):
         group_id_data = script.cmd_setGroupId.DataType()
         group_id_data.groupId = group_id
         await script.do_setGroupId(group_id_data)
-        self.assertEqual(script.groupId, group_id)
-        self.assertEqual(script.evt_groupId.data.groupId, group_id)
+        self.assertEqual(script.group_id, group_id)
+        self.assertEqual(script.evt_state.data.groupId, group_id)
 
     def test_get_schema(self):
         schema = salobj.TestScript.get_schema()
@@ -249,6 +249,35 @@ class BaseScriptTestCase(asynctest.TestCase):
                     await script.checkpoint("foo")
 
             self.assertFalse(script.done_task.done())
+
+    async def test_next_supplemented_group_id(self):
+        async with salobj.TestScript(index=self.index) as script:
+            await self.configure_and_check(script)
+            group_id = script.group_id
+            for i in range(5):
+                # Format some other way than an f-string,
+                # in order to have a different implementation than Script
+                desired_supplemented_id = "%s+%s" % (group_id, i+1)
+                supplemented_id = script.next_supplemented_group_id()
+                self.assertEqual(supplemented_id, desired_supplemented_id)
+
+            # Set a new group ID. This should reset the subgroup counter.
+            new_group_id = group_id + " modified"
+            group_id_data = script.cmd_setGroupId.DataType()
+            group_id_data.groupId = new_group_id
+            await script.do_setGroupId(group_id_data)
+
+            for i in range(5):
+                desired_supplemented_id = "%s+%s" % (new_group_id, i+1)
+                supplemented_id = script.next_supplemented_group_id()
+                self.assertEqual(supplemented_id, desired_supplemented_id)
+
+            # Clear the group ID; getting a supplemened group ID should fail
+            group_id_data = script.cmd_setGroupId.DataType()
+            group_id_data.groupId = ""
+            await script.do_setGroupId(group_id_data)
+            with self.assertRaises(RuntimeError):
+                script.next_supplemented_group_id()
 
     async def test_pause(self):
         async with salobj.TestScript(index=self.index) as script:
@@ -495,6 +524,7 @@ class BaseScriptTestCase(asynctest.TestCase):
 
                         state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
                         self.assertEqual(state.state, ScriptState.UNCONFIGURED)
+                        self.assertEqual(state.groupId, "")
 
                         logLevel_data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                         self.assertEqual(logLevel_data.level, logging.INFO)
@@ -504,14 +534,17 @@ class BaseScriptTestCase(asynctest.TestCase):
                         if fail:
                             config = config + f"\n{fail}: True"
                         await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
+                        state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                        self.assertEqual(state.state, ScriptState.CONFIGURED)
+                        self.assertEqual(state.groupId, "")
 
                         metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                         self.assertEqual(metadata.duration, wait_time)
 
                         group_id = "a non-blank group ID"
                         await remote.cmd_setGroupId.set_start(groupId=group_id, timeout=STD_TIMEOUT)
-                        group_id_data = await remote.evt_groupId.next(flush=False, timeout=STD_TIMEOUT)
-                        self.assertEqual(group_id_data.groupId, group_id)
+                        state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                        self.assertEqual(state.groupId, group_id)
 
                         await remote.cmd_run.start(timeout=STD_TIMEOUT)
 
@@ -561,6 +594,7 @@ class BaseScriptTestCase(asynctest.TestCase):
 
                 state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
                 self.assertEqual(state.state, ScriptState.UNCONFIGURED)
+                self.assertEqual(state.groupId, "")
 
                 logLevel_data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(logLevel_data.level, logging.INFO)
@@ -568,14 +602,17 @@ class BaseScriptTestCase(asynctest.TestCase):
                 wait_time = 0.1
                 config = f"wait_time: {wait_time}"
                 await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
+                state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                self.assertEqual(state.state, ScriptState.CONFIGURED)
+                self.assertEqual(state.groupId, "")
 
                 metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(metadata.duration, wait_time)
 
                 group_id = "a non-blank group ID"
                 await remote.cmd_setGroupId.set_start(groupId=group_id, timeout=STD_TIMEOUT)
-                group_id_data = await remote.evt_groupId.next(flush=False, timeout=STD_TIMEOUT)
-                self.assertEqual(group_id_data.groupId, group_id)
+                state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                self.assertEqual(state.groupId, group_id)
 
                 await remote.cmd_run.start(timeout=STD_TIMEOUT)
 

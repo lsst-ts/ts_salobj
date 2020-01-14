@@ -87,6 +87,9 @@ class BaseScript(salobj.Controller, abc.ABC):
             self.config_validator = salobj.DefaultingValidator(schema=schema)
         self._run_task = None
         self._pause_future = None
+        # Value incremented by `next_supplemented_group_id`
+        # and cleared by do_setGroupId.
+        self._sub_group_id = 0
         # A task that is set to None (or an exception if cleanup fails)
         # when the task is done.
         self.done_task = asyncio.Future()
@@ -231,7 +234,7 @@ class BaseScript(salobj.Controller, abc.ABC):
     def group_id(self):
         """Get the group ID (a `str`), or "" if not set.
         """
-        return self.evt_groupId.data.groupId
+        return self.evt_state.data.groupId
 
     @property
     def state(self):
@@ -590,7 +593,8 @@ class BaseScript(salobj.Controller, abc.ABC):
             `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
         """
         self.assert_state("setGroupId", [ScriptState.CONFIGURED])
-        self.evt_groupId.set_put(groupId=data.groupId, force_output=True)
+        self.evt_state.set_put(groupId=data.groupId, force_output=True)
+        self._sub_group_id = 0
 
     async def do_stop(self, data):
         """Stop the script.
@@ -612,6 +616,23 @@ class BaseScript(salobj.Controller, abc.ABC):
         else:
             self.set_state(state=ScriptState.STOPPING)
             await self._exit()
+
+    def next_supplemented_group_id(self):
+        """Return the group ID supplemented with a new subgroup.
+
+        The returned string has this format: f"{self.group_id}+{subgroup_id}",
+        where ``subgroup_id`` is an integer that starts at 1
+        and is incremented for every call to this method.
+
+        Raises
+        ------
+        RuntimeError
+            If there is no group ID.
+        """
+        if not self.group_id:
+            raise RuntimeError("No group ID")
+        self._sub_group_id += 1
+        return f"{self.group_id}+{self._sub_group_id}"
 
     def _set_checkpoints(self, *, pause, stop):
         """Set the pause and stop checkpoint fields and output the event.
