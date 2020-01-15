@@ -17,8 +17,8 @@ pipeline {
                 script {
                     sh """
                         cd agent
-                        dockerImageBuild = docker.build(dockerImageNameBuild, "--no-cache -t agent .")
                     """
+                    dockerImageBuild = docker.build(dockerImageNameBuild, "--no-cache -t agent .")
                 }
             }
         }
