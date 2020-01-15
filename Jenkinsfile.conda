@@ -15,7 +15,9 @@ pipeline {
         stage("Build") {
             steps {
                 dir('agent') {
-                    docker.build(dockerImageNameBuild, "--pull --no-cache .")
+                    script {
+                        dockerImageBuild = docker.build(dockerImageNameBuild, "--pull --no-cache .")
+                    }
                 }
             }
         }
