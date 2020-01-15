@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        dockerImageNameBuild = "salobj_image"
+        dockerImageNameBuild = "agent"
         container_name = "c_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
     }
 
@@ -17,8 +17,9 @@ pipeline {
                 script {
                     sh """
                         cd agent
+                        ls
                     """
-                    dockerImageBuild = docker.build(dockerImageNameBuild, "--no-cache -t agent .")
+                    dockerImageBuild = docker.build(dockerImageNameBuild, "--no-cache .")
                 }
             }
         }
@@ -27,7 +28,6 @@ pipeline {
         cleanup {
             sh """
             docker stop ${container_name}
-            docker network rm ${network_name}
             """
         }
     }
