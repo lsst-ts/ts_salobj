@@ -18,6 +18,7 @@ pipeline {
                     sh """
                         cd agent
                         dockerImageBuild = docker.build(dockerImageNameBuild, "--no-cache -t agent .")
+                    """
                 }
             }
         }
