@@ -1,0 +1,33 @@
+pipeline {
+    agent any
+    environment {
+        dockerImageNameBuild = "salobj_image"
+        container_name = "c_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
+    }
+
+    stages {
+        stage("Checkout ts_recipes") {
+            steps {
+                checkout([$class: 'GitSCM', branches: [[name: '*/tickets/DM-21505']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/lsst-ts/ts_recipes']]])
+            }
+
+        }
+        stage("Build") {
+            steps {
+                script {
+                    sh """
+                        cd agent
+                        dockerImageBuild = docker.build(dockerImageNameBuild, "--no-cache -t agent .")
+                }
+            }
+        }
+    }
+    post {
+        cleanup {
+            sh """
+            docker stop ${container_name}
+            docker network rm ${network_name}
+            """
+        }
+    }
+}
