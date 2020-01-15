@@ -19,7 +19,7 @@ pipeline {
                         cd agent
                         ls
                     """
-                    dockerImageBuild = docker.build(dockerImageNameBuild, "--no-cache .")
+                    dockerImageBuild = docker.build(dockerImageNameBuild, "--pull --no-cache .")
                 }
             }
         }
