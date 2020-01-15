@@ -21,6 +21,19 @@ pipeline {
                 }
             }
         }
+        stage("Create SALObj Conda package") {
+            steps {
+                script {
+                    sh """
+                    docker run --name ${container_name} -it agent
+                    git clone https://github.com/lsst-ts/ts_recipes
+                    cd ts_recipes/
+                    git checkout tickets/DM-21505
+                    cd ts_salobj/
+                    export TS_SALOBJ_VERSION=v5.3.0
+                    conda build .
+                    """
+        }
     }
     post {
         cleanup {
