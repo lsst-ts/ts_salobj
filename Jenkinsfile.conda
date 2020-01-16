@@ -13,7 +13,7 @@ pipeline {
             }
 
         }
-        stage("Build") {
+        stage("Build Docker Image") {
             steps {
                 dir('agent') {
                     script {
@@ -41,7 +41,7 @@ pipeline {
                         sh """
                         docker exec ${container_name} sh -c "source ~/miniconda3/bin/activate && \
                             anaconda upload -u ${anaconda_user} -p ${anaconda_pass} --force \
-                            /home/saluser/miniconda3/conda-bld/linux-64/ts-salobj-v${salobj_version}-py37_0.tar.bz2
+                            /home/saluser/miniconda3/conda-bld/linux-64/ts-salobj-v${salobj_version}-py37_0.tar.bz2"
                         """
                     }
                 }
