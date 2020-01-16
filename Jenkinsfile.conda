@@ -34,9 +34,9 @@ pipeline {
                 }
             }
         }
-        withCredentials([usernamePassword(credentialsId: 'CondaForge', passwordVariable: 'anaconda_pass', usernameVariable: 'anaconda_user')]) {
-            stage("Push SALObj Conda package") {
-                steps {
+        stage("Push SALObj Conda package") {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'CondaForge', passwordVariable: 'anaconda_pass', usernameVariable: 'anaconda_user')]) {
                     script {
                         sh """
                         docker exec ${container_name} sh -c "source ~/miniconda3/bin/activate && \
