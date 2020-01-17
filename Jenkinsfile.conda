@@ -40,7 +40,8 @@ pipeline {
                     script {
                         sh """
                         docker exec ${container_name} sh -c "source ~/miniconda3/bin/activate && \
-                            anaconda upload -u ${anaconda_user} -p ${anaconda_pass} --force \
+                            anaconda login --user ${anaconda_user} --password ${anaconda_pass} && \
+                            anaconda upload -u lsstts --force \
                             /home/saluser/miniconda3/conda-bld/linux-64/ts-salobj-v${salobj_version}-py37_0.tar.bz2"
                         """
                     }
