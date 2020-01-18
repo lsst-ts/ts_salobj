@@ -75,7 +75,8 @@ class BaseScriptTestCase(asynctest.TestCase):
 
     async def configure_and_check(self, script, log_level=0,
                                   pause_checkpoint="", stop_checkpoint="", **kwargs):
-        """Configure a script by calling ``do_configure`` and check the result.
+        """Configure a script by calling ``do_configure`` and set group ID
+        and check the result.
 
         Parameters
         ----------
@@ -130,6 +131,20 @@ class BaseScriptTestCase(asynctest.TestCase):
         self.assertEqual(script.evt_checkpoints.data.stop, stop_checkpoint)
         self.assertEqual(script.state.state, ScriptState.CONFIGURED)
 
+        # Cannot run: groupId is not set.
+        self.assertEqual(script.group_id, "")
+        run_data = script.cmd_run.DataType()
+        with self.assertRaises(salobj.ExpectedError):
+            await script.do_run(run_data)
+
+        # Set and check group ID.
+        group_id = "arbitrary group ID"
+        group_id_data = script.cmd_setGroupId.DataType()
+        group_id_data.groupId = group_id
+        await script.do_setGroupId(group_id_data)
+        self.assertEqual(script.group_id, group_id)
+        self.assertEqual(script.evt_state.data.groupId, group_id)
+
     def test_get_schema(self):
         schema = salobj.TestScript.get_schema()
         self.assertTrue(isinstance(schema, dict))
@@ -169,7 +184,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             ):
                 data.pause = pause
                 data.stop = stop
-                script.do_setCheckpoints(data)
+                await script.do_setCheckpoints(data)
                 self.assertEqual(script.checkpoints.pause, pause)
                 self.assertEqual(script.checkpoints.stop, stop)
 
@@ -179,7 +194,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             initial_stop = "initial_stop"
             data.pause = initial_pause
             data.stop = initial_stop
-            script.do_setCheckpoints(data)
+            await script.do_setCheckpoints(data)
             for bad_pause, bad_stop in (
                 ("(", ""),
                 ("", "("),
@@ -188,7 +203,7 @@ class BaseScriptTestCase(asynctest.TestCase):
                 data.pause = bad_pause
                 data.stop = bad_stop
                 with self.assertRaises(salobj.ExpectedError):
-                    script.do_setCheckpoints(data)
+                    await script.do_setCheckpoints(data)
                 self.assertEqual(script.checkpoints.pause, initial_pause)
                 self.assertEqual(script.checkpoints.stop, initial_stop)
 
@@ -235,46 +250,75 @@ class BaseScriptTestCase(asynctest.TestCase):
 
             self.assertFalse(script.done_task.done())
 
+    async def test_next_supplemented_group_id(self):
+        async with salobj.TestScript(index=self.index) as script:
+            await self.configure_and_check(script)
+            group_id = script.group_id
+            for i in range(5):
+                # Format some other way than an f-string,
+                # in order to have a different implementation than Script
+                desired_supplemented_id = "%s+%s" % (group_id, i+1)
+                supplemented_id = script.next_supplemented_group_id()
+                self.assertEqual(supplemented_id, desired_supplemented_id)
+
+            # Set a new group ID. This should reset the subgroup counter.
+            new_group_id = group_id + " modified"
+            group_id_data = script.cmd_setGroupId.DataType()
+            group_id_data.groupId = new_group_id
+            await script.do_setGroupId(group_id_data)
+
+            for i in range(5):
+                desired_supplemented_id = "%s+%s" % (new_group_id, i+1)
+                supplemented_id = script.next_supplemented_group_id()
+                self.assertEqual(supplemented_id, desired_supplemented_id)
+
+            # Clear the group ID; getting a supplemened group ID should fail
+            group_id_data = script.cmd_setGroupId.DataType()
+            group_id_data.groupId = ""
+            await script.do_setGroupId(group_id_data)
+            with self.assertRaises(RuntimeError):
+                script.next_supplemented_group_id()
+
     async def test_pause(self):
         async with salobj.TestScript(index=self.index) as script:
-            # cannot run in UNCONFIGURED state
+            # Cannot run in UNCONFIGURED state.
             run_data = script.cmd_run.DataType()
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_run(run_data)
 
-            # test configure with data for a non-existent argument
+            # Test configure with data for a non-existent argument.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "no_such_arg: 1"
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
             self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
 
-            # test configure with invalid yaml
+            # Test configure with invalid yaml.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "a : : 2"
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
             self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
 
-            # test configure with yaml that makes a string, not a dict
+            # Test configure with yaml that makes a string, not a dict.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "just_a_string"
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
             self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
 
-            # test configure with yaml that makes a list, not a dict
+            # Test configure with yaml that makes a list, not a dict.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "['not', 'a', 'dict']"
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
             self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
 
-            # now test valid configuration; specify nonexistent checkpoints
-            # to test that the configure command handles checkpoints at all
+            # Now test valid configuration; specify nonexistent checkpoints
+            # to test that the configure command handles checkpoints at all.
             wait_time = 0.5
-            # specify a log level that is not the default (which is INFO)
-            # and is only slightly more verbose than INFO
+            # Specify a log level that is not the default (which is INFO)
+            # and is only slightly more verbose than INFO.
             log_level = logging.INFO - 1
             prelim_pause_checkpoint = "preliminary nonexistent pause checkpoint"
             prelim_stop_checkpoint = "preliminary nonexistent stop checkpoint"
@@ -283,16 +327,17 @@ class BaseScriptTestCase(asynctest.TestCase):
                                            pause_checkpoint=prelim_pause_checkpoint,
                                            stop_checkpoint=prelim_stop_checkpoint)
 
-            # set a pause checkpoint that exists
+            # Set a pause checkpoint that exists.
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
             checkpoint_named_start = "start"
             checkpoint_that_does_not_exist = "nonexistent checkpoint"
             setCheckpoints_data.pause = checkpoint_named_start
             setCheckpoints_data.stop = checkpoint_that_does_not_exist
-            script.do_setCheckpoints(setCheckpoints_data)
+            await script.do_setCheckpoints(setCheckpoints_data)
             self.assertEqual(script.checkpoints.pause, checkpoint_named_start)
             self.assertEqual(script.checkpoints.stop, checkpoint_that_does_not_exist)
 
+            # Run the script.
             run_data = script.cmd_run.DataType()
             run_task = asyncio.create_task(script.do_run(run_data))
             niter = 0
@@ -303,7 +348,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             self.assertEqual(script.checkpoints.pause, checkpoint_named_start)
             self.assertEqual(script.checkpoints.stop, checkpoint_that_does_not_exist)
             resume_data = script.cmd_resume.DataType()
-            script.do_resume(resume_data)
+            await script.do_resume(resume_data)
             await asyncio.wait_for(run_task, 2)
             await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
             duration = script.timestamps[ScriptState.ENDING] - script.timestamps[ScriptState.RUNNING]
@@ -320,7 +365,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
             checkpoint_named_end = "end"
             setCheckpoints_data.stop = checkpoint_named_end
-            script.do_setCheckpoints(setCheckpoints_data)
+            await script.do_setCheckpoints(setCheckpoints_data)
             self.assertEqual(script.checkpoints.pause, "")
             self.assertEqual(script.checkpoints.stop, checkpoint_named_end)
 
@@ -344,7 +389,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
             checkpoint_named_start = "start"
             setCheckpoints_data.pause = checkpoint_named_start
-            script.do_setCheckpoints(setCheckpoints_data)
+            await script.do_setCheckpoints(setCheckpoints_data)
             self.assertEqual(script.checkpoints.pause, checkpoint_named_start)
             self.assertEqual(script.checkpoints.stop, "")
 
@@ -479,6 +524,7 @@ class BaseScriptTestCase(asynctest.TestCase):
 
                         state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
                         self.assertEqual(state.state, ScriptState.UNCONFIGURED)
+                        self.assertEqual(state.groupId, "")
 
                         logLevel_data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                         self.assertEqual(logLevel_data.level, logging.INFO)
@@ -488,9 +534,17 @@ class BaseScriptTestCase(asynctest.TestCase):
                         if fail:
                             config = config + f"\n{fail}: True"
                         await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
+                        state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                        self.assertEqual(state.state, ScriptState.CONFIGURED)
+                        self.assertEqual(state.groupId, "")
 
                         metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                         self.assertEqual(metadata.duration, wait_time)
+
+                        group_id = "a non-blank group ID"
+                        await remote.cmd_setGroupId.set_start(groupId=group_id, timeout=STD_TIMEOUT)
+                        state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                        self.assertEqual(state.groupId, group_id)
 
                         await remote.cmd_run.start(timeout=STD_TIMEOUT)
 
@@ -540,6 +594,7 @@ class BaseScriptTestCase(asynctest.TestCase):
 
                 state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
                 self.assertEqual(state.state, ScriptState.UNCONFIGURED)
+                self.assertEqual(state.groupId, "")
 
                 logLevel_data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(logLevel_data.level, logging.INFO)
@@ -547,9 +602,17 @@ class BaseScriptTestCase(asynctest.TestCase):
                 wait_time = 0.1
                 config = f"wait_time: {wait_time}"
                 await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
+                state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                self.assertEqual(state.state, ScriptState.CONFIGURED)
+                self.assertEqual(state.groupId, "")
 
                 metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(metadata.duration, wait_time)
+
+                group_id = "a non-blank group ID"
+                await remote.cmd_setGroupId.set_start(groupId=group_id, timeout=STD_TIMEOUT)
+                state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                self.assertEqual(state.groupId, group_id)
 
                 await remote.cmd_run.start(timeout=STD_TIMEOUT)
 
