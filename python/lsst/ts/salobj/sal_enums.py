@@ -5,6 +5,7 @@ __all__ = ["SalRetCode", "State", "as_salRetCode", "as_state"]
 
 class SalRetCode(enum.IntEnum):
     """SAL return codes."""
+
     OK = 0
     ERR = -1
     ERROR = -1
@@ -59,6 +60,7 @@ class SalRetCode(enum.IntEnum):
 
 class State(enum.IntEnum):
     """CSC summaryState constants."""
+
     OFFLINE = 4
     STANDBY = 5
     DISABLED = 1

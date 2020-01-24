@@ -57,7 +57,10 @@ class IdlParserTestCase(unittest.TestCase):
         else:
             self.assertIsNone(metadata.sal_version)
             self.assertIsNone(metadata.xml_version)
-        self.assertEqual(set(metadata.topic_info.keys()), set(("command_setArrays", "logevent_scalars")))
+        self.assertEqual(
+            set(metadata.topic_info.keys()),
+            set(("command_setArrays", "logevent_scalars")),
+        )
 
         # Dict of field name: expected type name
         field_types = dict(
@@ -79,7 +82,7 @@ class IdlParserTestCase(unittest.TestCase):
             unsignedLong0="unsigned long",
             float0="float",
             double0="double",
-            priority="long"
+            priority="long",
         )
 
         for sal_topic_name, topic_metadata in metadata.topic_info.items():
@@ -93,20 +96,33 @@ class IdlParserTestCase(unittest.TestCase):
                     self.assertIsNone(topic_metadata.description)
                 expected_field_names = set(field_types.keys())
                 if sal_topic_name == "command_setArrays":
-                    expected_field_names = set(name for name in expected_field_names
-                                               if name not in ("char0", "string0", "priority"))
+                    expected_field_names = set(
+                        name
+                        for name in expected_field_names
+                        if name not in ("char0", "string0", "priority")
+                    )
 
-                self.assertEqual(set(topic_metadata.field_info.keys()), expected_field_names)
+                self.assertEqual(
+                    set(topic_metadata.field_info.keys()), expected_field_names
+                )
                 for field_name, field_metadata in topic_metadata.field_info.items():
                     self.assertEqual(field_metadata.name, field_name)
                     if has_metadata:
-                        expected_units = "secs" if field_metadata.name.endswith("Stamp") else "unitless"
+                        expected_units = (
+                            "secs"
+                            if field_metadata.name.endswith("Stamp")
+                            else "unitless"
+                        )
                         self.assertEqual(field_metadata.units, expected_units)
-                        self.assertEqual(field_metadata.description, f"Description of {field_name}")
+                        self.assertEqual(
+                            field_metadata.description, f"Description of {field_name}"
+                        )
                     else:
                         self.assertIsNone(field_metadata.units)
                         self.assertIsNone(field_metadata.description)
-                    expected_str_length = {"string0": 20, "private_revCode": 8}.get(field_name)
+                    expected_str_length = {"string0": 20, "private_revCode": 8}.get(
+                        field_name
+                    )
                     self.assertEqual(field_metadata.str_length, expected_str_length)
                     self.assertEqual(field_metadata.type_name, field_types[field_name])
                     if sal_topic_name == "command_setArrays":
@@ -143,8 +159,11 @@ class IdlParserTestCase(unittest.TestCase):
             "logevent_arrays",
             "logevent_scalars",
             "arrays",
-            "scalars")
-        self.assertTrue(set(some_expected_topic_names).issubset(set(metadata.topic_info.keys())))
+            "scalars",
+        )
+        self.assertTrue(
+            set(some_expected_topic_names).issubset(set(metadata.topic_info.keys()))
+        )
 
         # Dict of field name: expected type name
         field_types = dict(
@@ -169,16 +188,12 @@ class IdlParserTestCase(unittest.TestCase):
             unsignedLong0="unsigned long",
             float0="float",
             double0="double",
-            priority="long"
+            priority="long",
         )
 
         # Check some details of arrays topics, including data type,
         # array length and string length.
-        for topic_name in (
-            "arrays",
-            "logevent_arrays",
-            "command_setArrays",
-        ):
+        for topic_name in ("arrays", "logevent_arrays", "command_setArrays"):
             with self.subTest(topic_name=topic_name):
                 topic_metadata = metadata.topic_info[topic_name]
                 expected_field_names = set(field_types.keys())
@@ -188,7 +203,9 @@ class IdlParserTestCase(unittest.TestCase):
                 # TODO DM-22306 remove this conditional statement
                 if "char0" not in topic_metadata.field_info:
                     expected_field_names.remove("char0")
-                self.assertEqual(set(topic_metadata.field_info.keys()), expected_field_names)
+                self.assertEqual(
+                    set(topic_metadata.field_info.keys()), expected_field_names
+                )
                 for field_metadata in topic_metadata.field_info.values():
                     if field_metadata.name[-1] != "0":
                         self.assertIsNone(field_metadata.array_length)
@@ -203,15 +220,13 @@ class IdlParserTestCase(unittest.TestCase):
                     # else:
                     #     self.assertIsInstance(
                     #         field_metadata.description, str)
-                    self.assertEqual(field_metadata.type_name, field_types[field_metadata.name])
+                    self.assertEqual(
+                        field_metadata.type_name, field_types[field_metadata.name]
+                    )
 
         # Check some details of scalars topics, including data type,
         # array length and string length.
-        for topic_name in (
-            "scalars",
-            "logevent_scalars",
-            "command_setScalars",
-        ):
+        for topic_name in ("scalars", "logevent_scalars", "command_setScalars"):
             with self.subTest(topic_name=topic_name):
                 topic_metadata = metadata.topic_info[topic_name]
                 expected_field_names = set(field_types.keys())
@@ -220,15 +235,18 @@ class IdlParserTestCase(unittest.TestCase):
                 # TODO DM-22306 remove this conditional statement
                 if "char0" not in topic_metadata.field_info:
                     expected_field_names.remove("char0")
-                self.assertEqual(set(topic_metadata.field_info.keys()), expected_field_names)
+                self.assertEqual(
+                    set(topic_metadata.field_info.keys()), expected_field_names
+                )
                 for field_metadata in topic_metadata.field_info.values():
                     self.assertIsNone(field_metadata.array_length)
                     if field_metadata.name == "TestID":
                         self.assertIsNone(field_metadata.description)
                     else:
-                        self.assertIsInstance(
-                            field_metadata.description, str)
-                    self.assertEqual(field_metadata.type_name, field_types[field_metadata.name])
+                        self.assertIsInstance(field_metadata.description, str)
+                    self.assertEqual(
+                        field_metadata.type_name, field_types[field_metadata.name]
+                    )
 
 
 if __name__ == "__main__":

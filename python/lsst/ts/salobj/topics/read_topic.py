@@ -39,6 +39,7 @@ class QueueLengthChecker:
     queue_len : `int`
         Length of queue
     """
+
     def __init__(self, queue_len):
         # 2-3 warnings:
         # * 5-10
@@ -49,7 +50,7 @@ class QueueLengthChecker:
         warn_lengths = [min(10, max(5, queue_len // 10))]
         if queue_len >= 20:
             warn_lengths.append(queue_len // 2)
-        warn_lengths.append(queue_len*9 // 10)
+        warn_lengths.append(queue_len * 9 // 10)
         self._warn_lengths = tuple(warn_lengths)
         self._warn_level = self._warn_lengths[0]
         self._warn_index = 0
@@ -68,7 +69,7 @@ class QueueLengthChecker:
             self._warn_index -= 1
             self._warn_level = self._warn_lengths[self._warn_index]
             if self._warn_index > 0:
-                self._reset_level = self._warn_lengths[self._warn_index-1] // 2
+                self._reset_level = self._warn_lengths[self._warn_index - 1] // 2
             else:
                 self._reset_level = None
         return True
@@ -134,6 +135,7 @@ class ReadTopic(BaseTopic):
     reads all topics. This is more efficient than having each `ReadTopic` read
     its own data.
     """
+
     def __init__(self, *, salinfo, name, sal_prefix, max_history, queue_len=100):
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
         self.isopen = True
@@ -145,7 +147,9 @@ class ReadTopic(BaseTopic):
         if queue_len <= 0:
             raise ValueError(f"queue_len={queue_len} must be positive")
         if max_history > queue_len:
-            raise ValueError(f"max_history={max_history} must be <= queue_len={queue_len}")
+            raise ValueError(
+                f"max_history={max_history} must be <= queue_len={queue_len}"
+            )
         self._max_history = int(max_history)
         self._data_queue = collections.deque(maxlen=queue_len)
         self._current_data = None
@@ -156,15 +160,24 @@ class ReadTopic(BaseTopic):
         self._callback_loop_task = base.make_done_future()
         self._length_checker = QueueLengthChecker(queue_len)
         self._warned_readloop = False
-        qos = salinfo.domain.volatile_reader_qos if self.volatile else salinfo.domain.reader_qos
+        qos = (
+            salinfo.domain.volatile_reader_qos
+            if self.volatile
+            else salinfo.domain.reader_qos
+        )
         self._reader = salinfo.subscriber.create_datareader(self._topic, qos)
-        read_mask = [dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
-                     dds.DDSStateKind.ALIVE_INSTANCE_STATE]
+        read_mask = [
+            dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
+            dds.DDSStateKind.ALIVE_INSTANCE_STATE,
+        ]
         queries = []
         if salinfo.index > 0:
             queries.append(f"{salinfo.name}ID = {salinfo.index}")
         if name == "ackcmd":
-            queries += [f"origin = {salinfo.domain.origin}", f"host = {salinfo.domain.host}"]
+            queries += [
+                f"origin = {salinfo.domain.origin}",
+                f"host = {salinfo.domain.host}",
+            ]
         if queries:
             full_query = " AND ".join(queries)
             read_condition = dds.QueryCondition(self._reader, read_mask, full_query)
@@ -389,7 +402,9 @@ class ReadTopic(BaseTopic):
         Unlike `next`, this can be called while using a callback function.
         """
         if not self._length_checker.length_ok(len(self._data_queue)):
-            self.log.warning(f"falling behind; queue contains {len(self._data_queue)} elements")
+            self.log.warning(
+                f"falling behind; queue contains {len(self._data_queue)} elements"
+            )
         if self._data_queue:
             return self._data_queue.popleft()
         if self._next_task.done():
@@ -405,7 +420,9 @@ class ReadTopic(BaseTopic):
             result = self._run_callback(data)
             if self.allow_multiple_callbacks:
                 # Purge done callback tasks and add a new one.
-                self._callback_tasks = {task for task in self._callback_tasks if not task.done()}
+                self._callback_tasks = {
+                    task for task in self._callback_tasks if not task.done()
+                }
                 self._callback_tasks.add(asyncio.ensure_future(result))
             else:
                 await result

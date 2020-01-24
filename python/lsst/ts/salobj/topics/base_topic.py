@@ -69,6 +69,7 @@ class BaseTopic(abc.ABC):
     * dds_name: name of topic seen by DDS; a `str`.
       For example: "Test_logevent_summaryState_90255bf1".
     """
+
     def __init__(self, *, salinfo, name, sal_prefix):
         try:
             self.salinfo = salinfo
@@ -84,13 +85,23 @@ class BaseTopic(abc.ABC):
 
             revname = salinfo.revnames.get(self.sal_name)
             if revname is None:
-                raise ValueError(f"Could not find {self.salinfo.name} topic {self.sal_name}")
+                raise ValueError(
+                    f"Could not find {self.salinfo.name} topic {self.sal_name}"
+                )
             self.dds_name = revname.replace("::", "_")
             self.rev_code = self.dds_name[-8:]
 
-            self._type = ddsutil.get_dds_classes_from_idl(salinfo.metadata.idl_path, revname)
-            qos = salinfo.domain.volatile_topic_qos if self.volatile else salinfo.domain.topic_qos
-            self._topic = self._type.register_topic(salinfo.domain.participant, self.dds_name, qos)
+            self._type = ddsutil.get_dds_classes_from_idl(
+                salinfo.metadata.idl_path, revname
+            )
+            qos = (
+                salinfo.domain.volatile_topic_qos
+                if self.volatile
+                else salinfo.domain.topic_qos
+            )
+            self._topic = self._type.register_topic(
+                salinfo.domain.participant, self.dds_name, qos
+            )
 
         except Exception as e:
             raise RuntimeError(f"Failed to create topic {salinfo.name}.{name}") from e

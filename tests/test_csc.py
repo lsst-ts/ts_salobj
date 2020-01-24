@@ -41,7 +41,9 @@ NODATA_TIMEOUT = 0.1  # timeout for when we expect no new data
 np.random.seed(47)
 
 index_gen = salobj.index_generator()
-TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent.joinpath("data")
+TEST_DATA_DIR = TEST_CONFIG_DIR = (
+    pathlib.Path(__file__).resolve().parent.joinpath("data")
+)
 TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
@@ -64,6 +66,7 @@ class FailInReportFaultCsc(salobj.TestCsc):
         Call super().report_summary_state first in report_summary_state?
         If false then call it last.
     """
+
     def __init__(self, index, doraise, report_first):
         super().__init__(index=index, initial_state=salobj.State.ENABLED)
         self.doraise = doraise
@@ -74,20 +77,27 @@ class FailInReportFaultCsc(salobj.TestCsc):
             super().report_summary_state()
         if self.summary_state == salobj.State.FAULT:
             if self.doraise:
-                raise RuntimeError("Intentionally raise an exception when going to the FAULT state")
+                raise RuntimeError(
+                    "Intentionally raise an exception when going to the FAULT state"
+                )
             else:
-                self.fault(code=10934, report="a report that will be ignored",
-                           traceback="a traceback that will be ignored")
+                self.fault(
+                    code=10934,
+                    report="a report that will be ignored",
+                    traceback="a traceback that will be ignored",
+                )
         if not self.report_first:
             super().report_summary_state()
 
 
 class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode):
-        return salobj.TestCsc(self.next_index(),
-                              initial_state=initial_state,
-                              config_dir=config_dir,
-                              simulation_mode=simulation_mode)
+        return salobj.TestCsc(
+            self.next_index(),
+            initial_state=initial_state,
+            config_dir=config_dir,
+            simulation_mode=simulation_mode,
+        )
 
     async def test_heartbeat(self):
         async with self.make_csc(initial_state=salobj.State.STANDBY):
@@ -103,17 +113,24 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         exe_name = "run_test_csc.py"
         exe_path = shutil.which(exe_name)
         if exe_path is None:
-            self.fail(f"Could not find bin script {exe_name}; did you setup or install this package?")
+            self.fail(
+                f"Could not find bin script {exe_name}; did you setup or install this package?"
+            )
 
         index = self.next_index()
         process = await asyncio.create_subprocess_exec(exe_name, str(index))
         try:
-            async with salobj.Domain() as domain, \
-                    salobj.Remote(domain=domain, name="Test", index=index) as remote:
-                await self.assert_next_summary_state(salobj.State.STANDBY, remote=remote)
+            async with salobj.Domain() as domain, salobj.Remote(
+                domain=domain, name="Test", index=index
+            ) as remote:
+                await self.assert_next_summary_state(
+                    salobj.State.STANDBY, remote=remote
+                )
                 ackcmd = await remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
                 self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
-                await self.assert_next_summary_state(salobj.State.OFFLINE, remote=remote)
+                await self.assert_next_summary_state(
+                    salobj.State.OFFLINE, remote=remote
+                )
 
                 await asyncio.wait_for(process.wait(), 5)
         except Exception:
@@ -129,14 +146,19 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         index = self.next_index()
         process = await asyncio.create_subprocess_exec(str(exe_path), str(index))
         try:
-            async with salobj.Domain() as domain, \
-                    salobj.Remote(domain=domain, name="Test", index=index) as remote:
+            async with salobj.Domain() as domain, salobj.Remote(
+                domain=domain, name="Test", index=index
+            ) as remote:
                 remote = salobj.Remote(domain=domain, name="Test", index=index)
-                await self.assert_next_summary_state(salobj.State.STANDBY, remote=remote)
+                await self.assert_next_summary_state(
+                    salobj.State.STANDBY, remote=remote
+                )
 
                 ackcmd = await remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
                 self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
-                await self.assert_next_summary_state(salobj.State.OFFLINE, remote=remote)
+                await self.assert_next_summary_state(
+                    salobj.State.OFFLINE, remote=remote
+                )
 
                 await asyncio.wait_for(process.wait(), 5)
         except Exception:
@@ -156,8 +178,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertIsNone(self.remote.tel_arrays.get())
 
             # check that info level messages are enabled
-            await self.assert_next_sample(topic=self.remote.evt_logLevel,
-                                          level=logging.INFO)
+            await self.assert_next_sample(
+                topic=self.remote.evt_logLevel, level=logging.INFO
+            )
 
             # purge any existing messages
             self.remote.evt_logMessage.flush()
@@ -166,14 +189,20 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             cmd_data_sent = self.csc.make_random_cmd_arrays()
             await self.remote.cmd_setArrays.start(cmd_data_sent, timeout=STD_TIMEOUT)
 
-            log_message = await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
+            log_message = await self.remote.evt_logMessage.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(log_message.level, logging.INFO)
             self.assertIn("setArrays", log_message.message)
 
             # see if new data was broadcast correctly
-            evt_data = await self.remote.evt_arrays.next(flush=False, timeout=STD_TIMEOUT)
+            evt_data = await self.remote.evt_arrays.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.csc.assert_arrays_equal(cmd_data_sent, evt_data)
-            tel_data = await self.remote.tel_arrays.next(flush=False, timeout=STD_TIMEOUT)
+            tel_data = await self.remote.tel_arrays.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.csc.assert_arrays_equal(cmd_data_sent, tel_data)
 
             self.assertTrue(self.csc.evt_arrays.has_data)
@@ -197,8 +226,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertIsNone(self.remote.tel_scalars.get())
 
             # check that info level messages are enabled
-            await self.assert_next_sample(topic=self.remote.evt_logLevel,
-                                          level=logging.INFO)
+            await self.assert_next_sample(
+                topic=self.remote.evt_logLevel, level=logging.INFO
+            )
 
             # purge any existing messages
             self.remote.evt_logMessage.flush()
@@ -206,14 +236,20 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # send the setScalars command with random data
             cmd_data_sent = self.csc.make_random_cmd_scalars()
             await self.remote.cmd_setScalars.start(cmd_data_sent, timeout=STD_TIMEOUT)
-            log_message = await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
+            log_message = await self.remote.evt_logMessage.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(log_message.level, logging.INFO)
             self.assertIn("setScalars", log_message.message)
 
             # see if new data is being broadcast correctly
-            evt_data = await self.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            evt_data = await self.remote.evt_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.csc.assert_scalars_equal(cmd_data_sent, evt_data)
-            tel_data = await self.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
+            tel_data = await self.remote.tel_scalars.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.csc.assert_scalars_equal(cmd_data_sent, tel_data)
 
             self.assertTrue(self.csc.evt_scalars.has_data)
@@ -246,8 +282,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                     # and check the state and error code.
                     await self.remote.cmd_fault.start(timeout=STD_TIMEOUT)
                     await self.assert_next_summary_state(salobj.State.FAULT)
-                    await self.assert_next_sample(topic=self.remote.evt_errorCode,
-                                                  errorCode=1)
+                    await self.assert_next_sample(
+                        topic=self.remote.evt_errorCode, errorCode=1
+                    )
 
                     # Issue the ``standby`` command to recover.
                     await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
@@ -258,7 +295,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             await self.assert_next_summary_state(salobj.State.STANDBY)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_errorCode.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             code = 52
             report = "Report for error code"
@@ -269,7 +308,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 self.csc.fault()
             await self.assert_next_summary_state(salobj.State.FAULT)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_errorCode.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.STANDBY)
@@ -279,7 +320,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 self.csc.fault(report=report, traceback=traceback)
             await self.assert_next_summary_state(salobj.State.FAULT)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_errorCode.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.STANDBY)
@@ -289,7 +332,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.csc.fault(code="not a valid code")
             await self.assert_next_summary_state(salobj.State.FAULT)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_errorCode.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.STANDBY)
@@ -299,10 +344,12 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # then without, to make sure those values are not cached
             self.csc.fault(code=code, report=report, traceback=traceback)
             await self.assert_next_summary_state(salobj.State.FAULT)
-            await self.assert_next_sample(topic=self.remote.evt_errorCode,
-                                          errorCode=code,
-                                          errorReport=report,
-                                          traceback=traceback)
+            await self.assert_next_sample(
+                topic=self.remote.evt_errorCode,
+                errorCode=code,
+                errorReport=report,
+                traceback=traceback,
+            )
 
             # Try a disallowed command and check that the error report
             # is part of the traceback.
@@ -314,10 +361,12 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
             self.csc.fault(code=code)
             await self.assert_next_summary_state(salobj.State.FAULT)
-            await self.assert_next_sample(topic=self.remote.evt_errorCode,
-                                          errorCode=code,
-                                          errorReport="",
-                                          traceback="")
+            await self.assert_next_sample(
+                topic=self.remote.evt_errorCode,
+                errorCode=code,
+                errorReport="",
+                traceback="",
+            )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await self.remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
@@ -327,28 +376,40 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         index = next(index_gen)
         for doraise, report_first in itertools.product((False, True), (False, True)):
             with self.subTest(doraise=doraise, report_first=report_first):
-                async with FailInReportFaultCsc(index=index, doraise=doraise,
-                                                report_first=report_first) as csc, \
-                        salobj.Remote(domain=csc.domain, name="Test", index=index) as remote:
+                async with FailInReportFaultCsc(
+                    index=index, doraise=doraise, report_first=report_first
+                ) as csc, salobj.Remote(
+                    domain=csc.domain, name="Test", index=index
+                ) as remote:
 
-                    await self.assert_next_summary_state(salobj.State.ENABLED, remote=remote)
+                    await self.assert_next_summary_state(
+                        salobj.State.ENABLED, remote=remote
+                    )
 
                     code = 51
                     report = "Report for error code"
                     traceback = "Traceback for error code"
                     csc.fault(code=code, report=report, traceback=traceback)
 
-                    await self.assert_next_summary_state(salobj.State.FAULT, remote=remote)
-                    await self.assert_next_sample(topic=remote.evt_errorCode,
-                                                  errorCode=code,
-                                                  errorReport=report,
-                                                  traceback=traceback)
+                    await self.assert_next_summary_state(
+                        salobj.State.FAULT, remote=remote
+                    )
+                    await self.assert_next_sample(
+                        topic=remote.evt_errorCode,
+                        errorCode=code,
+                        errorReport=report,
+                        traceback=traceback,
+                    )
 
                     # make sure FAULT state and errorCode are only sent once
                     with self.assertRaises(asyncio.TimeoutError):
-                        await remote.evt_summaryState.next(flush=False, timeout=NODATA_TIMEOUT)
+                        await remote.evt_summaryState.next(
+                            flush=False, timeout=NODATA_TIMEOUT
+                        )
                     with self.assertRaises(asyncio.TimeoutError):
-                        await remote.evt_errorCode.next(flush=False, timeout=NODATA_TIMEOUT)
+                        await remote.evt_errorCode.next(
+                            flush=False, timeout=NODATA_TIMEOUT
+                        )
 
     async def test_standard_state_transitions(self):
         """Test standard CSC state transitions.
@@ -364,7 +425,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         * exitControl: STANDBY to OFFLINE (quit)
         """
         async with self.make_csc(initial_state=salobj.State.STANDBY):
-            await self.check_standard_state_transitions(enabled_commands=("setArrays", "setScalars", "wait"))
+            await self.check_standard_state_transitions(
+                enabled_commands=("setArrays", "setScalars", "wait")
+            )
 
     async def check_bad_commands(self, bad_commands=None, good_commands=None):
         """Override to always ignore the `fault` command.
@@ -372,12 +435,14 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         if good_commands is None:
             good_commands = ()
         good_commands += tuple(good_commands) + ("fault",)
-        await super().check_bad_commands(bad_commands=bad_commands,
-                                         good_commands=good_commands)
+        await super().check_bad_commands(
+            bad_commands=bad_commands, good_commands=good_commands
+        )
 
 
 class NoIndexCsc(salobj.TestCsc):
     """A CSC whose constructor has no index argument."""
+
     def __init__(self, arg1, arg2, config_dir=None):
         super().__init__(index=next(index_gen), config_dir=config_dir)
         self.arg1 = arg1
@@ -386,6 +451,7 @@ class NoIndexCsc(salobj.TestCsc):
 
 class SeveralSimulationModesCsc(salobj.TestCsc):
     """A variant of TestCsc with several allowed simulation modes."""
+
     AllowedSimulationModes = (0, 1, 3)
 
     async def implement_simulation_mode(self, simulation_mode):
@@ -396,6 +462,7 @@ class SeveralSimulationModesCsc(salobj.TestCsc):
 class InvalidPkgNameCsc(salobj.TestCsc):
     """A CSC whose get_pkg_name classmethod returns a nonexistent package.
     """
+
     @staticmethod
     def get_config_pkg():
         """Return a name of a non-existent package."""
@@ -405,6 +472,7 @@ class InvalidPkgNameCsc(salobj.TestCsc):
 class WrongConfigPkgCsc(salobj.TestCsc):
     """A CSC whose get_pkg_name classmethod returns the wrong package.
     """
+
     @staticmethod
     def get_config_pkg():
         """Return a package that does not have a Test subdirectory."""
@@ -417,6 +485,7 @@ class TestCscConstructorTestCase(asynctest.TestCase):
     Note: all of these tests must run async because the constructor
     requires an event loop.
     """
+
     def setUp(self):
         salobj.set_random_lsst_dds_domain()
 
@@ -428,19 +497,26 @@ class TestCscConstructorTestCase(asynctest.TestCase):
             with self.subTest(initial_state=initial_state):
                 # Test initial_state as an enum.
                 index = next(index_gen)
-                async with salobj.TestCsc(index=index, initial_state=initial_state) as csc:
+                async with salobj.TestCsc(
+                    index=index, initial_state=initial_state
+                ) as csc:
                     self.assertEqual(csc.summary_state, initial_state)
 
                 # Test initial_state as an integer.
                 index = next(index_gen)
-                async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
+                async with salobj.TestCsc(
+                    index=index, initial_state=int(initial_state)
+                ) as csc:
                     self.assertEqual(csc.summary_state, initial_state)
 
     async def test_invalid_config_dir(self):
         """Test that invalid integer initial_state is rejected."""
         with self.assertRaises(ValueError):
-            salobj.TestCsc(index=next(index_gen), initial_state=salobj.State.STANDBY,
-                           config_dir=TEST_CONFIG_DIR / "not_a_directory")
+            salobj.TestCsc(
+                index=next(index_gen),
+                initial_state=salobj.State.STANDBY,
+                config_dir=TEST_CONFIG_DIR / "not_a_directory",
+            )
 
     async def test_invalid_config_pkg(self):
         with self.assertRaises(RuntimeError):
@@ -453,22 +529,29 @@ class TestCscConstructorTestCase(asynctest.TestCase):
         # Test valid simulation modes.
         for simulation_mode in SeveralSimulationModesCsc.AllowedSimulationModes:
             with self.subTest(simulation_mode=simulation_mode):
-                async with SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
-                                                     simulation_mode=simulation_mode) as csc:
+                async with SeveralSimulationModesCsc(
+                    index=1, config_dir=TEST_CONFIG_DIR, simulation_mode=simulation_mode
+                ) as csc:
                     await csc.start_task
                     self.assertEqual(csc.simulation_mode, simulation_mode)
 
                 if simulation_mode == 0:
                     # No deprecation warning expected.
-                    async with SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
-                                                         initial_simulation_mode=simulation_mode) as csc:
+                    async with SeveralSimulationModesCsc(
+                        index=1,
+                        config_dir=TEST_CONFIG_DIR,
+                        initial_simulation_mode=simulation_mode,
+                    ) as csc:
                         await csc.start_task
                         self.assertEqual(csc.simulation_mode, simulation_mode)
                 else:
                     # Deprecation warning expected.
                     with self.assertWarns(DeprecationWarning):
-                        async with SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
-                                                             initial_simulation_mode=simulation_mode) as csc:
+                        async with SeveralSimulationModesCsc(
+                            index=1,
+                            config_dir=TEST_CONFIG_DIR,
+                            initial_simulation_mode=simulation_mode,
+                        ) as csc:
                             await csc.start_task
                             self.assertEqual(csc.simulation_mode, simulation_mode)
 
@@ -478,27 +561,38 @@ class TestCscConstructorTestCase(asynctest.TestCase):
         for mode1, mode2 in itertools.product((1, 2), (1, 2)):
             with self.subTest(mode1=mode1, mode2=mode2):
                 with self.assertRaises(ValueError):
-                    SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
-                                              simulation_mode=mode1,
-                                              initial_simulation_mode=mode2)
+                    SeveralSimulationModesCsc(
+                        index=1,
+                        config_dir=TEST_CONFIG_DIR,
+                        simulation_mode=mode1,
+                        initial_simulation_mode=mode2,
+                    )
 
         # Test invalid simulation modes. These are are caught by the
         # ``implement_simulation_mode`` method, which is called by the
         # ``start`` method, so we must wait for the CSC to start.
-        for bad_simulation_mode in (min(SeveralSimulationModesCsc.AllowedSimulationModes) - 1,
-                                    max(SeveralSimulationModesCsc.AllowedSimulationModes) + 1):
+        for bad_simulation_mode in (
+            min(SeveralSimulationModesCsc.AllowedSimulationModes) - 1,
+            max(SeveralSimulationModesCsc.AllowedSimulationModes) + 1,
+        ):
             with self.subTest(bad_simulation_mode=bad_simulation_mode):
                 with self.assertRaises(salobj.ExpectedError):
-                    async with SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
-                                                         simulation_mode=bad_simulation_mode):
+                    async with SeveralSimulationModesCsc(
+                        index=1,
+                        config_dir=TEST_CONFIG_DIR,
+                        simulation_mode=bad_simulation_mode,
+                    ):
                         pass
 
                 # The constructor issues a deprecation warning,
                 # then later the ``start`` method raises.
                 with self.assertWarns(DeprecationWarning):
                     with self.assertRaises(salobj.ExpectedError):
-                        async with SeveralSimulationModesCsc(index=1, config_dir=TEST_CONFIG_DIR,
-                                                             initial_simulation_mode=bad_simulation_mode):
+                        async with SeveralSimulationModesCsc(
+                            index=1,
+                            config_dir=TEST_CONFIG_DIR,
+                            initial_simulation_mode=bad_simulation_mode,
+                        ):
                             pass
 
     async def test_wrong_config_pkg(self):
@@ -507,8 +601,7 @@ class TestCscConstructorTestCase(asynctest.TestCase):
 
     async def test_invalid_initial_state(self):
         """Test that invalid integer initial_state is rejected."""
-        for invalid_state in (min(salobj.State) - 1,
-                              max(salobj.State) + 1):
+        for invalid_state in (min(salobj.State) - 1, max(salobj.State) + 1):
             with self.subTest(invalid_state=invalid_state):
                 with self.assertRaises(ValueError):
                     salobj.TestCsc(index=next(index_gen), initial_state=invalid_state)
@@ -517,36 +610,47 @@ class TestCscConstructorTestCase(asynctest.TestCase):
 class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     def setUp(self):
         # defaults hard-coded in <ts_salobj_root>/schema/Test.yaml
-        self.default_dict = dict(string0="default value for string0",
-                                 bool0=True,
-                                 int0=5,
-                                 float0=3.14,
-                                 intarr0=[-1, 1],
-                                 )
+        self.default_dict = dict(
+            string0="default value for string0",
+            bool0=True,
+            int0=5,
+            float0=3.14,
+            intarr0=[-1, 1],
+        )
         self.config_fields = self.default_dict.keys()
 
     def basic_make_csc(self, initial_state, config_dir, simulation_mode):
-        return salobj.TestCsc(self.next_index(),
-                              initial_state=initial_state,
-                              config_dir=config_dir,
-                              simulation_mode=simulation_mode)
+        return salobj.TestCsc(
+            self.next_index(),
+            initial_state=initial_state,
+            config_dir=config_dir,
+            simulation_mode=simulation_mode,
+        )
 
     async def test_no_config_specified(self):
-        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             expected_settings_url = pathlib.Path(TEST_CONFIG_DIR).resolve().as_uri()
-            expected_settings_labels = ",".join((
-                "all_fields", "empty", "some_fields",
-                "long_label1_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
-                "long_label2_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
-                "long_label3_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
-                "long_label4_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
-                "long_label5_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
-            ))
-            data = await self.assert_next_sample(topic=self.remote.evt_settingVersions,
-                                                 settingsUrl=expected_settings_url,
-                                                 recommendedSettingsLabels=expected_settings_labels)
+            expected_settings_labels = ",".join(
+                (
+                    "all_fields",
+                    "empty",
+                    "some_fields",
+                    "long_label1_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
+                    "long_label2_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
+                    "long_label3_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
+                    "long_label4_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
+                    "long_label5_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
+                )
+            )
+            data = await self.assert_next_sample(
+                topic=self.remote.evt_settingVersions,
+                settingsUrl=expected_settings_url,
+                recommendedSettingsLabels=expected_settings_labels,
+            )
             self.assertTrue(len(data.recommendedSettingsVersion) > 0)
             await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.DISABLED)
@@ -557,7 +661,9 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     async def test_default_config_dir(self):
         async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=None):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            data = await self.remote.evt_settingVersions.next(flush=False, timeout=STD_TIMEOUT)
+            data = await self.remote.evt_settingVersions.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertTrue(len(data.recommendedSettingsVersion) > 0)
             self.assertEqual(data.settingsUrl[0:8], "file:///")
             config_path = pathlib.Path(data.settingsUrl[7:])
@@ -566,9 +672,13 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     async def test_empty_label(self):
         config_name = "empty"
 
-        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            await self.remote.cmd_start.set_start(settingsToApply=config_name, timeout=STD_TIMEOUT)
+            await self.remote.cmd_start.set_start(
+                settingsToApply=config_name, timeout=STD_TIMEOUT
+            )
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
             for key, expected_value in self.default_dict.items():
@@ -579,9 +689,13 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         config_label = "some_fields"
         config_file = "some_fields.yaml"
 
-        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            await self.remote.cmd_start.set_start(settingsToApply=config_label, timeout=STD_TIMEOUT)
+            await self.remote.cmd_start.set_start(
+                settingsToApply=config_label, timeout=STD_TIMEOUT
+            )
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
             config_path = os.path.join(self.csc.config_dir, config_file)
@@ -599,9 +713,13 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         """Test a config specified by filename."""
         config_file = "some_fields.yaml"
 
-        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            await self.remote.cmd_start.set_start(settingsToApply=config_file, timeout=STD_TIMEOUT)
+            await self.remote.cmd_start.set_start(
+                settingsToApply=config_file, timeout=STD_TIMEOUT
+            )
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
             config_path = os.path.join(self.csc.config_dir, config_file)
@@ -619,10 +737,13 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         """Test a config specified by filename:hash."""
         config_file = "some_fields.yaml"
 
-        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            await self.remote.cmd_start.set_start(settingsToApply=f"{config_file}:HEAD",
-                                                  timeout=STD_TIMEOUT)
+            await self.remote.cmd_start.set_start(
+                settingsToApply=f"{config_file}:HEAD", timeout=STD_TIMEOUT
+            )
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
             config_path = os.path.join(self.csc.config_dir, config_file)
@@ -641,9 +762,13 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         config_name = "all_fields"
         config_file = "all_fields.yaml"
 
-        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            await self.remote.cmd_start.set_start(settingsToApply=config_name, timeout=STD_TIMEOUT)
+            await self.remote.cmd_start.set_start(
+                settingsToApply=config_name, timeout=STD_TIMEOUT
+            )
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
             config_path = os.path.join(self.csc.config_dir, config_file)
@@ -654,14 +779,17 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 self.assertEqual(getattr(config, key), config_from_file[key])
 
     async def test_invalid_configs(self):
-        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
             for name in ("all_bad_types", "bad_format", "one_bad_type", "extra_field"):
                 config_file = f"invalid_{name}.yaml"
                 with self.subTest(config_file=config_file):
                     with self.assertRaises(salobj.AckError):
-                        await self.remote.cmd_start.set_start(settingsToApply=config_file,
-                                                              timeout=STD_TIMEOUT)
+                        await self.remote.cmd_start.set_start(
+                            settingsToApply=config_file, timeout=STD_TIMEOUT
+                        )
                     data = self.remote.evt_summaryState.get()
                     self.assertEqual(self.csc.summary_state, salobj.State.STANDBY)
                     self.assertEqual(data.summaryState, salobj.State.STANDBY)
@@ -669,6 +797,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
 class FailedCallbackCsc(salobj.TestCsc):
     """A CSC whose do_wait command raises a RuntimeError"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.exc_msg = "do_wait raised an exception on purpose"
@@ -679,15 +808,20 @@ class FailedCallbackCsc(salobj.TestCsc):
 
 class ControllerCommandLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode):
-        return FailedCallbackCsc(initial_state=initial_state,
-                                 index=self.next_index(),
-                                 config_dir=config_dir,
-                                 simulation_mode=simulation_mode)
+        return FailedCallbackCsc(
+            initial_state=initial_state,
+            index=self.next_index(),
+            config_dir=config_dir,
+            simulation_mode=simulation_mode,
+        )
 
     async def test_logging(self):
-        async with self.make_csc(initial_state=salobj.State.ENABLED,
-                                 config_dir=TEST_CONFIG_DIR):
-            logLevel = await self.remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
+        async with self.make_csc(
+            initial_state=salobj.State.ENABLED, config_dir=TEST_CONFIG_DIR
+        ):
+            logLevel = await self.remote.evt_logLevel.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(logLevel.level, logging.INFO)
 
             # purge any existing messages
@@ -695,40 +829,56 @@ class ControllerCommandLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCas
 
             info_message = "test info message"
             self.csc.log.info(info_message)
-            msg = await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
+            msg = await self.remote.evt_logMessage.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(msg.message, info_message)
             self.assertEqual(msg.level, logging.INFO)
             self.assertEqual(msg.traceback, "")
 
             warn_message = "test warn message"
             self.csc.log.warning(warn_message)
-            msg = await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
+            msg = await self.remote.evt_logMessage.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(msg.message, warn_message)
             self.assertEqual(msg.level, logging.WARNING)
             self.assertEqual(msg.traceback, "")
 
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_logMessage.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_logMessage.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
-            await self.remote.cmd_setLogLevel.set_start(level=logging.ERROR, timeout=STD_TIMEOUT)
+            await self.remote.cmd_setLogLevel.set_start(
+                level=logging.ERROR, timeout=STD_TIMEOUT
+            )
 
-            logLevel = await self.remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
+            logLevel = await self.remote.evt_logLevel.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(logLevel.level, logging.ERROR)
 
             info_message = "test info message"
             self.csc.log.info(info_message)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_logMessage.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_logMessage.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             warn_message = "test warn message"
             self.csc.log.warning(warn_message)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_logMessage.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_logMessage.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             with salobj.assertRaisesAckError():
                 await self.remote.cmd_wait.set_start(duration=5, timeout=STD_TIMEOUT)
 
-            msg = await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
+            msg = await self.remote.evt_logMessage.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
             self.assertIn(self.csc.exc_msg, msg.traceback)
             self.assertIn("Traceback", msg.traceback)
             self.assertIn("RuntimeError", msg.traceback)
@@ -749,7 +899,9 @@ class BaseCscMakeFromCmdLineTestCase(asynctest.TestCase):
                 sys.argv = [sys.argv[0]]
                 arg1 = "astring"
                 arg2 = 2.75
-                async with NoIndexCsc.make_from_cmd_line(index=index, arg1=arg1, arg2=arg2) as csc:
+                async with NoIndexCsc.make_from_cmd_line(
+                    index=index, arg1=arg1, arg2=arg2
+                ) as csc:
                     self.assertEqual(csc.arg1, arg1)
                     self.assertEqual(csc.arg2, arg2)
                     await csc.do_exitControl(data=None)

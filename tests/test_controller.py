@@ -41,6 +41,7 @@ class ControllerWithDoMethods(salobj.Controller):
         List of command names for which to make trivial ``do_<name>``
         methods.
     """
+
     def __init__(self, command_names):
         index = next(index_gen)
         for name in command_names:

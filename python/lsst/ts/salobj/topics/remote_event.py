@@ -47,6 +47,12 @@ class RemoteEvent(read_topic.ReadTopic):
     This cached value is replaced by all read operations, so as long as
     no other code modifies the data, the returned data will not change.
     """
+
     def __init__(self, salinfo, name, max_history=1, queue_len=100):
-        super().__init__(salinfo=salinfo, name=name, sal_prefix="logevent_",
-                         max_history=max_history, queue_len=queue_len)
+        super().__init__(
+            salinfo=salinfo,
+            name=name,
+            sal_prefix="logevent_",
+            max_history=max_history,
+            queue_len=queue_len,
+        )
