@@ -34,6 +34,7 @@ class ControllerEvent(write_topic.WriteTopic):
     name : `str`
         Event topic name
     """
+
     def __init__(self, salinfo, name):
         super().__init__(salinfo=salinfo, name=name, sal_prefix="logevent_")
 

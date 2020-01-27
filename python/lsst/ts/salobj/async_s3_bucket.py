@@ -39,6 +39,7 @@ class AsyncS3Bucket:
         for details. In particular note that bucket names must be globally
         unique across all AWS accounts.
     """
+
     def __init__(self, name):
         s3 = boto3.resource("s3")
         self.name = name
@@ -117,7 +118,7 @@ class AsyncS3Bucket:
         try:
             await loop.run_in_executor(None, self._sync_size, key)
         except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == '404':
+            if e.response["Error"]["Code"] == "404":
                 return False
             # Something went wrong; report it.
             raise
@@ -145,4 +146,6 @@ class AsyncS3Bucket:
         return fileobj
 
     def _sync_size(self, key):
-        return self.bucket.meta.client.head_object(Bucket=self.name, Key=key)['ContentLength']
+        return self.bucket.meta.client.head_object(Bucket=self.name, Key=key)[
+            "ContentLength"
+        ]

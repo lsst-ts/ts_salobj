@@ -130,6 +130,7 @@ class Domain:
         async with salobj.Domain() as domain:
             test_remote = salobj.Remote(domain=domain, name="Test", index=5)
     """
+
     def __init__(self):
         self.participant = None
 
@@ -149,11 +150,13 @@ class Domain:
             try:
                 unsigned_host = int(ipaddress.IPv4Address(host_name))
             except ipaddress.AddressValueError as e:
-                raise ValueError(f"Could not parse $LSST_DDS_IP={host_name} "
-                                 "as a numeric IP address (e.g. '192.168.0.1')") from e
+                raise ValueError(
+                    f"Could not parse $LSST_DDS_IP={host_name} "
+                    "as a numeric IP address (e.g. '192.168.0.1')"
+                ) from e
             # Convert the unsigned long to a signed long
-            packed = struct.pack('=L', unsigned_host)
-            host = struct.unpack('=l', packed)[0]
+            packed = struct.pack("=L", unsigned_host)
+            host = struct.unpack("=l", packed)[0]
 
         self.host = host
         self.origin = os.getpid()
@@ -181,8 +184,9 @@ class Domain:
             self.volatile_writer_qos = self.qos_provider.get_writer_qos()
             self.volatile_writer_qos.set_policies([volatile_policy])
 
-            read_queue_policy = dds.HistoryQosPolicy(depth=DDS_READ_QUEUE_LEN,
-                                                     kind=dds.DDSHistoryKind.KEEP_LAST)
+            read_queue_policy = dds.HistoryQosPolicy(
+                depth=DDS_READ_QUEUE_LEN, kind=dds.DDSHistoryKind.KEEP_LAST
+            )
             self.reader_qos = self.qos_provider.get_reader_qos()
             self.reader_qos.set_policies([read_queue_policy])
             self.volatile_reader_qos = self.qos_provider.get_reader_qos()
@@ -248,8 +252,10 @@ class Domain:
         finally:
             self.close_dds()
         if self.num_read_loops != 0 or self.num_read_threads != 0:
-            warnings.warn(f"After Domain.close num_read_loops={self.num_read_loops} and "
-                          f"num_read_threads={self.num_read_threads}; both should be 0")
+            warnings.warn(
+                f"After Domain.close num_read_loops={self.num_read_loops} and "
+                f"num_read_threads={self.num_read_threads}; both should be 0"
+            )
         self.done_task.set_result(None)
 
     def close_dds(self):

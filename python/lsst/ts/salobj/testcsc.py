@@ -94,15 +94,29 @@ class TestCsc(ConfigurableCsc):
 
     * 1: the fault command was executed
     """
+
     __test__ = False  # stop pytest from warning that this is not a test
 
-    def __init__(self, index, config_dir=None, initial_state=State.STANDBY,
-                 simulation_mode=0, initial_simulation_mode=0):
-        schema_path = pathlib.Path(__file__).resolve().parents[4].joinpath("schema", "Test.yaml")
-        super().__init__("Test", schema_path=schema_path, config_dir=config_dir,
-                         index=index, initial_state=initial_state,
-                         simulation_mode=simulation_mode,
-                         initial_simulation_mode=initial_simulation_mode)
+    def __init__(
+        self,
+        index,
+        config_dir=None,
+        initial_state=State.STANDBY,
+        simulation_mode=0,
+        initial_simulation_mode=0,
+    ):
+        schema_path = (
+            pathlib.Path(__file__).resolve().parents[4].joinpath("schema", "Test.yaml")
+        )
+        super().__init__(
+            "Test",
+            schema_path=schema_path,
+            config_dir=config_dir,
+            index=index,
+            initial_state=initial_state,
+            simulation_mode=simulation_mode,
+            initial_simulation_mode=initial_simulation_mode,
+        )
         self.cmd_wait.allow_multiple_callbacks = True
         self.config = None
 
@@ -161,47 +175,75 @@ class TestCsc(ConfigurableCsc):
     @property
     def field_type(self):
         """Get a dict of field_name: element type."""
-        return dict(boolean0=bool,
-                    byte0=np.uint8,
-                    char0=str,
-                    short0=np.int16,
-                    int0=np.int32,
-                    long0=np.int32,
-                    longLong0=np.int64,
-                    octet0=np.uint8,
-                    unsignedShort0=np.uint16,
-                    unsignedInt0=np.uint32,
-                    unsignedLong0=np.uint32,
-                    float0=np.single,
-                    double0=np.double,
-                    string0=str,
-                    )
+        return dict(
+            boolean0=bool,
+            byte0=np.uint8,
+            char0=str,
+            short0=np.int16,
+            int0=np.int32,
+            long0=np.int32,
+            longLong0=np.int64,
+            octet0=np.uint8,
+            unsignedShort0=np.uint16,
+            unsignedInt0=np.uint32,
+            unsignedLong0=np.uint32,
+            float0=np.single,
+            double0=np.double,
+            string0=str,
+        )
 
     @property
     def arrays_fields(self):
         """Get a tuple of the fields in an arrays struct."""
         return (
-            "boolean0", "byte0", "short0",
-            "int0", "long0", "longLong0", "octet0",
-            "unsignedShort0", "unsignedInt0", "unsignedLong0",
-            "float0", "double0")
+            "boolean0",
+            "byte0",
+            "short0",
+            "int0",
+            "long0",
+            "longLong0",
+            "octet0",
+            "unsignedShort0",
+            "unsignedInt0",
+            "unsignedLong0",
+            "float0",
+            "double0",
+        )
 
     @property
     def scalars_fields(self):
         """Get a tuple of the fields in a scalars struct."""
         return (
-            "boolean0", "byte0", "char0", "short0",
-            "int0", "long0", "longLong0", "octet0",
-            "unsignedShort0", "unsignedInt0", "unsignedLong0",
-            "float0", "double0", "string0")
+            "boolean0",
+            "byte0",
+            "char0",
+            "short0",
+            "int0",
+            "long0",
+            "longLong0",
+            "octet0",
+            "unsignedShort0",
+            "unsignedInt0",
+            "unsignedLong0",
+            "float0",
+            "double0",
+            "string0",
+        )
 
     @property
     def int_fields(self):
         """Get a tuple of the integer fields in a struct."""
         return (
-            "byte0", "short0",
-            "int0", "long0", "longLong0", "octet0",
-            "unsignedShort0", "unsignedInt0", "unsignedLong0")
+            "byte0",
+            "short0",
+            "int0",
+            "long0",
+            "longLong0",
+            "octet0",
+            "unsignedShort0",
+            "unsignedInt0",
+            "unsignedLong0",
+        )
 
     def assert_arrays_equal(self, arrays1, arrays2):
         """Assert that two arrays data structs are equal.
@@ -215,7 +257,9 @@ class TestCsc(ConfigurableCsc):
             field_arr1 = getattr(arrays1, field)
             field_arr2 = getattr(arrays2, field)
             if not np.array_equal(field_arr1, field_arr2):
-                raise AssertionError(f"arrays1.{field} = {field_arr1} != {field_arr2} = arrays2.{field}")
+                raise AssertionError(
+                    f"arrays1.{field} = {field_arr1} != {field_arr2} = arrays2.{field}"
+                )
 
     def assert_scalars_equal(self, scalars1, scalars2):
         """Assert that two scalars data structs are equal.
@@ -229,7 +273,9 @@ class TestCsc(ConfigurableCsc):
             field_val1 = getattr(scalars1, field)
             field_val2 = getattr(scalars2, field)
             if field_val1 != field_val2:
-                raise AssertionError(f"scalars1.{field} = {field_val1} != {field_val2} = scalars2.{field}")
+                raise AssertionError(
+                    f"scalars1.{field} = {field_val1} != {field_val2} = scalars2.{field}"
+                )
 
     def make_random_cmd_arrays(self):
         return self._make_random_arrays(dtype=self.cmd_setArrays.DataType)
@@ -258,12 +304,16 @@ class TestCsc(ConfigurableCsc):
             field_type = self.field_type[field]
             nelts = len(getattr(data, field))
             iinfo = np.iinfo(field_type)
-            field_data = np.random.randint(iinfo.min, iinfo.max, size=(nelts,), dtype=field_type)
+            field_data = np.random.randint(
+                iinfo.min, iinfo.max, size=(nelts,), dtype=field_type
+            )
             setattr(data, field, field_data)
         for field in ("float0", "double0"):
             field_type = self.field_type[field]
             nelts = len(getattr(data, field))
-            field_data = np.array(np.random.uniform(-1e5, 1e5, size=(nelts,)), dtype=field_type)
+            field_data = np.array(
+                np.random.uniform(-1e5, 1e5, size=(nelts,)), dtype=field_type
+            )
             setattr(data, field, field_data)
         return data
 

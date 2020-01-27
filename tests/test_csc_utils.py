@@ -36,10 +36,12 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent.joinpath("data", "conf
 
 class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode):
-        return salobj.TestCsc(self.next_index(),
-                              initial_state=initial_state,
-                              config_dir=config_dir,
-                              simulation_mode=simulation_mode)
+        return salobj.TestCsc(
+            self.next_index(),
+            initial_state=initial_state,
+            config_dir=config_dir,
+            simulation_mode=simulation_mode,
+        )
 
     async def test_set_summary_state_valid(self):
         """Test set_summary_state with valid states."""
@@ -51,8 +53,9 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
                 # set_summary_state cannot transition to FAULT state.
                 continue
             with self.subTest(initial_state=initial_state, final_state=final_state):
-                await self.check_set_summary_state(initial_state=initial_state,
-                                                   final_state=final_state)
+                await self.check_set_summary_state(
+                    initial_state=initial_state, final_state=final_state
+                )
 
     async def test_set_summary_state_invalid_state(self):
         """Test set_summary_state with invalid states."""
@@ -60,13 +63,23 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
             if initial_state == salobj.State.OFFLINE:
                 # TestCsc cannot start in OFFLINE state.
                 continue
-            async with self.make_csc(initial_state=initial_state,
-                                     config_dir=TEST_CONFIG_DIR):
-                for bad_final_state in (min(salobj.State) - 1, salobj.State.FAULT, max(salobj.State) + 1):
-                    with self.subTest(initial_state=initial_state, bad_final_state=bad_final_state):
+            async with self.make_csc(
+                initial_state=initial_state, config_dir=TEST_CONFIG_DIR
+            ):
+                for bad_final_state in (
+                    min(salobj.State) - 1,
+                    salobj.State.FAULT,
+                    max(salobj.State) + 1,
+                ):
+                    with self.subTest(
+                        initial_state=initial_state, bad_final_state=bad_final_state
+                    ):
                         with self.assertRaises(ValueError):
-                            await salobj.set_summary_state(remote=self.remote, state=bad_final_state,
-                                                           timeout=STD_TIMEOUT)
+                            await salobj.set_summary_state(
+                                remote=self.remote,
+                                state=bad_final_state,
+                                timeout=STD_TIMEOUT,
+                            )
 
     async def check_set_summary_state(self, initial_state, final_state):
         """Check set_summary_state for valid state transitions.
@@ -78,19 +91,22 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
         final_state : `State`
             Final summary state.
         """
-        async with self.make_csc(initial_state=initial_state,
-                                 config_dir=TEST_CONFIG_DIR):
+        async with self.make_csc(
+            initial_state=initial_state, config_dir=TEST_CONFIG_DIR
+        ):
             self.assertEqual(self.csc.summary_state, initial_state)
             await self.assert_next_summary_state(initial_state)
 
-            states = await salobj.set_summary_state(remote=self.remote,
-                                                    state=final_state,
-                                                    settingsToApply="all_fields")
+            states = await salobj.set_summary_state(
+                remote=self.remote, state=final_state, settingsToApply="all_fields"
+            )
             self.assertEqual(states[0], initial_state)
             self.assertEqual(states[-1], final_state)
             self.assertEqual(self.csc.summary_state, final_state)
-            if initial_state in (salobj.State.FAULT, salobj.State.STANDBY) \
-                    and final_state in (salobj.State.DISABLED, salobj.State.ENABLED):
+            if initial_state in (
+                salobj.State.FAULT,
+                salobj.State.STANDBY,
+            ) and final_state in (salobj.State.DISABLED, salobj.State.ENABLED):
                 # The start command was sent, so check that the configuration
                 # is as specified to the set_summary_state function.
                 self.assertIsNotNone(self.csc.config)

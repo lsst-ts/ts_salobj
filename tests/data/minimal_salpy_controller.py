@@ -30,8 +30,10 @@ SAL__CMD_COMPLETE = 303
 
 class MinimalSALPYController:
     def __init__(self, index, initial_log_level):
-        print(f"SALPYController: starting with index={index}, "
-              f"initial_log_level={initial_log_level}")
+        print(
+            f"SALPYController: starting with index={index}, "
+            f"initial_log_level={initial_log_level}"
+        )
         self.manager = SALPY_Test.SAL_Test(index)
         self.manager.setDebugLevel(0)
         self.manager.salEventPub("Test_logevent_logLevel")
@@ -47,7 +49,9 @@ class MinimalSALPYController:
         parser.add_argument("index", type=int, help="Script SAL Component index")
         parser.add_argument("initial_log_level", type=int, help="Initial log level")
         args = parser.parse_args()
-        return MinimalSALPYController(index=args.index, initial_log_level=args.initial_log_level)
+        return MinimalSALPYController(
+            index=args.index, initial_log_level=args.initial_log_level
+        )
 
     @classmethod
     async def amain(cls):
@@ -60,8 +64,10 @@ class MinimalSALPYController:
         setLogLevel_data = SALPY_Test.Test_command_setLogLevelC()
         logLevel_data = SALPY_Test.Test_logevent_logLevelC()
         scalars_data = SALPY_Test.Test_scalarsC()
-        print(f"SALPYController: outputting initial logLevel {self.initial_log_level} "
-              "and the same value in telemetry scalars.int0")
+        print(
+            f"SALPYController: outputting initial logLevel {self.initial_log_level} "
+            "and the same value in telemetry scalars.int0"
+        )
         logLevel_data.level = self.initial_log_level
         self.manager.logEvent_logLevel(logLevel_data, 1)
         scalars_data.int0 = self.initial_log_level
@@ -73,16 +79,22 @@ class MinimalSALPYController:
                 if cmdid > 0:
                     break
                 elif cmdid < 0:
-                    raise RuntimeError(f"SALPYController: error reading setLogLevel command; "
-                                       "cmdid={cmdid}")
+                    raise RuntimeError(
+                        f"SALPYController: error reading setLogLevel command; "
+                        "cmdid={cmdid}"
+                    )
                 await asyncio.sleep(0.1)
-            print(f"SALPYController: read setLogLevel(cmdid={cmdid}; "
-                  f"level={setLogLevel_data.level})")
+            print(
+                f"SALPYController: read setLogLevel(cmdid={cmdid}; "
+                f"level={setLogLevel_data.level})"
+            )
             self.manager.ackCommand_setLogLevel(cmdid, SAL__CMD_COMPLETE, 0, "")
             await asyncio.sleep(0.001)
 
-            print(f"SALPYController: writing logLevel={logLevel_data.level}"
-                  "and the same value in telemetry scalars.int0")
+            print(
+                f"SALPYController: writing logLevel={logLevel_data.level}"
+                "and the same value in telemetry scalars.int0"
+            )
             logLevel_data.level = setLogLevel_data.level
             scalars_data.int0 = setLogLevel_data.level
             self.manager.logEvent_logLevel(logLevel_data, 1)

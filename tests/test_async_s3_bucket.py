@@ -40,15 +40,17 @@ class AsyncS3BucketTest(asynctest.TestCase):
 
         # Set s3 authentication environment variables to bogus values
         # to avoid any danger of writing to a real s3 server.
-        for env_var_name in ("AWS_ACCESS_KEY_ID",
-                             "AWS_SECRET_ACCESS_KEY",
-                             "AWS_SECURITY_TOKEN",
-                             "AWS_SESSION_TOKEN"):
+        for env_var_name in (
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SECURITY_TOKEN",
+            "AWS_SESSION_TOKEN",
+        ):
             os.environ[env_var_name] = "testing"
 
         # Make a bucket in mock s3 server so tests can upload to it.
         self.bucket_name = "async_bucket_test"
-        conn = boto3.resource('s3')
+        conn = boto3.resource("s3")
         conn.create_bucket(Bucket=self.bucket_name)
 
         self.file_data = b"Data for the test case"
@@ -95,8 +97,12 @@ class AsyncS3BucketTest(asynctest.TestCase):
             nonlocal downloaded_nbytes
             downloaded_nbytes.append(nbytes)
 
-        await self.bucket.upload(fileobj=self.fileobj, key=self.key, callback=upload_callback)
-        roundtrip_fileobj = await self.bucket.download(key=self.key, callback=download_callback)
+        await self.bucket.upload(
+            fileobj=self.fileobj, key=self.key, callback=upload_callback
+        )
+        roundtrip_fileobj = await self.bucket.download(
+            key=self.key, callback=download_callback
+        )
         roundtrip_data = roundtrip_fileobj.getbuffer()
         self.assertEqual(self.file_data, roundtrip_data)
         self.assertGreaterEqual(len(uploaded_nbytes), 1)

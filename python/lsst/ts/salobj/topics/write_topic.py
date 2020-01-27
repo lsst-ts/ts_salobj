@@ -69,8 +69,17 @@ class WriteTopic(BaseTopic):
     * isopen: is this read topic open?  A `bool`. `True` until `close`
       is called.
     """
-    def __init__(self, *, salinfo, name, sal_prefix, min_seq_num=1, max_seq_num=MAX_SEQ_NUM,
-                 initial_seq_num=None):
+
+    def __init__(
+        self,
+        *,
+        salinfo,
+        name,
+        sal_prefix,
+        min_seq_num=1,
+        max_seq_num=MAX_SEQ_NUM,
+        initial_seq_num=None,
+    ):
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
@@ -78,9 +87,14 @@ class WriteTopic(BaseTopic):
         if min_seq_num is None:
             self._seq_num_generator = None
         else:
-            self._seq_num_generator = base.index_generator(imin=min_seq_num, imax=max_seq_num,
-                                                           i0=initial_seq_num)
-        qos = salinfo.domain.volatile_writer_qos if self.volatile else salinfo.domain.writer_qos
+            self._seq_num_generator = base.index_generator(
+                imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num
+            )
+        qos = (
+            salinfo.domain.volatile_writer_qos
+            if self.volatile
+            else salinfo.domain.writer_qos
+        )
         self._writer = salinfo.publisher.create_datawriter(self._topic, qos)
         self._has_data = False
         self._data = self.DataType()
@@ -166,13 +180,19 @@ class WriteTopic(BaseTopic):
         try:
             self._writer.write(self.data)
         except struct.error as e:
-            raise ValueError(f"{self.name} write({self.data}) failed: one or more fields invalid") from e
+            raise ValueError(
+                f"{self.name} write({self.data}) failed: one or more fields invalid"
+            ) from e
         except TypeError as e:
-            raise ValueError(f"{self.name} write({self.data}) failed: "
-                             f"perhaps one or more array fields has been set to a scalar") from e
+            raise ValueError(
+                f"{self.name} write({self.data}) failed: "
+                f"perhaps one or more array fields has been set to a scalar"
+            ) from e
         except IndexError as e:
-            raise ValueError(f"{self.name} write({self.data}) failed: "
-                             f"probably one or more array fields is too short") from e
+            raise ValueError(
+                f"{self.name} write({self.data}) failed: "
+                f"probably one or more array fields is too short"
+            ) from e
 
     def set(self, **kwargs):
         """Set one or more fields of ``self.data``.
@@ -220,6 +240,8 @@ class WriteTopic(BaseTopic):
                     did_change |= not np.array_equal(old_value, value)
                 setattr(self.data, field_name, value)
             except Exception as e:
-                raise ValueError(f"Could not set {self.data}.{field_name} to {value!r}") from e
+                raise ValueError(
+                    f"Could not set {self.data}.{field_name} to {value!r}"
+                ) from e
         self._has_data = True
         return did_change

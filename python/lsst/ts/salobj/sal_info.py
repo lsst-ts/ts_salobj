@@ -29,6 +29,7 @@ import time
 import warnings
 
 import dds
+
 # TODO when we upgrade to OpenSplice 6.10, use its ddsutil:
 # import ddsutil
 from . import ddsutil
@@ -71,6 +72,7 @@ class FieldMetadata:
         Maximum allowed string length; None if unspecified (no limit)
         or not a string.
     """
+
     def __init__(self, name, description, units, type_name, array_length, str_length):
         self.name = name
         self.description = description
@@ -80,12 +82,14 @@ class FieldMetadata:
         self.str_length = str_length
 
     def __repr__(self):
-        return f"FieldMetadata(name={repr(self.name)}, " \
-            f"description={repr(self.description)}, " \
-            f"units={repr(self.units)}, " \
-            f"type_name={repr(self.type_name)}," \
-            f"array_length={self.array_length}" \
+        return (
+            f"FieldMetadata(name={repr(self.name)}, "
+            f"description={repr(self.description)}, "
+            f"units={repr(self.units)}, "
+            f"type_name={repr(self.type_name)},"
+            f"array_length={self.array_length}"
             f"str_length={self.str_length})"
+        )
 
     def __str__(self):
         return f"description={repr(self.description)}, units={repr(self.units)}"
@@ -108,6 +112,7 @@ class TopicMetadata:
     field_info : `dict` [`str`, `FieldMetadata`]
         Dict of field name: field metadata.
     """
+
     def __init__(self, sal_name, description):
         self.sal_name = sal_name
         self.description = description
@@ -189,6 +194,7 @@ class SalInfo:
     You may safely close a `SalInfo` before closing its domain,
     and this is recommended if you create and destroy many remotes.
     """
+
     def __init__(self, domain, name, index=0):
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
@@ -250,17 +256,23 @@ class SalInfo:
 
         idl_path = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
         if not idl_path.is_file():
-            raise RuntimeError(f"Cannot find IDL file {idl_path} for name={self.name!r}")
+            raise RuntimeError(
+                f"Cannot find IDL file {idl_path} for name={self.name!r}"
+            )
         self.metadata = idl_metadata.parse_idl(name=self.name, idl_path=idl_path)
         self.parse_metadata()  # Adds self.indexed, self.revnames, etc.
         if self.index != 0 and not self.indexed:
-            raise ValueError(f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component")
+            raise ValueError(
+                f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component"
+            )
 
         if len(self.command_names) > 0:
             ackcmd_revname = self.revnames.get("ackcmd")
             if ackcmd_revname is None:
                 raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
-            self._ackcmd_type = ddsutil.get_dds_classes_from_idl(idl_path, ackcmd_revname)
+            self._ackcmd_type = ddsutil.get_dds_classes_from_idl(
+                idl_path, ackcmd_revname
+            )
         domain.add_salinfo(self)
 
     def _ackcmd_callback(self, data):
@@ -309,7 +321,9 @@ class SalInfo:
         warnings.warn("Use salinfo.metadata.idl_path instead", DeprecationWarning)
         return self.metadata.idl_path
 
-    def makeAckCmd(self, private_seqNum, ack, error=0, result="", truncate_result=False):
+    def makeAckCmd(
+        self, private_seqNum, ack, error=0, result="", truncate_result=False
+    ):
         """Make an AckCmdType object from keyword arguments.
 
         Parameters
@@ -346,8 +360,12 @@ class SalInfo:
             if truncate_result:
                 result = result[0:MAX_RESULT_LEN]
             else:
-                raise ValueError(f"len(result) > MAX_RESULT_LEN={MAX_RESULT_LEN}; result={result}")
-        return self.AckCmdType(private_seqNum=private_seqNum, ack=ack, error=error, result=result)
+                raise ValueError(
+                    f"len(result) > MAX_RESULT_LEN={MAX_RESULT_LEN}; result={result}"
+                )
+        return self.AckCmdType(
+            private_seqNum=private_seqNum, ack=ack, error=error, result=result
+        )
 
     def __repr__(self):
         return f"SalBase({self.name}, {self.index})"
@@ -376,7 +394,9 @@ class SalInfo:
                 event_names.append(sal_topic_name[9:])
             elif sal_topic_name != "ackcmd":
                 telemetry_names.append(sal_topic_name)
-            revnames[sal_topic_name] = f"{self.name}::{sal_topic_name}_{topic_metadata.version_hash}"
+            revnames[
+                sal_topic_name
+            ] = f"{self.name}::{sal_topic_name}_{topic_metadata.version_hash}"
 
         # Examine last topic (or any topic) to see if component is indexed.
         indexed_field_name = f"{self.name}ID"
@@ -481,31 +501,49 @@ class SalInfo:
                 for read_cond, reader in list(self._readers.items()):
                     if not self.isopen:  # shutting down
                         return
-                    if reader.volatile or not reader.isopen or not read_cond.triggered():
+                    if (
+                        reader.volatile
+                        or not reader.isopen
+                        or not read_cond.triggered()
+                    ):
                         # reader gets no historical data, is closed,
                         # or has no data to be read
                         continue
                     try:
-                        data_list = reader._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
+                        data_list = reader._reader.take_cond(
+                            read_cond, DDS_READ_QUEUE_LEN
+                        )
                     except dds.DDSException as e:
-                        self.log.warning(f"dds error while reading late joiner data for {reader}; "
-                                         f"trying again: {e}")
+                        self.log.warning(
+                            f"dds error while reading late joiner data for {reader}; "
+                            f"trying again: {e}"
+                        )
                         time.sleep(0.001)
                         try:
-                            data_list = reader._reader.take_cond(read_cond, DDS_READ_QUEUE_LEN)
+                            data_list = reader._reader.take_cond(
+                                read_cond, DDS_READ_QUEUE_LEN
+                            )
                         except dds.DDSException as e:
-                            raise RuntimeError(f"dds error while reading late joiner data for {reader}; "
-                                               "giving up") from e
+                            raise RuntimeError(
+                                f"dds error while reading late joiner data for {reader}; "
+                                "giving up"
+                            ) from e
                     self.log.debug(f"Read {len(data_list)} history items for {reader}")
-                    sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
+                    sd_list = [
+                        self._sample_to_data(sd, si)
+                        for sd, si in data_list
+                        if si.valid_data
+                    ]
                     if len(sd_list) < len(data_list):
                         ninvalid = len(data_list) - len(sd_list)
-                        self.log.warning(f"Read {ninvalid} invalid late-joiner items from {reader}. "
-                                         "The invalid items were safely skipped, but please examine "
-                                         "the code in SalInfo.start to see if it needs an update "
-                                         "for changes to OpenSplice dds.")
+                        self.log.warning(
+                            f"Read {ninvalid} invalid late-joiner items from {reader}. "
+                            "The invalid items were safely skipped, but please examine "
+                            "the code in SalInfo.start to see if it needs an update "
+                            "for changes to OpenSplice dds."
+                        )
                     if reader.max_history > 0:
-                        sd_list = sd_list[-reader.max_history:]
+                        sd_list = sd_list[-reader.max_history :]
                         if sd_list:
                             reader._queue_data(sd_list)
             self._read_loop_task = asyncio.ensure_future(self._read_loop())
@@ -531,19 +569,29 @@ class SalInfo:
                             continue
                         # odds are we will only get one value per read,
                         # but read more so we can tell if we are falling behind
-                        data_list = reader._reader.take_cond(condition, reader._data_queue.maxlen)
+                        data_list = reader._reader.take_cond(
+                            condition, reader._data_queue.maxlen
+                        )
                         if len(data_list) == 1:
                             reader._warned_readloop = False
                         if len(data_list) >= 10 and not reader._warned_readloop:
                             reader._warned_readloop = True
-                            self.log.warning(f"{reader!r} falling behind; read {len(data_list)} messages")
-                        sd_list = [self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data]
+                            self.log.warning(
+                                f"{reader!r} falling behind; read {len(data_list)} messages"
+                            )
+                        sd_list = [
+                            self._sample_to_data(sd, si)
+                            for sd, si in data_list
+                            if si.valid_data
+                        ]
                         if len(sd_list) < len(data_list):
                             ninvalid = len(data_list) - len(sd_list)
-                            self.log.warning(f"Read {ninvalid} invalid items from {reader}. "
-                                             "The invalid items were safely skipped, but please examine "
-                                             "the code in SalInfo._read_loop to see if it needs an update "
-                                             "for changes to OpenSplice dds.")
+                            self.log.warning(
+                                f"Read {ninvalid} invalid items from {reader}. "
+                                "The invalid items were safely skipped, but please examine "
+                                "the code in SalInfo._read_loop to see if it needs an update "
+                                "for changes to OpenSplice dds."
+                            )
                         if sd_list:
                             reader._queue_data(sd_list)
                         await asyncio.sleep(0)  # free the event loop
@@ -560,7 +608,7 @@ class SalInfo:
         Set sd.private_rcvStamp based on si.reception_timestamp
         and return the updated sd.
         """
-        rcv_utc = si.reception_timestamp*1e-9
+        rcv_utc = si.reception_timestamp * 1e-9
         rcv_tai = base.tai_from_utc(rcv_utc)
         sd.private_rcvStamp = rcv_tai
         return sd

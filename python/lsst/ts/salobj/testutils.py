@@ -19,9 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["angle_diff", "assertAnglesAlmostEqual",
-           "assertRaisesAckError", "assertRaisesAckTimeoutError",
-           "set_random_lsst_dds_domain"]
+__all__ = [
+    "angle_diff",
+    "assertAnglesAlmostEqual",
+    "assertRaisesAckError",
+    "assertRaisesAckTimeoutError",
+    "set_random_lsst_dds_domain",
+]
 
 import contextlib
 import os
@@ -101,7 +105,9 @@ def assertRaisesAckError(ack=None, error=None, result_contains=None):
         if error is not None and e.ackcmd.error != error:
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
         if result_contains is not None and result_contains not in e.ackcmd.result:
-            raise AssertionError(f"ackcmd.result={e.ackcmd.result} does not contain {result_contains}")
+            raise AssertionError(
+                f"ackcmd.result={e.ackcmd.result} does not contain {result_contains}"
+            )
 
 
 @contextlib.contextmanager

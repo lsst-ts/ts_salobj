@@ -32,8 +32,11 @@ from . import write_topic
 
 class AckCmdWriter(write_topic.WriteTopic):
     """Command Acknowledgement writer."""
+
     def __init__(self, salinfo):
-        super().__init__(salinfo=salinfo, name="ackcmd", sal_prefix="", min_seq_num=None)
+        super().__init__(
+            salinfo=salinfo, name="ackcmd", sal_prefix="", min_seq_num=None
+        )
 
 
 class ControllerCommand(read_topic.ReadTopic):
@@ -76,9 +79,15 @@ class ControllerCommand(read_topic.ReadTopic):
     * If the callback function raises any other `Exception`
       then do the same as `ExpectedError` and also log a traceback.
     """
+
     def __init__(self, salinfo, name, max_history=0, queue_len=100):
-        super().__init__(salinfo=salinfo, name=name, sal_prefix="command_",
-                         max_history=max_history, queue_len=queue_len)
+        super().__init__(
+            salinfo=salinfo,
+            name=name,
+            sal_prefix="command_",
+            max_history=max_history,
+            queue_len=queue_len,
+        )
         self.cmdtype = salinfo.sal_topic_names.index(self.sal_name)
         if salinfo._ackcmd_writer is None:
             self.salinfo._ackcmd_writer = AckCmdWriter(salinfo=salinfo)
@@ -93,20 +102,25 @@ class ControllerCommand(read_topic.ReadTopic):
         ackcmd : `salobj.AckCmdType`
             Command acknowledgement.
         """
-        self.salinfo._ackcmd_writer.set(private_seqNum=data.private_seqNum,
-                                        host=data.private_host,
-                                        origin=data.private_origin,
-                                        cmdtype=self.cmdtype,
-                                        ack=ackcmd.ack,
-                                        error=ackcmd.error,
-                                        result=ackcmd.result)
+        self.salinfo._ackcmd_writer.set(
+            private_seqNum=data.private_seqNum,
+            host=data.private_host,
+            origin=data.private_origin,
+            cmdtype=self.cmdtype,
+            ack=ackcmd.ack,
+            error=ackcmd.error,
+            result=ackcmd.result,
+        )
         self.salinfo._ackcmd_writer.put()
 
     def ackInProgress(self, data, result=""):
         """Ackowledge this command as "in progress".
         """
-        ackcmd = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
-                                         ack=sal_enums.SalRetCode.CMD_INPROGRESS, result=result)
+        ackcmd = self.salinfo.makeAckCmd(
+            private_seqNum=data.private_seqNum,
+            ack=sal_enums.SalRetCode.CMD_INPROGRESS,
+            result=result,
+        )
         self.ack(data, ackcmd)
 
     async def next(self, *, timeout=None):
@@ -143,7 +157,9 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         if data.private_seqNum <= 0:
             raise ValueError(f"private_seqNum={data.private_seqNum} must be positive")
-        ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum, ack=sal_enums.SalRetCode.CMD_ACK)
+        ack = self.salinfo.makeAckCmd(
+            private_seqNum=data.private_seqNum, ack=sal_enums.SalRetCode.CMD_ACK
+        )
         self.ack(data, ack)
         super()._queue_one_item(data)
 
@@ -164,23 +180,38 @@ class ControllerCommand(read_topic.ReadTopic):
             else:
                 ack = result
             if ack is None:
-                ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
-                                              ack=sal_enums.SalRetCode.CMD_COMPLETE, result="Done")
+                ack = self.salinfo.makeAckCmd(
+                    private_seqNum=data.private_seqNum,
+                    ack=sal_enums.SalRetCode.CMD_COMPLETE,
+                    result="Done",
+                )
             self.ack(data, ack)
         except asyncio.CancelledError:
-            ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
-                                          ack=sal_enums.SalRetCode.CMD_ABORTED, error=1,
-                                          result=f"Aborted", truncate_result=True)
+            ack = self.salinfo.makeAckCmd(
+                private_seqNum=data.private_seqNum,
+                ack=sal_enums.SalRetCode.CMD_ABORTED,
+                error=1,
+                result=f"Aborted",
+                truncate_result=True,
+            )
             self.ack(data, ack)
         except asyncio.TimeoutError:
-            ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
-                                          ack=sal_enums.SalRetCode.CMD_TIMEOUT, error=1,
-                                          result=f"Timeout", truncate_result=True)
+            ack = self.salinfo.makeAckCmd(
+                private_seqNum=data.private_seqNum,
+                ack=sal_enums.SalRetCode.CMD_TIMEOUT,
+                error=1,
+                result=f"Timeout",
+                truncate_result=True,
+            )
             self.ack(data, ack)
         except Exception as e:
-            ack = self.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
-                                          ack=sal_enums.SalRetCode.CMD_FAILED, error=1,
-                                          result=f"Failed: {e}", truncate_result=True)
+            ack = self.salinfo.makeAckCmd(
+                private_seqNum=data.private_seqNum,
+                ack=sal_enums.SalRetCode.CMD_FAILED,
+                error=1,
+                result=f"Failed: {e}",
+                truncate_result=True,
+            )
             self.ack(data, ack)
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
