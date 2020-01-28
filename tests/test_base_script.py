@@ -258,7 +258,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             for i in range(5):
                 # Format some other way than an f-string,
                 # in order to have a different implementation than Script
-                desired_supplemented_id = "%s+%s" % (group_id, i + 1)
+                desired_supplemented_id = "%s#%s" % (group_id, i + 1)
                 supplemented_id = script.next_supplemented_group_id()
                 self.assertEqual(supplemented_id, desired_supplemented_id)
 
@@ -269,7 +269,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             await script.do_setGroupId(group_id_data)
 
             for i in range(5):
-                desired_supplemented_id = "%s+%s" % (new_group_id, i + 1)
+                desired_supplemented_id = "%s#%s" % (new_group_id, i + 1)
                 supplemented_id = script.next_supplemented_group_id()
                 self.assertEqual(supplemented_id, desired_supplemented_id)
 
