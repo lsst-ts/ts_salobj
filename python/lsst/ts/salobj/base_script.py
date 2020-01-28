@@ -655,7 +655,7 @@ class BaseScript(salobj.Controller, abc.ABC):
     def next_supplemented_group_id(self):
         """Return the group ID supplemented with a new subgroup.
 
-        The returned string has this format: f"{self.group_id}+{subgroup_id}",
+        The returned string has this format: f"{self.group_id}#{subgroup_id}",
         where ``subgroup_id`` is an integer that starts at 1
         and is incremented for every call to this method.
 
@@ -667,7 +667,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         if not self.group_id:
             raise RuntimeError("No group ID")
         self._sub_group_id += 1
-        return f"{self.group_id}+{self._sub_group_id}"
+        return f"{self.group_id}#{self._sub_group_id}"
 
     def _set_checkpoints(self, *, pause, stop):
         """Set the pause and stop checkpoint fields and output the event.
