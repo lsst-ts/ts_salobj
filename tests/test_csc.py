@@ -24,7 +24,6 @@ import itertools
 import logging
 import os
 import pathlib
-import shutil
 import sys
 import unittest
 
@@ -107,36 +106,15 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
             await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
 
-    async def test_amain(self):
-        """Test running from the command line using class method ``amain``.
+    async def test_bin_script(self):
+        """Test running the Test CSC from the bin script.
+
+        Note that the bin script calls class method ``amain``.
         """
-        exe_name = "run_test_csc.py"
-        exe_path = shutil.which(exe_name)
-        if exe_path is None:
-            self.fail(
-                f"Could not find bin script {exe_name}; did you setup or install this package?"
-            )
-
         index = self.next_index()
-        process = await asyncio.create_subprocess_exec(exe_name, str(index))
-        try:
-            async with salobj.Domain() as domain, salobj.Remote(
-                domain=domain, name="Test", index=index
-            ) as remote:
-                await self.assert_next_summary_state(
-                    salobj.State.STANDBY, remote=remote
-                )
-                ackcmd = await remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
-                self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
-                await self.assert_next_summary_state(
-                    salobj.State.OFFLINE, remote=remote
-                )
-
-                await asyncio.wait_for(process.wait(), 5)
-        except Exception:
-            if process.returncode is None:
-                process.terminate()
-            raise
+        await self.check_bin_script(
+            name="Test", index=index, exe_name="run_test_csc.py"
+        )
 
     async def test_deprecated_main(self):
         """Test running from cmd line using deprecated class method ``main``.
