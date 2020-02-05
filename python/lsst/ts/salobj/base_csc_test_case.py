@@ -184,7 +184,14 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             self.assertEqual(read_value, expected_value)
         return data
 
-    async def check_bin_script(self, name, index, exe_name, *cmdline_args):
+    async def check_bin_script(
+        self,
+        name,
+        index,
+        exe_name,
+        initial_state=sal_enums.State.STANDBY,
+        *cmdline_args,
+    ):
         """Test running the CSC command line script.
 
         Parameters
@@ -195,6 +202,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             SAL index of component.
         exe_name : `str`
             Name of executable, e.g. "run_rotator.py"
+        initial_state : `lsst.ts.salobj.State` or `int` (optional)
+            The expected initial state of the CSC.
         *cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
         """
@@ -204,19 +213,19 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 f"Could not find bin script {exe_name}; did you setup or install this package?"
             )
 
-        if index is None:
+        if index in (None, 0):
             process = await asyncio.create_subprocess_exec(exe_name, *cmdline_args)
         else:
-            process = await asyncio.create_subprocess_exec(exe_name, *cmdline_args)
+            process = await asyncio.create_subprocess_exec(
+                exe_name, str(index), *cmdline_args
+            )
         try:
             async with Domain() as domain:
                 remote = Remote(domain=domain, name=name, index=index)
                 summaryState_data = await remote.evt_summaryState.next(
                     flush=False, timeout=60
                 )
-                self.assertEqual(
-                    summaryState_data.summaryState, sal_enums.State.OFFLINE
-                )
+                self.assertEqual(summaryState_data.summaryState, initial_state)
 
         finally:
             process.terminate()
