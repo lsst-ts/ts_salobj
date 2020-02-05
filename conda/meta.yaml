@@ -1,0 +1,38 @@
+{% set data= load_setup_py_data() %}
+package:
+  name: ts-salobj
+  version: {{ GIT_DESCRIBE_TAG }}
+
+source:
+  git_url: https://github.com/lsst-ts/ts_salobj
+  git_rev: {{ TS_SALOBJ_VERSION }}
+
+build:
+  script: python -m pip install --ignore-installed .
+  skip: True #[win]
+
+test:
+  requires:
+    - pytest
+    - pytest-flake8
+    - pytest-cov
+    - asynctest
+#  commands:
+#    - py.test
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools_scm
+    - setuptools
+    - pytest-runner
+  run:
+    - python
+    - setuptools
+    - setuptools_scm
+    - numpy
+    - astropy
+    - jsonschema
+    - pyyaml
+    - boto3
