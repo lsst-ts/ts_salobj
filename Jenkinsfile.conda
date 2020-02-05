@@ -1,0 +1,51 @@
+pipeline {
+    agent any
+    environment {
+        salobj_version = "${GIT_TAG_NAME}"
+        dockerImageName = "lsstts/conda_package_builder:latest"
+        container_name = "c_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
+    }
+
+    stages {
+        stage("Pull Docker Image") {
+            steps {
+                script {
+                sh """
+                docker pull ${dockerImageName}
+                """
+                }
+            }
+        }
+        stage("Create SALObj Conda package") {
+            steps {
+                script {
+                    sh """
+                    docker run --name ${container_name} -di --rm -v ${WORKSPACE}/conda:/home/saluser/conda ${dockerImageName}
+                    docker exec --env TS_SALOBJ_VERSION=v${salobj_version} ${container_name} sh -c "cd ~/conda && source ~/miniconda3/bin/activate && conda build ."
+                    """
+                }
+            }
+        }
+        stage("Push SALObj Conda package") {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'CondaForge', passwordVariable: 'anaconda_pass', usernameVariable: 'anaconda_user')]) {
+                    script {
+                        sh """
+                        docker exec ${container_name} sh -c "source ~/miniconda3/bin/activate && \
+                            anaconda login --user ${anaconda_user} --password ${anaconda_pass} && \
+                            anaconda upload -u lsstts --force \
+                            ~/miniconda3/conda-bld/linux-64/ts-salobj-v${salobj_version}-py37_0.tar.bz2"
+                        """
+                    }
+                }
+            }
+        }
+    }
+    post {
+        cleanup {
+            sh """
+            docker stop ${container_name}
+            """
+        }
+    }
+}
