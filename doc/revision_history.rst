@@ -14,9 +14,9 @@ Major changes:
 * Add support for the new ``setGroupId`` ``Script``  command to `BaseScript`:
 
     * Scripts must now have a non-blank group ID before they are run.
-    * Add `BaseCsc.group_id` property.
-    * Add `BaseCsc.next_supplemented_group_id` method.
-* Changed `BaseCsc.do_resume` and `BaseCsc.do_setCheckpoints` to asynchronous, so all ``do_...`` methods are asynchronous, for consistency. I did not find any code outside of ts_salobj that was affected, but it is a potentially breaking change.
+    * Add `BaseScript.group_id` property.
+    * Add `BaseScript.next_supplemented_group_id` method.
+* Changed `BaseScript.do_resume` and `BaseScript.do_setCheckpoints` to asynchronous, so all ``do_...`` methods are asynchronous, for consistency. I did not find any code outside of ts_salobj that was affected, but it is a potentially breaking change.
 * Output fields added to the ``logMessage`` event in ts_xml 4.7.
 * Code formatted by ``black``, with a pre-commit hook to enforce this. See the README file for configuration instructions.
 
