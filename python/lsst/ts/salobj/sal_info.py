@@ -29,10 +29,7 @@ import time
 import warnings
 
 import dds
-
-# TODO when we upgrade to OpenSplice 6.10, use its ddsutil:
-# import ddsutil
-from . import ddsutil
+import ddsutil
 
 from . import base
 from . import idl_metadata

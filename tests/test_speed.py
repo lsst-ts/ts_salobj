@@ -24,10 +24,7 @@ import time
 import unittest
 
 import asynctest
-
-# TODO when we upgrade to OpenSplice 6.10, use its ddsutil:
-# import ddsutil
-from lsst.ts.salobj import ddsutil
+import ddsutil
 
 from lsst.ts import salobj
 
