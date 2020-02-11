@@ -813,6 +813,10 @@ class ControllerCommandLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCas
             self.assertEqual(msg.message, info_message)
             self.assertEqual(msg.level, logging.INFO)
             self.assertEqual(msg.traceback, "")
+            self.assertTrue(msg.filePath.endswith("ts_salobj/tests/test_csc.py"))
+            self.assertEqual(msg.functionName, "test_logging")
+            self.assertGreater(msg.lineNumber, 0)
+            self.assertEqual(msg.process, os.getpid())
 
             warn_message = "test warn message"
             self.csc.log.warning(warn_message)
@@ -861,6 +865,10 @@ class ControllerCommandLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCas
             self.assertIn("Traceback", msg.traceback)
             self.assertIn("RuntimeError", msg.traceback)
             self.assertEqual(msg.level, logging.ERROR)
+            self.assertTrue(msg.filePath.endswith("topics/controller_command.py"))
+            self.assertNotEqual(msg.functionName, "")
+            self.assertGreater(msg.lineNumber, 0)
+            self.assertEqual(msg.process, os.getpid())
 
 
 class BaseCscMakeFromCmdLineTestCase(asynctest.TestCase):

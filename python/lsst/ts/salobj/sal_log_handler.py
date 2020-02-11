@@ -46,6 +46,10 @@ class SalLogHandler(logging.Handler):
                 level=record.levelno,
                 message=record.message,
                 traceback=record.exc_text or "",
+                filePath=record.pathname,
+                functionName=record.funcName,
+                lineNumber=record.lineno,
+                process=record.process,
                 force_output=True,
             )
         finally:
