@@ -23,6 +23,7 @@ Major changes:
 Minor changes:
 
 * Fix bugs in `BaseCscTestCase.check_bin_script` and update ``test_csc.py`` to call it.
+* Removed our local copy of ``ddsutil.py``.
 
 Requirements:
 
