@@ -23,9 +23,7 @@ __all__ = ["BaseTopic"]
 
 import abc
 
-# TODO when we upgrade to OpenSplice 6.10, use its ddsutil:
-# import ddsutil
-from .. import ddsutil
+import ddsutil
 
 # dict of sal_prefix: attr_prefix: the prefix used for
 # Controller and Remote topic attributes.
