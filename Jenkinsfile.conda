@@ -1,9 +1,9 @@
 pipeline {
     agent any
     environment {
-        salobj_version = "${GIT_TAG_NAME}"
+        salobj_version = sh(returnStdout: true, script: "git tag --sort version:refname | tail -1").trim()
         dockerImageName = "lsstts/conda_package_builder:latest"
-        container_name = "c_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
+        container_name = "salobj_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
     }
 
     stages {
@@ -20,8 +20,9 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker run --name ${container_name} -di --rm -v ${WORKSPACE}/conda:/home/saluser/conda ${dockerImageName}
-                    docker exec --env TS_SALOBJ_VERSION=v${salobj_version} ${container_name} sh -c "cd ~/conda && source ~/miniconda3/bin/activate && conda build ."
+                    docker run --name ${container_name} -di --rm --env TS_SALOBJ_VERSION=${salobj_version} \
+                        -v ${WORKSPACE}/conda:/home/saluser/conda ${dockerImageName}
+                    docker exec ${container_name} sh -c "cd ~/conda && source ~/miniconda3/bin/activate && conda build ."
                     """
                 }
             }
@@ -34,7 +35,7 @@ pipeline {
                         docker exec ${container_name} sh -c "source ~/miniconda3/bin/activate && \
                             anaconda login --user ${anaconda_user} --password ${anaconda_pass} && \
                             anaconda upload -u lsstts --force \
-                            ~/miniconda3/conda-bld/linux-64/ts-salobj-v${salobj_version}-py37_0.tar.bz2"
+                            ~/miniconda3/conda-bld/linux-64/ts-salobj-${salobj_version}-py37_0.tar.bz2"
                         """
                     }
                 }
