@@ -12,8 +12,10 @@ __version__ = "{version}"
 setup(
     name="ts_salobj",
     description="Object-oriented interface to LSST SAL communications middleware.",
-    use_scm_version={"write_to": "python/lsst/ts/salobj/version.py",
-                     "write_to_template": scm_version_template},
+    use_scm_version={
+        "write_to": "python/lsst/ts/salobj/version.py",
+        "write_to_template": scm_version_template,
+    },
     setup_requires=["setuptools_scm", "pytest-runner"],
     install_requires=install_requires,
     package_dir={"": "python"},
@@ -26,5 +28,5 @@ setup(
     project_urls={
         "Bug Tracker": "https://jira.lsstcorp.org/secure/Dashboard.jspa",
         "Source Code": "https://github.com/lsst-ts/ts_salobj",
-    }
+    },
 )

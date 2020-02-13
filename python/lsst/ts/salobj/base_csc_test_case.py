@@ -74,10 +74,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         return next(self._index_iter)
 
     @contextlib.asynccontextmanager
-    async def make_csc(self, initial_state,
-                       config_dir=None,
-                       simulation_mode=0,
-                       log_level=logging.INFO):
+    async def make_csc(
+        self, initial_state, config_dir=None, simulation_mode=0, log_level=logging.INFO
+    ):
         """Create a CSC and remote and wait for them to start.
 
         The csc is accessed as ``self.csc`` and the remote as ``self.remote``.
@@ -105,25 +104,33 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Logging level, such as `logging.INFO`.
         """
         testutils.set_random_lsst_dds_domain()
-        self.csc = self.basic_make_csc(initial_state=initial_state,
-                                       config_dir=config_dir,
-                                       simulation_mode=simulation_mode)
+        self.csc = self.basic_make_csc(
+            initial_state=initial_state,
+            config_dir=config_dir,
+            simulation_mode=simulation_mode,
+        )
         if len(self.csc.log.handlers) < 2:
             self.csc.log.addHandler(logging.StreamHandler())
             self.csc.log.setLevel(log_level)
-        self.remote = Remote(domain=self.csc.domain,
-                             name=self.csc.salinfo.name,
-                             index=self.csc.salinfo.index)
+        self.remote = Remote(
+            domain=self.csc.domain,
+            name=self.csc.salinfo.name,
+            index=self.csc.salinfo.index,
+        )
 
-        await asyncio.wait_for(asyncio.gather(self.csc.start_task, self.remote.start_task),
-                               timeout=LONG_TIMEOUT)
+        await asyncio.wait_for(
+            asyncio.gather(self.csc.start_task, self.remote.start_task),
+            timeout=LONG_TIMEOUT,
+        )
         try:
             yield
         finally:
             await self.remote.close()
             await self.csc.close()
 
-    async def assert_next_summary_state(self, state, flush=False, timeout=STD_TIMEOUT, remote=None):
+    async def assert_next_summary_state(
+        self, state, flush=False, timeout=STD_TIMEOUT, remote=None
+    ):
         """Wait for and check the next ``summaryState`` event.
 
         Parameters
@@ -139,12 +146,16 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         """
         if remote is None:
             remote = self.remote
-        await self.assert_next_sample(topic=remote.evt_summaryState,
-                                      flush=flush,
-                                      timeout=timeout,
-                                      summaryState=state)
+        await self.assert_next_sample(
+            topic=remote.evt_summaryState,
+            flush=flush,
+            timeout=timeout,
+            summaryState=state,
+        )
 
-    async def assert_next_sample(self, topic, flush=False, timeout=STD_TIMEOUT, **kwargs):
+    async def assert_next_sample(
+        self, topic, flush=False, timeout=STD_TIMEOUT, **kwargs
+    ):
         """Wait for the next data sample for the specified topic,
         check specified fields for equality, and return the data.
 
@@ -173,7 +184,14 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             self.assertEqual(read_value, expected_value)
         return data
 
-    async def check_bin_script(self, name, index, exe_name, *cmdline_args):
+    async def check_bin_script(
+        self,
+        name,
+        index,
+        exe_name,
+        initial_state=sal_enums.State.STANDBY,
+        *cmdline_args,
+    ):
         """Test running the CSC command line script.
 
         Parameters
@@ -184,22 +202,30 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             SAL index of component.
         exe_name : `str`
             Name of executable, e.g. "run_rotator.py"
+        initial_state : `lsst.ts.salobj.State` or `int` (optional)
+            The expected initial state of the CSC.
         *cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
         """
         exe_path = shutil.which(exe_name)
         if exe_path is None:
-            self.fail(f"Could not find bin script {exe_name}; did you setup or install this package?")
+            self.fail(
+                f"Could not find bin script {exe_name}; did you setup or install this package?"
+            )
 
-        if index is None:
+        if index in (None, 0):
             process = await asyncio.create_subprocess_exec(exe_name, *cmdline_args)
         else:
-            process = await asyncio.create_subprocess_exec(exe_name, *cmdline_args)
+            process = await asyncio.create_subprocess_exec(
+                exe_name, str(index), *cmdline_args
+            )
         try:
             async with Domain() as domain:
                 remote = Remote(domain=domain, name=name, index=index)
-                summaryState_data = await remote.evt_summaryState.next(flush=False, timeout=60)
-                self.assertEqual(summaryState_data.summaryState, sal_enums.State.OFFLINE)
+                summaryState_data = await remote.evt_summaryState.next(
+                    flush=False, timeout=60
+                )
+                self.assertEqual(summaryState_data.summaryState, initial_state)
 
         finally:
             process.terminate()
@@ -217,19 +243,25 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         # Start in STANDBY state.
         self.assertEqual(self.csc.summary_state, sal_enums.State.STANDBY)
         await self.assert_next_summary_state(sal_enums.State.STANDBY)
-        await self.check_bad_commands(good_commands=("start", "exitControl", "setLogLevel"))
+        await self.check_bad_commands(
+            good_commands=("start", "exitControl", "setLogLevel")
+        )
 
         # Send start; new state is DISABLED.
         await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
         self.assertEqual(self.csc.summary_state, sal_enums.State.DISABLED)
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
-        await self.check_bad_commands(good_commands=("enable", "standby", "setLogLevel"))
+        await self.check_bad_commands(
+            good_commands=("enable", "standby", "setLogLevel")
+        )
 
         # Send enable; new state is ENABLED.
         await self.remote.cmd_enable.start(timeout=STD_TIMEOUT)
         self.assertEqual(self.csc.summary_state, sal_enums.State.ENABLED)
         await self.assert_next_summary_state(sal_enums.State.ENABLED)
-        all_enabled_commands = tuple(sorted(set(("disable", "setLogLevel")) | set(enabled_commands)))
+        all_enabled_commands = tuple(
+            sorted(set(("disable", "setLogLevel")) | set(enabled_commands))
+        )
         await self.check_bad_commands(good_commands=all_enabled_commands)
 
         # Send disable; new state is DISABLED.
@@ -272,5 +304,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 continue
             with self.subTest(command=command):
                 cmd_attr = getattr(self.remote, f"cmd_{command}")
-                with testutils.assertRaisesAckError(ack=sal_enums.SalRetCode.CMD_FAILED):
+                with testutils.assertRaisesAckError(
+                    ack=sal_enums.SalRetCode.CMD_FAILED
+                ):
                     await cmd_attr.start(timeout=STD_TIMEOUT)

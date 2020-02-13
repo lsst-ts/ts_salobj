@@ -55,7 +55,8 @@ class SALPYTestCase(asynctest.TestCase):
         print(f"Remote: start {exec_name} in a subprocess")
         script_path = self.datadir / exec_name
         process = await asyncio.create_subprocess_exec(
-            str(script_path), str(self.index), str(INITIAL_LOG_LEVEL))
+            str(script_path), str(self.index), str(INITIAL_LOG_LEVEL)
+        )
 
         try:
             print(f"Remote: create SALPY remote with index={self.index}")
@@ -86,15 +87,17 @@ class SALPYTestCase(asynctest.TestCase):
                     await asyncio.sleep(0.1)
 
             async def send_setLogLevel(level):
-                done_ack_codes = frozenset((
-                    SALPY_Test.SAL__CMD_ABORTED,
-                    SALPY_Test.SAL__CMD_COMPLETE,
-                    SALPY_Test.SAL__CMD_FAILED,
-                    SALPY_Test.SAL__CMD_NOACK,
-                    SALPY_Test.SAL__CMD_NOPERM,
-                    SALPY_Test.SAL__CMD_STALLED,
-                    SALPY_Test.SAL__CMD_TIMEOUT,
-                ))
+                done_ack_codes = frozenset(
+                    (
+                        SALPY_Test.SAL__CMD_ABORTED,
+                        SALPY_Test.SAL__CMD_COMPLETE,
+                        SALPY_Test.SAL__CMD_FAILED,
+                        SALPY_Test.SAL__CMD_NOACK,
+                        SALPY_Test.SAL__CMD_NOPERM,
+                        SALPY_Test.SAL__CMD_STALLED,
+                        SALPY_Test.SAL__CMD_TIMEOUT,
+                    )
+                )
 
                 cmd_data = SALPY_Test.Test_command_setLogLevelC()
                 cmd_data.level = level
@@ -109,7 +112,9 @@ class SALPYTestCase(asynctest.TestCase):
                         if ack_data.ack == SALPY_Test.SAL__CMD_COMPLETE:
                             return ack_data
                         elif ack_data.ack in done_ack_codes:
-                            raise RuntimeError(f"Remote: command failed; ack={ack_data.ack}")
+                            raise RuntimeError(
+                                f"Remote: command failed; ack={ack_data.ack}"
+                            )
                     await asyncio.sleep(0.1)
 
             print("Remote: wait for initial logLevel")

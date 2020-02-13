@@ -13,18 +13,31 @@ Technically a SAL script is any SAL component that supports the ``Script`` API d
 
 * The script is a command-line executable that takes a single required command line argument: the index of the SAL component.
 * When run, the script must start in the `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED` state and output the ``description`` event.
-* When the script is in the `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED` state it can be configured with the ``configure`` command:
+* When the script is in the `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED` state it can be configured with the ``configure`` command (and the command must be rejected in any other state):
 
     * If the ``configure`` command succeeds, the script must report the ``metadata`` event and state `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
     * If the ``configure`` command fails the script must report state `lsst.ts.idl.enums.Script.ScriptState.FAILED` and exit.
-    * The script must be configured before it can be run.
+    
+* Once the state is `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`, the script can have its group ID set with the ``setGroupId`` command (and the command must be rejected in any other state):
 
-* Once the script is in the `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED` state it can be run with the ``run`` command.
-* When the ``run`` command finishes the script must exit, after reporting one of three states:
+    * If the ``setGroupId`` command succeeds, the script must output a ``state`` event with the ``groupId`` field set to the new group ID.
+      Note that the script state remains `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
+      Thus the ``setGroupId`` command may be issued multiple times; this allows the script queue to set the group ID, clear it, then set it again.
 
-  * `lsst.ts.idl.enums.Script.ScriptState.DONE` on success
-  * `lsst.ts.idl.enums.Script.ScriptState.STOPPED` if stopped by request
-  * `lsst.ts.idl.enums.Script.ScriptState.FAILED` if an error occurred
+* Once the group ID is set (not blank), the script can be run with the ``run`` command (which must be rejected if the state is not `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED` or the group ID is blank):
+
+    * When the script starts running it must report state `lsst.ts.idl.enums.Script.ScriptState.RUNNING`.
+    * As the script starts starts cleaning up, it should report one of these states:
+
+        * `lsst.ts.idl.enums.Script.ScriptState.ENDING` if the main execution succeeded (cleanup might still fail).
+        * `lsst.ts.idl.enums.Script.ScriptState.STOPPING` if stopping by request.
+        * `lsst.ts.idl.enums.Script.ScriptState.FAILING` if stopping because an error occurred.
+
+    * When the ``run`` command finishes the script must exit, after reporting one of three states:
+
+        * `lsst.ts.idl.enums.Script.ScriptState.DONE` on success
+        * `lsst.ts.idl.enums.Script.ScriptState.STOPPED` if stopped by request
+        * `lsst.ts.idl.enums.Script.ScriptState.FAILED` if an error occurred
 
 * The script must also support the command line option ``--schema`` which prints the configuration schema to ``stdout`` and quits.
   This option ignores the index, but the index argument is still required.

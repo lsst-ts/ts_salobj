@@ -38,10 +38,12 @@ np.random.seed(47)
 
 class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode):
-        return salobj.TestCsc(self.next_index(),
-                              initial_state=initial_state,
-                              config_dir=config_dir,
-                              simulation_mode=simulation_mode)
+        return salobj.TestCsc(
+            self.next_index(),
+            initial_state=initial_state,
+            config_dir=config_dir,
+            simulation_mode=simulation_mode,
+        )
 
     def check_topic_metadata(self, topic):
         self.assertEqual(topic.metadata.sal_name, topic.sal_name)
@@ -55,8 +57,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                     self.assertEqual(cmd.name, cmd_name)
                     self.assertEqual(cmd.attr_name, "cmd_" + cmd_name)
                     self.assertEqual(cmd.sal_name, "command_" + cmd_name)
-                    self.assertEqual(cmd.dds_name,
-                                     cmd.salinfo.name + "_" + cmd.sal_name + "_" + cmd.rev_code)
+                    self.assertEqual(
+                        cmd.dds_name,
+                        cmd.salinfo.name + "_" + cmd.sal_name + "_" + cmd.rev_code,
+                    )
                     self.assertTrue(cmd.volatile)
                     self.check_topic_metadata(cmd)
 
@@ -65,8 +69,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                     self.assertEqual(evt.name, evt_name)
                     self.assertEqual(evt.attr_name, "evt_" + evt_name)
                     self.assertEqual(evt.sal_name, "logevent_" + evt_name)
-                    self.assertEqual(evt.dds_name,
-                                     evt.salinfo.name + "_" + evt.sal_name + "_" + evt.rev_code)
+                    self.assertEqual(
+                        evt.dds_name,
+                        evt.salinfo.name + "_" + evt.sal_name + "_" + evt.rev_code,
+                    )
                     self.assertFalse(evt.volatile)
                     self.check_topic_metadata(evt)
 
@@ -75,23 +81,31 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                     self.assertEqual(tel.name, tel_name)
                     self.assertEqual(tel.attr_name, "tel_" + tel_name)
                     self.assertEqual(tel.sal_name, tel_name)
-                    self.assertEqual(tel.dds_name,
-                                     tel.salinfo.name + "_" + tel.sal_name + "_" + tel.rev_code)
+                    self.assertEqual(
+                        tel.dds_name,
+                        tel.salinfo.name + "_" + tel.sal_name + "_" + tel.rev_code,
+                    )
                     self.assertFalse(tel.volatile)
                     self.check_topic_metadata(tel)
 
             # cannot add new topics to the existing salinfos
             # (because the read loop has started) so create a new one
-            salinfo = salobj.SalInfo(domain=self.csc.salinfo.domain,
-                                     name=self.csc.salinfo.name,
-                                     index=self.csc.salinfo.index)
-            for ackcmd in (salobj.topics.AckCmdReader(salinfo=salinfo),
-                           salobj.topics.AckCmdWriter(salinfo=salinfo)):
+            salinfo = salobj.SalInfo(
+                domain=self.csc.salinfo.domain,
+                name=self.csc.salinfo.name,
+                index=self.csc.salinfo.index,
+            )
+            for ackcmd in (
+                salobj.topics.AckCmdReader(salinfo=salinfo),
+                salobj.topics.AckCmdWriter(salinfo=salinfo),
+            ):
                 self.assertEqual(ackcmd.name, "ackcmd")
                 self.assertEqual(ackcmd.attr_name, "ack_" + ackcmd.name)
                 self.assertEqual(ackcmd.sal_name, ackcmd.name)
-                self.assertEqual(ackcmd.dds_name,
-                                 ackcmd.salinfo.name + "_" + ackcmd.sal_name + "_" + ackcmd.rev_code)
+                self.assertEqual(
+                    ackcmd.dds_name,
+                    ackcmd.salinfo.name + "_" + ackcmd.sal_name + "_" + ackcmd.rev_code,
+                )
                 self.assertTrue(ackcmd.volatile)
 
     async def test_base_topic_constructor_good(self):
@@ -99,15 +113,21 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
 
             for cmd_name in salinfo.command_names:
-                cmd = salobj.topics.BaseTopic(salinfo=salinfo, name=cmd_name, sal_prefix="command_")
+                cmd = salobj.topics.BaseTopic(
+                    salinfo=salinfo, name=cmd_name, sal_prefix="command_"
+                )
                 self.assertEqual(cmd.name, cmd_name)
 
             for evt_name in salinfo.event_names:
-                evt = salobj.topics.BaseTopic(salinfo=salinfo, name=evt_name, sal_prefix="logevent_")
+                evt = salobj.topics.BaseTopic(
+                    salinfo=salinfo, name=evt_name, sal_prefix="logevent_"
+                )
                 self.assertEqual(evt.name, evt_name)
 
             for tel_name in salinfo.telemetry_names:
-                tel = salobj.topics.BaseTopic(salinfo=salinfo, name=tel_name, sal_prefix="")
+                tel = salobj.topics.BaseTopic(
+                    salinfo=salinfo, name=tel_name, sal_prefix=""
+                )
                 self.assertEqual(tel.name, tel_name)
 
     async def test_base_topic_constructor_errors(self):
@@ -122,31 +142,41 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                     "command",  # no trailing underscore
                 ):
                     with self.assertRaises(RuntimeError):
-                        salobj.topics.BaseTopic(salinfo=salinfo, name=good_name, sal_prefix=bad_prefix)
+                        salobj.topics.BaseTopic(
+                            salinfo=salinfo, name=good_name, sal_prefix=bad_prefix
+                        )
 
             for good_prefix in ("", "command_", "logevent_"):
                 for bad_name in ("", "no_such_topic"):
                     with self.assertRaises(RuntimeError):
-                        salobj.topics.BaseTopic(salinfo=salinfo, name=bad_name, sal_prefix=good_prefix)
+                        salobj.topics.BaseTopic(
+                            salinfo=salinfo, name=bad_name, sal_prefix=good_prefix
+                        )
 
             for cmd_name in salinfo.command_names:
                 for non_cmd_prefix in ("", "logevent_"):
                     with self.assertRaises(RuntimeError):
-                        salobj.topics.BaseTopic(salinfo=salinfo, name=cmd_name, sal_prefix=non_cmd_prefix)
+                        salobj.topics.BaseTopic(
+                            salinfo=salinfo, name=cmd_name, sal_prefix=non_cmd_prefix
+                        )
 
             # there is overlap between event and telemetry names
             # so just use the command_ prefix as the invalid prefix
             non_evt_prefix = "command_"
             for evt_name in salinfo.event_names:
                 with self.assertRaises(RuntimeError):
-                    salobj.topics.BaseTopic(salinfo=salinfo, name=evt_name, sal_prefix=non_evt_prefix)
+                    salobj.topics.BaseTopic(
+                        salinfo=salinfo, name=evt_name, sal_prefix=non_evt_prefix
+                    )
 
             # there is overlap between event and telemetry names
             # so just use the command_ prefix as the invalid prefix
             non_tel_prefix = "command_"
             for tel_name in salinfo.telemetry_names:
                 with self.assertRaises(RuntimeError):
-                    salobj.topics.BaseTopic(salinfo=salinfo, name=tel_name, sal_prefix=non_tel_prefix)
+                    salobj.topics.BaseTopic(
+                        salinfo=salinfo, name=tel_name, sal_prefix=non_tel_prefix
+                    )
 
     async def test_command_isolation(self):
         """Test that multiple RemoteCommands for one command only see
@@ -172,8 +202,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             await salinfo2.start()
 
             def reader_callback(data):
-                ackcmd = cmdreader.salinfo.AckCmdType(private_seqNum=data.private_seqNum,
-                                                      ack=salobj.SalRetCode.CMD_COMPLETE)
+                ackcmd = cmdreader.salinfo.AckCmdType(
+                    private_seqNum=data.private_seqNum,
+                    ack=salobj.SalRetCode.CMD_COMPLETE,
+                )
                 cmdreader.ack(data=data, ackcmd=ackcmd)
 
             cmdreader.callback = reader_callback
@@ -311,7 +343,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertEqual(list(self.csc.tel_arrays.data.int0), list(good_int0))
 
             # try an array that is too short
-            bad_int0 = np.arange(nint0-1, dtype=int)
+            bad_int0 = np.arange(nint0 - 1, dtype=int)
             with self.assertRaises(ValueError):
                 self.csc.tel_arrays.set_put(int0=bad_int0)
 
@@ -409,7 +441,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertEqual(list(self.csc.evt_arrays.data.int0), list(good_int0))
 
             # try an array that is too short
-            bad_int0 = np.arange(nint0-1, dtype=int)
+            bad_int0 = np.arange(nint0 - 1, dtype=int)
             with self.assertRaises(ValueError):
                 self.csc.evt_arrays.set_put(int0=bad_int0)
 
@@ -437,7 +469,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         self.assertIsNone(self.remote.tel_scalars.get())
 
         # send the setScalars command with random data
-        cmd_data_list = [self.csc.make_random_cmd_scalars() for i in range(num_commands)]
+        cmd_data_list = [
+            self.csc.make_random_cmd_scalars() for i in range(num_commands)
+        ]
         for cmd_data in cmd_data_list:
             await self.remote.cmd_setScalars.start(cmd_data, timeout=STD_TIMEOUT)
         return cmd_data_list
@@ -450,8 +484,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 await self.remote.tel_scalars.aget(timeout=NODATA_TIMEOUT)
 
             # start waiting for both events, then trigger multiple events
-            evt_task = asyncio.create_task(self.remote.evt_scalars.aget(timeout=STD_TIMEOUT))
-            tel_task = asyncio.create_task(self.remote.tel_scalars.aget(timeout=STD_TIMEOUT))
+            evt_task = asyncio.create_task(
+                self.remote.evt_scalars.aget(timeout=STD_TIMEOUT)
+            )
+            tel_task = asyncio.create_task(
+                self.remote.tel_scalars.aget(timeout=STD_TIMEOUT)
+            )
 
             num_commands = 3
             cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
@@ -536,7 +574,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             evt_data_list = []
             while True:
                 try:
-                    evt_data = await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                    evt_data = await self.remote.evt_scalars.next(
+                        flush=False, timeout=NODATA_TIMEOUT
+                    )
                     self.assertIsNotNone(evt_data)
                     evt_data_list.append(evt_data)
                 except asyncio.TimeoutError:
@@ -548,7 +588,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             tel_data_list = []
             while True:
                 try:
-                    tel_data = await self.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                    tel_data = await self.remote.tel_scalars.next(
+                        flush=False, timeout=NODATA_TIMEOUT
+                    )
                     self.assertIsNotNone(tel_data)
                     tel_data_list.append(tel_data)
                 except asyncio.TimeoutError:
@@ -629,9 +671,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
     async def test_command_timeout(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
-            with salobj.assertRaisesAckTimeoutError(ack=salobj.SalRetCode.CMD_INPROGRESS):
-                await self.remote.cmd_wait.set_start(duration=5, ack=salobj.SalRetCode.CMD_COMPLETE,
-                                                     timeout=0.5)
+            with salobj.assertRaisesAckTimeoutError(
+                ack=salobj.SalRetCode.CMD_INPROGRESS
+            ):
+                await self.remote.cmd_wait.set_start(
+                    duration=5, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=0.5
+                )
 
     async def test_controller_command_get_next(self):
         """Test ControllerCommand get and next methods.
@@ -647,7 +692,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.csc.cmd_wait.callback = None
 
             duration = 1
-            task1 = asyncio.create_task(self.remote.cmd_wait.set_start(duration=duration))
+            task1 = asyncio.create_task(
+                self.remote.cmd_wait.set_start(duration=duration)
+            )
             next_data = await self.csc.cmd_wait.next(timeout=STD_TIMEOUT)
             get_data = self.csc.cmd_wait.get()
             self.assertIsNotNone(get_data)
@@ -659,7 +706,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 await self.csc.cmd_wait.next(timeout=NODATA_TIMEOUT)
 
             duration = 2
-            task2 = asyncio.create_task(self.remote.cmd_wait.set_start(duration=duration))
+            task2 = asyncio.create_task(
+                self.remote.cmd_wait.set_start(duration=duration)
+            )
             await asyncio.sleep(0.5)
             get_data = self.csc.cmd_wait.get(flush=False)
             next_data = await self.csc.cmd_wait.next(timeout=STD_TIMEOUT)
@@ -684,6 +733,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
             def foo():
                 pass
+
             self.csc.cmd_wait.callback = foo
             self.assertEqual(self.csc.cmd_wait.callback, foo)
 
@@ -692,7 +742,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
 
-            ackcmd = await self.remote.cmd_wait.set_start(duration=0, timeout=STD_TIMEOUT)
+            ackcmd = await self.remote.cmd_wait.set_start(
+                duration=0, timeout=STD_TIMEOUT
+            )
             self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
 
     async def test_controller_command_return_ackcmd(self):
@@ -706,9 +758,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             result = "return failed ackcmd"
 
             def return_ack(data):
-                return self.csc.salinfo.makeAckCmd(private_seqNum=data.private_seqNum,
-                                                   ack=failed_ack,
-                                                   result=result)
+                return self.csc.salinfo.makeAckCmd(
+                    private_seqNum=data.private_seqNum, ack=failed_ack, result=result
+                )
 
             self.csc.cmd_wait.callback = return_ack
             with salobj.assertRaisesAckError(ack=failed_ack, result_contains=result):
@@ -723,9 +775,11 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         def fail_expected_exception(data):
             raise salobj.ExpectedError(msg)
 
-        await self.check_controller_command_callback_failure(callback=fail_expected_exception,
-                                                             ack=salobj.SalRetCode.CMD_FAILED,
-                                                             result_contains=msg)
+        await self.check_controller_command_callback_failure(
+            callback=fail_expected_exception,
+            ack=salobj.SalRetCode.CMD_FAILED,
+            result_contains=msg,
+        )
 
     async def test_controller_command_exception(self):
         """Test exception raised by remote command when controller command
@@ -736,31 +790,39 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         def fail_exception(data):
             raise Exception(msg)
 
-        await self.check_controller_command_callback_failure(callback=fail_exception,
-                                                             ack=salobj.SalRetCode.CMD_FAILED,
-                                                             result_contains=msg)
+        await self.check_controller_command_callback_failure(
+            callback=fail_exception,
+            ack=salobj.SalRetCode.CMD_FAILED,
+            result_contains=msg,
+        )
 
     async def test_controller_command_timeout(self):
         """Test exception raised by remote command when controller command
         callback times out.
         """
+
         def fail_timeout(data):
             raise asyncio.TimeoutError()
 
-        await self.check_controller_command_callback_failure(callback=fail_timeout,
-                                                             ack=salobj.SalRetCode.CMD_TIMEOUT)
+        await self.check_controller_command_callback_failure(
+            callback=fail_timeout, ack=salobj.SalRetCode.CMD_TIMEOUT
+        )
 
     async def test_controller_command_cancel(self):
         """Test exception raised by remote command when controller command
         callback is cancelled.
         """
+
         def fail_cancel(data):
             raise asyncio.CancelledError()
 
-        await self.check_controller_command_callback_failure(callback=fail_cancel,
-                                                             ack=salobj.SalRetCode.CMD_ABORTED)
+        await self.check_controller_command_callback_failure(
+            callback=fail_cancel, ack=salobj.SalRetCode.CMD_ABORTED
+        )
 
-    async def check_controller_command_callback_failure(self, callback, ack, result_contains=None):
+    async def check_controller_command_callback_failure(
+        self, callback, ack, result_contains=None
+    ):
         """Check the exception raised by remote command when the
         controller command raises or returns a failed ackcmd.
 
@@ -790,8 +852,13 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             t0 = time.time()
             tasks = []
             for duration in durations:
-                task = asyncio.create_task(self.remote.cmd_wait.set_start(
-                    duration=duration, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=STD_TIMEOUT+duration))
+                task = asyncio.create_task(
+                    self.remote.cmd_wait.set_start(
+                        duration=duration,
+                        ack=salobj.SalRetCode.CMD_COMPLETE,
+                        timeout=STD_TIMEOUT + duration,
+                    )
+                )
                 # make sure the command is sent before the command data
                 # is modified by the next loop iteration
                 await asyncio.sleep(0)
@@ -818,8 +885,13 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
             tasks = []
             for duration in durations:
-                task = asyncio.create_task(self.remote.cmd_wait.set_start(
-                    duration=duration, ack=salobj.SalRetCode.CMD_COMPLETE, timeout=STD_TIMEOUT+duration))
+                task = asyncio.create_task(
+                    self.remote.cmd_wait.set_start(
+                        duration=duration,
+                        ack=salobj.SalRetCode.CMD_COMPLETE,
+                        timeout=STD_TIMEOUT + duration,
+                    )
+                )
                 tasks.append(task)
                 # make sure the command is sent before the command data
                 # is modified by the next loop iteration
@@ -844,7 +916,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # send the setScalars command with random data
             # but first set a callback for event that should be triggered
             self.remote.evt_scalars.callback = scalars_callback
-            await self.remote.cmd_setScalars.start(cmd_scalars_data, timeout=STD_TIMEOUT)
+            await self.remote.cmd_setScalars.start(
+                cmd_scalars_data, timeout=STD_TIMEOUT
+            )
             # give the callback time to be called
             await asyncio.sleep(EVENT_DELAY)
             self.csc.assert_scalars_equal(callback_data, cmd_scalars_data)
@@ -864,29 +938,39 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # send the setScalars command with random data
             # but first set a callback for event that should be triggered
             self.remote.evt_scalars.callback = scalars_callback
-            await self.remote.cmd_setScalars.start(cmd_scalars_data, timeout=STD_TIMEOUT)
+            await self.remote.cmd_setScalars.start(
+                cmd_scalars_data, timeout=STD_TIMEOUT
+            )
             # give the callback time to be called
             await asyncio.sleep(EVENT_DELAY)
             self.csc.assert_scalars_equal(callback_data, cmd_scalars_data)
 
     async def test_command_next_ack(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
-            ackcmd1 = await self.remote.cmd_wait.set_start(duration=0.1, wait_done=False,
-                                                           timeout=STD_TIMEOUT)
+            ackcmd1 = await self.remote.cmd_wait.set_start(
+                duration=0.1, wait_done=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(ackcmd1.ack, salobj.SalRetCode.CMD_ACK)
-            ackcmd2 = await self.remote.cmd_wait.next_ackcmd(ackcmd1, wait_done=False,
-                                                             timeout=STD_TIMEOUT)
+            ackcmd2 = await self.remote.cmd_wait.next_ackcmd(
+                ackcmd1, wait_done=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(ackcmd2.ack, salobj.SalRetCode.CMD_INPROGRESS)
-            ackcmd3 = await self.remote.cmd_wait.next_ackcmd(ackcmd2, wait_done=True,
-                                                             timeout=STD_TIMEOUT)
+            ackcmd3 = await self.remote.cmd_wait.next_ackcmd(
+                ackcmd2, wait_done=True, timeout=STD_TIMEOUT
+            )
             self.assertEqual(ackcmd3.ack, salobj.SalRetCode.CMD_COMPLETE)
 
             # now try a timeout
-            ackcmd1 = await self.remote.cmd_wait.set_start(duration=5, wait_done=False,
-                                                           timeout=STD_TIMEOUT)
+            ackcmd1 = await self.remote.cmd_wait.set_start(
+                duration=5, wait_done=False, timeout=STD_TIMEOUT
+            )
             self.assertEqual(ackcmd1.ack, salobj.SalRetCode.CMD_ACK)
-            with salobj.assertRaisesAckTimeoutError(ack=salobj.SalRetCode.CMD_INPROGRESS):
-                await self.remote.cmd_wait.next_ackcmd(ackcmd1, wait_done=True, timeout=NODATA_TIMEOUT)
+            with salobj.assertRaisesAckTimeoutError(
+                ack=salobj.SalRetCode.CMD_INPROGRESS
+            ):
+                await self.remote.cmd_wait.next_ackcmd(
+                    ackcmd1, wait_done=True, timeout=NODATA_TIMEOUT
+                )
 
     async def test_command_seq_num(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
@@ -898,7 +982,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 cmd.put()
                 seq_num2 = cmd.data.private_seqNum
                 if seq_num < cmd.max_seq_num:
-                    self.assertEqual(seq_num2, seq_num+1)
+                    self.assertEqual(seq_num2, seq_num + 1)
                 if prev_max_seq_num is None:
                     self.assertEqual(cmd.min_seq_num, 1)
                 else:
@@ -917,8 +1001,8 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # write late joiner data (before we have readers);
             # only the last value should be seen
             for i in (3, 4, 5):
-                writer1.set_put(errorCode=10+i)
-                writer2.set_put(errorCode=20+i)
+                writer1.set_put(errorCode=10 + i)
+                writer2.set_put(errorCode=20 + i)
 
             # create readers and set callbacks for them
             reader1 = salobj.topics.RemoteEvent(salinfo=salinfo1, name="errorCode")
@@ -929,8 +1013,8 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # write more data now that we have readers;
             # they should see all of it
             for i in (6, 7, 8):
-                writer1.set_put(errorCode=10+i)
-                writer2.set_put(errorCode=20+i)
+                writer1.set_put(errorCode=10 + i)
+                writer2.set_put(errorCode=20 + i)
 
             read_codes1 = []
             read_codes2 = []
@@ -972,9 +1056,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             for i in (3, 4, 5):
                 writer0.set_put(errorCode=i)
                 await asyncio.sleep(0.01)
-                writer1.set_put(errorCode=10+i)
+                writer1.set_put(errorCode=10 + i)
                 await asyncio.sleep(0.01)
-                writer2.set_put(errorCode=20+i)
+                writer2.set_put(errorCode=20 + i)
                 await asyncio.sleep(0.01)
 
             # create readers and set callbacks for them
@@ -993,9 +1077,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             for i in (6, 7, 8):
                 writer0.set_put(errorCode=i)
                 await asyncio.sleep(0.01)
-                writer1.set_put(errorCode=10+i)
+                writer1.set_put(errorCode=10 + i)
                 await asyncio.sleep(0.01)
-                writer2.set_put(errorCode=20+i)
+                writer2.set_put(errorCode=20 + i)
                 await asyncio.sleep(0.01)
 
             read_codes0 = []
@@ -1030,10 +1114,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             salinfo = self.remote.salinfo
 
-            for obj, classSuffix in (
-                (self.csc, "Controller"),
-                (self.remote, "Remote"),
-            ):
+            for obj, classSuffix in ((self.csc, "Controller"), (self.remote, "Remote")):
                 with self.subTest(obj=obj, classSuffix=classSuffix):
                     for cmd_name in salinfo.command_names:
                         cmd = getattr(obj, "cmd_" + cmd_name)

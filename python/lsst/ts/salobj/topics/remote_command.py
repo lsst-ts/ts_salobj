@@ -31,7 +31,7 @@ from .. import sal_enums
 from . import read_topic
 from . import write_topic
 
-DEFAULT_TIMEOUT = 60*60  # default timeout, in seconds
+DEFAULT_TIMEOUT = 60 * 60  # default timeout, in seconds
 
 
 class AckCmdReader(read_topic.ReadTopic):
@@ -49,9 +49,15 @@ class AckCmdReader(read_topic.ReadTopic):
     The same ``ackcmd`` topic is used for all command topics from a given
     SAL component.
     """
+
     def __init__(self, salinfo, queue_len=100):
-        super().__init__(salinfo=salinfo, name="ackcmd", sal_prefix="",
-                         max_history=0, queue_len=queue_len)
+        super().__init__(
+            salinfo=salinfo,
+            name="ackcmd",
+            sal_prefix="",
+            max_history=0,
+            queue_len=queue_len,
+        )
 
 
 class _CommandInfo:
@@ -67,6 +73,7 @@ class _CommandInfo:
         Wait until the command is done to finish the task?
         If false then wait for the next ack instead.
     """
+
     def __init__(self, remote_command, seq_num, wait_done):
         self.remote_command = remote_command
         self.seq_num = int(seq_num)
@@ -75,27 +82,34 @@ class _CommandInfo:
         self._wait_task = asyncio.Future()
         self._next_ack_task = asyncio.Future()
 
-        self.done_ack_codes = frozenset((
-            sal_enums.SalRetCode.CMD_ABORTED,
-            sal_enums.SalRetCode.CMD_COMPLETE,
-            sal_enums.SalRetCode.CMD_FAILED,
-            sal_enums.SalRetCode.CMD_NOACK,
-            sal_enums.SalRetCode.CMD_NOPERM,
-            sal_enums.SalRetCode.CMD_STALLED,
-            sal_enums.SalRetCode.CMD_TIMEOUT,
-        ))
-        self.failed_ack_codes = frozenset((
-            sal_enums.SalRetCode.CMD_ABORTED,
-            sal_enums.SalRetCode.CMD_FAILED,
-            sal_enums.SalRetCode.CMD_NOACK,
-            sal_enums.SalRetCode.CMD_NOPERM,
-            sal_enums.SalRetCode.CMD_STALLED,
-            sal_enums.SalRetCode.CMD_TIMEOUT,
-        ))
-        self.good_ack_codes = frozenset((
-            sal_enums.SalRetCode.CMD_ACK,
-            sal_enums.SalRetCode.CMD_INPROGRESS,
-            sal_enums.SalRetCode.CMD_COMPLETE))
+        self.done_ack_codes = frozenset(
+            (
+                sal_enums.SalRetCode.CMD_ABORTED,
+                sal_enums.SalRetCode.CMD_COMPLETE,
+                sal_enums.SalRetCode.CMD_FAILED,
+                sal_enums.SalRetCode.CMD_NOACK,
+                sal_enums.SalRetCode.CMD_NOPERM,
+                sal_enums.SalRetCode.CMD_STALLED,
+                sal_enums.SalRetCode.CMD_TIMEOUT,
+            )
+        )
+        self.failed_ack_codes = frozenset(
+            (
+                sal_enums.SalRetCode.CMD_ABORTED,
+                sal_enums.SalRetCode.CMD_FAILED,
+                sal_enums.SalRetCode.CMD_NOACK,
+                sal_enums.SalRetCode.CMD_NOPERM,
+                sal_enums.SalRetCode.CMD_STALLED,
+                sal_enums.SalRetCode.CMD_TIMEOUT,
+            )
+        )
+        self.good_ack_codes = frozenset(
+            (
+                sal_enums.SalRetCode.CMD_ACK,
+                sal_enums.SalRetCode.CMD_INPROGRESS,
+                sal_enums.SalRetCode.CMD_COMPLETE,
+            )
+        )
 
         # we should see at most 3 acks, but leave room for one more,
         # just in case
@@ -158,7 +172,9 @@ class _CommandInfo:
         if timeout is None:  # for backwards compatibility
             timeout = DEFAULT_TIMEOUT
         try:
-            self._wait_task = asyncio.ensure_future(asyncio.wait_for(self._basic_next_ack(), timeout=timeout))
+            self._wait_task = asyncio.ensure_future(
+                asyncio.wait_for(self._basic_next_ack(), timeout=timeout)
+            )
             ackcmd = await self._wait_task
             # print(f"next_ackcmd got {ackcmd.ack} from _basic_next_ack")
             if ackcmd.ack in self.failed_ack_codes:
@@ -166,16 +182,19 @@ class _CommandInfo:
             return ackcmd
         except asyncio.TimeoutError:
             if self._last_ackcmd is None:
-                last_ackcmd = self.remote_command.salinfo.makeAckCmd(private_seqNum=self.seq_num,
-                                                                     ack=sal_enums.SalRetCode.CMD_NOACK,
-                                                                     result="No command acknowledgement seen")
+                last_ackcmd = self.remote_command.salinfo.makeAckCmd(
+                    private_seqNum=self.seq_num,
+                    ack=sal_enums.SalRetCode.CMD_NOACK,
+                    result="No command acknowledgement seen",
+                )
             else:
                 last_ackcmd = self._last_ackcmd
 
             if self.seq_num in self.remote_command.salinfo._running_cmds:
                 self.remote_command.salinfo._running_cmds.pop(self.seq_num)
-            raise base.AckTimeoutError(msg="Timed out waiting for command acknowledgement",
-                                       ackcmd=last_ackcmd)
+            raise base.AckTimeoutError(
+                msg="Timed out waiting for command acknowledgement", ackcmd=last_ackcmd
+            )
 
     async def _basic_next_ack(self):
         """Get the next command acknowledgment of interest.
@@ -211,8 +230,10 @@ class _CommandInfo:
                 task.cancel()
 
     def __repr__(self):
-        return f"_CommandInfo(remote_command={self.remote_command}, seq_num={self.seq_num}, " \
-               f"wait_done={self.wait_done})"
+        return (
+            f"_CommandInfo(remote_command={self.remote_command}, seq_num={self.seq_num}, "
+            f"wait_done={self.wait_done})"
+        )
 
 
 class RemoteCommand(write_topic.WriteTopic):
@@ -225,16 +246,22 @@ class RemoteCommand(write_topic.WriteTopic):
     name : `str`
         Command name
     """
+
     def __init__(self, salinfo, name):
         num_commands = len(salinfo.command_names)
         seq_num_increment = write_topic.MAX_SEQ_NUM // num_commands
         name_ind = salinfo.command_names.index(name)
-        min_seq_num = name_ind*seq_num_increment + 1
+        min_seq_num = name_ind * seq_num_increment + 1
         max_seq_num = min_seq_num + seq_num_increment - 1
         initial_seq_num = random.randint(min_seq_num, max_seq_num)
-        super().__init__(salinfo=salinfo, name=name, sal_prefix="command_",
-                         min_seq_num=min_seq_num, max_seq_num=max_seq_num,
-                         initial_seq_num=initial_seq_num)
+        super().__init__(
+            salinfo=salinfo,
+            name=name,
+            sal_prefix="command_",
+            min_seq_num=min_seq_num,
+            max_seq_num=max_seq_num,
+            initial_seq_num=initial_seq_num,
+        )
         self.log = logging.getLogger(f"{salinfo}.RemoteCommand.{name}")
         # dict of seq_num: CommandInfo
         if salinfo._ackcmd_reader is None:
@@ -276,7 +303,9 @@ class RemoteCommand(write_topic.WriteTopic):
         """
         cmd_info = self.salinfo._running_cmds.get(ackcmd.private_seqNum, None)
         if cmd_info is None:
-            raise RuntimeError(f"Command private_seqNum={ackcmd.private_seqNum} is unknown or finished")
+            raise RuntimeError(
+                f"Command private_seqNum={ackcmd.private_seqNum} is unknown or finished"
+            )
         cmd_info.wait_done = wait_done
         return await cmd_info.next_ackcmd(timeout=timeout)
 
@@ -356,7 +385,11 @@ class RemoteCommand(write_topic.WriteTopic):
         self.put()
         seq_num = self.data.private_seqNum
         if seq_num in self.salinfo._running_cmds:
-            raise RuntimeError(f"{self.name} bug: a command with seq_num={seq_num} is already running")
-        cmd_info = _CommandInfo(remote_command=self, seq_num=seq_num, wait_done=wait_done)
+            raise RuntimeError(
+                f"{self.name} bug: a command with seq_num={seq_num} is already running"
+            )
+        cmd_info = _CommandInfo(
+            remote_command=self, seq_num=seq_num, wait_done=wait_done
+        )
         self.salinfo._running_cmds[seq_num] = cmd_info
         return await cmd_info.next_ackcmd(timeout=timeout)

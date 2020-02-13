@@ -126,8 +126,20 @@ class Remote:
         * ``tel_arrays``
         * ``tel_scalars``
     """
-    def __init__(self, domain, name, index=None, *, readonly=False,
-                 include=None, exclude=None, evt_max_history=1, tel_max_history=1, start=True):
+
+    def __init__(
+        self,
+        domain,
+        name,
+        index=None,
+        *,
+        readonly=False,
+        include=None,
+        exclude=None,
+        evt_max_history=1,
+        tel_max_history=1,
+        start=True,
+    ):
         self.start_called = False
 
         if include is not None and exclude is not None:

@@ -100,16 +100,27 @@ class BaseCsc(Controller):
     * Set the summary state.
     * Run `start` asynchronously.
     """
-    def __init__(self, name, index=None, initial_state=State.STANDBY,
-                 simulation_mode=0, initial_simulation_mode=0):
+
+    def __init__(
+        self,
+        name,
+        index=None,
+        initial_state=State.STANDBY,
+        simulation_mode=0,
+        initial_simulation_mode=0,
+    ):
         # cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
         if initial_simulation_mode != 0:
             if simulation_mode != 0:
-                raise ValueError("Cannot specify both simulation_mode and initial_simulation_mode")
-            warnings.warn("The initial_simulation_mode argument is deprecated; "
-                          "please specify simulation_mode instead",
-                          DeprecationWarning)
+                raise ValueError(
+                    "Cannot specify both simulation_mode and initial_simulation_mode"
+                )
+            warnings.warn(
+                "The initial_simulation_mode argument is deprecated; "
+                "please specify simulation_mode instead",
+                DeprecationWarning,
+            )
             simulation_mode = initial_simulation_mode
         initial_state = State(initial_state)
         super().__init__(name=name, index=index, do_callbacks=True)
@@ -171,8 +182,7 @@ class BaseCsc(Controller):
         """
         parser = argparse.ArgumentParser(f"Run {cls.__name__}")
         if index is True:
-            parser.add_argument("index", type=int,
-                                help="Script SAL Component index.")
+            parser.add_argument("index", type=int, help="Script SAL Component index.")
         cls.add_arguments(parser)
 
         args = parser.parse_args()
@@ -231,7 +241,10 @@ class BaseCsc(Controller):
         To add additional command-line arguments, override `add_arguments`
         and `add_kwargs_from_args`.
         """
-        warnings.warn("Use amain instead, e.g. asyncio.run(cls.amain(index=...))", DeprecationWarning)
+        warnings.warn(
+            "Use amain instead, e.g. asyncio.run(cls.amain(index=...))",
+            DeprecationWarning,
+        )
         asyncio.run(cls.amain(index=index, **kwargs))
 
     @classmethod
@@ -311,7 +324,9 @@ class BaseCsc(Controller):
         data : ``cmd_standby.DataType``
             Command data
         """
-        await self._do_change_state(data, "standby", [State.DISABLED, State.FAULT], State.STANDBY)
+        await self._do_change_state(
+            data, "standby", [State.DISABLED, State.FAULT], State.STANDBY
+        )
 
     async def do_start(self, data):
         """Transition from `State.STANDBY` to `State.DISABLED`.
@@ -381,7 +396,8 @@ class BaseCsc(Controller):
         """
         if simulation_mode != 0:
             raise base.ExpectedError(
-                f"This CSC does not support simulation; simulation_mode={simulation_mode} but must be 0")
+                f"This CSC does not support simulation; simulation_mode={simulation_mode} but must be 0"
+            )
 
     async def begin_disable(self, data):
         """Begin do_disable; called before state changes.
@@ -510,19 +526,26 @@ class BaseCsc(Controller):
             self._faulting = True
             self._summary_state = State.FAULT
             if code is None:
-                warnings.warn("specifying code=None is deprecated",
-                              DeprecationWarning)
+                warnings.warn("specifying code=None is deprecated", DeprecationWarning)
             else:
                 try:
-                    self.evt_errorCode.set_put(errorCode=code, errorReport=report,
-                                               traceback=traceback, force_output=True)
+                    self.evt_errorCode.set_put(
+                        errorCode=code,
+                        errorReport=report,
+                        traceback=traceback,
+                        force_output=True,
+                    )
                 except Exception:
-                    self.log.exception(f"Failed to output errorCode: code={code!r}; report={report!r}")
+                    self.log.exception(
+                        f"Failed to output errorCode: code={code!r}; report={report!r}"
+                    )
             try:
                 self.report_summary_state()
             except Exception:
-                self.log.exception("report_summary_state failed while going to FAULT; "
-                                   "some code may not have run.")
+                self.log.exception(
+                    "report_summary_state failed while going to FAULT; "
+                    "some code may not have run."
+                )
                 self.evt_summaryState.set_put(summaryState=self._summary_state)
             asyncio.ensure_future(self.handle_summary_state())
         finally:
@@ -638,14 +661,18 @@ class BaseCsc(Controller):
         try:
             await getattr(self, f"begin_{cmd_name}")(data)
         except Exception:
-            self.log.exception(f"beg_{cmd_name} failed; remaining in state {curr_state!r}")
+            self.log.exception(
+                f"beg_{cmd_name} failed; remaining in state {curr_state!r}"
+            )
             raise
         self._summary_state = new_state
         try:
             await getattr(self, f"end_{cmd_name}")(data)
         except Exception:
             self._summary_state = curr_state
-            self.log.exception(f"end_{cmd_name} failed; reverting to state {curr_state!r}")
+            self.log.exception(
+                f"end_{cmd_name} failed; reverting to state {curr_state!r}"
+            )
             raise
         await self.handle_summary_state()
         self.report_summary_state()

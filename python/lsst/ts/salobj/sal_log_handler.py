@@ -34,6 +34,7 @@ class SalLogHandler(logging.Handler):
         :ref:`Required Logger Attribute<required_logging_attributes>`
         ``evt_logEvent``.
     """
+
     def __init__(self, controller):
         self.controller = controller
         super().__init__()
@@ -45,6 +46,10 @@ class SalLogHandler(logging.Handler):
                 level=record.levelno,
                 message=record.message,
                 traceback=record.exc_text or "",
+                filePath=record.pathname,
+                functionName=record.funcName,
+                lineNumber=record.lineno,
+                process=record.process,
                 force_output=True,
             )
         finally:

@@ -1,6 +1,7 @@
+.swp
 .cache
 .pytest_cache
-.coverage.*
+.coverage*
 pytest_session.txt
 .scon*
 *.log
