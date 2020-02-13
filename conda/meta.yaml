@@ -1,7 +1,7 @@
 {% set data= load_setup_py_data() %}
 package:
   name: ts-salobj
-  version: {{ GIT_DESCRIBE_TAG }}
+  version: {{ TS_SALOBJ_VERSION }}
 
 source:
   git_url: https://github.com/lsst-ts/ts_salobj
