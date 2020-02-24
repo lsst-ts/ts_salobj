@@ -68,7 +68,7 @@ class Domain:
       256 might mean "use the legacy method for choosing the master".
       A default value is used if this environment variable is not specified.
       That default is guaranteed to be >0 and <255.
-      Constant `MASTER_PRIORITY_ENV_VAR` is available to make this easier
+      Constant ``MASTER_PRIORITY_ENV_VAR`` is available to make this easier
       to set from Python. Be sure to specify a string value (e.g. ``"1"``).
 
     **Attributes**

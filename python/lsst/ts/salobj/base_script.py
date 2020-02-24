@@ -24,6 +24,7 @@ __all__ = ["BaseScript"]
 import abc
 import argparse
 import asyncio
+import os
 import re
 import sys
 import time
@@ -87,6 +88,11 @@ class BaseScript(controller.Controller, abc.ABC):
     """
 
     def __init__(self, index, descr):
+        # Speed up script loading time and avoid expensive system alignments
+        # by making sure scripts never become master.
+        # This must be done before the `DomainParticipant` is created.
+        os.environ[base.MASTER_PRIORITY_ENV_VAR] = "0"
+
         super().__init__("Script", index, do_callbacks=True)
         schema = self.get_schema()
         if schema is None:

@@ -160,7 +160,13 @@ class BaseScriptTestCase(asynctest.TestCase):
         self.assertIsNone(schema)
 
     async def test_non_configurable_script_empty_config(self):
+        """Test configuring the script with no data. This should work.
+
+        Also test that creating the script sets the master priority
+        environment variable to "0".
+        """
         async with NonConfigurableScript(index=self.index) as script:
+            self.assertEqual(os.environ[salobj.MASTER_PRIORITY_ENV_VAR], "0")
             data = script.cmd_configure.DataType()
             await script.do_configure(data)
             self.assertEqual(len(script.config.__dict__), 0)
