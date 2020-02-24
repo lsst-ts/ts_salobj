@@ -24,6 +24,7 @@ __all__ = ["BaseScript"]
 import abc
 import argparse
 import asyncio
+import os
 import re
 import sys
 import time
@@ -32,7 +33,9 @@ import warnings
 
 import yaml
 
-from lsst.ts import salobj
+from . import base
+from . import controller
+from . import validator
 from lsst.ts.idl.enums.Script import (
     MetadataCoordSys,
     MetadataRotSys,
@@ -59,7 +62,7 @@ def _make_remote_name(remote):
     return name
 
 
-class BaseScript(salobj.Controller, abc.ABC):
+class BaseScript(controller.Controller, abc.ABC):
     """Abstract base class for :ref:`lsst.ts.salobj_sal_scripts`.
 
     Parameters
@@ -85,12 +88,17 @@ class BaseScript(salobj.Controller, abc.ABC):
     """
 
     def __init__(self, index, descr):
+        # Speed up script loading time and avoid expensive system alignments
+        # by making sure scripts never become master.
+        # This must be done before the `DomainParticipant` is created.
+        os.environ[base.MASTER_PRIORITY_ENV_VAR] = "0"
+
         super().__init__("Script", index, do_callbacks=True)
         schema = self.get_schema()
         if schema is None:
             self.config_validator = None
         else:
-            self.config_validator = salobj.DefaultingValidator(schema=schema)
+            self.config_validator = validator.DefaultingValidator(schema=schema)
         self._run_task = None
         self._pause_future = None
         # Value incremented by `next_supplemented_group_id`
@@ -405,7 +413,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         Your subclass must provide an implementation, as follows:
 
         * At points where you support pausing call `checkpoint`.
-        * Raise an exception on error. Raise `salobj.ExpectedError`
+        * Raise an exception on error. Raise `base.ExpectedError`
           to avoid logging a traceback.
 
         Notes
@@ -450,10 +458,10 @@ class BaseScript(salobj.Controller, abc.ABC):
             Allowed states.
         """
         if self._is_exiting:
-            raise salobj.ExpectedError(f"Cannot {action}: script is exiting")
+            raise base.ExpectedError(f"Cannot {action}: script is exiting")
         if self.state.state not in states:
             states_str = ", ".join(s.name for s in states)
-            raise salobj.ExpectedError(
+            raise base.ExpectedError(
                 f"Cannot {action}: state={self.state_name} instead of {states_str}"
             )
 
@@ -467,7 +475,7 @@ class BaseScript(salobj.Controller, abc.ABC):
 
         Raises
         ------
-        salobj.ExpectedError
+        base.ExpectedError
             If ``self.state.state`` is not
             `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED`.
 
@@ -505,7 +513,7 @@ class BaseScript(salobj.Controller, abc.ABC):
         except Exception as e:
             errmsg = f"config({data.config}) failed"
             self.log.exception(errmsg)
-            raise salobj.ExpectedError(f"{errmsg}: {e}") from e
+            raise base.ExpectedError(f"{errmsg}: {e}") from e
 
         self._set_checkpoints(pause=data.pauseCheckpoint, stop=data.stopCheckpoint)
         if data.logLevel != 0:
@@ -536,14 +544,14 @@ class BaseScript(salobj.Controller, abc.ABC):
 
         Raises
         ------
-        salobj.ExpectedError
+        base.ExpectedError
             If ``self.state.state`` is not
             `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
             If ``self.group_id`` is blank.
         """
         self.assert_state("run", [ScriptState.CONFIGURED])
         if not self.group_id:
-            raise salobj.ExpectedError("Group ID not set")
+            raise base.ExpectedError("Group ID not set")
         try:
             self.set_state(ScriptState.RUNNING)
             self._run_task = asyncio.ensure_future(self.run())
@@ -553,7 +561,7 @@ class BaseScript(salobj.Controller, abc.ABC):
             if self.state.state != ScriptState.STOPPING:
                 self.set_state(ScriptState.STOPPING)
         except Exception as e:
-            if not isinstance(e, salobj.ExpectedError):
+            if not isinstance(e, base.ExpectedError):
                 self.log.exception("Error in run")
             self.set_state(ScriptState.FAILING, reason=f"Error in run: {e}")
         await asyncio.sleep(0.001)
@@ -569,7 +577,7 @@ class BaseScript(salobj.Controller, abc.ABC):
 
         Raises
         ------
-        salobj.ExpectedError
+        base.ExpectedError
             If ``self.state.state`` is not
             `lsst.ts.idl.enums.Script.ScriptState.PAUSED`.
         """
@@ -590,7 +598,7 @@ class BaseScript(salobj.Controller, abc.ABC):
 
         Raises
         ------
-        salobj.ExpectedError
+        base.ExpectedError
             If ``self.state.state`` is not one of:
 
             * `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED`
@@ -623,7 +631,7 @@ class BaseScript(salobj.Controller, abc.ABC):
 
         Raises
         ------
-        salobj.ExpectedError
+        base.ExpectedError
             If ``state.state`` is not
             `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
         """
@@ -683,17 +691,17 @@ class BaseScript(salobj.Controller, abc.ABC):
 
         Raises
         ------
-        lsst.ts.salobj.ExpectedError
+        lsst.ts.base.ExpectedError
             If pause or stop are not valid regular expressions.
         """
         try:
             re.compile(pause)
         except Exception as e:
-            raise salobj.ExpectedError(f"pause={pause!r} not a valid regex: {e}")
+            raise base.ExpectedError(f"pause={pause!r} not a valid regex: {e}")
         try:
             re.compile(stop)
         except Exception as e:
-            raise salobj.ExpectedError(f"stop={stop!r} not a valid regex: {e}")
+            raise base.ExpectedError(f"stop={stop!r} not a valid regex: {e}")
         self.evt_checkpoints.set_put(pause=pause, stop=stop, force_output=True)
 
     async def _heartbeat_loop(self):
@@ -734,7 +742,7 @@ class BaseScript(salobj.Controller, abc.ABC):
             await asyncio.sleep(self.final_state_delay)
             asyncio.ensure_future(self.close())
         except Exception as e:
-            if not isinstance(e, salobj.ExpectedError):
+            if not isinstance(e, base.ExpectedError):
                 self.log.exception("Error in run")
             self.set_state(
                 ScriptState.FAILED, reason=f"failed in _exit: {e}", keep_old_reason=True
