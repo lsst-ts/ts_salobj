@@ -1,0 +1,5 @@
+string0: an arbitrary string
+bool0: false
+int0: -47
+float0: 1.234
+intarr0: [0, 2, -3, -5, 4]

@@ -1,0 +1,3 @@
+# Labels for recommended settings; a dict of label: config_file
+_invalid_label: all_fields.yaml
+some_fields: some_fields.yaml
