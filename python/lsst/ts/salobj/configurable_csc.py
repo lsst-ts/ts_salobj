@@ -280,8 +280,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         if not isinstance(input_dict, dict):
             self.log.warning(f"{labels_path} does not describe a dict")
             return {}
-        missing_files = []
         invalid_labels = []
+        invalid_files = []
+        missing_files = []
         output_dict = dict()
         # iterate over a copy so the dict can be modified
         for label, config_name in input_dict.items():
@@ -289,19 +290,25 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             if not label.isidentifier() or label.startswith("_"):
                 valid = False
                 invalid_labels.append(label)
-            if config_name.strip().startswith("/"):
+            if config_name.strip().startswith("/") or not config_name.endswith(".yaml"):
                 valid = False
-                missing_files.append(config_name)
+                invalid_files.append(config_name)
             if not (self.config_dir / config_name).is_file():
                 valid = False
                 missing_files.append(config_name)
             if valid:
                 output_dict[label] = config_name
         if invalid_labels:
-            self.log.warning(f"Ignoring invalid labels {invalid_labels}")
+            self.log.warning(
+                f"Ignoring invalid labels {invalid_labels} in {labels_path}"
+            )
+        if invalid_files:
+            self.log.warning(
+                f"Ignoring invalid config file names {invalid_files} in {labels_path}"
+            )
         if missing_files:
             self.log.warning(
-                f"Labeled config files {missing_files} not found in {self.config_dir}"
+                f"Ignoring missing config files {missing_files} in {labels_path}"
             )
         return output_dict
 
