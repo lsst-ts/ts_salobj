@@ -106,7 +106,7 @@ class TestCsc(ConfigurableCsc):
         initial_simulation_mode=0,
     ):
         schema_path = (
-            pathlib.Path(__file__).resolve().parents[4].joinpath("schema", "Test.yaml")
+            pathlib.Path(__file__).resolve().parents[4] / "schema" / "Test.yaml"
         )
         super().__init__(
             "Test",

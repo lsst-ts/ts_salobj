@@ -40,9 +40,7 @@ NODATA_TIMEOUT = 0.1  # timeout for when we expect no new data
 np.random.seed(47)
 
 index_gen = salobj.index_generator()
-TEST_DATA_DIR = TEST_CONFIG_DIR = (
-    pathlib.Path(__file__).resolve().parent.joinpath("data")
-)
+TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
 TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
