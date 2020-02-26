@@ -47,7 +47,12 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
     schema_path : `str`
-        Path to a schema file used to validate configuration files.
+        Path to a schema file used to validate configuration files
+        The recommended path is ``<package_root>/"schema"/f"{name}.yaml"``
+        for example:
+
+            schema_path = pathlib.Path(__file__).resolve().parents[4] \
+                / "schema" / f"{name}.yaml"
     config_dir : `str` (optional)
         Directory of configuration files, or None for the standard
         configuration directory (obtained from `get_default_config_dir`).
