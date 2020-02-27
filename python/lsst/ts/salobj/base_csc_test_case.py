@@ -92,9 +92,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             SAL component index, or 0 or None if the component is not indexed.
             A value is required if the component is indexed.
         initial_state : `lsst.ts.salobj.State` or `int` (optional)
-            The initial state of the CSC. Ignored except in simulation mode
-            because in normal operation the initial state is the current state
-            of the controller.
+            The initial state of the CSC.
         config_dir : `str` (optional)
             Directory of configuration files, or None for the standard
             configuration directory (obtained from `get_default_config_dir`).
