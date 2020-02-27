@@ -31,7 +31,7 @@ STD_TIMEOUT = 5  # timeout for fast operations (sec)
 LONG_TIMEOUT = 30  # timeout for slow operations (sec)
 
 index_gen = salobj.index_generator()
-TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent.joinpath("data", "config")
+TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data" / "config"
 
 
 class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
