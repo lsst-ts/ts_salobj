@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        salobj_version = sh(returnStdout: true, script: "git tag --sort version:refname | tail -1").trim()
+        salobj_version = sh(returnStdout: true, script: "git describe --tags --always --dirty").trim()
         dockerImageName = "lsstts/conda_package_builder:latest"
         container_name = "salobj_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
     }
