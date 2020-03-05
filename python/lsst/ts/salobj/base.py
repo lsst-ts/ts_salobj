@@ -25,6 +25,7 @@ __all__ = [
     "ExpectedError",
     "index_generator",
     "make_done_future",
+    "LOCAL_HOST",
     "MASTER_PRIORITY_ENV_VAR",
     "MAX_SAL_INDEX",
     "name_to_name_index",
@@ -40,6 +41,8 @@ import astropy.time
 import astropy.units as u
 
 from . import sal_enums
+
+LOCAL_HOST = "127.0.0.1"
 
 # Environment variable that specifies the Master Priority.
 # See the `Domain` doc string for details.
