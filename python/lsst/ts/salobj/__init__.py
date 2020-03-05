@@ -17,6 +17,7 @@ from .testcsc import *
 from .testscript import *
 from .base_csc_test_case import *
 from .base_config_test_case import *
+from .csc_commander import *
 
 # Backwards compatibility
 from . import testutils as test_utils
