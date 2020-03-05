@@ -16,13 +16,31 @@ pipeline {
                 }
             }
         }
-        stage("Create SALObj Conda package") {
+        stage("Start builder"){
             steps {
                 script {
                     sh """
                     docker run --name ${container_name} -di --rm --env TS_SALOBJ_VERSION=${salobj_version} \
-                        -v ${WORKSPACE}/conda:/home/saluser/conda ${dockerImageName}
-                    docker exec ${container_name} sh -c "cd ~/conda && source ~/miniconda3/bin/activate && conda build ."
+                        --env TS_CONFIG_OCS_DIR=/home/saluser/ts_config_ocs \
+                        -v ${WORKSPACE}:/home/saluser/source ${dockerImageName}
+                    """
+                }
+            }
+        }
+        stage("Clone ts_config_ocs"){
+            steps {
+                script {
+                    sh """
+                    docker exec ${container_name} sh -c "git clone https://github.com/lsst-ts/ts_config_ocs.git"
+                    """
+                }
+            }
+        }
+        stage("Create SALObj Conda package") {
+            steps {
+                script {
+                    sh """
+                    docker exec ${container_name} sh -c 'cd ~/source/conda && source ~/miniconda3/bin/activate && source "\$OSPL_HOME/release.com" && conda build --prefix-length 100 .'
                     """
                 }
             }
@@ -35,7 +53,7 @@ pipeline {
                         docker exec ${container_name} sh -c "source ~/miniconda3/bin/activate && \
                             anaconda login --user ${anaconda_user} --password ${anaconda_pass} && \
                             anaconda upload -u lsstts --force \
-                            ~/miniconda3/conda-bld/linux-64/ts-salobj-${salobj_version}-py37_0.tar.bz2"
+                            ~/miniconda3/conda-bld/linux-64/ts-salobj*.tar.bz2"
                         """
                     }
                 }

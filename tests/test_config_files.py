@@ -63,7 +63,7 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
 
     def test_get_module_dir(self):
         module_dir = self.get_module_dir("lsst.ts.salobj")
-        self.assertTrue(str(module_dir).endswith("/python/lsst/ts/salobj"))
+        self.assertTrue(str(module_dir).endswith("lsst/ts/salobj"))
 
         with self.assertRaises(ModuleNotFoundError):
             self.get_module_dir("lsst.lsst.lsst.no_such_module")

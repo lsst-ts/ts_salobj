@@ -811,7 +811,10 @@ class ControllerCommandLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCas
             self.assertEqual(msg.message, info_message)
             self.assertEqual(msg.level, logging.INFO)
             self.assertEqual(msg.traceback, "")
-            self.assertTrue(msg.filePath.endswith("ts_salobj/tests/test_csc.py"))
+            self.assertTrue(msg.filePath.endswith(
+                "tests/test_csc.py"),
+                f"{msg.filePath} does not end with "
+                f"'tests/test_csc.py'")
             self.assertEqual(msg.functionName, "test_logging")
             self.assertGreater(msg.lineNumber, 0)
             self.assertEqual(msg.process, os.getpid())

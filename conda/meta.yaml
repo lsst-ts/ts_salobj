@@ -1,15 +1,24 @@
-{% set data= load_setup_py_data() %}
+{% set data = load_setup_py_data() %}
+
 package:
   name: ts-salobj
-  version: {{ GIT_DESCRIBE_TAG }}
+  version: {{ data.get('version') }}
 
 source:
-  git_url: https://github.com/lsst-ts/ts_salobj
-  git_rev: {{ TS_SALOBJ_VERSION }}
+  path: ../
+#  git_url: https://github.com/lsst-ts/ts_salobj
+#  git_rev: {{ TS_SALOBJ_VERSION }}
 
 build:
-  script: python -m pip install --ignore-installed .
-  skip: True #[win]
+  script: python -m pip install --no-deps --ignore-installed .
+  script_env:
+    - PATH
+    - PYTHONPATH
+    - LD_LIBRARY_PATH
+    - OSPL_HOME
+    - PYTHON_BUILD_VERSION
+    - PYTHON_BUILD_LOCATION
+    - TS_CONFIG_OCS_DIR
 
 test:
   requires:
@@ -17,8 +26,24 @@ test:
     - pytest-flake8
     - pytest-cov
     - asynctest
-#  commands:
-#    - py.test
+    - numpy
+    - astropy
+    - jsonschema
+    - pyyaml
+    - boto3
+    - moto
+    - ts-dds
+    - ts-idl
+  source_files:
+    - python
+    - bin
+    - tests
+    - schema
+    - setup.cfg
+    - .git
+    - .githooks
+  commands:
+    - py.test --ignore tests/test_salpy_to_either.py --ignore tests/test_salobj_to_either.py
 
 requirements:
   host:
@@ -36,3 +61,5 @@ requirements:
     - jsonschema
     - pyyaml
     - boto3
+    - moto
+    - ts-dds
