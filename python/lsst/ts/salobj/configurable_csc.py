@@ -343,6 +343,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
           such as a git tag or commit hash. This form does not support labels.
         """
         config_name = data.settingsToApply
+        config_file_path = ""
         if config_name:
             name_version = config_name.split(":")
             if len(name_version) == 2:
@@ -384,7 +385,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             full_config_dict = self.config_validator.validate(user_config_dict)
         except Exception as e:
             raise base.ExpectedError(
-                f"schema {config_file_path} failed validation: {e}"
+                f"config {config_file_path} failed validation: {e}"
             )
         config = types.SimpleNamespace(**full_config_dict)
         await self.configure(config)
