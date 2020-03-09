@@ -569,13 +569,7 @@ class SalInfo:
                         data_list = reader._reader.take_cond(
                             condition, reader._data_queue.maxlen
                         )
-                        if len(data_list) == 1:
-                            reader._warned_readloop = False
-                        if len(data_list) >= 10 and not reader._warned_readloop:
-                            reader._warned_readloop = True
-                            self.log.warning(
-                                f"{reader!r} falling behind; read {len(data_list)} messages"
-                            )
+                        not reader.dds_queue_length_checker.check_nitems(len(data_list))
                         sd_list = [
                             self._sample_to_data(sd, si)
                             for sd, si in data_list
