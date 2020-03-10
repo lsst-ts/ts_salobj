@@ -11,13 +11,15 @@ v5.7.0
 
 Major changes:
 
-* Added `CscCommander` to support exercising CSCs from trivial command-line scripts.
-* Added `stream_as_generator` to support reading user input in interactive command-line scripts, such as CSC commanders.
-* Added ``bin/zrun_test_commander.py`` to exercise it.
+* Added `CscCommander` to support exercising CSCs from trivial command-line scripts (DM-23771).
+* Added ``bin/zrun_test_commander.py`` to exercise `CscCommander`.
+* Added `stream_as_generator` to support reading user input from asyncio-based interactive command-line scripts, such as CSC commanders.
 * Added constant ``LOCAL_HOST``.
 
 Other changes:
 
+* Set the ``name`` field of ``logMessage``, if available (DM-23812).
+* Improved logging for queues filling up, especially the DDS queue (DM-23802).
 * Fixed a bug in `ConfigurableCsc.begin_start` that could result in an undefined variable when trying to print an error message.
 
 Requirements:

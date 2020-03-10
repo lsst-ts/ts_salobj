@@ -22,57 +22,137 @@
 __all__ = ["ReadTopic"]
 
 import asyncio
+import bisect
 import collections
 import inspect
 
 import dds
 
 from .base_topic import BaseTopic
+from ..domain import DDS_READ_QUEUE_LEN
 from .. import base
 
 
-class QueueLengthChecker:
-    """Check queue length with a set of graded warnings.
+class QueueCapacityChecker:
+    """Log warnings for a fixed-length queue that should contain
+    no more than one item.
+
+    Call `check_nitems` to check the number of items in the queue.
+    This will log a warning or error, if appropriate.
 
     Parameters
     ----------
+    descr : `str`
+        Brief description of queue, e.g. "python read queue"
+        or "DDS read queue".
+    log : `logging.Logger`
+        Logger to which to write messages.
     queue_len : `int`
         Length of queue
+
+    Notes
+    -----
+
+    Once a message has been logged for a particular threshold,
+    no more messages are sent until either the queue fills enough
+    to cross the next warning threshold or empties enough to reduce
+    the warning threshold.
+
+    Log messages are warnings unless the queue is full. A full queue
+    produces an error because data is likely to have been lost.
+
+    **Attributes**
+
+    ``warn_thresholds`` : `List` [`int`]
+        Values for ``warn_threshold``; see below.
+        Set to:
+
+        * 5-10 elements, whichever is closest to ``queue_len/10``
+        * 1/2 full, but only if ``queue_len >= 20``
+        * 9/10 full
+        * full
+
+        The corresponding reset thresholds are 1/2 these values.
+
+    ``warn_threshold`` : `int` or `None`
+        A call to ``check_nitems(n)`` with ``n > warn_threshold``
+        will produce a log message and update ``warn_threshold``
+        and ``reset__threshold`` as follows:
+
+        *  ``warn_threshold`` is set to the largest warn threshold <= n
+           in ``warn_thresholds``, or `None` if the queue is full.
+        * ``reset_threshold`` is set to the half of the next lower
+          warning threshold.
+    ``reset_threshold`` : `int` or `None`
+        A call to ``check_nitems(n)`` with ``n < reset_threshold``
+        will reduce ``warn_threshold`` and ``reset_threshold`` as follows:
+
+        * ``reset_threshold`` is set to the largest reset threshold <= n,
+          or `None` if the queue is empty.
+        * ``warn_threshold`` is set to the warning threshold
+          corresponding to one reset higher reset level.
     """
 
-    def __init__(self, queue_len):
-        # 2-3 warnings:
-        # * 5-10
-        # * 1/2 queue_len if >= 10
-        # * 9/10 queue_len
+    def __init__(self, descr, log, queue_len):
         if queue_len < 10:
             raise ValueError(f"queue_len {queue_len} must be >= 10")
-        warn_lengths = [min(10, max(5, queue_len // 10))]
+        self.descr = descr
+        self.log = log
+        self.queue_len = queue_len
+        warn_thresholds = [
+            min(10, max(5, queue_len // 10)),
+            queue_len * 9 // 10,
+            queue_len,
+        ]
         if queue_len >= 20:
-            warn_lengths.append(queue_len // 2)
-        warn_lengths.append(queue_len * 9 // 10)
-        self._warn_lengths = tuple(warn_lengths)
-        self._warn_level = self._warn_lengths[0]
-        self._warn_index = 0
-        self._reset_level = None
+            warn_thresholds.append(queue_len // 2)
+        self.warn_thresholds = tuple(sorted(warn_thresholds))
+        self._reset_thresholds = tuple(
+            warn_thresh // 2 for warn_thresh in self.warn_thresholds
+        )
+        self.warn_threshold = self.warn_thresholds[0]
+        self.reset_threshold = None
 
-    def length_ok(self, length):
-        if self._warn_level is not None and length >= self._warn_level:
-            self._reset_level = self._warn_level // 2
-            self._warn_index += 1
-            if self._warn_index < len(self._warn_lengths):
-                self._warn_level = self._warn_lengths[self._warn_index]
+    def check_nitems(self, nitems):
+        """Check the number of items in the queue and log a message
+        if appropriate.
+
+        Parameters
+        ----------
+        nitems : `int`
+            Number of elements in the queue.
+
+        Returns
+        -------
+        did_log: `bool`
+            True if a message was logged.
+        """
+        if self.warn_threshold is not None and nitems >= self.warn_threshold:
+            # Issue a warning or error log message
+            # and set new warning and reset thresholds.
+            if nitems >= self.queue_len:
+                self.warn_threshold = None
+                self.reset_threshold = self._reset_thresholds[-1]
+                self.log.error(
+                    f"{self.descr} is full ({self.queue_len} elements); data may be lost"
+                )
             else:
-                self._warn_level = None
-            return False
-        elif self._reset_level is not None and length <= self._reset_level:
-            self._warn_index -= 1
-            self._warn_level = self._warn_lengths[self._warn_index]
-            if self._warn_index > 0:
-                self._reset_level = self._warn_lengths[self._warn_index - 1] // 2
+                index = bisect.bisect_right(self.warn_thresholds, nitems)
+                self.warn_threshold = self.warn_thresholds[index]
+                self.reset_threshold = self._reset_thresholds[index - 1]
+                self.log.warning(
+                    f"{self.descr} is filling: {nitems} of {self.queue_len} elements"
+                )
+            return True
+        elif self.reset_threshold is not None and nitems <= self.reset_threshold:
+            # Reset to lower warning and reset thresholds
+            index = bisect.bisect_right(self._reset_thresholds, nitems - 1)
+            self.warn_threshold = self.warn_thresholds[index]
+            if index > 0:
+                self.reset_threshold = self._reset_thresholds[index - 1]
             else:
-                self._reset_level = None
-        return True
+                self.reset_threshold = None
+        return False
 
 
 class ReadTopic(BaseTopic):
@@ -110,8 +190,12 @@ class ReadTopic(BaseTopic):
     -----
     **Attributes**
 
-    * isopen: is this read topic open?  A `bool`. `True` until `close`
-      is called.
+    * ``isopen``: `bool`
+        Is this read topic open? `True` until `close` is called.
+    * ``dds_queue_length_checker`` : `QueueCapacityChecker`
+        Queue length checker for the DDS queue.
+    * ``python_queue_length_checker`` : `QueueCapacityChecker`
+        Queue length checker for the Python queue.
 
     **Queues**
 
@@ -158,8 +242,12 @@ class ReadTopic(BaseTopic):
         self._callback = None
         self._callback_tasks = set()
         self._callback_loop_task = base.make_done_future()
-        self._length_checker = QueueLengthChecker(queue_len)
-        self._warned_readloop = False
+        self.dds_queue_length_checker = QueueCapacityChecker(
+            descr=f"{name} DDS read queue", log=self.log, queue_len=DDS_READ_QUEUE_LEN
+        )
+        self.python_queue_length_checker = QueueCapacityChecker(
+            descr=f"{name} python read queue", log=self.log, queue_len=queue_len
+        )
         qos = (
             salinfo.domain.volatile_reader_qos
             if self.volatile
@@ -401,10 +489,7 @@ class ReadTopic(BaseTopic):
 
         Unlike `next`, this can be called while using a callback function.
         """
-        if not self._length_checker.length_ok(len(self._data_queue)):
-            self.log.warning(
-                f"falling behind; queue contains {len(self._data_queue)} elements"
-            )
+        self.python_queue_length_checker.check_nitems(len(self._data_queue))
         if self._data_queue:
             return self._data_queue.popleft()
         if self._next_task.done():
