@@ -221,3 +221,9 @@ def tai_from_utc(utc, format="unix"):
         dt_tai = astropy_utc.tai.to_datetime()
     tai_minus_utc = (dt_tai - dt_utc).total_seconds()
     return utc_unix + tai_minus_utc
+
+
+# Call current_tai once so astropy downloads the leap second table.
+# All subsequent calls should be fast, at least until astropy downloads
+# a newer version of the lap second table.
+current_tai()
