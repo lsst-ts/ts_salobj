@@ -501,6 +501,10 @@ class BaseScriptTestCase(asynctest.TestCase):
     async def test_fail_cleanup(self):
         await self.check_fail(fail_run=False)
 
+    async def test_zero_index(self):
+        with self.assertRaises(ValueError):
+            salobj.TestScript(index=0)
+
     async def test_remote(self):
         """Test a script with remotes.
 
