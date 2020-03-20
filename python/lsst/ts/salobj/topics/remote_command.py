@@ -332,7 +332,7 @@ class RemoteCommand(write_topic.WriteTopic):
 
         Returns
         -------
-        cmdack : `SalInfo.AckCmdType`
+        ackcmd : `SalInfo.AckCmdType`
             Command acknowledgement.
 
         Raises
@@ -368,7 +368,7 @@ class RemoteCommand(write_topic.WriteTopic):
 
         Returns
         -------
-        cmdack : `SalInfo.AckCmdType`
+        ackcmd : `SalInfo.AckCmdType`
             Command acknowledgement.
 
         Raises
