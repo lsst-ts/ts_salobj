@@ -28,6 +28,8 @@ __all__ = [
     "LOCAL_HOST",
     "MASTER_PRIORITY_ENV_VAR",
     "MAX_SAL_INDEX",
+    "MJD_MINUS_UNIX_SECONDS",
+    "SECONDS_PER_DAY",
     "name_to_name_index",
     "current_tai",
     "tai_from_utc",
@@ -38,7 +40,6 @@ import re
 import time
 
 import astropy.time
-import astropy.units as u
 
 from . import sal_enums
 
@@ -52,6 +53,13 @@ MASTER_PRIORITY_ENV_VAR = "OSPL_MASTER_PRIORITY"
 MAX_SAL_INDEX = (1 << 31) - 1
 
 _NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-]+)(:(?P<index>\d+))?$")
+
+SECONDS_PER_DAY = 24 * 60 * 60
+
+# MJD - unix seconds, in seconds
+MJD_MINUS_UNIX_SECONDS = (
+    astropy.time.Time(0, scale="utc", format="unix").utc.mjd * SECONDS_PER_DAY
+)
 
 
 def _ackcmd_str(ackcmd):
@@ -196,31 +204,37 @@ def current_tai():
 
 
 def tai_from_utc(utc, format="unix"):
-    """Return TAI in unix seconds, given UTC.
+    """Return TAI in unix seconds, given UTC or any `astropy.time.Time`.
 
     Parameters
     ----------
-    utc : `float` or `str`
+    utc : `float`, `str` or `astropy.time.Time`
         UTC time in the specified format.
     format : `str` or `None`
         Format of the UTC time, as an `astropy.time` format name,
         or `None` to have astropy guess.
+        Ignored if ``utc`` is an instance of `astropy.time.Time`.
+
+    Notes
+    -----
+    On the day of a leap second: unix time, Julian Day and Modified Julian Day
+    are stretched or shrunk as needed so that exactly one day,
+    of standard length 86400 seconds, elapses.
+    This leads to TAI-UTC seeming to vary continuously on that day.
+    See https://github.com/astropy/astropy/issues/10055
+
+    Computers may be configured to jump at a leap second or smear the clock
+    as described above. Neither is very satifactory (jumping allows the ISO
+    format to be correct at all times, but introduces a discontinuity in
+    unix seconds). Never use unix time if you want a uniform time.
+
+    https://developers.redhat.com/blog/2016/12/28/leap-second-i-belong-to-you/
     """
-    astropy_utc = astropy.time.Time(utc, scale="utc", format=format)
-    if format == "unix":
-        utc_unix = utc
+    if isinstance(utc, astropy.time.Time):
+        ap_time = utc
     else:
-        utc_unix = astropy_utc.utc.unix
-    try:
-        dt_utc = astropy_utc.utc.to_datetime()
-        dt_tai = astropy_utc.tai.to_datetime()
-    except ValueError:
-        # datetime cannot have 60 in the seconds field; back off a second
-        astropy_utc = astropy_utc - 1 * u.second
-        dt_utc = astropy_utc.utc.to_datetime()
-        dt_tai = astropy_utc.tai.to_datetime()
-    tai_minus_utc = (dt_tai - dt_utc).total_seconds()
-    return utc_unix + tai_minus_utc
+        ap_time = astropy.time.Time(utc, scale="utc", format=format)
+    return ap_time.tai.mjd * SECONDS_PER_DAY - MJD_MINUS_UNIX_SECONDS
 
 
 # Call current_tai once so astropy downloads the leap second table.

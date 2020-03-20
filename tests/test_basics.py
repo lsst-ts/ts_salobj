@@ -255,48 +255,53 @@ class BasicsTestCase(asynctest.TestCase):
                 with self.assertRaises(ValueError):
                     salobj.name_to_name_index(bad_name)
 
-    def check_tai_from_utc(self, utc_ap, desired_tai_minus_utc):
+    def check_tai_from_utc(self, utc_ap):
         """Check tai_from_utc at a specific UTC date.
 
         Parameters
         ----------
         utc_ap : `astropy.time.Time`
             UTC date as an astropy time.
-        desired_tai_minus_utc : `float`
-            Desired TAI-UTC in seconds.
         """
-        utc = utc_ap.utc.unix
-        tai = salobj.tai_from_utc(utc)
-        self.assertAlmostEqual(tai - utc, desired_tai_minus_utc)
+        tai = salobj.tai_from_utc(utc_ap.utc.unix)
 
         tai2 = salobj.tai_from_utc(utc_ap.utc.iso, format="iso")
-        self.assertAlmostEqual(tai, tai2)
+        self.assertAlmostEqual(tai, tai2, delta=1e-6)
 
         tai3 = salobj.tai_from_utc(utc_ap.utc.iso, format=None)
-        self.assertAlmostEqual(tai, tai3)
+        self.assertAlmostEqual(tai, tai3, delta=1e-6)
 
         tai4 = salobj.tai_from_utc(utc_ap.utc.mjd, format="mjd")
-        self.assertAlmostEqual(tai, tai4, places=5)
+        self.assertAlmostEqual(tai, tai4, delta=1e-6)
+
+        tai_mjd = (tai + salobj.MJD_MINUS_UNIX_SECONDS) / salobj.SECONDS_PER_DAY
+        tai_mjd_ap = astropy.time.Time(tai_mjd, scale="tai", format="mjd")
+        tai5 = salobj.tai_from_utc(tai_mjd_ap)
+        self.assertAlmostEqual(tai, tai5, delta=1e-6)
+
+        tai_iso_ap = astropy.time.Time(utc_ap.tai.iso, scale="tai", format="iso")
+        tai6 = salobj.tai_from_utc(tai_iso_ap)
+        self.assertAlmostEqual(tai, tai6, delta=1e-6)
+
+        tai7 = salobj.tai_from_utc(utc_ap)
+        self.assertAlmostEqual(tai, tai7, delta=1e-6)
 
     def test_tai_from_utc(self):
         """Test tai_from_utc.
         """
-        # check tai_from_utc at leap second transition 2017-01-01
+        # check tai_from_utc at leap second transition just before 2017-01-01
         # when leap seconds went from 36 to 37
         utc0_ap = astropy.time.Time("2017-01-01", scale="utc", format="iso")
-        for desired_tai_minus_utc, utc_ap in (
-            (36, utc0_ap - 1 * u.second),
-            (36, utc0_ap - 0.1 * u.second),
-            (37, utc0_ap),
-            (37, utc0_ap + 0.1 * u.second),
-            (37, utc0_ap + 1 * u.second),
+        for utc_ap in (
+            (utc0_ap - 0.5 * u.day),
+            (utc0_ap - 1 * u.second),
+            (utc0_ap - 0.1 * u.second),
+            (utc0_ap),
+            (utc0_ap + 0.1 * u.second),
+            (utc0_ap + 1 * u.second),
         ):
-            with self.subTest(
-                utc_ap=utc_ap, desired_tai_minus_utc=desired_tai_minus_utc
-            ):
-                self.check_tai_from_utc(
-                    utc_ap=utc_ap, desired_tai_minus_utc=desired_tai_minus_utc
-                )
+            with self.subTest(utc_ap=utc_ap):
+                self.check_tai_from_utc(utc_ap=utc_ap)
 
     def test_current_tai(self):
         utc0 = time.time()
