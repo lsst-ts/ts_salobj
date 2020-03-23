@@ -43,11 +43,11 @@ class SpeedTestCase(asynctest.TestCase):
                 + [f"command_" + name for name in salinfo.command_names]
                 + list(salinfo.telemetry_names)
             )
-            t0 = time.time()
+            t0 = time.monotonic()
             for topic_name in topic_names:
                 revname = salinfo.revnames.get(topic_name)
                 ddsutil.get_dds_classes_from_idl(salinfo.metadata.idl_path, revname)
-            dt = time.time() - t0
+            dt = time.monotonic() - t0
             ntopics = len(topic_names)
             print(
                 f"Took {dt:0.2f} to create {ntopics} topics: {ntopics/dt:0.1f} topics/sec"
@@ -93,9 +93,9 @@ class SpeedTestCase(asynctest.TestCase):
             ]
             for writer in writers:
                 writer.field_name = fields[writer.name]
-            t0 = time.time()
+            t0 = time.monotonic()
             await salinfo.start()
-            dt = time.time() - t0
+            dt = time.monotonic() - t0
             # assume that most of the time is reading history
             print(f"Took {dt:0.2f} seconds to obtain historical data")
 
@@ -106,7 +106,7 @@ class SpeedTestCase(asynctest.TestCase):
                         writer.put()
                     await asyncio.sleep(0)
 
-            t0 = time.time()
+            t0 = time.monotonic()
             write_task = asyncio.create_task(write_loop())
             read_tasks = [reader.done_reading for reader in readers]
             all_tasks = [write_task] + read_tasks
@@ -118,7 +118,7 @@ class SpeedTestCase(asynctest.TestCase):
                 self.fail(
                     f"One or more readers did not finish; read {nread_list} of {ntowrite}"
                 )
-            dt = time.time() - t0
+            dt = time.monotonic() - t0
             total_values = ntowrite * len(readers)
             print(
                 f"Took {dt:0.2f} seconds to read/write {total_values} values: "

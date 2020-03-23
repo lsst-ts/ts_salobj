@@ -849,7 +849,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertTrue(self.csc.cmd_wait.allow_multiple_callbacks)
 
             durations = (0.4, 0.2)  # seconds
-            t0 = time.time()
+            t0 = time.monotonic()
             tasks = []
             for duration in durations:
                 task = asyncio.create_task(
@@ -864,7 +864,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 await asyncio.sleep(0)
                 tasks.append(task)
             ackcmds = await asyncio.gather(*tasks)
-            measured_duration = time.time() - t0
+            measured_duration = time.monotonic() - t0
             for ackcmd in ackcmds:
                 self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
 
@@ -881,7 +881,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertFalse(self.csc.cmd_wait.allow_multiple_callbacks)
 
             durations = (0.4, 0.2)  # seconds
-            t0 = time.time()
+            t0 = time.monotonic()
 
             tasks = []
             for duration in durations:
@@ -897,7 +897,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 # is modified by the next loop iteration
                 await asyncio.sleep(0)
             ackcmds = await asyncio.gather(*tasks)
-            measured_duration = time.time() - t0
+            measured_duration = time.monotonic() - t0
             for ackcmd in ackcmds:
                 self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
 

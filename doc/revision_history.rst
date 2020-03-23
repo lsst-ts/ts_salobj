@@ -14,13 +14,23 @@ Major changes:
 * Added `CscCommander` to support exercising CSCs from trivial command-line scripts (DM-23771).
 * Added ``bin/zrun_test_commander.py`` to exercise `CscCommander`.
 * Added `stream_as_generator` to support reading user input from asyncio-based interactive command-line scripts, such as CSC commanders.
-* Added constant ``LOCAL_HOST``.
+* The package is now conda-installable.
+* Added constants ``LOCAL_HOST``, ``SECONDS_PER_DAY`` and ``MJD_MINUS_UNIX_SECONDS``.
 
 Other changes:
 
 * Set the ``name`` field of ``logMessage``, if available (DM-23812).
+* Fixed two issues in `tai_from_utc` when provided with an `astropy.time.Time`.
+
+    * Using the default value for the ``scale`` argument caused incorrect behavior.
+      Now the ``scale`` argument is ignored, as it should be, since astropy time's have their own scale.
+    * The behavior on a leap second day was not well documented and differed from `astropy.time`.
+      Document it and match `astropy.time`.
 * Improved logging for queues filling up, especially the DDS queue (DM-23802).
+* Prevent `BaseScript` from being constructed with index=0, because such a script would receive commands for every script (DM-23900).
 * Fixed a bug in `ConfigurableCsc.begin_start` that could result in an undefined variable when trying to print an error message.
+* Load the astropy leap second table at startup, so the first call to `current_tai` is fast.
+* Use `time.monotonic` instead of `time.time` to measure durations.
 
 Requirements:
 
