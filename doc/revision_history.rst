@@ -11,6 +11,7 @@ v5.7.0
 
 Major changes:
 
+* Added `astropy_time_from_tai_unix` function.
 * Added `CscCommander` to support exercising CSCs from trivial command-line scripts (DM-23771).
 * Added ``bin/zrun_test_commander.py`` to exercise `CscCommander`.
 * Added `stream_as_generator` to support reading user input from asyncio-based interactive command-line scripts, such as CSC commanders.
