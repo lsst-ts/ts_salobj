@@ -20,16 +20,17 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = [
-    "AckError",
-    "AckTimeoutError",
-    "ExpectedError",
-    "index_generator",
-    "make_done_future",
     "LOCAL_HOST",
     "MASTER_PRIORITY_ENV_VAR",
     "MAX_SAL_INDEX",
     "MJD_MINUS_UNIX_SECONDS",
     "SECONDS_PER_DAY",
+    "AckError",
+    "AckTimeoutError",
+    "ExpectedError",
+    "astropy_time_from_tai_unix",
+    "index_generator",
+    "make_done_future",
     "name_to_name_index",
     "current_tai",
     "tai_from_utc",
@@ -111,6 +112,19 @@ class ExpectedError(Exception):
     """
 
     pass
+
+
+def astropy_time_from_tai_unix(tai_unix):
+    """Get astropy time from TAI in unix seconds.
+
+    Parameters
+    ----------
+    tai_unix : `float`
+        TAI time as unix seconds, e.g. the time returned by CLOCK_TAI
+        on linux systems.
+    """
+    tai_mjd = (MJD_MINUS_UNIX_SECONDS + tai_unix) / SECONDS_PER_DAY
+    return astropy.time.Time(tai_mjd, scale="tai", format="mjd")
 
 
 def index_generator(imin=1, imax=MAX_SAL_INDEX, i0=None):
@@ -217,18 +231,26 @@ def tai_from_utc(utc, format="unix"):
 
     Notes
     -----
-    On the day of a leap second: unix time, Julian Day and Modified Julian Day
-    are stretched or shrunk as needed so that exactly one day,
-    of standard length 86400 seconds, elapses.
-    This leads to TAI-UTC seeming to vary continuously on that day.
+    Never use unix seconds if you need accuracy better than a second on the
+    day of a leap second, because there is no standard for how to handle
+    the computer clock. Both ntp and ptp can be configured to make the clock
+    jump or smear in some way.
+    https://developers.redhat.com/blog/2016/12/28/leap-second-i-belong-to-you/
+
+    Only use ISO date if you want the expected integer number of seconds
+    between TAI and UTC on the day of a leap second.
+
+    On the day of a leap second `astropy.time` (and the underlying
+    Standards of Fundamental Astronomy library) shrink or stretch
+    unix time, Julian Day and Modified Julian Day, as needed,
+    so that exactly one day of standard length 86400 seconds elapses.
+    This leads to TAI-UTC varying continuously on that day,
+    instead of being an integer number of seconds.
     See https://github.com/astropy/astropy/issues/10055
 
-    Computers may be configured to jump at a leap second or smear the clock
-    as described above. Neither is very satifactory (jumping allows the ISO
-    format to be correct at all times, but introduces a discontinuity in
-    unix seconds). Never use unix time if you want a uniform time.
-
-    https://developers.redhat.com/blog/2016/12/28/leap-second-i-belong-to-you/
+    Also the `datetime` library does not handle leap seconds, and the datetime
+    representation in `astropy.time` raises an exception the date has 60
+    in the seconds field.
     """
     if isinstance(utc, astropy.time.Time):
         ap_time = utc
