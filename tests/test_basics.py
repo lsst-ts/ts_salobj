@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import datetime
 import os
 import random
 import time
@@ -132,6 +133,20 @@ class BasicsTestCase(asynctest.TestCase):
             repr_err = repr(err)
             for item in ("AckError", msg, private_seqNum, ack, error, result):
                 self.assertIn(str(item), repr_err)
+
+    def test_astropy_time_from_tai_unix(self):
+        # Check the function at a leap second transition,
+        # since that is likely to cause problems
+        unix_time0 = datetime.datetime.fromisoformat("2017-01-01").timestamp()
+        for dt in (-1, -0.5, -0.1, 0, 0.1, 1):
+            with self.subTest(dt=dt):
+                utc_unix = unix_time0 + dt
+                tai_unix = salobj.tai_from_utc(utc_unix)
+                astropy_time1 = salobj.astropy_time_from_tai_unix(tai_unix)
+                self.assertIsInstance(astropy_time1, astropy.time.Time)
+                self.assertEqual(astropy_time1.scale, "tai")
+                tai_unix_round_trip1 = salobj.tai_from_utc(astropy_time1)
+                self.assertAlmostEqual(tai_unix, tai_unix_round_trip1, delta=1e-6)
 
     async def test_long_ack_result(self):
         async with salobj.Domain() as domain:
