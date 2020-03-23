@@ -484,9 +484,9 @@ class SalInfo:
         try:
             loop = asyncio.get_event_loop()
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                t0 = time.time()
+                t0 = time.monotonic()
                 isok = await loop.run_in_executor(pool, self._wait_history)
-                dt = time.time() - t0
+                dt = time.monotonic() - t0
                 if not self.isopen:  # shutting down
                     return
                 if isok:
@@ -569,13 +569,7 @@ class SalInfo:
                         data_list = reader._reader.take_cond(
                             condition, reader._data_queue.maxlen
                         )
-                        if len(data_list) == 1:
-                            reader._warned_readloop = False
-                        if len(data_list) >= 10 and not reader._warned_readloop:
-                            reader._warned_readloop = True
-                            self.log.warning(
-                                f"{reader!r} falling behind; read {len(data_list)} messages"
-                            )
+                        not reader.dds_queue_length_checker.check_nitems(len(data_list))
                         sd_list = [
                             self._sample_to_data(sd, si)
                             for sd, si in data_list
@@ -644,7 +638,7 @@ class SalInfo:
         wait_timeout = dds.DDSDuration(sec=time_limit)
         num_ok = 0
         num_checked = 0
-        t0 = time.time()
+        t0 = time.monotonic()
         for reader in list(self._readers.values()):
             if not self.isopen:  # shutting down
                 return False
@@ -654,7 +648,7 @@ class SalInfo:
             isok = reader._reader.wait_for_historical_data(wait_timeout)
             if isok:
                 num_ok += 1
-            elapsed_time = time.time() - t0
+            elapsed_time = time.monotonic() - t0
             rem_time = max(0.01, time_limit - elapsed_time)
             wait_timeout = dds.DDSDuration(sec=rem_time)
         return num_ok > 0 or num_checked == 0

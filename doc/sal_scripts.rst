@@ -133,7 +133,7 @@ or if you wish to do other things while you wait:
   .. code-block:: python
 
     loop = asyncio.get_running_loop()
-    thread_task = asyncio.make_task(loop.run_in_executor(None, slow_computation))
+    thread_task = asyncio.create_task(loop.run_in_executor(None, slow_computation))
 
     # do other work here...
     # then eventually you must wait for the background task

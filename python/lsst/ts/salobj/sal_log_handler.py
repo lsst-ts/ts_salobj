@@ -38,10 +38,13 @@ class SalLogHandler(logging.Handler):
     def __init__(self, controller):
         self.controller = controller
         super().__init__()
+        self.has_name = hasattr(self.controller.evt_logMessage.DataType(), "name")
 
     def emit(self, record):
         self.format(record)
         try:
+            if self.has_name:
+                self.controller.evt_logMessage.set(name=record.name)
             self.controller.evt_logMessage.set_put(
                 level=record.levelno,
                 message=record.message,

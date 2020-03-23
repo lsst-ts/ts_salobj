@@ -124,15 +124,14 @@ class DefaultingValidator:
 
         Parameters
         ----------
-        data_dict : `dict`
-            Data to validate.
+        data_dict : `dict` or `None`
+            Data to validate. If None then an empty dict is used.
 
         Returns
         -------
-        result : `dict` or `None`
+        result : `dict`
             Validated data. A copy of data_dict with missing values
             that have defaults set to those defaults.
-            If None then an empty dict is used.
 
         Raises
         ------

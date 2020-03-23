@@ -20,13 +20,17 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = [
+    "LOCAL_HOST",
+    "MASTER_PRIORITY_ENV_VAR",
+    "MAX_SAL_INDEX",
+    "MJD_MINUS_UNIX_SECONDS",
+    "SECONDS_PER_DAY",
     "AckError",
     "AckTimeoutError",
     "ExpectedError",
+    "astropy_time_from_tai_unix",
     "index_generator",
     "make_done_future",
-    "MASTER_PRIORITY_ENV_VAR",
-    "MAX_SAL_INDEX",
     "name_to_name_index",
     "current_tai",
     "tai_from_utc",
@@ -37,9 +41,10 @@ import re
 import time
 
 import astropy.time
-import astropy.units as u
 
 from . import sal_enums
+
+LOCAL_HOST = "127.0.0.1"
 
 # Environment variable that specifies the Master Priority.
 # See the `Domain` doc string for details.
@@ -49,6 +54,13 @@ MASTER_PRIORITY_ENV_VAR = "OSPL_MASTER_PRIORITY"
 MAX_SAL_INDEX = (1 << 31) - 1
 
 _NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-]+)(:(?P<index>\d+))?$")
+
+SECONDS_PER_DAY = 24 * 60 * 60
+
+# MJD - unix seconds, in seconds
+MJD_MINUS_UNIX_SECONDS = (
+    astropy.time.Time(0, scale="utc", format="unix").utc.mjd * SECONDS_PER_DAY
+)
 
 
 def _ackcmd_str(ackcmd):
@@ -100,6 +112,19 @@ class ExpectedError(Exception):
     """
 
     pass
+
+
+def astropy_time_from_tai_unix(tai_unix):
+    """Get astropy time from TAI in unix seconds.
+
+    Parameters
+    ----------
+    tai_unix : `float`
+        TAI time as unix seconds, e.g. the time returned by CLOCK_TAI
+        on linux systems.
+    """
+    tai_mjd = (MJD_MINUS_UNIX_SECONDS + tai_unix) / SECONDS_PER_DAY
+    return astropy.time.Time(tai_mjd, scale="tai", format="mjd")
 
 
 def index_generator(imin=1, imax=MAX_SAL_INDEX, i0=None):
@@ -193,28 +218,48 @@ def current_tai():
 
 
 def tai_from_utc(utc, format="unix"):
-    """Return TAI in unix seconds, given UTC.
+    """Return TAI in unix seconds, given UTC or any `astropy.time.Time`.
 
     Parameters
     ----------
-    utc : `float` or `str`
+    utc : `float`, `str` or `astropy.time.Time`
         UTC time in the specified format.
     format : `str` or `None`
         Format of the UTC time, as an `astropy.time` format name,
         or `None` to have astropy guess.
+        Ignored if ``utc`` is an instance of `astropy.time.Time`.
+
+    Notes
+    -----
+    Never use unix seconds if you need accuracy better than a second on the
+    day of a leap second, because there is no standard for how to handle
+    the computer clock. Both ntp and ptp can be configured to make the clock
+    jump or smear in some way.
+    https://developers.redhat.com/blog/2016/12/28/leap-second-i-belong-to-you/
+
+    Only use ISO date if you want the expected integer number of seconds
+    between TAI and UTC on the day of a leap second.
+
+    On the day of a leap second `astropy.time` (and the underlying
+    Standards of Fundamental Astronomy library) shrink or stretch
+    unix time, Julian Day and Modified Julian Day, as needed,
+    so that exactly one day of standard length 86400 seconds elapses.
+    This leads to TAI-UTC varying continuously on that day,
+    instead of being an integer number of seconds.
+    See https://github.com/astropy/astropy/issues/10055
+
+    Also the `datetime` library does not handle leap seconds, and the datetime
+    representation in `astropy.time` raises an exception the date has 60
+    in the seconds field.
     """
-    astropy_utc = astropy.time.Time(utc, scale="utc", format=format)
-    if format == "unix":
-        utc_unix = utc
+    if isinstance(utc, astropy.time.Time):
+        ap_time = utc
     else:
-        utc_unix = astropy_utc.utc.unix
-    try:
-        dt_utc = astropy_utc.utc.to_datetime()
-        dt_tai = astropy_utc.tai.to_datetime()
-    except ValueError:
-        # datetime cannot have 60 in the seconds field; back off a second
-        astropy_utc = astropy_utc - 1 * u.second
-        dt_utc = astropy_utc.utc.to_datetime()
-        dt_tai = astropy_utc.tai.to_datetime()
-    tai_minus_utc = (dt_tai - dt_utc).total_seconds()
-    return utc_unix + tai_minus_utc
+        ap_time = astropy.time.Time(utc, scale="utc", format=format)
+    return ap_time.tai.mjd * SECONDS_PER_DAY - MJD_MINUS_UNIX_SECONDS
+
+
+# Call current_tai once so astropy downloads the leap second table.
+# All subsequent calls should be fast, at least until astropy downloads
+# a newer version of the lap second table.
+current_tai()

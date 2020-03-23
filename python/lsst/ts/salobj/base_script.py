@@ -68,10 +68,17 @@ class BaseScript(controller.Controller, abc.ABC):
     Parameters
     ----------
     index : `int`
-        Index of SAL Script component. This must be unique among all
-        SAL scripts that are currently running.
+        Index of SAL Script component. This must be non-zero
+        and should be unique among all loaded SAL scripts
+        (to avoid multiple scripts responding to a command).
     descr : `str`
         Short description of what the script does, for operator display.
+
+    Raises
+    ------
+    ValueError
+        If index=0. This is prohibited because index=0 would cause
+        the script to respond to commands meant for every other script.
 
     Notes
     -----
@@ -88,6 +95,9 @@ class BaseScript(controller.Controller, abc.ABC):
     """
 
     def __init__(self, index, descr):
+        if index == 0:
+            raise ValueError("index must be nonzero")
+
         # Speed up script loading time and avoid expensive system alignments
         # by making sure scripts never become master.
         # This must be done before the `DomainParticipant` is created.
