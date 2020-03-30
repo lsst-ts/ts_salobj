@@ -144,12 +144,11 @@ class SalInfo:
 
     Notes
     -----
-    **Environment Variables**
+    Reads the following `Environment Variables
+    <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
+    follow the link for details:
 
     * ``LSST_DDS_DOMAIN`` (required): the DDS partition name.
-      Since this is parsed by SalInfo, different instances of SalInfo
-      can communicate with different DDS partitions,
-      even though all share the same Domain object.
     * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec)
       for waiting for historical (late-joiner) data.
 
