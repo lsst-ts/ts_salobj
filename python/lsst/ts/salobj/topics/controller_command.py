@@ -44,7 +44,7 @@ class ControllerCommand(read_topic.ReadTopic):
 
     Parameters
     ----------
-    salinfo : `SalInfo`
+    salinfo : `.SalInfo`
         SAL component information
     name : `str`
         Command name

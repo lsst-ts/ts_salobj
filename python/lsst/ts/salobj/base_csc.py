@@ -66,8 +66,8 @@ class BaseCsc(Controller):
     -----
     **Attributes**
 
-    * ``heartbeat_interval``: interval between heartbeat events, in seconds;
-      a `float`.
+    * **heartbeat_interval** : `float`
+        Interval between heartbeat events, in seconds;
 
     **Constructor**
 

@@ -73,30 +73,35 @@ class Domain:
 
     **Attributes**
 
-    * ``participant``: DDS domain participant, a `dds.DomainParticipant`.
-    * ``host``: value for the ``private_host`` field of output samples;
-      an `int`.
-      See environment variable ``LSST_DDS_IP`` for details.
-    * ``origin``: process ID (an int). Used to set the ``private_origin``
-      field of output samples.
-    * ``idl_dir``: root directory of the ``ts_idl`` package; a `pathlib.Path`.
-    * ``qos_provider``: quality of service provider; a `dds.QosProvider`.
-    * ``topic_qos``: quality of service for non-volatile DDS topics
-      (those that want late-joiner data); a `dds.Qos`.
-    * ``volatile_topic_qos``: quality of service for volatile topics
-      (those that do not want any late-joiner data); a `dds.Qos`.
-      Note: we cannot just make readers volatile to avoid late-joiner data,
-      as volatile readers receive late-joiner data from non-volatile writers.
-      So we make readers, writers, and topics all volatile. See OpenSplice
-      issue 19934; according to ADLink it is a feature, not a bug.
-    * ``reader_qos``: quality of service for non-volatile DDS readers;
-      a `dds.Qos`.
-    * ``volatile_reader_qos``: quality of service for volatile DDS readers;
-      a `dds.Qos`.
-    * ``writer_qos``: quality of service for non-volatile DDS writers;
-      a `dds.Qos`.
-    * ``volatile_writer_qos``: quality of service for volatile DDS writers;
-      a `dds.Qos`.
+    * **participant** : ``dds.DomainParticipant``
+        DDS domain participant.
+    * **host** : `int`
+        Value for the ``private_host`` field of output samples.
+        See environment variable ``LSST_DDS_IP`` for details.
+    * **origin** : `int`
+        Process ID. Used to set the ``private_origin`` field of output samples.
+    * **idl_dir** : `pathlib.Path`
+        Root directory of the ``ts_idl`` package.
+    * **qos_provider** : ``dds.QosProvider``
+        Quality of service provider.
+    * **topic_qos** : ``dds.Qos``
+        Quality of service for non-volatile DDS topics (those that want
+        late-joiner data).
+    * **volatile_topic_qos** : ``dds.Qos``
+        Quality of service for volatile topics (those that do not want any
+        late-joiner data).
+        Note: we cannot just make readers volatile to avoid late-joiner data,
+        as volatile readers receive late-joiner data from non-volatile writers.
+        So we make readers, writers, and topics all volatile.
+        According to ADLink it is a feature, not a bug.
+    * **reader_qos** : ``dds.Qos``
+        Quality of service for non-volatile DDS readers.
+    * **volatile_reader_qos** : ``dds.Qos``
+        Quality of service for volatile DDS readers.
+    * **writer_qos** : ``dds.Qos``
+        Quality of service for non-volatile DDS writers.
+    * **volatile_writer_qos** : ``dds.Qos``
+        Quality of service for volatile DDS writers.
 
     **Cleanup**
 

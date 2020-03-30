@@ -29,7 +29,7 @@ class ControllerTelemetry(write_topic.WriteTopic):
 
     Parameters
     ----------
-    salinfo : `SalInfo`
+    salinfo : `.SalInfo`
         SAL component information
     name : `str`
         Command name

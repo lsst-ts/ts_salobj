@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["ReadTopic"]
+__all__ = ["QueueCapacityChecker", "ReadTopic"]
 
 import asyncio
 import bisect
@@ -63,9 +63,8 @@ class QueueCapacityChecker:
 
     **Attributes**
 
-    ``warn_thresholds`` : `List` [`int`]
-        Values for ``warn_threshold``; see below.
-        Set to:
+    * **warn_thresholds** : `List` [`int`]
+        Values for ``warn_threshold`` (see next item). Set to:
 
         * 5-10 elements, whichever is closest to ``queue_len/10``
         * 1/2 full, but only if ``queue_len >= 20``
@@ -74,7 +73,7 @@ class QueueCapacityChecker:
 
         The corresponding reset thresholds are 1/2 these values.
 
-    ``warn_threshold`` : `int` or `None`
+    * **warn_threshold** : `int` or `None`
         A call to ``check_nitems(n)`` with ``n > warn_threshold``
         will produce a log message and update ``warn_threshold``
         and ``reset__threshold`` as follows:
@@ -83,7 +82,7 @@ class QueueCapacityChecker:
            in ``warn_thresholds``, or `None` if the queue is full.
         * ``reset_threshold`` is set to the half of the next lower
           warning threshold.
-    ``reset_threshold`` : `int` or `None`
+    * **reset_threshold** : `int` or `None`
         A call to ``check_nitems(n)`` with ``n < reset_threshold``
         will reduce ``warn_threshold`` and ``reset_threshold`` as follows:
 
@@ -160,7 +159,7 @@ class ReadTopic(BaseTopic):
 
     Parameters
     ----------
-    salinfo : `SalInfo`
+    salinfo : `.SalInfo`
         SAL component information
     name : `str`
         Topic name, without a "command\_" or "logevent\_" prefix.
@@ -190,11 +189,11 @@ class ReadTopic(BaseTopic):
     -----
     **Attributes**
 
-    * ``isopen``: `bool`
+    * **isopen** : `bool`
         Is this read topic open? `True` until `close` is called.
-    * ``dds_queue_length_checker`` : `QueueCapacityChecker`
+    * **dds_queue_length_checker** : `QueueCapacityChecker`
         Queue length checker for the DDS queue.
-    * ``python_queue_length_checker`` : `QueueCapacityChecker`
+    * **python_queue_length_checker** : `QueueCapacityChecker`:
         Queue length checker for the Python queue.
 
     **Queues**
@@ -215,7 +214,7 @@ class ReadTopic(BaseTopic):
 
     **Reading**
 
-    Reading is performed by the `SalInfo` which has single read loop that
+    Reading is performed by the `.SalInfo` which has single read loop that
     reads all topics. This is more efficient than having each `ReadTopic` read
     its own data.
     """

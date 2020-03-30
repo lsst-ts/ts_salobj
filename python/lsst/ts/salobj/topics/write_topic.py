@@ -46,7 +46,7 @@ class WriteTopic(BaseTopic):
 
     Parameters
     ----------
-    salinfo : `SalInfo`
+    salinfo : `.SalInfo`
         SAL component information
     name : `str`
         Topic name, without a "command\_" or "logevent\_" prefix.
@@ -66,8 +66,8 @@ class WriteTopic(BaseTopic):
     -----
     **Attributes**
 
-    * isopen: is this read topic open?  A `bool`. `True` until `close`
-      is called.
+    * **isopen** : `bool`
+        Is this read topic open? `True` until `close` is called.
     """
 
     def __init__(

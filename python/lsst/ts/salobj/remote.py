@@ -82,15 +82,15 @@ class Remote:
     -----
     **Attributes**
 
-    * ``cmd_<command_name>``, a `topics.RemoteCommand`,
-      for each command supported by the component.
-      Omitted if ``readonly`` true.
-    * ``evt_<event_name>``, a `topics.RemoteEvent`
-      for each log event topic supported by the component
-      and specified by ``include`` and the ``exclude`` arguments.
-    * ``tel_<telemetry_name>``, a `topics.RemoteTelemetry`
-      for each telemetry topic supported by the component
-      and specified by the ``include`` and ``exclude`` arguments.
+    * **cmd_<command_name>** : `topics.RemoteCommand`
+        Remote command topic for each command supported by the component.
+        Omitted if ``readonly`` true.
+    * **evt_<event_name>** : `topics.RemoteEvent`
+        Remote event for each event supported by the component,
+        as specified by ``include`` and the ``exclude`` arguments.
+    * **tel_<telemetry_name>** : `topics.RemoteTelemetry`
+        Remote telemetry topic for each telemetry topic supported by the
+        component, as specified by the ``include`` and ``exclude`` arguments.
 
     Here is an example that makes a Test remote and displays
     the topic-related attributes::

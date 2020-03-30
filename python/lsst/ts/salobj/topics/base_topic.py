@@ -35,7 +35,7 @@ class BaseTopic(abc.ABC):
 
     Parameters
     ----------
-    salinfo : `SalInfo`
+    salinfo : `.SalInfo`
         SAL component information
     name : `str`
         Topic name, without a "command\_" or "logevent\_" prefix.
@@ -52,20 +52,27 @@ class BaseTopic(abc.ABC):
 
     **Attributes**
 
-    * salinfo: the ``salinfo`` constructor argument; a `SalInfo`.
-    * name: the ``name`` constructor argument; a `str`.
-    * sal_name: the topic name used by SAL; a `str`.
-      For example: "logevent_summaryState".
-    * log: a `logging.Logger`.
-    * volatile: is this topic volatile (does it want no historical data)?
-      A `bool`.
-    * attr_name: name of topic attribute in `Controller` and `Remote`; a `str`.
-      For example: "evt_summaryState".
-    * rev_code: revision hash code for the topic; a `str`.
-      This code changes whenever the schema for the topic changes,
-      and it is part of the DDS topic name. For example: "90255bf1"
-    * dds_name: name of topic seen by DDS; a `str`.
-      For example: "Test_logevent_summaryState_90255bf1".
+    * **salinfo** : `.SalInfo`
+        The ``salinfo`` constructor argument.
+    * **name** : `str`
+        The ``name`` constructor argument.
+    * **sal_name** : `str`
+        The topic name used by SAL.
+        For example: "logevent_summaryState".
+    * **log** : `logging.Logger`
+        A logger.
+    * **volatile** : `bool`
+        Is this topic volatile (does it want no historical data)?
+    * **attr_name** : `str`
+        Name of topic attribute in `Controller` and `Remote`.
+        For example: "evt_summaryState".
+    * **rev_code** : `str`
+        Revision hash code for the topic.
+        This code changes whenever the schema for the topic changes,
+        and it is part of the DDS topic name. For example: "90255bf1"
+    * **dds_name** : `str`
+        Name of topic seen by DDS.
+        For example: "Test_logevent_summaryState_90255bf1".
     """
 
     def __init__(self, *, salinfo, name, sal_prefix):

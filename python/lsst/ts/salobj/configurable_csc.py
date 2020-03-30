@@ -79,13 +79,14 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     -----
     **Attributes**
 
-    * ``config_dir``: configuration directory; a `pathlib.Path`.
-      Directory containing configuration files.
-    * ``config_validator``: validator for configuration files that also sets
-      default values for omitted items; a `DefaultingValidator`.
-    * ``schema_version``: configuration schema version, as specified
-      in the schema as the final word of the ``title``; a `str`.
-      Used to find the ``config_dir``.
+    * **config_dir** : `pathlib.Path`
+        Directory containing configuration files.
+    * **config_validator** : `DefaultingValidator`
+        Validator for configuration files that also sets default values
+        for omitted items.
+    * **schema_version** : `str`
+        Configuration schema version, as specified in the schema as the
+        final word of the ``title``. Used to find the ``config_dir``.
 
     **Configuration**
 
