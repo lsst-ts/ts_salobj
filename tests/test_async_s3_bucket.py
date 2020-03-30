@@ -64,6 +64,25 @@ class AsyncS3BucketTest(asynctest.TestCase):
     async def test_attributes(self):
         self.assertEqual(self.bucket.name, self.bucket_name)
 
+    async def test_blank_s3_endpoint_url(self):
+        os.environ["S3_ENDPOINT_URL"] = ""
+        bucket = salobj.AsyncS3Bucket(self.bucket_name)
+        self.assertIn("amazon", bucket.service_resource.meta.client.meta.endpoint_url)
+
+    async def test_no_s3_endpoint_url(self):
+        # Clear "S3_ENDPOINT_URL" if it exists.
+        os.environ.pop("S3_ENDPOINT_URL", default=None)
+        bucket = salobj.AsyncS3Bucket(self.bucket_name)
+        self.assertIn("amazon", bucket.service_resource.meta.client.meta.endpoint_url)
+
+    async def test_specified_s3_endpoint_url(self):
+        endpoint_url = "http://foo.bar.edu:9000"
+        os.environ["S3_ENDPOINT_URL"] = endpoint_url
+        bucket = salobj.AsyncS3Bucket(self.bucket_name)
+        self.assertEqual(
+            bucket.service_resource.meta.client.meta.endpoint_url, endpoint_url
+        )
+
     async def test_file_transfer(self):
         await self.bucket.upload(fileobj=self.fileobj, key=self.key)
         roundtrip_fileobj = await self.bucket.download(key=self.key)

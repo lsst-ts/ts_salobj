@@ -23,6 +23,7 @@ __all__ = ["AsyncS3Bucket"]
 
 import asyncio
 import io
+import os
 
 import boto3
 import botocore
@@ -38,12 +39,33 @@ class AsyncS3Bucket:
         <https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html>
         for details. In particular note that bucket names must be globally
         unique across all AWS accounts.
+
+    Notes
+    -----
+    Reads the following `Environment Variables
+    <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
+    follow the link for details:
+
+    * **S3_ENDPOINT_URL**:  The endpoint URL, e.g. ``http://foo.bar:9000``.
+
+    **Attributes**
+
+    * **service_resource** : `boto3.resources.factory.s3.ServiceResource`
+        The resource used to access the S3 service.
+        Primarly provided for unit tests.
+    * **name** : `str`
+        The bucket name
+    * **bucket** : `boto3.resources.s3.Bucket`
+        The S3 bucket.
     """
 
     def __init__(self, name):
-        s3 = boto3.resource("s3")
+        endpoint_url = os.environ.get("S3_ENDPOINT_URL", None)
+        if not endpoint_url:
+            endpoint_url = None  # Handle ""
+        self.service_resource = boto3.resource("s3", endpoint_url=endpoint_url)
         self.name = name
-        self.bucket = s3.Bucket(name)
+        self.bucket = self.service_resource.Bucket(name)
 
     async def upload(self, fileobj, key, callback=None):
         """Upload a file-like object to the bucket.
