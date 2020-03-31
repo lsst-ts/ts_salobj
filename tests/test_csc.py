@@ -402,18 +402,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         """
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             await self.check_standard_state_transitions(
-                enabled_commands=("setArrays", "setScalars", "wait")
+                enabled_commands=("setArrays", "setScalars", "wait"),
+                skip_commands=("fault",),
             )
-
-    async def check_bad_commands(self, bad_commands=None, good_commands=None):
-        """Override to always ignore the `fault` command.
-        """
-        if good_commands is None:
-            good_commands = ()
-        good_commands += tuple(good_commands) + ("fault",)
-        await super().check_bad_commands(
-            bad_commands=bad_commands, good_commands=good_commands
-        )
 
 
 class NoIndexCsc(salobj.TestCsc):

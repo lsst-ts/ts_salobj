@@ -55,7 +55,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     _index_iter = base.index_generator()
 
     @abc.abstractmethod
-    def basic_make_csc(self, initial_state, config_dir, simulation_mode):
+    def basic_make_csc(self, initial_state, config_dir, simulation_mode, **kwargs):
         """Make and return a CSC.
 
         initial_state : `lsst.ts.salobj.State` or `int` (optional)
@@ -67,6 +67,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             configuration directory (obtained from `get_default_config_dir`).
         simulation_mode : `int`
             Simulation mode.
+        kwargs : `dict`
+            Extra keyword arguments, if needed.
         """
         raise NotImplementedError()
 
@@ -75,7 +77,12 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     @contextlib.asynccontextmanager
     async def make_csc(
-        self, initial_state, config_dir=None, simulation_mode=0, log_level=logging.INFO
+        self,
+        initial_state,
+        config_dir=None,
+        simulation_mode=0,
+        log_level=logging.INFO,
+        **kwargs,
     ):
         """Create a CSC and remote and wait for them to start.
 
@@ -100,12 +107,15 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Simulation mode.
         log_level : `int` (optional)
             Logging level, such as `logging.INFO`.
+        **kwargs : `dict`
+            Extra keyword arguments for `basic_make_csc`.
         """
         testutils.set_random_lsst_dds_domain()
         self.csc = self.basic_make_csc(
             initial_state=initial_state,
             config_dir=config_dir,
             simulation_mode=simulation_mode,
+            **kwargs,
         )
         if len(self.csc.log.handlers) < 2:
             self.csc.log.addHandler(logging.StreamHandler())
@@ -188,7 +198,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         index,
         exe_name,
         initial_state=sal_enums.State.STANDBY,
-        *cmdline_args,
+        cmdline_args=(),
     ):
         """Test running the CSC command line script.
 
@@ -202,7 +212,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Name of executable, e.g. "run_rotator.py"
         initial_state : `lsst.ts.salobj.State` or `int` (optional)
             The expected initial state of the CSC.
-        *cmdline_args : `List` [`str`]
+        cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
         """
         exe_path = shutil.which(exe_name)
@@ -228,7 +238,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         finally:
             process.terminate()
 
-    async def check_standard_state_transitions(self, enabled_commands):
+    async def check_standard_state_transitions(
+        self, enabled_commands, skip_commands=None
+    ):
         """Test standard CSC state transitions.
 
         Parameters
@@ -237,12 +249,17 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             List of CSC-specific commands that are valid in the enabled state.
             Need not include the standard commands, which are "disable"
             and "setLogLevel" (which is valid in any state).
+        skip_commands : `List` [`str`] or `None`
+            List of commands to skip.
         """
+        enabled_commands = tuple(enabled_commands)
+        skip_commands = tuple(skip_commands) if skip_commands else ()
+
         # Start in STANDBY state.
         self.assertEqual(self.csc.summary_state, sal_enums.State.STANDBY)
         await self.assert_next_summary_state(sal_enums.State.STANDBY)
         await self.check_bad_commands(
-            good_commands=("start", "exitControl", "setLogLevel")
+            good_commands=("start", "exitControl", "setLogLevel") + skip_commands
         )
 
         # Send start; new state is DISABLED.
@@ -250,7 +267,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         self.assertEqual(self.csc.summary_state, sal_enums.State.DISABLED)
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
         await self.check_bad_commands(
-            good_commands=("enable", "standby", "setLogLevel")
+            good_commands=("enable", "standby", "setLogLevel") + skip_commands
         )
 
         # Send enable; new state is ENABLED.
@@ -260,7 +277,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         all_enabled_commands = tuple(
             sorted(set(("disable", "setLogLevel")) | set(enabled_commands))
         )
-        await self.check_bad_commands(good_commands=all_enabled_commands)
+        await self.check_bad_commands(
+            good_commands=all_enabled_commands + skip_commands
+        )
 
         # Send disable; new state is DISABLED.
         await self.remote.cmd_disable.start(timeout=STD_TIMEOUT)
