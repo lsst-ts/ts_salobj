@@ -51,6 +51,12 @@ Used by `SalInfo`:
   This is read by `SalInfo` so that different instances of `SalInfo` can communicate with different DDS partitions, even though all share the same `Domain`.
 * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec) for waiting for historical (late-joiner) data.
 
+Used by `AsyncS3Bucket`:
+
+* ``S3_ENDPOINT_URL``: The endpoint URL for the S3 server, e.g. ``http://foo.bar:9000``.
+  You must specify a value in order to use a non-AWS S3 service, at least until ``endpoint_url`` can be defined in ``~/.aws/config``, at which point we plan to deprecate this environment variable.
+  Leave it undefined or set it to "" to use AWS S3 (or the value in your aws config file, once that is supported).
+
 .. _lsst.ts.salobj-configuration_other:
 
 Other Configuration
