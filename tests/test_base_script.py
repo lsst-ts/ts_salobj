@@ -627,7 +627,9 @@ class BaseScriptTestCase(asynctest.TestCase):
             stderr=subprocess.PIPE,
         )
         try:
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=10)
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=START_TIMEOUT
+            )
             schema = yaml.safe_load(stdout)
             self.assertEqual(schema, salobj.TestScript.get_schema())
             self.assertEqual(stderr, b"")

@@ -127,7 +127,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             ) as remote:
                 remote = salobj.Remote(domain=domain, name="Test", index=index)
                 await self.assert_next_summary_state(
-                    salobj.State.STANDBY, remote=remote
+                    salobj.State.STANDBY, remote=remote, timeout=LONG_TIMEOUT
                 )
 
                 ackcmd = await remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
