@@ -46,14 +46,12 @@ from . import sal_enums
 
 LOCAL_HOST = "127.0.0.1"
 
-# Environment variable that specifies the Master Priority.
+# Name of the environment variable that specifies the Master Priority.
 # See the `Domain` doc string for details.
 MASTER_PRIORITY_ENV_VAR = "OSPL_MASTER_PRIORITY"
 
 # Maximum allowed SAL index (inclusive)
 MAX_SAL_INDEX = (1 << 31) - 1
-
-_NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-]+)(:(?P<index>\d+))?$")
 
 SECONDS_PER_DAY = 24 * 60 * 60
 
@@ -61,6 +59,9 @@ SECONDS_PER_DAY = 24 * 60 * 60
 MJD_MINUS_UNIX_SECONDS = (
     astropy.time.Time(0, scale="utc", format="unix").utc.mjd * SECONDS_PER_DAY
 )
+
+# Regex for a SAL componet name encoded as <name>[:<index>]
+_NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-]+)(:(?P<index>\d+))?$")
 
 
 def _ackcmd_str(ackcmd):
