@@ -61,14 +61,13 @@ class BaseCsc(Controller):
         If ``simulation_mode`` is invalid.
         Note: you will only see this error if you await `start_task`.
 
+    Attributes
+    ----------
+    heartbeat_interval : `float`
+        Interval between heartbeat events, in seconds;
 
     Notes
     -----
-    **Attributes**
-
-    * **heartbeat_interval** : `float`
-        Interval between heartbeat events, in seconds;
-
     **Constructor**
 
     The constructor does the following, beyond the parent class constructor:

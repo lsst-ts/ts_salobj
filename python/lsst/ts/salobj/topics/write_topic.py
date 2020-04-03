@@ -62,11 +62,9 @@ class WriteTopic(BaseTopic):
     initial_seq_num : `int` (optional)
         Initial sequence number; if `None` use min_seq_num.
 
-    Notes
-    -----
-    **Attributes**
-
-    * **isopen** : `bool`
+    Attributes
+    ----------
+    isopen : `bool`
         Is this read topic open? `True` until `close` is called.
     """
 

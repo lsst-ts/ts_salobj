@@ -47,30 +47,27 @@ class BaseTopic(abc.ABC):
     RuntimeError
         If the topic cannot be constructed.
 
-    Notes
-    -----
-
-    **Attributes**
-
-    * **salinfo** : `.SalInfo`
+    Attributes
+    ----------
+    salinfo : `.SalInfo`
         The ``salinfo`` constructor argument.
-    * **name** : `str`
+    name : `str`
         The ``name`` constructor argument.
-    * **sal_name** : `str`
+    sal_name : `str`
         The topic name used by SAL.
         For example: "logevent_summaryState".
-    * **log** : `logging.Logger`
+    log : `logging.Logger`
         A logger.
-    * **volatile** : `bool`
+    volatile : `bool`
         Is this topic volatile (does it want no historical data)?
-    * **attr_name** : `str`
+    attr_name : `str`
         Name of topic attribute in `Controller` and `Remote`.
         For example: "evt_summaryState".
-    * **rev_code** : `str`
+    rev_code : `str`
         Revision hash code for the topic.
         This code changes whenever the schema for the topic changes,
         and it is part of the DDS topic name. For example: "90255bf1"
-    * **dds_name** : `str`
+    dds_name : `str`
         Name of topic seen by DDS.
         For example: "Test_logevent_summaryState_90255bf1".
     """

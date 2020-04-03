@@ -50,20 +50,9 @@ class QueueCapacityChecker:
     queue_len : `int`
         Length of queue
 
-    Notes
-    -----
-
-    Once a message has been logged for a particular threshold,
-    no more messages are sent until either the queue fills enough
-    to cross the next warning threshold or empties enough to reduce
-    the warning threshold.
-
-    Log messages are warnings unless the queue is full. A full queue
-    produces an error because data is likely to have been lost.
-
-    **Attributes**
-
-    * **warn_thresholds** : `List` [`int`]
+    Attributes
+    ----------
+    warn_thresholds : `List` [`int`]
         Values for ``warn_threshold`` (see next item). Set to:
 
         * 5-10 elements, whichever is closest to ``queue_len/10``
@@ -73,7 +62,7 @@ class QueueCapacityChecker:
 
         The corresponding reset thresholds are 1/2 these values.
 
-    * **warn_threshold** : `int` or `None`
+    warn_threshold : `int` or `None`
         A call to ``check_nitems(n)`` with ``n > warn_threshold``
         will produce a log message and update ``warn_threshold``
         and ``reset__threshold`` as follows:
@@ -82,7 +71,7 @@ class QueueCapacityChecker:
            in ``warn_thresholds``, or `None` if the queue is full.
         * ``reset_threshold`` is set to the half of the next lower
           warning threshold.
-    * **reset_threshold** : `int` or `None`
+    reset_threshold : `int` or `None`
         A call to ``check_nitems(n)`` with ``n < reset_threshold``
         will reduce ``warn_threshold`` and ``reset_threshold`` as follows:
 
@@ -90,6 +79,16 @@ class QueueCapacityChecker:
           or `None` if the queue is empty.
         * ``warn_threshold`` is set to the warning threshold
           corresponding to one reset higher reset level.
+
+    Notes
+    -----
+    Once a message has been logged for a particular threshold,
+    no more messages are sent until either the queue fills enough
+    to cross the next warning threshold or empties enough to reduce
+    the warning threshold.
+
+    Log messages are warnings unless the queue is full. A full queue
+    produces an error because data is likely to have been lost.
     """
 
     def __init__(self, descr, log, queue_len):
@@ -185,17 +184,17 @@ class ReadTopic(BaseTopic):
     ValueError
         If max_history > queue_len.
 
-    Notes
-    -----
-    **Attributes**
-
-    * **isopen** : `bool`
+    Attributes
+    ----------
+    isopen : `bool`
         Is this read topic open? `True` until `close` is called.
-    * **dds_queue_length_checker** : `QueueCapacityChecker`
+    dds_queue_length_checker : `QueueCapacityChecker`
         Queue length checker for the DDS queue.
-    * **python_queue_length_checker** : `QueueCapacityChecker`:
+    python_queue_length_checker : `QueueCapacityChecker`:
         Queue length checker for the Python queue.
 
+    Notes
+    -----
     **Queues**
 
     There are actually two queues: an internal queue whose length

@@ -78,19 +78,20 @@ class Remote:
         If ``include`` and ``exclude`` are both iterables
         (one or both must be `None`).
 
-    Notes
-    -----
-    **Attributes**
-
-    * **cmd_<command_name>** : `topics.RemoteCommand`
+    Attributes
+    ----------
+    cmd_<command_name> : `topics.RemoteCommand`
         Remote command topic for each command supported by the component.
         Omitted if ``readonly`` true.
-    * **evt_<event_name>** : `topics.RemoteEvent`
+    evt_<event_name> : `topics.RemoteEvent`
         Remote event for each event supported by the component,
         as specified by ``include`` and the ``exclude`` arguments.
-    * **tel_<telemetry_name>** : `topics.RemoteTelemetry`
+    tel_<telemetry_name> : `topics.RemoteTelemetry`
         Remote telemetry topic for each telemetry topic supported by the
         component, as specified by the ``include`` and ``exclude`` arguments.
+
+    Notes
+    -----
 
     Here is an example that makes a Test remote and displays
     the topic-related attributes::

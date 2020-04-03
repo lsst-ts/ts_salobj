@@ -47,6 +47,16 @@ class AsyncS3Bucket:
         If True then start a mock S3 server.
         This is recommended for running in simulation mode.
 
+    Attributes
+    ----------
+    service_resource : `boto3.resources.factory.s3.ServiceResource`
+        The resource used to access the S3 service.
+        Primarly provided for unit tests.
+    name : `str`
+        The bucket name
+    bucket : `boto3.resources.s3.Bucket`
+        The S3 bucket.
+
     Notes
     -----
     Reads the following `Environment Variables
@@ -54,16 +64,6 @@ class AsyncS3Bucket:
     follow the link for details:
 
     * **S3_ENDPOINT_URL**:  The endpoint URL, e.g. ``http://foo.bar:9000``.
-
-    **Attributes**
-
-    * **service_resource** : `boto3.resources.factory.s3.ServiceResource`
-        The resource used to access the S3 service.
-        Primarly provided for unit tests.
-    * **name** : `str`
-        The bucket name
-    * **bucket** : `boto3.resources.s3.Bucket`
-        The S3 bucket.
 
     The format for bucket names, file keys, and ``largeFileEvent`` event URLs
     is described in `CAP 452 <https://jira.lsstcorp.org/browse/CAP-452>`_

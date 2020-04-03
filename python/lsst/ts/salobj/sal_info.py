@@ -102,11 +102,9 @@ class TopicMetadata:
     description : `str` or `None`
         Topic description, or `None` if unknown.
 
-    Notes
-    -----
-    **Attributes**
-
-    **field_info** : `dict` [`str`, `FieldMetadata`]
+    Attributes
+    ----------
+    field_info : `dict` [`str`, `FieldMetadata`]
         Dict of field name: field metadata.
     """
 
@@ -142,6 +140,43 @@ class SalInfo:
     ValueError
         If ``index`` is nonzero and the component is not indexed.
 
+    Attributes
+    ----------
+    domain : `Domain`
+        The ``domain`` constructor argument.
+    name : `str`
+        The ``name`` constructor argument.
+    index : `int`
+        The ``index`` constructor argument.
+    indexed : `bool`
+        `True` if this SAL component is indexed (meaning a non-zero index
+        is allowed), `False` if not.
+    isopen : `bool`
+        Is this read topic open? `True` until `close` is called.
+    log : `logging.Logger`
+        A logger.
+    partition_name : `str`
+        The DDS partition name, from environment variable ``LSST_DDS_DOMAIN``.
+    publisher : ``dds.Publisher``
+        A DDS publisher, used to create DDS writers.
+    subscriber : ``dds.Subscriber``
+        A DDS subscriber, used to create DDS readers.
+    start_task : `asyncio.Task`
+        A task which is finished when `start` is done.
+    command_names : `List` [`str`]
+        A tuple of command names without the ``"command_"`` prefix.
+    event_names : `List` [`str`]
+        A tuple of event names, without the ``"logevent_"`` prefix
+    telemetry_names : `List` [`str`]
+        A tuple of telemetry topic names.
+    sal_topic_names : `List` [`str`]
+        A tuple of SAL topic names, e.g. "logevent_summaryState",
+        in alphabetical order.
+    revnames : `dict` [`str`, `str`]
+        A dict of topic name: name_revision.
+    topic_info : `dict` [`str`, `TopicMetadata`]
+        A dict of SAL topic name: topic metadata.
+
     Notes
     -----
     Reads the following `Environment Variables
@@ -151,43 +186,6 @@ class SalInfo:
     * ``LSST_DDS_DOMAIN`` (required): the DDS partition name.
     * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec)
       for waiting for historical (late-joiner) data.
-
-    **Attributes**
-
-    * **domain** : `Domain`
-        The ``domain`` constructor argument.
-    * **name** : `str`
-        The ``name`` constructor argument.
-    * **index** : `int`
-        The ``index`` constructor argument.
-    * **indexed** : `bool`
-        `True` if this SAL component is indexed (meaning a non-zero index
-        is allowed), `False` if not.
-    * **isopen** : `bool`
-        Is this read topic open? `True` until `close` is called.
-    * **log** : `logging.Logger`
-        A logger.
-    * **partition_name** `str`
-        The DDS partition name, from environment variable ``LSST_DDS_DOMAIN``.
-    * **publisher** : ``dds.Publisher``
-        A DDS publisher, used to create DDS writers.
-    * **subscriber** : ``dds.Subscriber``
-        A DDS subscriber, used to create DDS readers.
-    * **start_task** : `asyncio.Task`
-        A task which is finished when `start` is done.
-    * **command_names** : `List` [`str`]
-        A tuple of command names without the ``"command_"`` prefix.
-    * **event_names** : `List` [`str`]
-        A tuple of event names, without the ``"logevent_"`` prefix
-    * **telemetry_names** : `List` [`str`]
-        A tuple of telemetry topic names.
-    * **sal_topic_names** : `List` [`str`]
-        A tuple of SAL topic names, e.g. "logevent_summaryState",
-        in alphabetical order.
-    * **revnames** : `dict` [`str`, `str`]
-        A dict of topic name: name_revision.
-    * **topic_info** : `dict` [`str`, `TopicMetadata`]
-        A dict of SAL topic name: topic metadata.
 
     **Usage**
 
