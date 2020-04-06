@@ -29,7 +29,7 @@ class RemoteEvent(read_topic.ReadTopic):
 
     Parameters
     ----------
-    salinfo : `SalInfo`
+    salinfo : `.SalInfo`
         SAL component information
     name : `str`
         Event topic name

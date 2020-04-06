@@ -80,18 +80,18 @@ class BaseScript(controller.Controller, abc.ABC):
         If index=0. This is prohibited because index=0 would cause
         the script to respond to commands meant for every other script.
 
-    Notes
-    -----
-
-    **Attributes**
-
-    * ``log``: a `logging.Logger`.
-    * ``done_task``: a task that is done when the script has fully executed;
-      an `asyncio.Task`.
-    * ``final_state_delay``: final delay (in seconds) before exiting; `float`.
-      Must be long enough to allow final events to be output.
-    * ``timestamps``: a dict of ``ScriptState: TAI unix timestamp``.
-      Used to set timestamp data in the ``script`` event.
+    Attributes
+    ----------
+    log : `logging.Logger`
+        A logger.
+    done_task : `asyncio.Task`
+        A task that is done when the script has fully executed.
+    final_state_delay : `float`
+        Final delay (in seconds) before exiting.
+        Must be long enough to allow final events to be output.
+    timestamps : `dict` [``lsst.ts.idl.enums.ScriptState``, `float`]
+        Dict of script state: TAI unix timestamp.
+        Used to set timestamp data in the ``script`` event.
     """
 
     def __init__(self, index, descr):

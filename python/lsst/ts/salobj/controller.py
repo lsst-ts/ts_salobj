@@ -54,6 +54,22 @@ class Controller:
         If True then there must be exactly one ``do_<name>`` method
         for each command.
 
+    Attributes
+    ----------
+    log : `logging.Logger`
+        A logger.
+    salinfo : `SalInfo`
+        SAL info.
+    cmd_<command_name> : `topics.ControllerCommand`
+        Controller command topic. There is one for each command supported by
+        the SAL component.
+    evt_<event_name> : `topics.ControllerEvent`
+        Controller event topic. There is one for each event topic supported by
+        the SAL component.
+    tel_<telemetry_name> : `topics.ControllerTelemetry`
+        Controller telemetry topic. There is one for each telemetry topic
+        supported by the SAL component.
+
     Notes
     -----
     .. _writing_a_controller:
@@ -71,17 +87,6 @@ class Controller:
       :ref:`Required Logging Attributes<required_logging_attributes>`;
       these are automatically provided to CSCs, but not other controllers.
     * Implement `close_tasks`.
-
-    **Attributes**
-
-    * ``log``: a `logging.Logger`
-    * ``salinfo``: a `SalInfo`
-    * ``cmd_<command_name>``: a `topics.ControllerCommand`,
-      for each command supported by the SAL component.
-    * ``evt_<event_name>``: a `topics.ControllerEvent`
-      for each log event topic supported by the SAL component.
-    * ``tel_<telemetry_name>``: a `topics.ControllerTelemetry`
-      for each telemetry topic supported by the SAL component.
 
     Here is an example that makes a Test controller and displays
     the topic-related attributes, but has no code to do anything

@@ -39,7 +39,7 @@ class AckCmdReader(read_topic.ReadTopic):
 
     Parameters
     ----------
-    salinfo : `SalInfo`
+    salinfo : `.SalInfo`
         SAL component information
     queue_len : `int`
         Number of elements that can be queued for `get_oldest`.
@@ -241,7 +241,7 @@ class RemoteCommand(write_topic.WriteTopic):
 
     Parameters
     ----------
-    salinfo : `SalInfo`
+    salinfo : `.SalInfo`
         SAL component information
     name : `str`
         Command name

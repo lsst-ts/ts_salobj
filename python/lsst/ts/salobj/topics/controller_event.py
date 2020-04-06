@@ -29,7 +29,7 @@ class ControllerEvent(write_topic.WriteTopic):
 
     Parameters
     ----------
-    salinfo : `SalInfo`
+    salinfo : `.SalInfo`
         SAL component information
     name : `str`
         Event topic name

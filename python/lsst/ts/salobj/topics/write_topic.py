@@ -46,7 +46,7 @@ class WriteTopic(BaseTopic):
 
     Parameters
     ----------
-    salinfo : `SalInfo`
+    salinfo : `.SalInfo`
         SAL component information
     name : `str`
         Topic name, without a "command\_" or "logevent\_" prefix.
@@ -62,12 +62,10 @@ class WriteTopic(BaseTopic):
     initial_seq_num : `int` (optional)
         Initial sequence number; if `None` use min_seq_num.
 
-    Notes
-    -----
-    **Attributes**
-
-    * isopen: is this read topic open?  A `bool`. `True` until `close`
-      is called.
+    Attributes
+    ----------
+    isopen : `bool`
+        Is this read topic open? `True` until `close` is called.
     """
 
     def __init__(

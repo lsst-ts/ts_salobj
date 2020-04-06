@@ -70,10 +70,8 @@ class TopicMetadata:
     description : `str` or `None`
         Topic description, or `None` if unknown.
 
-    Notes
-    -----
-    **Attributes**
-
+    Attributes
+    ----------
     field_info : `dict` [`str`, `FieldMetadata`]
         Dict of field name: field metadata.
     """
