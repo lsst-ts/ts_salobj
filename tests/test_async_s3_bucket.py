@@ -22,47 +22,43 @@ import io
 import os
 
 import asynctest
-
-import boto3
-import moto
+import astropy.time
 
 from lsst.ts import salobj
 
 
 class AsyncS3BucketTest(asynctest.TestCase):
     def setUp(self):
-        # Use moto.mock_s3 in "raw mode" because:
-        # * @moto.mock_s3() does not work on async test methods.
-        # * Even if it did, or if I used moto.mock_s3() as a context manager,
-        #   I'd have to make the s3 bucket inside the test code.
-        self.mock = moto.mock_s3()
-        self.mock.start()
-
-        # Set s3 authentication environment variables to bogus values
-        # to avoid any danger of writing to a real s3 server.
-        for env_var_name in (
-            "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY",
-            "AWS_SECURITY_TOKEN",
-            "AWS_SESSION_TOKEN",
-        ):
-            os.environ[env_var_name] = "testing"
-
-        # Make a bucket in mock s3 server so tests can upload to it.
         self.bucket_name = "async_bucket_test"
-        conn = boto3.resource("s3")
-        conn.create_bucket(Bucket=self.bucket_name)
-
         self.file_data = b"Data for the test case"
         self.key = "test_file"
-        self.bucket = salobj.AsyncS3Bucket(self.bucket_name)
+        self.bucket = salobj.AsyncS3Bucket(self.bucket_name, domock=True)
         self.fileobj = io.BytesIO(self.file_data)
 
     def tearDown(self):
-        self.mock.stop()
+        self.bucket.stop_mock()
 
     async def test_attributes(self):
         self.assertEqual(self.bucket.name, self.bucket_name)
+
+    async def test_blank_s3_endpoint_url(self):
+        os.environ["S3_ENDPOINT_URL"] = ""
+        bucket = salobj.AsyncS3Bucket(self.bucket_name)
+        self.assertIn("amazon", bucket.service_resource.meta.client.meta.endpoint_url)
+
+    async def test_no_s3_endpoint_url(self):
+        # Clear "S3_ENDPOINT_URL" if it exists.
+        os.environ.pop("S3_ENDPOINT_URL", default=None)
+        bucket = salobj.AsyncS3Bucket(self.bucket_name)
+        self.assertIn("amazon", bucket.service_resource.meta.client.meta.endpoint_url)
+
+    async def test_specified_s3_endpoint_url(self):
+        endpoint_url = "http://foo.bar.edu:9000"
+        os.environ["S3_ENDPOINT_URL"] = endpoint_url
+        bucket = salobj.AsyncS3Bucket(self.bucket_name)
+        self.assertEqual(
+            bucket.service_resource.meta.client.meta.endpoint_url, endpoint_url
+        )
 
     async def test_file_transfer(self):
         await self.bucket.upload(fileobj=self.fileobj, key=self.key)
@@ -109,3 +105,82 @@ class AsyncS3BucketTest(asynctest.TestCase):
         self.assertGreaterEqual(len(downloaded_nbytes), 1)
         self.assertEqual(sum(uploaded_nbytes), len(self.file_data))
         self.assertEqual(sum(downloaded_nbytes), len(self.file_data))
+
+
+class AsyncS3BucketClassmethodTest(asynctest.TestCase):
+    async def test_make_bucket_name_good(self):
+        salname = "ATPtg"
+        s3instance = "5TEST"
+        salindexname = None
+        expected_name = f"rubinobs-lfa-5test-atptg"
+        name = salobj.AsyncS3Bucket.make_bucket_name(
+            salname=salname, salindexname=salindexname, s3instance=s3instance
+        )
+        self.assertEqual(name, expected_name)
+
+        salindexname = "AT"
+        expected_name = f"rubinobs-lfa-5test-atptg.at"
+        name = salobj.AsyncS3Bucket.make_bucket_name(
+            salname=salname, salindexname=salindexname, s3instance=s3instance
+        )
+        self.assertEqual(name, expected_name)
+
+        s3category = "Other3"
+        expected_name = f"rubinobs-other3-5test-atptg.at"
+        name = salobj.AsyncS3Bucket.make_bucket_name(
+            salname=salname,
+            salindexname=salindexname,
+            s3instance=s3instance,
+            s3category=s3category,
+        )
+        self.assertEqual(name, expected_name)
+
+    async def test_make_bucket_name_bad(self):
+        good_kwargs = dict(
+            salname="ATPtg", s3instance="TEST", salindexname=None, s3category="other"
+        )
+        expected_name = f"rubinobs-other-test-atptg"
+        name = salobj.AsyncS3Bucket.make_bucket_name(**good_kwargs)
+        self.assertEqual(name, expected_name)
+
+        for argname in good_kwargs:
+            for badvalue in (
+                ".foo",
+                "foo.",
+                "#foo",
+                "fo#o",
+                "@foo",
+                "f@oo",
+                "_foo",
+                "fo_o",
+            ):
+                with self.subTest(argname=argname, badvalue=badvalue):
+                    bad_kwargs = good_kwargs.copy()
+                    bad_kwargs[argname] = badvalue
+                    with self.assertRaises(ValueError):
+                        salobj.AsyncS3Bucket.make_bucket_name(**bad_kwargs)
+
+    async def test_make_key(self):
+        # Try a date such that 12 hours earlier is just barely the previous day
+        date = astropy.time.Time("2020-04-02T11:59:59.999", scale="tai")
+        salname = "Foo"
+        generator = "testFiberSpecBlue"
+        key = salobj.AsyncS3Bucket.make_key(
+            salname=salname, generator=generator, date=date
+        )
+        expected_key = (
+            "2020/04/01/Foo-testFiberSpecBlue-20200401-2020-04-02T11:59:59.999"
+        )
+        self.assertEqual(key, expected_key)
+
+        # Repeat the test with a date that rounds up to the next second.
+        date = astropy.time.Time("2020-04-02T11:59:59.9999", scale="tai")
+        salname = "Foo"
+        generator = "testFiberSpecBlue"
+        key = salobj.AsyncS3Bucket.make_key(
+            salname=salname, generator=generator, date=date
+        )
+        expected_key = (
+            "2020/04/02/Foo-testFiberSpecBlue-20200402-2020-04-02T12:00:00.000"
+        )
+        self.assertEqual(key, expected_key)

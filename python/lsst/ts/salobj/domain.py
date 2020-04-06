@@ -44,59 +44,50 @@ MAX_RANDOM_HOST = (1 << 31) - 1
 
 
 class Domain:
-    """dds domain participant and quality of service information.
+    r"""dds domain participant and quality of service information.
+
+    Attributes
+    ----------
+    participant : ``dds.DomainParticipant``
+        DDS domain participant.
+    host : `int`
+        Value for the ``private_host`` field of output samples.
+        See environment variable ``LSST_DDS_IP`` for details.
+    origin : `int`
+        Process ID. Used to set the ``private_origin`` field of output samples.
+    idl_dir : `pathlib.Path`
+        Root directory of the ``ts_idl`` package.
+    qos_provider : ``dds.QosProvider``
+        Quality of service provider.
+    topic_qos : ``dds.Qos``
+        Quality of service for non-volatile DDS topics (those that want
+        late-joiner data).
+    volatile_topic_qos : ``dds.Qos``
+        Quality of service for volatile topics (those that do not want any
+        late-joiner data).
+        Note: we cannot just make readers volatile to avoid late-joiner data,
+        as volatile readers receive late-joiner data from non-volatile writers.
+        So we make readers, writers, and topics all volatile.
+        According to ADLink it is a feature, not a bug.
+    reader_qos : ``dds.Qos``
+        Quality of service for non-volatile DDS readers.
+    volatile_reader_qos : ``dds.Qos``
+        Quality of service for volatile DDS readers.
+    writer_qos : ``dds.Qos``
+        Quality of service for non-volatile DDS writers.
+    volatile_writer_qos : ``dds.Qos``
+        Quality of service for volatile DDS writers.
 
     Notes
     -----
-    **Environment Variables**
+    Reads the following `Environment Variables
+    <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
+    follow the link for details:
 
     * LSST_DDS_IP (optional) is used to set the ``host`` attribute.
       If provided, it must be a dotted numeric IP address, e.g. "192.168.0.1".
-      The ``host`` attribute is set to the integer equivalent, or a positive
-      random integer if the environment variable is not provided.
-      This value is used to set the ``private_host`` field of topics
-      when writing them.
     * OSPL_MASTER_PRIORITY (optional) is used to set the Master Priority.
-      Nodes with higher Master Priority are more eager to become master
-      (the primary source of late joiner data). Ties are broken by systemId,
-      a random number handed out when a node is created.
-      Every time a new node takes over as master, the entire system is must be
-      "aligned", which is expensive. So it is best to assign the highest
-      Master Priority to one of nodes that will be created early.
-      Valid values are 0-256.
-      0 is used for Scripts, because they should never be master.
-      256 might mean "use the legacy method for choosing the master".
-      A default value is used if this environment variable is not specified.
-      That default is guaranteed to be >0 and <255.
-      Constant ``MASTER_PRIORITY_ENV_VAR`` is available to make this easier
-      to set from Python. Be sure to specify a string value (e.g. ``"1"``).
-
-    **Attributes**
-
-    * ``participant``: DDS domain participant, a `dds.DomainParticipant`.
-    * ``host``: value for the ``private_host`` field of output samples;
-      an `int`.
-      See environment variable ``LSST_DDS_IP`` for details.
-    * ``origin``: process ID (an int). Used to set the ``private_origin``
-      field of output samples.
-    * ``idl_dir``: root directory of the ``ts_idl`` package; a `pathlib.Path`.
-    * ``qos_provider``: quality of service provider; a `dds.QosProvider`.
-    * ``topic_qos``: quality of service for non-volatile DDS topics
-      (those that want late-joiner data); a `dds.Qos`.
-    * ``volatile_topic_qos``: quality of service for volatile topics
-      (those that do not want any late-joiner data); a `dds.Qos`.
-      Note: we cannot just make readers volatile to avoid late-joiner data,
-      as volatile readers receive late-joiner data from non-volatile writers.
-      So we make readers, writers, and topics all volatile. See OpenSplice
-      issue 19934; according to ADLink it is a feature, not a bug.
-    * ``reader_qos``: quality of service for non-volatile DDS readers;
-      a `dds.Qos`.
-    * ``volatile_reader_qos``: quality of service for volatile DDS readers;
-      a `dds.Qos`.
-    * ``writer_qos``: quality of service for non-volatile DDS writers;
-      a `dds.Qos`.
-    * ``volatile_writer_qos``: quality of service for volatile DDS writers;
-      a `dds.Qos`.
+      If present, it must be a value between 0 and 255.
 
     **Cleanup**
 
@@ -129,7 +120,7 @@ class Domain:
             remote = Remote(domain=controller.domain, name="Test", index=47)
             ...
 
-    * If you are creating `Remote`s without a `Controller` then you must
+    * If you are creating `Remote`\ s without a `Controller` then you must
       create the Domain yourself and close it when you are finished, e.g.::
 
         domain = salobj.Domain()

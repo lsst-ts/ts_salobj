@@ -7,8 +7,12 @@ lsst.ts.salobj
 ##############
 
 Object-oriented Python interface to `Service Abstraction Layer`_ (SAL) components that uses asyncio for asynchronous communication.
+``ts_salobj`` SAL communication uses the `dds Python library`_, which is part of `Vortex OpenSplice`_.
+You may use the free community edition or the licensed edition of OpenSplice.
 
 .. _Service Abstraction Layer: https://docushare.lsstcorp.org/docushare/dsweb/Get/Document-21527
+.. _dds Python library: http://download.ist.adlinktech.com/docs/Vortex/html/ospl/PythonDCPSAPIGuide/index.html
+.. _Vortex OpenSplice: https://istkb.adlinktech.com/article/vortex-opensplice-documentation/
 
 .. _lsst.ts.salobj-using:
 
@@ -16,6 +20,7 @@ Using lsst.ts.salobj
 ====================
 
 .. toctree::
+    configuration
     salobj_cscs
     sal_scripts
     :maxdepth: 2
@@ -87,9 +92,6 @@ Python API reference
     :no-main-docstr:
     :no-inheritance-diagram:
 .. automodapi:: lsst.ts.salobj.topics
-    :no-main-docstr:
-    :no-inheritance-diagram:
-.. automodapi:: lsst.ts.salobj.topics.base_topic
     :no-main-docstr:
     :no-inheritance-diagram:
 
