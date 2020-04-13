@@ -109,7 +109,7 @@ class AsyncS3Bucket:
             self.mock = None
 
     @staticmethod
-    def make_bucket_name(salname, salindexname, s3instance, s3category="LFA"):
+    def make_bucket_name(s3instance, s3category="LFA"):
         """Make an S3 bucket name.
 
         Parameters
@@ -149,19 +149,16 @@ class AsyncS3Bucket:
         The returned bucket name is cast to lowercase (because S3 bucket names
         may not contain uppercase letters) and has format::
 
-            rubinobs-{s3category}-{s3instance}-{salname}[.{salindexname}]
+            rubinobs-{s3category}-{s3instance}]
         """
         valid_arg_regex = re.compile(r"^[a-z0-9][a-z0-9.]*$", flags=re.IGNORECASE)
-        kwargs = dict(salname=salname, s3instance=s3instance, s3category=s3category)
-        if salindexname is not None:
-            kwargs["salindexname"] = salindexname
+        kwargs = dict(s3instance=s3instance, s3category=s3category)
         for argname, arg in kwargs.items():
             if valid_arg_regex.match(arg) is None:
                 raise ValueError(f"{argname}={arg} invalid")
             if valid_arg_regex.match(arg[-1:]) is None:
                 raise ValueError(f"{argname}={arg} invalid")
-        salsuffix = f".{salindexname}" if salindexname is not None else ""
-        bucket_name = f"rubinobs-{s3category}-{s3instance}-{salname}{salsuffix}".lower()
+        bucket_name = f"rubinobs-{s3category}-{s3instance}".lower()
         if len(bucket_name) > 63:
             raise ValueError(
                 f"Bucket name {bucket_name!r} too long: len={len(bucket_name)} > 63 chars"
@@ -169,13 +166,19 @@ class AsyncS3Bucket:
         return bucket_name
 
     @staticmethod
-    def make_key(salname, generator, date):
+    def make_key(salname, salindexname, generator, date):
         """Make a key for an item of data.
 
         Parameters
         ----------
         salname : `str`
             SAL component name, e.g. ATPtg.
+        salindexname : `str`, `int`, or `None`
+            For an indexed SAL component: a name associated with the SAL index,
+            or just the index itself if there is no name.
+            Specify `None` for a non-indexed SAL component.
+            For example: "MT" for Main Telescope, "AT" for auxiliary telescope,
+            or "ATBlue" for the AT Blue Fiber Spectrograph.
         generator : `str`
             Dataset type.
         date : `astropy.time.Time`
@@ -190,34 +193,36 @@ class AsyncS3Bucket:
         -----
         The returned key has format::
 
-            {yyyy}/{mm}/{dd}/{salname}-{generator}-{yyyy}{mm}{dd}-{tai_iso}
+            {fullsalname}/{generator}/{yyyy}/{mm}/{dd}/
+                {fullsalname}-{generator}-{tai_iso}
 
         where:
 
-        * ``yyyy``, ``mm``, ``dd`` are the year, month and day
-          at date - 12 hours, with 4, 2, 2 digits, respectively.
-          This shifted date will not change during nighttime observing
+        * ``fullsalname`` = ``{salname}:{salindexname}`` if ``salindexname``,
+          else ``salname``.
+        * ``yyyy``, ``mm``, ``dd`` are the "observing day":
+          the year, month and day at TAI date - 12 hours,
+          with 4, 2, 2 digits, respectively.
+          The "observing day" does change during nighttime observing
           at the summit.
-        * ``salname`` is the SAL component name
-        * ``generator`` is the dataset type, also provided as a field
-          in the ``largeFileObjectAvailable`` event.
-        * ``tai_iso`` is the TAI date in ISO-8601 format,
-          with a "T" between the date and time and 3 digits of precision.
+        * ``tai_iso`` is the TAI date and time in ISO-8601 format,
+          with a "T" between the date and time and a precision of milliseconds.
 
-        The ISO date and shifted date both use a precision of milliseconds.
-        So if ``date`` is just before noon and rounds up to noon,
-        the shifted date be on the same day. This is to reduce confusion
-        by making the date and shifted date self-consistent.
+        The ISO date and observing date both the same precision (milliseconds)
+        so that rounding is consistent.
 
         Note that the url field of the ``largeFileObjectAvailable`` event
         should have the format f"s3://{bucket}/{key}"
         """
+        fullsalname = salname
+        if salindexname:
+            fullsalname += f":{salindexname}"
         taidate = astropy.time.Time(date, scale="tai", precision=3)
         shifted_isot = (taidate - 12 * u.hour).isot
         yyyy = shifted_isot[0:4]
         mm = shifted_isot[5:7]
         dd = shifted_isot[8:10]
-        return f"{yyyy}/{mm}/{dd}/{salname}-{generator}-{yyyy}{mm}{dd}-{taidate.isot}"
+        return f"{fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{fullsalname}_{generator}_{taidate.isot}"
 
     async def upload(self, fileobj, key, callback=None):
         """Upload a file-like object to the bucket.

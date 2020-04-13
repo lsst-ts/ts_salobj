@@ -109,37 +109,25 @@ class AsyncS3BucketTest(asynctest.TestCase):
 
 class AsyncS3BucketClassmethodTest(asynctest.TestCase):
     async def test_make_bucket_name_good(self):
-        salname = "ATPtg"
         s3instance = "5TEST"
-        salindexname = None
-        expected_name = f"rubinobs-lfa-5test-atptg"
-        name = salobj.AsyncS3Bucket.make_bucket_name(
-            salname=salname, salindexname=salindexname, s3instance=s3instance
-        )
+        expected_name = f"rubinobs-lfa-5test"
+        name = salobj.AsyncS3Bucket.make_bucket_name(s3instance=s3instance)
         self.assertEqual(name, expected_name)
 
-        salindexname = "AT"
-        expected_name = f"rubinobs-lfa-5test-atptg.at"
-        name = salobj.AsyncS3Bucket.make_bucket_name(
-            salname=salname, salindexname=salindexname, s3instance=s3instance
-        )
+        expected_name = f"rubinobs-lfa-5test"
+        name = salobj.AsyncS3Bucket.make_bucket_name(s3instance=s3instance)
         self.assertEqual(name, expected_name)
 
         s3category = "Other3"
-        expected_name = f"rubinobs-other3-5test-atptg.at"
+        expected_name = f"rubinobs-other3-5test"
         name = salobj.AsyncS3Bucket.make_bucket_name(
-            salname=salname,
-            salindexname=salindexname,
-            s3instance=s3instance,
-            s3category=s3category,
+            s3instance=s3instance, s3category=s3category,
         )
         self.assertEqual(name, expected_name)
 
     async def test_make_bucket_name_bad(self):
-        good_kwargs = dict(
-            salname="ATPtg", s3instance="TEST", salindexname=None, s3category="other"
-        )
-        expected_name = f"rubinobs-other-test-atptg"
+        good_kwargs = dict(s3instance="TEST", s3category="other")
+        expected_name = f"rubinobs-other-test"
         name = salobj.AsyncS3Bucket.make_bucket_name(**good_kwargs)
         self.assertEqual(name, expected_name)
 
@@ -164,23 +152,44 @@ class AsyncS3BucketClassmethodTest(asynctest.TestCase):
         # Try a date such that 12 hours earlier is just barely the previous day
         date = astropy.time.Time("2020-04-02T11:59:59.999", scale="tai")
         salname = "Foo"
+        salindexname = "Blue"
         generator = "testFiberSpecBlue"
         key = salobj.AsyncS3Bucket.make_key(
-            salname=salname, generator=generator, date=date
+            salname=salname, salindexname=salindexname, generator=generator, date=date
         )
         expected_key = (
-            "2020/04/01/Foo-testFiberSpecBlue-20200401-2020-04-02T11:59:59.999"
+            "Foo:Blue/testFiberSpecBlue/2020/04/01/"
+            "Foo:Blue_testFiberSpecBlue_2020-04-02T11:59:59.999"
         )
         self.assertEqual(key, expected_key)
 
         # Repeat the test with a date that rounds up to the next second.
         date = astropy.time.Time("2020-04-02T11:59:59.9999", scale="tai")
-        salname = "Foo"
-        generator = "testFiberSpecBlue"
         key = salobj.AsyncS3Bucket.make_key(
-            salname=salname, generator=generator, date=date
+            salname=salname, salindexname=salindexname, generator=generator, date=date
         )
         expected_key = (
-            "2020/04/02/Foo-testFiberSpecBlue-20200402-2020-04-02T12:00:00.000"
+            "Foo:Blue/testFiberSpecBlue/2020/04/02/"
+            "Foo:Blue_testFiberSpecBlue_2020-04-02T12:00:00.000"
+        )
+        self.assertEqual(key, expected_key)
+
+        # Repeat the test with no sal index name
+        key = salobj.AsyncS3Bucket.make_key(
+            salname=salname, salindexname=None, generator=generator, date=date
+        )
+        expected_key = (
+            "Foo/testFiberSpecBlue/2020/04/02/"
+            "Foo_testFiberSpecBlue_2020-04-02T12:00:00.000"
+        )
+        self.assertEqual(key, expected_key)
+
+        # Repeat the test with an integer sal index name
+        key = salobj.AsyncS3Bucket.make_key(
+            salname=salname, salindexname=5, generator=generator, date=date
+        )
+        expected_key = (
+            "Foo:5/testFiberSpecBlue/2020/04/02/"
+            "Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000"
         )
         self.assertEqual(key, expected_key)
