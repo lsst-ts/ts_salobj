@@ -28,7 +28,10 @@ import asynctest
 
 from lsst.ts import salobj
 
-import SALPY_Test
+try:
+    import SALPY_Test
+except ImportError:
+    SALPY_Test = None
 
 STD_TIMEOUT = 5
 START_TIMEOUT = 60
@@ -45,9 +48,11 @@ class SALPYTestCase(asynctest.TestCase):
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"
         self.index = next(index_gen)
 
+    @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
     async def test_salpy_remote_salobj_controller(self):
         await self.check_salpy_remote("minimal_salobj_controller.py")
 
+    @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
     async def test_salpy_remote_salpy_controller(self):
         await self.check_salpy_remote("minimal_salpy_controller.py")
 
