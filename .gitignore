@@ -8,3 +8,4 @@ pytest_session.txt
 __pycache__
 tests/.tests
 python/lsst/ts/salobj/version.py
+.vscode
