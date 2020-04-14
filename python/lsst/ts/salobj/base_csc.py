@@ -27,6 +27,7 @@ import sys
 import warnings
 
 from . import base
+from . import dds_utils
 from .sal_enums import State
 from .controller import Controller
 
@@ -148,6 +149,15 @@ class BaseCsc(Controller):
 
         await self.handle_summary_state()
         self.report_summary_state()
+
+        def format_version(version):
+            return "?" if version is None else version
+
+        self.evt_softwareVersions.set_put(
+            salVersion=format_version(self.salinfo.metadata.sal_version),
+            xmlVersion=format_version(self.salinfo.metadata.xml_version),
+            openSpliceVersion=dds_utils.get_dds_version(),
+        )
 
     async def close_tasks(self):
         """Shut down pending tasks. Called by `close`."""

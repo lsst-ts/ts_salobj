@@ -625,6 +625,16 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             for key, expected_value in self.default_dict.items():
                 self.assertEqual(getattr(config, key), expected_value)
 
+            # Test the softwareVersions event
+            kwargs = dict()
+            if self.remote.salinfo.metadata.xml_version is not None:
+                kwargs["xmlVersion"] = self.remote.salinfo.metadata.xml_version
+            if self.remote.salinfo.metadata.sal_version is not None:
+                kwargs["salVersion"] = self.remote.salinfo.metadata.sal_version
+            data = await self.assert_next_sample(
+                topic=self.remote.evt_softwareVersions, **kwargs
+            )
+
     async def test_default_config_dir(self):
         async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=None):
             await self.assert_next_summary_state(salobj.State.STANDBY)
