@@ -594,6 +594,27 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             simulation_mode=simulation_mode,
         )
 
+    async def check_settings_events(self, config_file):
+        """Check the settingsApplied and appliedSettingsMatchStart events.
+
+        Parameters
+        ----------
+        config_file : `str`
+            The name of the config file, or "" if none specified.
+        """
+        # settingsVersion.settingsApplied should start with
+        # the config file name followed by a colon
+        data = await self.assert_next_sample(topic=self.remote.evt_settingsApplied,)
+        desired_prefix = config_file + ":"
+        self.assertEqual(data.settingsVersion[: len(desired_prefix)], desired_prefix)
+
+        # appliedSettingsMatchStartIsTrue.appliedSettingsMatchStartIsTrue
+        # should be True after being configured.
+        await self.assert_next_sample(
+            topic=self.remote.evt_appliedSettingsMatchStart,
+            appliedSettingsMatchStartIsTrue=True,
+        )
+
     async def test_no_config_specified(self):
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
@@ -625,15 +646,17 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             for key, expected_value in self.default_dict.items():
                 self.assertEqual(getattr(config, key), expected_value)
 
-            # Test the softwareVersions event
+            # Test the softwareVersions event.
             kwargs = dict()
             if self.remote.salinfo.metadata.xml_version is not None:
                 kwargs["xmlVersion"] = self.remote.salinfo.metadata.xml_version
             if self.remote.salinfo.metadata.sal_version is not None:
                 kwargs["salVersion"] = self.remote.salinfo.metadata.sal_version
-            data = await self.assert_next_sample(
+            await self.assert_next_sample(
                 topic=self.remote.evt_softwareVersions, **kwargs
             )
+
+            await self.check_settings_events("")
 
     async def test_default_config_dir(self):
         async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=None):
@@ -661,6 +684,8 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             for key, expected_value in self.default_dict.items():
                 self.assertEqual(getattr(config, key), expected_value)
 
+            await self.check_settings_events("empty.yaml")
+
     async def test_some_fields_label(self):
         """Test a config with some fields set to valid values."""
         config_label = "some_fields"
@@ -686,6 +711,8 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 else:
                     self.assertEqual(getattr(config, key), default_value)
 
+            await self.check_settings_events(config_file)
+
     async def test_some_fields_file_no_hash(self):
         """Test a config specified by filename."""
         config_file = "some_fields.yaml"
@@ -709,6 +736,8 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                     self.assertNotEqual(getattr(config, key), default_value)
                 else:
                     self.assertEqual(getattr(config, key), default_value)
+
+            await self.check_settings_events(config_file)
 
     async def test_some_fields_file_with_hash(self):
         """Test a config specified by filename:hash."""
@@ -734,6 +763,8 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 else:
                     self.assertEqual(getattr(config, key), default_value)
 
+            await self.check_settings_events(config_file)
+
     async def test_all_fields_label(self):
         """Test a config with all fields set to valid values."""
         config_name = "all_fields"
@@ -754,6 +785,8 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             config_from_file = yaml.safe_load(config_yaml)
             for key in self.config_fields:
                 self.assertEqual(getattr(config, key), config_from_file[key])
+
+            await self.check_settings_events(config_file)
 
     async def test_invalid_configs(self):
         async with self.make_csc(
