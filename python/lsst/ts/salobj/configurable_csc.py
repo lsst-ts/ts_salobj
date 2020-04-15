@@ -198,7 +198,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         """Set ``self.config_label_dict`` and output ``evt_settingVersions``.
 
         Set ``self.config_label_dict`` from ``self.config_dir/_labels.yaml``.
-        Output the ``settingVersions`` event as follows:
+        Output the ``settingVersions`` event (if changed) as follows:
 
         * ``recommendedSettingsLabels`` is a comma-separated list of
           labels in ``self.config_label_dict``, truncated by omitting labels
@@ -226,7 +226,6 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             recommendedSettingsLabels=",".join(labels),
             recommendedSettingsVersion=settings_version,
             settingsUrl=f"{self.config_dir.as_uri()}",
-            force_output=True,
         )
 
     async def start(self):
@@ -344,6 +343,10 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
           ``<file_name>:<version>``, where the version is a git reference,
           such as a git tag or commit hash. This form does not support labels.
         """
+        # Get the latest info about the configurations available
+        self.read_config_dir()
+
+        # Read the configuration
         config_name = data.settingsToApply
         config_file_path = ""
         if config_name:
@@ -352,7 +355,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                 config_file_name, githash = name_version
                 config_file_path = self.config_dir / config_file_name
                 try:
-                    print(
+                    self.log.debug(
                         f"config_file_path={config_file_path}; "
                         f"githash={githash}; config_dir={self.config_dir}"
                     )
@@ -366,6 +369,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                         f"Could not read config {config_name}: {e.output}"
                     )
             elif len(name_version) == 1:
+                githash = self.evt_settingVersions.data.recommendedSettingsVersion
                 config_file_name = self.config_label_dict.get(config_name, config_name)
                 config_file_path = self.config_dir / config_file_name
                 if not config_file_path.is_file():
@@ -383,6 +387,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             user_config_dict = yaml.safe_load(config_yaml)
         else:
             user_config_dict = {}
+            config_file_name = ""
+            githash = self.evt_settingVersions.data.recommendedSettingsVersion
         try:
             full_config_dict = self.config_validator.validate(user_config_dict)
         except Exception as e:
@@ -391,6 +397,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
         config = types.SimpleNamespace(**full_config_dict)
         await self.configure(config)
+        self.evt_settingsApplied.set_put(
+            settingsVersion=f"{config_file_name}:{githash}"
+        )
         self.evt_appliedSettingsMatchStart.set_put(
             appliedSettingsMatchStartIsTrue=True, force_output=True
         )
