@@ -54,8 +54,9 @@ Used by `SalInfo`:
 Used by `AsyncS3Bucket`:
 
 * ``S3_ENDPOINT_URL``: The endpoint URL for the S3 server, e.g. ``http://foo.bar:9000``.
-  You must specify a value in order to use a non-AWS S3 service, at least until ``endpoint_url`` can be defined in ``~/.aws/config``, at which point we plan to deprecate this environment variable.
-  Leave it undefined or set it to "" to use AWS S3 (or the value in your aws config file, once that is supported).
+  You must specify a value in order to use an S3 service that is not part of Amazon Web Services (AWS).
+  Eventually we hope that ``endpoint_url`` can be defined in ``~/.aws/config``.
+  Once that is supported you can leave this environment variable unset, and we can deprecate it.
 
 .. _lsst.ts.salobj-configuration_other:
 
