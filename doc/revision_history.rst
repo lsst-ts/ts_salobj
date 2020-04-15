@@ -16,6 +16,7 @@ Backwards incompatible changes:
 
 Major changes:
 
+* Add a ``timeout`` argument to `BaseCscTestCase.check_standard_state_transitions`.
 * Update `BaseCsc.start` to output the ``softwareVersions`` event.
 * Update `ConfigurableCsc` to output the ``settingsApplied``.
 * Allow the ``SALPY_Test`` library to be missing: skip the few necessary unit tests if the library is not found.
