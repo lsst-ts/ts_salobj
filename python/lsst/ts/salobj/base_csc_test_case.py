@@ -239,7 +239,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             process.terminate()
 
     async def check_standard_state_transitions(
-        self, enabled_commands, skip_commands=None
+        self, enabled_commands, skip_commands=None, timeout=STD_TIMEOUT
     ):
         """Test standard CSC state transitions.
 
@@ -251,6 +251,17 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             and "setLogLevel" (which is valid in any state).
         skip_commands : `List` [`str`] or `None`
             List of commands to skip.
+        timeout : `float`
+            Time limit for state transition commands (seconds).
+
+        Notes
+        -----
+        ``timeout`` is only used for state transition commands that
+        are expected to succceed. ``STD_TIMEOUT`` is used for things
+        that should happen quickly:
+
+        * Commands that should fail, due to the CSC being in the wrong state.
+        * The ``summaryState`` event after each state transition:
         """
         enabled_commands = tuple(enabled_commands)
         skip_commands = tuple(skip_commands) if skip_commands else ()
@@ -263,7 +274,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         )
 
         # Send start; new state is DISABLED.
-        await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
+        await self.remote.cmd_start.start(timeout=timeout)
         self.assertEqual(self.csc.summary_state, sal_enums.State.DISABLED)
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
         await self.check_bad_commands(
@@ -271,7 +282,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         )
 
         # Send enable; new state is ENABLED.
-        await self.remote.cmd_enable.start(timeout=STD_TIMEOUT)
+        await self.remote.cmd_enable.start(timeout=timeout)
         self.assertEqual(self.csc.summary_state, sal_enums.State.ENABLED)
         await self.assert_next_summary_state(sal_enums.State.ENABLED)
         all_enabled_commands = tuple(
@@ -282,17 +293,17 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         )
 
         # Send disable; new state is DISABLED.
-        await self.remote.cmd_disable.start(timeout=STD_TIMEOUT)
+        await self.remote.cmd_disable.start(timeout=timeout)
         self.assertEqual(self.csc.summary_state, sal_enums.State.DISABLED)
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
 
         # Send standby; new state is STANDBY.
-        await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
+        await self.remote.cmd_standby.start(timeout=timeout)
         self.assertEqual(self.csc.summary_state, sal_enums.State.STANDBY)
         await self.assert_next_summary_state(sal_enums.State.STANDBY)
 
         # Send exitControl; new state is OFFLINE.
-        await self.remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
+        await self.remote.cmd_exitControl.start(timeout=timeout)
         self.assertEqual(self.csc.summary_state, sal_enums.State.OFFLINE)
         await self.assert_next_summary_state(sal_enums.State.OFFLINE)
 

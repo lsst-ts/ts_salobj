@@ -29,6 +29,11 @@ import asynctest
 
 from lsst.ts import salobj
 
+try:
+    import SALPY_Test
+except ImportError:
+    SALPY_Test = None
+
 STD_TIMEOUT = 5
 START_TIMEOUT = 60
 STOP_TIMEOUT = 5
@@ -47,6 +52,7 @@ class SALPYTestCase(asynctest.TestCase):
     async def test_salobj_remote_salobj_controller(self):
         await self.check_salobj_remote("minimal_salobj_controller.py")
 
+    @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
     async def test_salobj_remote_salpy_controller(self):
         await self.check_salobj_remote("minimal_salpy_controller.py")
 
@@ -88,7 +94,7 @@ class SALPYTestCase(asynctest.TestCase):
                     # remote.cmd_setLogLevel.put()
                     # print(f"Remote: put setLogLevel(level={level})")
                     print(f"Remote: sending setLogLevel(level={level})")
-                    await remote.cmd_setLogLevel.set_start(level=level, timeout=10)
+                    await remote.cmd_setLogLevel.set_start(level=level, timeout=20)
                     print("Remote: wait for logLevel")
                     data = await remote.evt_logLevel.next(
                         flush=False, timeout=STD_TIMEOUT

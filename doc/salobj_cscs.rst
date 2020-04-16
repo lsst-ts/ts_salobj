@@ -11,33 +11,151 @@ Writing a CSC
 -------------
 .. _lsst.ts.salobj-writing_a_csc:
 
-* Make your CSC a subclass of `ConfigurableCsc` if it can be configured via the ``start`` command, or `BaseCsc` if not.
-* Override `BaseCsc.close_tasks` if you have background tasks to clean up when quitting.
+A Commandable SAL Component (CSC) typically consists of one or more of the following components:
+
+The CSC
+^^^^^^^
+The CSC responds to commands and outputs events and telemetry.
+Make it a subclass of `ConfigurableCsc` if it can be configured via the ``start`` command, or `BaseCsc` if not.
+Most CSCs are configurable.
+
+ts_ATDome is one of the simplest CSCs, and makes good example of how to write a CSC.
+
+Connections
+^^^^^^^^^^^
+If your CSC communicates with a low-level controller then it will need some kind of connection to that controller.
+Examples include:
+
+* ts_ATDome, one of the simplest CSCs, communicates to its low-level controller using a single client TCP/IP socket.
+* ts_hexapod and ts_rotator communicate to its low-level controller via a pair of TCP/IP client sockets, one for commands and the other for replies.
+* ts_MTMount communicates to its low-level controller via a pair of TCP/IP sockets, one a client, one a socket.
+
+If your CSC communicates with other SAL components then it will need one or more `Remote`\ s (one per SAL component).
+Examples of CSCs with `Remote`\ s include:
+
+* ts_ATDomeTrajectory has a remote to talk command ATDome and another to listen to ATMCS target event.
+  This is one of the simplest CSCs with remotes.
+* ts_Watcher uses remotes to listen to the SAL components that it monitors.
+* ts_scriptqueue uses a single remote to communicate with all queued scripts.
+  This relies on the feature that specifying index=0 allows one to communicate with all indices of an indexed SAL component.
+
+LFA Writer
+^^^^^^^^^^
+If your CSC writes data to the Large File Annex (or another `S3 <https://docs.aws.amazon.com/s3/index.html>`_ server) then create an `AsyncS3Bucket`, using `AsyncS3Bucket.make_bucket_name` to construct the bucket name.
+To upload data:
+
+* Call `AsyncS3Bucket.make_key` to construct a key.
+* Call `AsyncS3Bucket.upload` to upload the data (see the doc string for details on getting your data into the required format).
+* Fall back to writing your data to local disk if S3 upload fails.
+* Call ``evt_largeFileObjectAvailable.set_put`` to report the upload.
+
+See ts_FiberSpectrograph for a simple example.
+
+Note that users of your CSC will have to configure access to the S3 server in the standard way.
+Most of such configuration is standard and well documented on the internet.
+However, if the S3 server is not part of Amazon Web Services (AWS), you will also have to define salobj-specific environment variable ``S3_ENDPOINT_URL``; see :ref:`lsst.ts.salobj-configuration_environment_variables` for details.
+
+A Model
+^^^^^^^
+If your CSC has complicated internal state or performs complicated computations then we strongly recommend that you encapsulate that behavior in a class that acts as a data model.
+On the other hand, if a low level controller does most of the work then you probably do not need a model.
+Examples of CSCs with models include:
+
+* ts_ATDomeTrajectory: the model is the algorithm used to control the dome.
+  This is one of the simplest CSCs with a model.
+* ts_watcher: the model contains and manages all the rules and alarms.
+* ts_scriptqueue: the model contains the queue and information about each script on the queue.
+
+A Simulator
+^^^^^^^^^^^
+If your CSC controls hardware then we strongly recommend that you support running in simulation mode.
+This allows unit testing integration testing of your CSC.
+
+If your CSC talks to a low level controller then consider simulating the low-level controller.
+That allows your CSC to use its standard communication protocol to communicate with the simulator, which in turn means that your unit test exercise more of your code.
+All the CSCs listed under "Connections" above have a simulator that works this way.
+
+-----------------
+Basic Development
+-----------------
+
+Read `Developing with the lsstts/develop-env Docker Container <https://confluence.lsstcorp.org/pages/viewpage.action?pageId=107119540>`_ especially "CSC Development".
+For detailed advice for configuring your environment see `SAL Development <https://confluence.lsstcorp.org/pages/viewpage.action?pageId=107119540>`_.
+
+Clone the `templates <https://github.com/lsst/templates>`_ package and follow the instructions in its README file to create a new package.
+
+-----------
+CSC Details
+-----------
+
+Make your CSC a subclass of `ConfigurableCsc` if it can be configured via the ``start`` command, or `BaseCsc` if not.
+Most CSCs can be configured.
+
 * Handling commands:
 
-    * Your subclass must provide a ``do_<name>`` method for every command
-      that is not part of the standard CSC command set, as well as the
-      following optional standard commands, if you want to support them:
-      ``abort``, ``enterControl``, and ``setValue``.
-      `BaseCsc` implements the standard state transition commands.
-    * Each ``do_<name>`` method can be synchronous (``def do_<name>...``)
-      or asynchronous (``async def do_<name>...``). If ``do_<name>``
-      is asynchronous then the command is automatically acknowledged
-      as in progress before the callback starts.
-    * If a ``do_<name>`` method must perform slow synchronous operations,
-      such as CPU-heavy tasks, make the method asynchronous
-      and call the synchronous operation in a thread using
-      the ``run_in_executor`` method of the event loop.
+    * Your subclass must provide a ``do_<name>`` method for every command that is not part of the standard CSC command set, as well as the following optional standard commands, if you want to support them (these are rare):
+
+      * ``abort``. Use of this command is discouraged.
+        It is usually better to provide CSC-specific commands to stop specific actions.
+      * ``enterControl``. This command is only relevant for :ref:`externally commandable CSCs <lsst.ts.salobj-externally_commandable_csc>`.
+      * ``setValue``. This is strongly discouraged, for reasons given below.
+
+    * Each ``do_<name>`` method may be synchronous (``def do_<name>...``) or asynchronous (``async def do_<name>...``).
+      If ``do_<name>`` is asynchronous then the command is automatically acknowledged as in progress just before ``do_<name>`` method starts.
+    * Most commands should only be allowed to run when the summary state is `State.ENABLED`.
+      To enforce this, put the following as the first line of your ``do_<name>`` method: ``self.assert_enabled()``
     * Your CSC reports the command as unsuccessful if the ``do_<name>`` method raises an exception.
-      The ``ack`` value depends on the exception; see `ControllerCommand` for details.
+      The ``ack`` value depends on the exception; see `topics.ControllerCommand` for details.
     * Your CSC reports the command as successful when ``do_<name>`` finishes and returns `None`.
-      If ``do_<name>`` returns an acknowledgement (instance of `SalInfo.AckType`) instead of `None`
+      If ``do_<name>`` returns an acknowledgement (instance of `SalInfo.AckCmdType`) instead of `None`
       then your CSC sends that as the final command acknowledgement.
-    * If you want to allow more than one instance of the command running
-      at a time, set ``self.cmd_<name>.allow_multiple_commands = True``
-      in your CSC's constructor. See `topics.ControllerCommand`.allow_multiple_commands
-      for details and limitations of this attribute.
+    * If you want to allow more than one instance of the command running at a time, set ``self.cmd_<name>.allow_multiple_callbacks = True`` in your CSC's constructor.
+      See `topics.ReadTopic.allow_multiple_callbacks` for details and limitations of this attribute.
+    * If a ``do_<name>`` method must perform slow synchronous operations, such as CPU-heavy tasks or blocking I/O, make the method asynchronous and call the synchronous operation in a thread using the ``run_in_executor`` method of the event loop.
     * ``do_`` is a reserved prefix: all ``do_<name>`` attributes must match a command name and must be callable.
+    * It is strongly discouraged to implement the ``setValue`` command or otherwise allow modifying configuration in any way other than the ``start`` command, because that makes it difficult to reproduce the current configuration and determine how it got that way.
+      However, if your CSC does allow this, then you are responsible for ouputting the ``appliedSettingsMatchStart`` event with ``appliedSettingsMatchStartIsTrue=False`` when appropriate.
+
+* In your constructor call:
+
+    * ``self.evt_softwareVersions.set(version=...)``; that is ``set`` not ``set_put`` because `BaseCsc` will add more information and then output the event.
+      If your CSC has individually versions subsystems then also set the ``subsystemVersions`` field, else leave it blank.
+    * If your CSC outputs settings information in events other than ``settingsApplied`` then call:
+      ``self.evt_settingsApplied.set(otherSettingsEvents=...)`` with a comma-separated list of the name of those events (without the ``logevent_`` prefix).
+    
+* Override `BaseCsc.handle_summary_state`  to handle tasks such as:
+
+  * Constructing a model, if your CSC has one.
+  * Starting or stopping a telemetry loop and other background tasks.
+  * Constructing the simulator, if in simulation mode.
+  * Connecting to or disconnecting from a low-level controller (or simulator).
+
+  Here is a typical outline::
+
+    async def handle_summary_state(self):
+        if self.disabled_or_enabled:
+            if self.model is None:
+                self.model = ...
+            if self.telemetry_task.done():
+                self.telemetry_task = asyncio.create_task(self.telemetry_loop())
+            if self.simulation_mode and not self.simulator:
+                self.simulator = ...
+            if self.connection is None:
+                self.connection = ...
+        else:
+            if self.connection:
+                await self.connection.close()
+                self.connection = None
+            if self.simulator:
+                await self.simulator.close()
+                self.simulator = None
+            self.telemetry_task.cancel()
+            if self.model:
+                await self.model.close()
+                self.model = None
+
+* Override `BaseCsc.close_tasks` if you have background tasks to clean up when quitting.
+  This is not strictly needed if you cancel your tasks in `BaseCsc.handle_summary_state`, but it allows you to close CSCs in the ENABLED or DISABLED state in unit tests without generating annoying warnings about pending tasks.
 
 * Configurable CSCs (subclasses of `ConfigurableCsc`) must provide the following:
 
@@ -47,11 +165,18 @@ Writing a CSC
     * A ``get_config_pkg`` classmethod that returns ``ts_config_...``, the package that contains configuration files for your CSC.
     * In that config package:
 
-        * Add a directory whose name is the SAL component, and a subdirectory inside that whose name is your schema version, for example ``ATDome/v1/``. In that subdirectory add the following:
+        * Add a directory whose name is the SAL component, and a subdirectory inside that whose name is your schema version, for example ``ATDome/v1/``.
+
+          In that subdirectory add the following:
+
         * Configuration files, if any.
-          Only add configuration files if your CSC's default configuration (as defined by the default values specfied in the schema) is not adequate for normal operation modes.
-        * A file ``_labels.yaml`` which contains a mapping of ``label: configuration file name`` for each recommended configuration file.
+          These are only required if your CSC's default configuration (as defined by the default values specfied in the schema) is not adequate for normal operation modes.
+        * A file named ``_labels.yaml`` which contains a mapping of ``label: configuration file name`` for each recommended configuration file.
           If you have no configuration files then leave ``_labels.yaml`` blank (except, preferably, a comment saying there are no configuration files), in order to avoid a warning log message when your CSC is constructed.
+        * Add a new test method to the test case in ``tests/test_config_files.py``.
+          If your CSC package requires packages that are not part of the ``lsstts/develop-env`` Docker container then use an environment variable to find your package; see ``ts_config_ocs/tests/test_config_files.py`` for a few examples.
+        * Run the new unit test, to make sure it works.
+
     * Add the config package to your eups table as a required dependency in your ``ups/<csc_pkg>.table`` file.
 
 * Talking to other CSCs:
@@ -63,23 +188,14 @@ Writing a CSC
 * Summary state and error code:
 
     * `BaseCsc` provides a default implementation for all summary state
-      transition commands that might suffice. However, it does not yet
-      handle configuration. See ``ATDomeTrajectory`` for a CSC
-      that handles configuration.
+      transition commands that might suffice.
     * Most commands should only be allowed to run when the summary state
       is `State.ENABLED`. To check this, put the following as the first
       line of your ``do_<name>`` method: ``self.assert_enabled()``
-    * Your subclass may override ``begin_<name>`` and/or ``end_<name>``
-      for each state transition command, as appropriate. For complex state
-      transitions your subclass may also override ``do_<name>``.
-      If any of these methods fail then the state change operation
-      is aborted, the summary state does not change, and the command
-      is acknowledged as failed.
-    * Your subclass may override `BaseCsc.handle_summary_state` to perform actions
-      based the current summary state. This is an excellent place to
-      :ref:`start and stop a telemetry loop<lsst.ts.salobj-telemetry_loop_example>`.
-    * Output the ``errorCode`` event when your CSC goes into the
-      `State.FAULT` summary state.
+
+    * Call `BaseCsc.fault` to send your CSC into the `State.FAULT` summary state.
+      Specify the ``code`` and ``report`` arguments so that BaseCsc can output the ``errorCode`` event
+      (which should only be output when going to FAULT state).
 
 * Detailed state (optional):
 
@@ -113,6 +229,27 @@ Standard CSC commands and their associated summary state changes:
 * ``exitControl``: `State.STANDBY` to `State.OFFLINE`.
   An :ref:`externally commandable CSCs<lsst.ts.salobj-externally_commandable_csc>` will keep running; all others will quit after reporting `State.OFFLINE`.
 * ``standby``: `State.DISABLED` or `State.FAULT` to `State.STANDBY`
+
+---------------------
+Unit Testing your CSC
+---------------------
+
+* Make a unit test case that inherits from `BaseCscTestCase` and `asynctest.TestCase`
+* Override the `BaseCscTestCase.basic_make_csc` method to construct and return your CSC.
+  You may also construct other objects needed for your tests, with these caveats:
+
+    * `BaseCscTestCase.basic_make_csc` can only return the CSC, so any other objects must be set as instance variables (e.g. ``self.foo = MyFoo(...)``.
+    * If any of these objects need to be cleaned up at the end of the test, add a ``tearDown`` method that performs the cleanup.
+    * In ``tearDown`` Do not assume that `BaseCscTestCase.basic_make_csc` was called, because some test methods may not need to construct a CSC.
+      If you add attributes in `BaseCscTestCase.basic_make_csc` then you must check that they exist in ``tearDown``.
+      A simple way to handle this is to add a ``setUp`` method and initialize any such attributes to `None`, then in ``tearDown`` only perform cleanup if the attributes are not ``None``.
+* In each test that needs a CSC call ``async with self.make_csc(...):`` to construct:
+
+  * ``self.csc``: the CSC
+  * ``self.remote``: a remote that talks to the CSC.
+  * Any other objects you construct in ``basic_make_csc``.
+
+See ``tests/test_csc.py`` in this package (ts_salobj) for an example.
 
 .. _lsst.ts.salobj-externally_commandable_csc:
 
@@ -151,67 +288,20 @@ For example:
 
 If you wish to provide additional command line arguments for your CSC then you may
 override the `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` class methods.
+You will have to do this if your CSC supports simulation mode.
+If your CSC only supports simulation on or off (the most common case) then you can write:::
 
-To run a CSC in a unit test there are two basic approaches: treat CSC as an asynchronous context manager
-or construct the CSC and explicitly await its start_task.
-The same choices exist for constructing a `Remote`.
+    @classmethod
+    def add_arguments(cls, parser):
+        super(ATDomeCsc, cls).add_arguments(parser)
+        parser.add_argument(
+            "-s", "--simulate", action="store_true", help="Run in simuation mode?"
+        )
 
-Here is an example using an async context manager:
-
-  .. code-block:: python
-
-    index_gen = salobj.index_generator()
-
-    class MyTestCase(asynctest.TestCase)
-        def setUp(self):
-            salobj.set_random_lsst_dds_domain()
-
-        async def test_something(self):
-            index = next(index_gen)
-            async with TestCsc(index=index,
-                initial_summary_state=salobj.State.ENABLED) as csc, \
-                    async with salobj.Remote(domain=csc.domain,
-                                             name="Test", index=index) as remote:
-                # The csc and remote are ready; add your test code here...
-
-Explicitly waiting is harder to do correctly, since you should call ``close`` on your CSC even if a test fails.
-One technique I recommend is to make a "harness" class that is itself an asynchronous context manager
-that manages the CSC and `Remote` and possibly other related instances.
-This is useful if you are writing multiple tests that need these objects,
-especially if the different tests require different configurations.
-(If all tests use the same configuration, then you can use build and await
-the objects in ``async def setUp`` and close them in ``async def tearDown``).
-Here is an example:
-
-  .. code-block:: python
-
-    index_gen = salobj.index_generator()
-
-    class Harness:
-        def __init__(self, initial_state, config_dir=None):
-            index = next(index_gen)
-            self.csc = TestCsc(index=index, initial_state=initial_state)
-            self.remote = salobj.Remote(domain=self.csc.domain,
-                                        name="Test", index=index)
-
-        async def __aenter__(self):
-            await self.csc.start_task
-            await self.remote.start_task
-            return self
-
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            await self.remote.close()
-            await self.csc.close()
-
-
-    class MyTestCase(asynctest.TestCase)
-        def setUp(self):
-            salobj.set_random_lsst_dds_domain()
-
-        async def test_something(self):
-            async with Harness(initial_state=salobj.State.ENABLED) as harness:
-                # harness.csc and harness.remote are ready; add your test code here...
-
+    @classmethod
+    def add_kwargs_from_args(cls, args, kwargs):
+        super(ATDomeCsc, cls).add_kwargs_from_args(args, kwargs)
+        kwargs["simulation_mode"] = 1 if args.simulate else 0
 
 .. _lsst.ts.salobj-simulation_mode:
 
@@ -274,22 +364,4 @@ Here is an example of how to write a telemetry loop.
             #...read and write telemetry...
             await asyncio.sleep(self.telemetry_interval)
 
-3. Start and stop the telemetry loop in `BaseCsc.handle_summary_state`:
-
-  .. code-block:: python
-
-    def handle_summary_state(self):
-        if self.disabled_or_enabled:
-            if self.telemetry_loop_task.done():
-                self.telemetry_loop_task = asyncio.create_task(self.telemetry_loop())
-        else:
-            self.telemetry_loop_task.cancel()
-
-4. Finally, cancel any tasks you start in `BaseCsc.close_tasks`.
-   This is not strictly needed if you cancel your tasks in ``report_summary_state`` when exiting, but it allows you to close CSCs in the ENABLED or DISABLED state in unit tests without generating annoying warnings about pending tasks.
-
-  .. code-block:: python
-
-    async def close_tasks(self):
-        await super().close_tasks()
-        self.telemetry_loop_task.cancel()
+3. Start and stop the telemetry loop in `BaseCsc.handle_summary_state`, as described above.
