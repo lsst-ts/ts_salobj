@@ -94,7 +94,7 @@ class SALPYTestCase(asynctest.TestCase):
                     # remote.cmd_setLogLevel.put()
                     # print(f"Remote: put setLogLevel(level={level})")
                     print(f"Remote: sending setLogLevel(level={level})")
-                    await remote.cmd_setLogLevel.set_start(level=level, timeout=10)
+                    await remote.cmd_setLogLevel.set_start(level=level, timeout=20)
                     print("Remote: wait for logLevel")
                     data = await remote.evt_logLevel.next(
                         flush=False, timeout=STD_TIMEOUT
