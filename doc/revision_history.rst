@@ -12,15 +12,19 @@ v5.9.0
 Backwards incompatible changes:
 
 * The arguments have changed slightly for `AsyncS3Bucket.make_bucket_name` and `AsyncS3Bucket.make_key` and the returned values are quite different.
-  We changed our standards because it turns out that large numbers of buckets are a problem for AWS.
+  We changed our standards because it turns out that large numbers of buckets are a problem for Amazon Web Services (AWS).
 
 Major changes:
 
 * Add a ``timeout`` argument to `BaseCscTestCase.check_standard_state_transitions`.
 * Update `BaseCsc.start` to output the ``softwareVersions`` event.
-* Update `ConfigurableCsc` to output the ``settingsApplied``.
+* Update `ConfigurableCsc` to output the ``settingsApplied`` event.
+
+Minor changes:
+
 * Allow the ``SALPY_Test`` library to be missing: skip the few necessary unit tests if the library is not found.
 * The Jenkins job now builds and uploads the documentation (even if unit tests fail).
+* Improve the reliability of ``tests/test_salobj_to_either.py`` by increasing a time limit.
 
 Requirements:
 
