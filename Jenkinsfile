@@ -89,10 +89,22 @@ pipeline {
                 reportFiles: 'index.html',
                 reportName: "Coverage Report"
               ])
+                // || echo FAILED TO PUSH DOCUMENTATION.
+            sh """
+            docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repo/ && setup ts_salobj -t saluser && package-docs build\"
+            """
 
-              sh """
-              docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repo/ && setup ts_salobj -t saluser && package-docs build && ltd upload --product ts-salobj --git-ref \${GIT_BRANCH} --dir doc/_build/html\"
-              """
+            script {
+
+                def RESULT = sh returnStatus: true, script: """
+                docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repo/ && setup ts_salobj -t saluser && ltd upload --product ts-salobj --git-ref \${GIT_BRANCH} --dir doc/_build/html\"
+                """
+
+                if ( RESULT != 0 ) {
+                    unstable("Failed to push documentation.")
+                }
+             }
+
         }
         cleanup {
             sh """
