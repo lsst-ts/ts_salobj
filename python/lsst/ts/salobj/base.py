@@ -34,13 +34,20 @@ __all__ = [
     "name_to_name_index",
     "current_tai",
     "tai_from_utc",
+    "tai_from_utc_unix",
 ]
 
 import asyncio
+import bisect
+import datetime
+import logging
+import math
 import re
+import threading
 import time
 
 import astropy.time
+import astropy.utils.iers
 
 from . import sal_enums
 
@@ -62,6 +69,14 @@ MJD_MINUS_UNIX_SECONDS = (
 
 # Regex for a SAL componet name encoded as <name>[:<index>]
 _NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-]+)(:(?P<index>\d+))?$")
+
+# A table of leap seconds used by `tai_from_utc_unix`.
+# The table is automatically updated by `_update_leap_second_table`.
+_LEAP_SECOND_TABLE = None
+# A threading timer that schedules automatic update of the leap second table.
+_LEAP_SECOND_TABLE_UPDATE_TIMER = None
+# When to update the leap second table, in days before expiration.
+_LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS = 10
 
 
 def _ackcmd_str(ackcmd):
@@ -215,7 +230,7 @@ def current_tai():
 
     TODO: DM-21097: improve accuracy near a leap second transition.
     """
-    return tai_from_utc(time.time())
+    return tai_from_utc_unix(time.time())
 
 
 def tai_from_utc(utc, format="unix"):
@@ -230,37 +245,169 @@ def tai_from_utc(utc, format="unix"):
         or `None` to have astropy guess.
         Ignored if ``utc`` is an instance of `astropy.time.Time`.
 
+    Returns
+    -------
+    tai_unix : `float`
+        TAI time in unix seconds.
+
+    Raises
+    ------
+    ValueError
+        If the date is earlier than 1972 (which is before integer leap seconds)
+        or within one day of the expiration date of the leap second table
+        (which is automatically updated).
+
     Notes
     -----
-    Never use unix seconds if you need accuracy better than a second on the
-    day of a leap second, because there is no standard for how to handle
-    the computer clock. Both ntp and ptp can be configured to make the clock
-    jump or smear in some way.
-    https://developers.redhat.com/blog/2016/12/28/leap-second-i-belong-to-you/
+    If you have UTC in floating point format and performance is an issue,
+    please call `tai_from_utc_unix` to avoid the overhead of converting
+    your time to an `astropy.time.Time`.
 
-    Only use ISO date if you want the expected integer number of seconds
-    between TAI and UTC on the day of a leap second.
+    This function will be deprecated once we upgrade to a version of
+    ``astropy`` that supports TAI seconds. `tai_from_utc_unix` will remain.
 
-    On the day of a leap second `astropy.time` (and the underlying
-    Standards of Fundamental Astronomy library) shrink or stretch
-    unix time, Julian Day and Modified Julian Day, as needed,
-    so that exactly one day of standard length 86400 seconds elapses.
+    **Leap Seconds on the Day Before a Leap Second**
+
+    This routine may not behave as you expect on the day before a leap second.
+    Specify the date in ISO format if you want the correct answer.
+
+    When UTC is expressed as unix time, Julian Day, or Modified Julian Day
+    the answer is ambiguous, so the result can be off by up to a second from
+    what you might expect. This function follows `astropy.time` and
+    Standards of Fundamental Astronomy (SOFA) by shrinking or stretching
+    unix time, Julian Day, and Modified Julian Day, as needed, so that
+    exactly one day of 86400 seconds (of modified duration) elapses.
     This leads to TAI-UTC varying continuously on that day,
     instead of being an integer number of seconds.
     See https://github.com/astropy/astropy/issues/10055
 
-    Also the `datetime` library does not handle leap seconds, and the datetime
-    representation in `astropy.time` raises an exception the date has 60
-    in the seconds field.
+    Also note that the behavior of the unix clock is not well defined
+    on the day before a leap second. Both ntp and ptp can be configured
+    to make the clock jump or smear in some way.
+    https://developers.redhat.com/blog/2016/12/28/leap-second-i-belong-to-you/
+
+    In theory the datetime format could work as well as ISO format,
+    but in practice it does not. The `datetime` library does not handle
+    leap seconds, and the datetime representation in `astropy.time`
+    raises an exception if the date has 60 in the seconds field.
+
+    On Linux an excellent way to get *current* TAI on the day of a leap second
+    is to configure ntp or ptp to maintain a leap second table, then use
+    the ``CLOCK_TAI`` clock (which is only available on Linux).
+
+    The leap second table is automatically updated.
     """
-    if isinstance(utc, astropy.time.Time):
-        ap_time = utc
+    if isinstance(utc, float) and format == "unix":
+        utc_unix = utc
+    elif isinstance(utc, astropy.time.Time):
+        utc_unix = utc.unix
     else:
-        ap_time = astropy.time.Time(utc, scale="utc", format=format)
-    return ap_time.tai.mjd * SECONDS_PER_DAY - MJD_MINUS_UNIX_SECONDS
+        utc_unix = astropy.time.Time(utc, scale="utc", format=format).unix
+    return tai_from_utc_unix(utc_unix)
 
 
-# Call current_tai once so astropy downloads the leap second table.
-# All subsequent calls should be fast, at least until astropy downloads
-# a newer version of the lap second table.
-current_tai()
+def tai_from_utc_unix(utc_unix):
+    """Return TAI in unix seconds, given UTC in unix seconds.
+
+    Parameters
+    ----------
+    utc_unix : `float`
+        UTC time in unix seconds.
+
+    Returns
+    -------
+    tai_unix : `float`
+        TAI time in unix seconds.
+
+    Raises
+    ------
+    ValueError
+        If the date is earlier than 1972 (which is before integer leap seconds)
+        or within one day of the expiration date of the leap second table
+        (which is automatically updated).
+
+    Notes
+    -----
+    See the notes for `tai_from_utc` for information about
+    possibly unexpected behavior on the day before a leap second.
+    """
+    # Use a local pointer, to prevent race conditions while the
+    # global table is being replaced by `_update_leap_second_table`.
+    leap_second_table = _LEAP_SECOND_TABLE
+    if utc_unix > leap_second_table[-1][0] - SECONDS_PER_DAY:
+        raise ValueError(
+            f"{utc_unix} > expiry date of leap second table - 1 day "
+            f"= {leap_second_table[-1][0] - SECONDS_PER_DAY}"
+        )
+    i = bisect.bisect(leap_second_table, (utc_unix, math.inf))
+    if i == 0:
+        raise ValueError(
+            f"{utc_unix} < start of integer leap seconds "
+            f"= {leap_second_table[0][0]}"
+        )
+    utc0, tai_minus_utc0 = leap_second_table[i - 1]
+    utc1, tai_minus_utc1 = leap_second_table[i]
+    if utc_unix + SECONDS_PER_DAY > utc1 and tai_minus_utc1 is not None:
+        # Assume unix seconds is smeared uniformly on the day before a
+        # leap second, so that there are exactly 86400 seconds in the day.
+        # Otherwise unix seconds is ambiguous at the leap second.
+        # This matches AstroPy and Standards of Fundamental Astronomy (SOFA).
+        utc_days = utc_unix / SECONDS_PER_DAY
+        frac_day = utc_days - math.floor(utc_days)
+        tai_minus_utc = tai_minus_utc0 + (tai_minus_utc1 - tai_minus_utc0) * frac_day
+    else:
+        tai_minus_utc = tai_minus_utc0
+    return utc_unix + tai_minus_utc
+
+
+_log = logging.getLogger("lsst.ts.salobj.base")
+
+
+def _update_leap_second_table():
+    """Update the leap second table.
+
+    Notes
+    -----
+    This should be called when this module is loaded.
+    When called, it obtains the current table from AstroPy,
+    then schedules a background (daemon) thread to call itself
+    to update the table ``_LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS``
+    before the table expires.
+
+    The leap table will typically have an expiry date that is
+    many months away, so it will be rare for auto update to occur.
+    """
+    _log.info("Update leap second table")
+    global _LEAP_SECOND_TABLE, _LEAP_SECOND_TABLE_UPDATE_TIMER
+    ap_table = astropy.utils.iers.LeapSeconds.auto_open()
+    lp_list = [
+        (
+            astropy.time.Time(
+                datetime.datetime(row["year"], row["month"], 1, 0, 0, 0), scale="utc"
+            ).unix,
+            row["tai_utc"],
+        )
+        for row in ap_table
+        if row["year"] >= 1972
+    ]
+    expiry_date_utc_unix = ap_table.expires.unix
+    lp_list.append((expiry_date_utc_unix, None))
+    _LEAP_SECOND_TABLE = lp_list
+
+    update_date = (
+        expiry_date_utc_unix - _LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS * SECONDS_PER_DAY
+    )
+    update_delay = update_date - time.time()
+    if _LEAP_SECOND_TABLE_UPDATE_TIMER is not None:
+        _LEAP_SECOND_TABLE_UPDATE_TIMER.cancel()
+    _log.debug(
+        f"Schedule a timer to call _update_leap_second_table in {update_delay} seconds"
+    )
+    _LEAP_SECOND_TABLE_UPDATE_TIMER = threading.Timer(
+        update_delay, _update_leap_second_table
+    )
+    _LEAP_SECOND_TABLE_UPDATE_TIMER.daemon = True
+    _LEAP_SECOND_TABLE_UPDATE_TIMER.start()
+
+
+_update_leap_second_table()

@@ -606,7 +606,7 @@ class SalInfo:
         and return the updated sd.
         """
         rcv_utc = si.reception_timestamp * 1e-9
-        rcv_tai = base.tai_from_utc(rcv_utc)
+        rcv_tai = base.tai_from_utc_unix(rcv_utc)
         sd.private_rcvStamp = rcv_tai
         return sd
 

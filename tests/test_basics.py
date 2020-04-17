@@ -32,6 +32,23 @@ from astropy.coordinates import Angle
 import astropy.units as u
 
 from lsst.ts import salobj
+import lsst.ts.salobj.base
+
+
+def alternate_tai_from_utc_unix(utc_unix):
+    """Compute TAI in unix seconds given UTC in unix seconds.
+
+    Parameters
+    ----------
+    utc_unix : `float`
+
+    This is not the implementation in base.py for two reasons:
+
+    * It is too slow; it slows tests/test_speed.py by a factor of 8.
+    * It blocks while downloading a leap second table.
+    """
+    ap_time = astropy.time.Time(utc_unix, scale="utc", format="unix")
+    return ap_time.tai.mjd * salobj.SECONDS_PER_DAY - salobj.MJD_MINUS_UNIX_SECONDS
 
 
 class BasicsTestCase(asynctest.TestCase):
@@ -280,6 +297,9 @@ class BasicsTestCase(asynctest.TestCase):
         """
         tai = salobj.tai_from_utc(utc_ap.utc.unix)
 
+        tai_alt = alternate_tai_from_utc_unix(utc_ap.utc.unix)
+        self.assertAlmostEqual(tai, tai_alt, delta=1e-6)
+
         tai2 = salobj.tai_from_utc(utc_ap.utc.iso, format="iso")
         self.assertAlmostEqual(tai, tai2, delta=1e-6)
 
@@ -301,11 +321,30 @@ class BasicsTestCase(asynctest.TestCase):
         tai7 = salobj.tai_from_utc(utc_ap)
         self.assertAlmostEqual(tai, tai7, delta=1e-6)
 
+    def test_leap_second_table(self):
+        """Check that the leap second table is set and an update is scheduled.
+        """
+        self.assertIsNotNone(lsst.ts.salobj.base._LEAP_SECOND_TABLE)
+        update_timer = lsst.ts.salobj.base._LEAP_SECOND_TABLE_UPDATE_TIMER
+        self.assertTrue(update_timer.is_alive())
+        self.assertTrue(update_timer.daemon)
+        self.assertIs(
+            update_timer.function, lsst.ts.salobj.base._update_leap_second_table
+        )
+        update_margin = (
+            lsst.ts.salobj.base._LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS
+            * salobj.SECONDS_PER_DAY
+        )
+        current_duration = (
+            time.time() - lsst.ts.salobj.base._LEAP_SECOND_TABLE[-1][0] - update_margin
+        )
+        self.assertGreater(update_timer.interval, current_duration)
+
     def test_tai_from_utc(self):
         """Test tai_from_utc.
         """
-        # check tai_from_utc at leap second transition just before 2017-01-01
-        # when leap seconds went from 36 to 37
+        # Check tai_from_utc at leap second transition just before 2017-01-01
+        # when leap seconds went from 36 to 37.
         utc0_ap = astropy.time.Time("2017-01-01", scale="utc", format="iso")
         for utc_ap in (
             (utc0_ap - 0.5 * u.day),
@@ -317,6 +356,24 @@ class BasicsTestCase(asynctest.TestCase):
         ):
             with self.subTest(utc_ap=utc_ap):
                 self.check_tai_from_utc(utc_ap=utc_ap)
+
+        # Test values near the limits, which are at 1972-01-01T00:00:00
+        # and one day before the current leap second table expires.
+        min_utc_unix = astropy.time.Time("1972-01-01", scale="utc", format="iso").unix
+        max_utc_unix = (
+            lsst.ts.salobj.base._LEAP_SECOND_TABLE[-1][0] - salobj.SECONDS_PER_DAY
+        )
+        min_tai_unix = salobj.tai_from_utc(min_utc_unix)
+        self.assertAlmostEqual(min_tai_unix, min_utc_unix + 10)
+        max_tai_unix = salobj.tai_from_utc(max_utc_unix)
+        # Final value of TAI-UTC in the table.
+        # Note that the last entry in the table has TAI-UTC = None.
+        final_tai_minus_utc = lsst.ts.salobj.base._LEAP_SECOND_TABLE[-2][1]
+        self.assertAlmostEqual(max_tai_unix, max_utc_unix + final_tai_minus_utc)
+        with self.assertRaises(ValueError):
+            salobj.tai_from_utc(min_utc_unix - 0.001)
+        with self.assertRaises(ValueError):
+            salobj.tai_from_utc(max_utc_unix + 0.001)
 
     def test_current_tai(self):
         utc0 = time.time()
