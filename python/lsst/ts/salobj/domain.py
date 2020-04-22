@@ -32,6 +32,7 @@ import warnings
 import dds
 
 from lsst.ts import idl
+from . import base
 
 # Length of DDS read queue
 # Warning: this must be equal to or longer than the queue length in the
@@ -144,6 +145,7 @@ class Domain:
         self.num_read_threads = 0
 
         self.done_task = asyncio.Future()
+        self.auto_update_leap_second_task = base.auto_update_leap_second_table()
 
         # set of SalInfo
         self._salinfo_set = weakref.WeakSet()
@@ -247,6 +249,9 @@ class Domain:
         May be called multiple times. The first call closes the Domain;
         subsequent calls wait until the Domain is closed.
         """
+        if not self.auto_update_leap_second_task.done():
+            self.auto_update_leap_second_task.cancel()
+
         if self.participant is None:
             await self.done_task
             return

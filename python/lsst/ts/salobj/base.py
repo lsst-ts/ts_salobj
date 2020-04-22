@@ -38,16 +38,14 @@ __all__ = [
 ]
 
 import asyncio
-import bisect
-import datetime
+import concurrent
 import logging
-import math
 import re
-import threading
 import time
 
 import astropy.time
 import astropy.utils.iers
+import astropy._erfa
 
 from . import sal_enums
 
@@ -67,14 +65,11 @@ MJD_MINUS_UNIX_SECONDS = (
     astropy.time.Time(0, scale="utc", format="unix").utc.mjd * SECONDS_PER_DAY
 )
 
+JD_MINUS_MJD = 2400000.5
+
 # Regex for a SAL componet name encoded as <name>[:<index>]
 _NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-]+)(:(?P<index>\d+))?$")
 
-# A table of leap seconds used by `tai_from_utc_unix`.
-# The table is automatically updated by `_update_leap_second_table`.
-_LEAP_SECOND_TABLE = None
-# A threading timer that schedules automatic update of the leap second table.
-_LEAP_SECOND_TABLE_UPDATE_TIMER = None
 # When to update the leap second table, in days before expiration.
 _LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS = 10
 
@@ -333,81 +328,64 @@ def tai_from_utc_unix(utc_unix):
     """
     # Use a local pointer, to prevent race conditions while the
     # global table is being replaced by `_update_leap_second_table`.
-    leap_second_table = _LEAP_SECOND_TABLE
-    if utc_unix > leap_second_table[-1][0] - SECONDS_PER_DAY:
-        raise ValueError(
-            f"{utc_unix} > expiry date of leap second table - 1 day "
-            f"= {leap_second_table[-1][0] - SECONDS_PER_DAY}"
-        )
-    i = bisect.bisect(leap_second_table, (utc_unix, math.inf))
-    if i == 0:
-        raise ValueError(
-            f"{utc_unix} < start of integer leap seconds "
-            f"= {leap_second_table[0][0]}"
-        )
-    utc0, tai_minus_utc0 = leap_second_table[i - 1]
-    utc1, tai_minus_utc1 = leap_second_table[i]
-    if utc_unix + SECONDS_PER_DAY > utc1 and tai_minus_utc1 is not None:
-        # Assume unix seconds is smeared uniformly on the day before a
-        # leap second, so that there are exactly 86400 seconds in the day.
-        # Otherwise unix seconds is ambiguous at the leap second.
-        # This matches AstroPy and Standards of Fundamental Astronomy (SOFA).
-        utc_days = utc_unix / SECONDS_PER_DAY
-        frac_day = utc_days - math.floor(utc_days)
-        tai_minus_utc = tai_minus_utc0 + (tai_minus_utc1 - tai_minus_utc0) * frac_day
-    else:
-        tai_minus_utc = tai_minus_utc0
-    return utc_unix + tai_minus_utc
+    utc_mjd = (utc_unix + MJD_MINUS_UNIX_SECONDS) / SECONDS_PER_DAY
+    tai_jd1, tai_jd2 = astropy._erfa.utctai(JD_MINUS_MJD, utc_mjd)
+    # I expect tai_jd1 to be exactly JD_MINUS_MJD, but in case not...
+    tai_mjd = (tai_jd1 - JD_MINUS_MJD) + tai_jd2
+    return tai_mjd * SECONDS_PER_DAY - MJD_MINUS_UNIX_SECONDS
 
 
-_log = logging.getLogger("lsst.ts.salobj.base")
-
-
-def _update_leap_second_table():
-    """Update the leap second table.
+async def _auto_update_leap_second_table_loop():
+    """Automatically keep astropy's leap second table updated.
 
     Notes
     -----
-    This should be called when this module is loaded.
-    When called, it obtains the current table from AstroPy,
-    then schedules a background (daemon) thread to call itself
-    to update the table ``_LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS``
-    before the table expires.
+    This should be started as a task when this module is loaded.
 
     The leap table will typically have an expiry date that is
     many months away, so it will be rare for auto update to occur.
     """
-    _log.info("Update leap second table")
-    global _LEAP_SECOND_TABLE, _LEAP_SECOND_TABLE_UPDATE_TIMER
-    ap_table = astropy.utils.iers.LeapSeconds.auto_open()
-    lp_list = [
-        (
-            astropy.time.Time(
-                datetime.datetime(row["year"], row["month"], 1, 0, 0, 0), scale="utc"
-            ).unix,
-            row["tai_utc"],
+    log = logging.getLogger("lsst.ts.salobj.base")
+    current_leap_second_table = astropy.utils.iers.LeapSeconds.open(
+        file="erfa", cache=True
+    )
+    while True:
+        expires_utc_unix = current_leap_second_table.expires.unix
+        margin_sec = _LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS * SECONDS_PER_DAY
+        update_at_utc_unix = expires_utc_unix - margin_sec
+        update_delay_sec = update_at_utc_unix - time.time()
+        log.info(
+            f"_auto_update_leap_second_table_loop: sleep for {update_delay_sec:0.0f} seconds"
         )
-        for row in ap_table
-        if row["year"] >= 1972
-    ]
-    expiry_date_utc_unix = ap_table.expires.unix
-    lp_list.append((expiry_date_utc_unix, None))
-    _LEAP_SECOND_TABLE = lp_list
+        await asyncio.sleep(update_delay_sec)
 
-    update_date = (
-        expiry_date_utc_unix - _LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS * SECONDS_PER_DAY
-    )
-    update_delay = update_date - time.time()
-    if _LEAP_SECOND_TABLE_UPDATE_TIMER is not None:
-        _LEAP_SECOND_TABLE_UPDATE_TIMER.cancel()
-    _log.debug(
-        f"Schedule a timer to call _update_leap_second_table in {update_delay} seconds"
-    )
-    _LEAP_SECOND_TABLE_UPDATE_TIMER = threading.Timer(
-        update_delay, _update_leap_second_table
-    )
-    _LEAP_SECOND_TABLE_UPDATE_TIMER.daemon = True
-    _LEAP_SECOND_TABLE_UPDATE_TIMER.start()
+        log.info(f"_auto_update_leap_second_table_loop: updating the leap second table")
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            new_leap_second_table = await loop.run_in_executor(
+                pool, astropy.utils.iers.LeapSeconds.auto_open
+            )
+            astropy._erfa.leap_seconds.set(new_leap_second_table)
+
+        current_leap_second_table = new_leap_second_table
 
 
-_update_leap_second_table()
+_AUTO_UPDATE_TASK = make_done_future()
+
+
+def auto_update_leap_second_table():
+    """Automatically keep astropy's leap second table updated.
+
+    This code starts the auto update loop and returns.
+    I don't know how to start a background task on import
+    so I call this in Domain's constructor.
+
+    If the task is already running then do nothing
+    and return a Future that is already done.
+    """
+    global _AUTO_UPDATE_TASK
+    if not _AUTO_UPDATE_TASK.done():
+        return make_done_future()
+
+    _AUTO_UPDATE_TASK = asyncio.create_task(_auto_update_leap_second_table_loop())
+    return _AUTO_UPDATE_TASK
