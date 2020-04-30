@@ -200,9 +200,8 @@ class IdlParserTestCase(unittest.TestCase):
                 expected_field_names.remove("string0")  # only in scalars
                 if not topic_name.startswith("logevent_"):
                     expected_field_names.remove("priority")
-                # TODO DM-22306 remove this conditional statement
-                if "char0" not in topic_metadata.field_info:
-                    expected_field_names.remove("char0")
+                # There is no char0 field in arrays
+                expected_field_names.remove("char0")
                 self.assertEqual(
                     set(topic_metadata.field_info.keys()), expected_field_names
                 )
@@ -232,9 +231,6 @@ class IdlParserTestCase(unittest.TestCase):
                 expected_field_names = set(field_types.keys())
                 if not topic_name.startswith("logevent_"):
                     expected_field_names.remove("priority")
-                # TODO DM-22306 remove this conditional statement
-                if "char0" not in topic_metadata.field_info:
-                    expected_field_names.remove("char0")
                 self.assertEqual(
                     set(topic_metadata.field_info.keys()), expected_field_names
                 )
