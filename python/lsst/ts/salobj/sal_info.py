@@ -37,12 +37,15 @@ from .domain import Domain, DDS_READ_QUEUE_LEN
 
 MAX_RESULT_LEN = 256  # max length for result field of an Ack
 
-# The python logger remembers the level for a given named log
-# so the log level needs to be initialized every time
-INITIAL_LOG_LEVEL = logging.INFO
+# We want DDS logMessage messages for at least INFO level messages
+# so if the current level is less verbose, set it to INFO.
+# Do not change the level if it is already more verbose,
+# because somebody has intentionally increased verbosity
+# (a common thing to do in unit tests).
+MAX_LOG_LEVEL = logging.INFO
 
-# default time to wait for historical data (sec)
-# override by setting env var $LSST_DDS_HISTORYSYNC
+# Default time to wait for historical data (sec);
+# override by setting env var $LSST_DDS_HISTORYSYNC.
 DEFAULT_LSST_DDS_HISTORYSYNC = 60
 
 
@@ -234,7 +237,8 @@ class SalInfo:
         self.done_task = base.make_done_future()
 
         self.log = logging.getLogger(self.name)
-        self.log.setLevel(INITIAL_LOG_LEVEL)
+        if self.log.getEffectiveLevel() > MAX_LOG_LEVEL:
+            self.log.setLevel(MAX_LOG_LEVEL)
 
         # dict of private_seqNum: salobj.topics.CommandInfo
         self._running_cmds = dict()
