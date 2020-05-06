@@ -37,6 +37,7 @@ test:
     - moto
     - ts-dds
     - ts-idl
+    - salpy-test
   source_files:
     - python
     - bin
@@ -46,7 +47,7 @@ test:
     - .git
     - .githooks
   commands:
-    - pytest --ignore tests/test_salpy_to_either.py --ignore tests/test_salobj_to_either.py
+    - pytest
 
 requirements:
   host:
