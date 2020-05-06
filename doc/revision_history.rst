@@ -13,6 +13,12 @@ Major changes:
 
 * Update CscCommander to support custom commands and to run commands in the background.
 * Add new speed tests for issuing commands, reading small and large topics, and writing small and large topics.
+  Results of the speed tests are uploaded to SQuaSH by Jenkins.
+* Add new function `assert_black_formatted` to simplify making sure code remains formatted with ``black``,
+  and a unit test that calls the function.
+* Increased the shutdown delay in `Controller` from 0.5 seconds to 1 second,
+  in order to give `Remote`\ s a bit more time to read final SAL/DDS messages.
+  This may require tweaking timeouts in unit tests that wait for a controller to quit.
 
 Other changes:
 
@@ -20,6 +26,7 @@ Other changes:
 * Change `SalInfo` to only set the log level if it is less verbose than `loggint.INFO`.
   That makes it easier to set a more verbose level in unit tests.
 * Update a unit test for compatibility with the pending release of ts_xml 5.2.
+* Made ``test_salpy_to_either.py`` more robust by increasing the polling rate for messages.
 
 Requirements:
 
