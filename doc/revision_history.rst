@@ -9,11 +9,16 @@ Revision History
 v5.11.0
 =======
 
-Changes:
+Major changes:
 
 * Update CscCommander to support custom commands and to run commands in the background.
+* Add new speed tests for issuing commands, reading small and large topics, and writing small and large topics.
+
+Other changes:
+
 * Update the CSC documentation to move the details for configurable CSCs to a new section.
-* Add new speed tests for command speed and separate read and write speed of small and large topics.
+* Change `SalInfo` to only set the log level if it is less verbose than `loggint.INFO`.
+  That makes it easier to set a more verbose level in unit tests.
 * Update a unit test for compatibility with the pending release of ts_xml 5.2.
 
 Requirements:
