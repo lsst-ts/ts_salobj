@@ -56,7 +56,6 @@ class SalInfoTestCase(asynctest.TestCase):
                 "setArrays",
                 "setLogLevel",
                 "setScalars",
-                "setSimulationMode",
                 "fault",
                 "wait",
             ]

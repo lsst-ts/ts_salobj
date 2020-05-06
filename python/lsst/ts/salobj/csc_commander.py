@@ -108,10 +108,16 @@ class CscCommander:
 
     Subclasses may provide overrides as follows:
 
-    * do_<command_name> overrides sending the specified command.
-      It receives one argument: a list of string arguments.
-      This can be useful for complicated commands,
-      such as commands with array parameters.
+    * ``do_<command_name>`` override handling a standard command
+      (one defined in the XML), or add a new command.
+      The method receives one argument: a list of arguments, each a string.
+      You must provide such a method for any standard command that takes
+      array arguments. It can also be useful for adding a custom command,
+      such as a command to execute a tracking sequence.
+      If you define a do_<command_name> method then also add an entry
+      to ``help_dict``, where: the key is the command name
+      and the value should be a brief (preferably only one line) help string
+      that lists the arguments first and possibly a brief description after.
     * evt_<event_name>_callback overrides handling data for the specified
       event (usually this just mean printing the data).
       It receives one argument: the DDS sample.
@@ -139,6 +145,12 @@ class CscCommander:
             domain=self.domain, name=name, index=index, exclude=exclude
         )
         self.fields_to_ignore = set(fields_to_ignore)
+        self.tasks = set()
+        # Dict of command_name: documentation
+        # You should add one entry for every do_command method
+        # The documentation should start with a list of argument names
+        # The documentation should be on a single line, if possible
+        self.help_dict = dict()
 
         for name in self.remote.salinfo.event_names:
             if name == "heartbeat":
@@ -174,8 +186,6 @@ class CscCommander:
 
 CSC Commands:
 {command_help}
-
-Other commands:
 exit  # exit this commander (leaving the CSC running)
 help  # print this help
 """
@@ -184,6 +194,9 @@ help  # print this help
     async def close(self):
         """Close the commander, prior to quitting.
         """
+        while self.tasks:
+            task = self.tasks.pop()
+            task.cancel()
         await self.remote.close()
         await self.domain.close()
 
@@ -319,17 +332,34 @@ help  # print this help
 
     def get_commands_help(self):
         """Get help for each command, as a list of strings.
+
+        End with "Other Commands:" and any commands
+        in help_dict that are not in command_dict.
         """
         help_strings = []
-        for name, command in self.command_dict.items():
-            sample = command.DataType()
-            public_data = self.get_public_data(sample)
-            field_names_str = " ".join(public_data.keys())
-            help_strings.append(f"{name} {field_names_str}")
+        for command_name in sorted(self.command_dict.keys()):
+            field_names_str = self.help_dict.get(command_name, None)
+            if field_names_str is None:
+                command_topic = self.command_dict[command_name]
+                sample = command_topic.DataType()
+                public_data = self.get_public_data(sample)
+                field_names_str = " ".join(public_data.keys())
+            help_strings.append(f"{command_name} {field_names_str}")
+
+        other_command_names = sorted(
+            command_name
+            for command_name in self.help_dict
+            if command_name not in self.command_dict
+        )
+        help_strings += ["", "Other Commands:"]
+        help_strings += [
+            f"{command_name} {self.help_dict[command_name]}"
+            for command_name in other_command_names
+        ]
         return help_strings
 
-    async def run_command(self, command_name, args):
-        """Run a command that takes only scalar arguments.
+    async def run_command_topic(self, command_name, args):
+        """Run a command that has an associated salobj RemoteCommand topic.
 
         Parameters
         ----------
@@ -339,7 +369,12 @@ help  # print this help
             String arguments for the command.
             There must be exactly one argument per public fields.
 
-        This default method works for commands that take scalar arguments.
+        Notes
+        -----
+        This method works for command topics that take scalar arguments.
+        To support command topics with more exotic arguments you must
+        provide a do_<command> method that parses the arguments
+        and add an entry to self.help_dict.
         """
         command = self.command_dict[command_name]
         sample = command.DataType()
@@ -353,6 +388,25 @@ help  # print this help
             kwargs[name] = type(default_value)(str_value)
         await command.set_start(**kwargs)
 
+    async def run_coroutine(self, coro, command_name):
+        """Run a coroutine and manage the task in self.tasks.
+
+        This allows the task to be cancelled in `close`.
+
+        Parameters
+        ----------
+        coro : awaitable
+            Coroutine or other awaitable.
+        """
+        task = asyncio.create_task(coro)
+        self.tasks.add(task)
+        try:
+            await task
+            print(f"Finished command {command_name}")
+        except Exception as e:
+            print(f"Command {command_name} failed: {e}")
+        self.tasks.discard(task)
+
     @classmethod
     async def amain(cls, **kwargs):
         """Construct the commander and run it.
@@ -362,7 +416,7 @@ help  # print this help
         """
         self = cls.make_from_cmd_line(**kwargs)
         try:
-            print("Waiting for the remote to connect.")
+            print("Waiting for the remote to start.")
             await self.remote.start_task
 
             self.print_help()
@@ -376,23 +430,19 @@ help  # print this help
                 tokens = line.split()
                 command_name = tokens[0]
                 args = tokens[1:]
-                try:
-                    if command_name == "exit":
-                        break
-                    elif command_name == "help":
-                        self.print_help()
-                    elif command_name in self.command_dict:
-                        cmd_method = getattr(self, f"do_{command_name}", None)
-                        if cmd_method is not None:
-                            await cmd_method(args)
-                        else:
-                            await self.run_command(command_name, args)
-                    else:
-                        raise RuntimeError(f"Unrecognized command: {command_name}")
-                except Exception as e:
-                    print(f"Command {command_name} failed: {e}")
-                    continue
-                print(f"Finished command {command_name}")
+                command_method = getattr(self, f"do_{command_name}", None)
+                if command_name == "exit":
+                    break
+                elif command_name == "help":
+                    self.print_help()
+                elif command_method is not None:
+                    coro = command_method(args)
+                    asyncio.create_task(self.run_coroutine(coro, command_name))
+                elif command_name in self.command_dict:
+                    coro = self.run_command_topic(command_name, args)
+                    asyncio.create_task(self.run_coroutine(coro, command_name))
+                else:
+                    print(f"Unrecognized command: {command_name}")
         finally:
             await self.close()
 
