@@ -5,6 +5,7 @@ pipeline {
         container_name = "c_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
         work_branches = "${GIT_BRANCH} ${CHANGE_BRANCH} develop"
         LSST_IO_CREDS = credentials("lsst-io")
+        SQUASH_CREDS = credentials("squash")
     }
 
     stages {
@@ -105,6 +106,21 @@ pipeline {
                 }
              }
 
+        }
+        success {
+            script {
+                def RESULT = sh returnStatus: true, script: "docker exec -u saluser \${container_name} sh -c \"" +
+                    "source ~/.setup.sh && " +
+                    "setup verify && " +
+                    "cd /home/saluser/repo && " +
+                    "dispatch_verify.py --url https://squash-restful-api.lsst.codes " +
+                        "--ignore-lsstsw --env jenkins --user=\${SQUASH_CREDS_USR} --password=\${SQUASH_CREDS_PSW} " +
+                        "tests/measurements/speed.json\""
+
+                if ( RESULT != 0 ) {
+                    unstable("Failed to upload SQuaSH metrics.")
+                }
+            }
         }
         cleanup {
             sh """
