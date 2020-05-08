@@ -104,8 +104,9 @@ class MinimalSALPYController:
                 print("SALPYController: quitting")
                 break
 
-        # make sure SALPY has time to send the final logLevel event
-        await asyncio.sleep(0.5)
+        # Give remotes time to read final DDS messages before closing
+        # the domain participant.
+        await asyncio.sleep(1)
         self.manager.salShutdown()
 
 
