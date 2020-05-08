@@ -12,9 +12,7 @@ pipeline {
         stage("Pulling docker image") {
             steps {
                 script {
-                    sh """
-                    docker pull lsstts/salobj:develop
-                    """
+                    sh "docker pull lsstts/salobj:develop"
                 }
             }
         }
@@ -32,45 +30,59 @@ pipeline {
         stage("Checkout sal") {
             steps {
                 script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_sal && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
-                    """
+                    sh "docker exec -u saluser \${container_name} sh -c \"" +
+                        "source ~/.setup.sh && " +
+                        "cd /home/saluser/repos/ts_sal && " +
+                        "/home/saluser/.checkout_repo.sh \${work_branches} && " +
+                        "git pull\""
                 }
             }
         }
         stage("Checkout xml") {
             steps {
                 script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_xml && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
-                    """
+                    sh "docker exec -u saluser \${container_name} sh -c \"" +
+                        "source ~/.setup.sh && " +
+                        "cd /home/saluser/repos/ts_xml && " +
+                        "/home/saluser/.checkout_repo.sh \${work_branches} && " +
+                        "git pull\""
                 }
             }
         }
         stage("Checkout IDL") {
             steps {
                 script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repos/ts_idl && /home/saluser/.checkout_repo.sh \${work_branches} && git pull\"
-                    """
+                    sh "docker exec -u saluser \${container_name} sh -c \"" +
+                        "source ~/.setup.sh && " +
+                        "source /home/saluser/.bashrc && " +
+                        "cd /home/saluser/repos/ts_idl && " +
+                        "/home/saluser/.checkout_repo.sh \${work_branches} && " +
+                        "git pull\""
                 }
             }
         }
         stage("Build IDL files") {
             steps {
                 script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && source /home/saluser/.bashrc && make_idl_files.py Test Script LOVE && make_salpy_libs.py Test\"
-                    """
+                    sh "docker exec -u saluser \${container_name} sh -c \"" +
+                        "source ~/.setup.sh && " +
+                        "source /home/saluser/.bashrc && " +
+                        "make_idl_files.py Test Script LOVE && " +
+                        "make_salpy_libs.py Test\""
                 }
             }
         }
         stage("Running tests") {
             steps {
                 script {
-                    sh """
-                    docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repo/ && eups declare -r . -t saluser && setup ts_salobj -t saluser && export LSST_DDS_IP=192.168.0.1 && printenv LSST_DDS_IP && py.test --junitxml=tests/.tests/junit.xml\"
-                    """
+                    sh "docker exec -u saluser \${container_name} sh -c \"" +
+                        "source ~/.setup.sh && " +
+                        "cd /home/saluser/repo/ && " +
+                        "eups declare -r . -t saluser && " +
+                        "setup ts_salobj -t saluser && " +
+                        "export LSST_DDS_IP=192.168.0.1 && " +
+                        "printenv LSST_DDS_IP && " +
+                        "py.test --junitxml=tests/.tests/junit.xml\""
                 }
             }
         }
@@ -91,21 +103,24 @@ pipeline {
                 reportName: "Coverage Report"
               ])
                 // || echo FAILED TO PUSH DOCUMENTATION.
-            sh """
-            docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repo/ && setup ts_salobj -t saluser && package-docs build\"
-            """
+            sh "docker exec -u saluser \${container_name} sh -c \"" +
+                "source ~/.setup.sh && " +
+                "cd /home/saluser/repo/ && " +
+                "setup ts_salobj -t saluser && " +
+                "package-docs build\""
 
             script {
 
-                def RESULT = sh returnStatus: true, script: """
-                docker exec -u saluser \${container_name} sh -c \"source ~/.setup.sh && cd /home/saluser/repo/ && setup ts_salobj -t saluser && ltd upload --product ts-salobj --git-ref \${GIT_BRANCH} --dir doc/_build/html\"
-                """
+                def RESULT = sh returnStatus: true, script: "docker exec -u saluser \${container_name} sh -c \"" +
+                    "source ~/.setup.sh && " +
+                    "cd /home/saluser/repo/ && " +
+                    "setup ts_salobj -t saluser && " +
+                    "ltd upload --product ts-salobj --git-ref \${GIT_BRANCH} --dir doc/_build/html\""
 
                 if ( RESULT != 0 ) {
                     unstable("Failed to push documentation.")
                 }
              }
-
         }
         success {
             script {
@@ -124,7 +139,7 @@ pipeline {
         }
         cleanup {
             sh """
-                docker exec -u root --privileged \${container_name} sh -c \"chmod -R a+rw /home/saluser/repo/ \"
+                docker exec -u root --privileged \${container_name} sh -c \"chmod -R a+rw /home/saluser/repo/\"
                 docker stop \${container_name} || echo Could not stop container
                 docker network rm \${network_name} || echo Could not remove network
             """
