@@ -33,6 +33,10 @@ from .sal_log_handler import SalLogHandler
 # generics. TODO TSS-3259 remove this and the code that uses it.
 OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue", "setSimulationMode"))
 
+# Delay before closing the domain participant (seconds).
+# This gives remotes time to read final DDS messages before they disappear.
+SHUTDOWN_DELAY = 1
+
 
 class Controller:
     """A class that receives commands for a SAL component
@@ -253,8 +257,9 @@ class Controller:
         except Exception:
             self.log.exception(f"Controller.close_tasks failed")
         try:
-            # Give time to output final messages.
-            await asyncio.sleep(0.1)
+            # Give remotes time to read final DDS messages before closing
+            # the domain participant.
+            await asyncio.sleep(SHUTDOWN_DELAY)
             self.log.removeHandler(self._sal_log_handler)
             self._sal_log_handler = None
             await self.domain.close()

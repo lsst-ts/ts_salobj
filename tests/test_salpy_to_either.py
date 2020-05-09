@@ -79,7 +79,7 @@ class SALPYTestCase(asynctest.TestCase):
                         return data
                     elif retcode != SALPY_Test.SAL__NO_UPDATES:
                         raise RuntimeError(f"Unexpected return code {retcode}")
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.01)
 
             async def get_scalars():
                 data = SALPY_Test.Test_scalarsC()
@@ -89,7 +89,7 @@ class SALPYTestCase(asynctest.TestCase):
                         return data
                     elif retcode != SALPY_Test.SAL__NO_UPDATES:
                         raise RuntimeError(f"Unexpected return code {retcode}")
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.01)
 
             async def send_setLogLevel(level):
                 done_ack_codes = frozenset(
@@ -120,7 +120,7 @@ class SALPYTestCase(asynctest.TestCase):
                             raise RuntimeError(
                                 f"Remote: command failed; ack={ack_data.ack}"
                             )
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.01)
 
             print("Remote: wait for initial logLevel")
             data = await asyncio.wait_for(get_logLevel(), timeout=START_TIMEOUT)

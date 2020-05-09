@@ -24,6 +24,7 @@ __all__ = [
     "assertAnglesAlmostEqual",
     "assertRaisesAckError",
     "assertRaisesAckTimeoutError",
+    "assert_black_formatted",
     "set_random_lsst_dds_domain",
 ]
 
@@ -31,6 +32,7 @@ import contextlib
 import os
 import random
 import socket
+import subprocess
 import time
 
 from astropy.coordinates import Angle
@@ -130,6 +132,24 @@ def assertRaisesAckTimeoutError(ack=None, error=None):
             raise AssertionError(f"ackcmd.ack={e.ackcmd.ack} instead of {ack}")
         if error is not None and e.ackcmd.error != error:
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
+
+
+def assert_black_formatted(dir):
+    """Assert that all Python files in a directory (at any depth)
+    are formatted with black.
+
+    Here is how to call this from a unit test:
+
+        assert_black_formatted(pathlib.Path(__file__).parents[1])
+
+    Raises
+    ------
+    AssertionError
+        If any files are not formatted with ``black``.
+    """
+    result = subprocess.run(["black", "--check", str(dir)], capture_output=True)
+    if result.returncode != 0:
+        raise AssertionError(result.stderr)
 
 
 def set_random_lsst_dds_domain():

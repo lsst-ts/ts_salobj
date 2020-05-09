@@ -157,27 +157,7 @@ Most CSCs can be configured.
 * Override `BaseCsc.close_tasks` if you have background tasks to clean up when quitting.
   This is not strictly needed if you cancel your tasks in `BaseCsc.handle_summary_state`, but it allows you to close CSCs in the ENABLED or DISABLED state in unit tests without generating annoying warnings about pending tasks.
 
-* Configurable CSCs (subclasses of `ConfigurableCsc`) must provide the following:
-
-    * A ``schema`` that defines the configuration and (if practical) provides a default value for each parameter.
-      If all values have sensible defaults then your CSC can be configured without specifying a configuration file as part of the ``start`` command.
-    * A ``configure`` method that accepts configuration as a struct-like object (a `types.SimpleNamespace`).
-    * A ``get_config_pkg`` classmethod that returns ``ts_config_...``, the package that contains configuration files for your CSC.
-    * In that config package:
-
-        * Add a directory whose name is the SAL component, and a subdirectory inside that whose name is your schema version, for example ``ATDome/v1/``.
-
-          In that subdirectory add the following:
-
-        * Configuration files, if any.
-          These are only required if your CSC's default configuration (as defined by the default values specfied in the schema) is not adequate for normal operation modes.
-        * A file named ``_labels.yaml`` which contains a mapping of ``label: configuration file name`` for each recommended configuration file.
-          If you have no configuration files then leave ``_labels.yaml`` blank (except, preferably, a comment saying there are no configuration files), in order to avoid a warning log message when your CSC is constructed.
-        * Add a new test method to the test case in ``tests/test_config_files.py``.
-          If your CSC package requires packages that are not part of the ``lsstts/develop-env`` Docker container then use an environment variable to find your package; see ``ts_config_ocs/tests/test_config_files.py`` for a few examples.
-        * Run the new unit test, to make sure it works.
-
-    * Add the config package to your eups table as a required dependency in your ``ups/<csc_pkg>.table`` file.
+* Configurable CSCs (subclasses of `ConfigurableCsc`) must provide additional `Configurable CSC Details`_.
 
 * Talking to other CSCs:
 
@@ -213,6 +193,32 @@ Most CSCs can be configured.
     * Implement :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`, if practical.
       This allows testing without putting hardware at risk.
       If your CSC talks to hardware then this is especially important.
+
+------------------------
+Configurable CSC Details
+------------------------
+
+Configurable CSCs (subclasses of `ConfigurableCsc`) must provide the following support, in addition to the standard `CSC Details`_:
+
+* A ``schema`` that defines the configuration and, if practical, provides a default value for each parameter.
+  If all values have sensible defaults then your CSC can be configured without specifying a configuration file as part of the ``start`` command.
+* A ``configure`` method that accepts configuration as a struct-like object (a `types.SimpleNamespace`).
+* A ``get_config_pkg`` classmethod that returns ``ts_config_...``, the package that contains configuration files for your CSC.
+* In that config package:
+
+    * Add a directory whose name is the SAL component, and a subdirectory inside that whose name is your schema version, for example ``ATDome/v1/``.
+
+      In that subdirectory add the following:
+
+    * Configuration files, if any.
+      These are only required if your CSC's default configuration (as defined by the default values specfied in the schema) is not adequate for normal operation modes.
+    * A file named ``_labels.yaml`` which contains a mapping of ``label: configuration file name`` for each recommended configuration file.
+      If you have no configuration files then leave ``_labels.yaml`` blank (except, preferably, a comment saying there are no configuration files), in order to avoid a warning log message when your CSC is constructed.
+    * Add a new test method to the test case in ``tests/test_config_files.py``.
+      If your CSC package requires packages that are not part of the ``lsstts/develop-env`` Docker container then use an environment variable to find your package; see ``ts_config_ocs/tests/test_config_files.py`` for a few examples.
+    * Run the new unit test, to make sure it works.
+
+* Add the config package to your eups table as a required dependency in your ``ups/<csc_pkg>.table`` file.
 
 ----------------------------------
 Standard State Transition Commands
