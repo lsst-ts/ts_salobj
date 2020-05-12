@@ -234,7 +234,7 @@ class SalInfo:
         self.start_task = asyncio.Future()
 
         # A task that is set Done when SalInfo.close is done.
-        self.done_task = base.make_done_future()
+        self.done_task = asyncio.Future()
 
         self.log = logging.getLogger(self.name)
         if self.log.getEffectiveLevel() > MAX_LOG_LEVEL:
@@ -327,6 +327,27 @@ class SalInfo:
         """
         warnings.warn("Use salinfo.metadata.idl_path instead", DeprecationWarning)
         return self.metadata.idl_path
+
+    @property
+    def started(self):
+        """Return True if successfully started, False otherwise.
+        """
+        return (
+            self.start_task.done()
+            and not self.start_task.cancelled()
+            and self.start_task.exception() is None
+        )
+
+    def assert_started(self):
+        """Raise RuntimeError if not successfully started.
+
+        Notes
+        -----
+        Does not raise after this is closed.
+        That avoids race conditions at shutdown.
+        """
+        if not self.started:
+            raise RuntimeError("Not started")
 
     def makeAckCmd(
         self, private_seqNum, ack, error=0, result="", truncate_result=False

@@ -19,11 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import asyncio
 import unittest
 
 import asynctest
 
 from lsst.ts import salobj
+
+STD_TIMEOUT = 5  # Time to perform fast operations (seconds)
 
 
 class SalInfoTestCase(asynctest.TestCase):
@@ -40,6 +43,28 @@ class SalInfoTestCase(asynctest.TestCase):
 
             salinfo = salobj.SalInfo(domain=domain, name="Test")
             self.assertEqual(salinfo.name, "Test")
+            self.assertFalse(salinfo.start_task.done())
+            self.assertFalse(salinfo.done_task.done())
+            self.assertFalse(salinfo.started)
+            with self.assertRaises(RuntimeError):
+                salinfo.assert_started()
+
+            asyncio.create_task(salinfo.start())
+            # Use a short time limit because there are no topics to read
+            await asyncio.wait_for(salinfo.start_task, timeout=STD_TIMEOUT)
+            self.assertTrue(salinfo.start_task.done())
+            self.assertFalse(salinfo.done_task.done())
+            self.assertTrue(salinfo.started)
+            salinfo.assert_started()
+
+            with self.assertRaises(RuntimeError):
+                await salinfo.start()
+
+            await asyncio.wait_for(salinfo.close(), timeout=STD_TIMEOUT)
+            self.assertTrue(salinfo.start_task.done())
+            self.assertTrue(salinfo.done_task.done())
+            self.assertTrue(salinfo.started)
+            salinfo.assert_started()
 
     async def test_salinfo_attributes(self):
         async with salobj.Domain() as domain:
