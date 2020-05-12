@@ -125,7 +125,6 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             async with salobj.Domain() as domain, salobj.Remote(
                 domain=domain, name="Test", index=index
             ) as remote:
-                remote = salobj.Remote(domain=domain, name="Test", index=index)
                 await self.assert_next_summary_state(
                     salobj.State.STANDBY, remote=remote, timeout=LONG_TIMEOUT
                 )
