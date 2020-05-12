@@ -228,8 +228,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 exe_name, str(index), *cmdline_args
             )
         try:
-            async with Domain() as domain:
-                remote = Remote(domain=domain, name=name, index=index)
+            async with Domain() as domain, Remote(
+                domain=domain, name=name, index=index
+            ) as remote:
                 summaryState_data = await remote.evt_summaryState.next(
                     flush=False, timeout=60
                 )
