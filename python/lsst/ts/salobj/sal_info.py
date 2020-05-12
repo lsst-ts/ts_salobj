@@ -462,7 +462,7 @@ class SalInfo:
             If called after `start` has been called.
         """
         if self.start_called:
-            raise RuntimeError(f"Cannot add topics after the start called")
+            raise RuntimeError("Cannot add topics after the start called")
         if topic._read_condition in self._readers:
             raise RuntimeError(f"{topic} already added")
         self._readers[topic._read_condition] = topic

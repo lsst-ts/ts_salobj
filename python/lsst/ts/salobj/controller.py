@@ -255,7 +255,7 @@ class Controller:
         try:
             await self.close_tasks()
         except Exception:
-            self.log.exception(f"Controller.close_tasks failed")
+            self.log.exception("Controller.close_tasks failed")
         try:
             # Give remotes time to read final DDS messages before closing
             # the domain participant.
