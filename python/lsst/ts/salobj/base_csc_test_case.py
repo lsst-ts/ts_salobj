@@ -189,7 +189,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             read_value = getattr(data, field_name, None)
             if read_value is None:
                 self.fail(f"No such field {field_name} in topic {topic}")
-            self.assertEqual(read_value, expected_value)
+            self.assertEqual(
+                read_value,
+                expected_value,
+                msg=f"Failed on field {field_name}: read {read_value!r} != expected {expected_value!r}",
+            )
         return data
 
     async def check_bin_script(
