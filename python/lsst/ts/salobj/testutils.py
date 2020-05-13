@@ -147,7 +147,9 @@ def assert_black_formatted(dir):
     AssertionError
         If any files are not formatted with ``black``.
     """
-    result = subprocess.run(["black", "--check", str(dir)], capture_output=True)
+    result = subprocess.run(
+        ["black", "--check", str(dir), "--exclude", "version.py"], capture_output=True
+    )
     if result.returncode != 0:
         raise AssertionError(result.stderr)
 

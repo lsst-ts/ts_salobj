@@ -191,7 +191,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 private_seqNum=data.private_seqNum,
                 ack=sal_enums.SalRetCode.CMD_ABORTED,
                 error=1,
-                result=f"Aborted",
+                result="Aborted",
                 truncate_result=True,
             )
             self.ack(data, ack)
@@ -200,7 +200,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 private_seqNum=data.private_seqNum,
                 ack=sal_enums.SalRetCode.CMD_TIMEOUT,
                 error=1,
-                result=f"Timeout",
+                result="Timeout",
                 truncate_result=True,
             )
             self.ack(data, ack)

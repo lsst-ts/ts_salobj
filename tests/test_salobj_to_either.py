@@ -75,7 +75,7 @@ class SALPYTestCase(asynctest.TestCase):
                 )
                 handler = logging.StreamHandler()
                 remote.salinfo.log.addHandler(handler)
-                print(f"Remote: wait for remote to start")
+                print("Remote: wait for remote to start")
                 await asyncio.wait_for(remote.start_task, timeout=START_TIMEOUT)
 
                 print("Remote: wait for initial logLevel")

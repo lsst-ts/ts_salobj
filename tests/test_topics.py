@@ -904,6 +904,50 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             expected_duration = np.sum(durations)
             self.assertLess(abs(measured_duration - expected_duration), 0.1)
 
+    async def test_remote_command_not_ready(self):
+        """Test RemoteCommand for exceptions when the read loop isn't running.
+        """
+        async with salobj.Domain() as domain:
+            # Use a remote because commands are volatile and we want
+            # at least one non-volatile topic
+            # in order to slow down starting the event loop.
+            remote = salobj.Remote(domain=domain, name="Test", index=self.next_index())
+            topic = remote.cmd_fault
+            with self.assertRaises(RuntimeError):
+                # Use a timeout of 0 because the exception should occur
+                # before the timeout is used, and we cannot afford to wait --
+                # the read loop might start.
+                await topic.start(timeout=0)
+            with self.assertRaises(RuntimeError):
+                await topic.set_start(timeout=0)
+            await remote.close()
+
+    async def test_read_topic_not_ready(self):
+        """Test ReadTopic for exceptions when the read loop isn't running.
+        """
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(
+                domain=domain, name="Test", index=self.next_index()
+            )
+            # Use a logevent topic in case telemetry becomes volatile
+            # (which might cause the read loop to start too quickly).
+            topic = salobj.topics.ReadTopic(
+                salinfo=salinfo, name="scalars", sal_prefix="logevent_", max_history=100
+            )
+            with self.assertRaises(RuntimeError):
+                topic.has_data
+            with self.assertRaises(RuntimeError):
+                topic.get(flush=False)
+            with self.assertRaises(RuntimeError):
+                topic.get_oldest()
+            with self.assertRaises(RuntimeError):
+                # Use a timeout of 0 because the exception
+                # should occur before the timeout is used
+                # and we cannot afford to wait -- the read loop might start.
+                await topic.aget(timeout=0)
+            with self.assertRaises(RuntimeError):
+                await topic.next(flush=False, timeout=0)
+
     async def test_asynchronous_event_callback(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             cmd_scalars_data = self.csc.make_random_cmd_scalars()

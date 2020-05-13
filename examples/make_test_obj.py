@@ -22,8 +22,8 @@ remote = salobj.Remote("Test", 1)
 print("make controller")
 controller = salobj.Controller("Test", 1)
 
-print(f"\ndata fields for arrays")
+print("\ndata fields for arrays")
 print([item for item in dir(remote.cmd_setArrays.data) if not item.startswith("_")])
 
-print(f"\ndata fields for scalars")
+print("\ndata fields for scalars")
 print([item for item in dir(remote.cmd_setScalars.data) if not item.startswith("_")])

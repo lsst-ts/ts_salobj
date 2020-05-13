@@ -256,14 +256,14 @@ help  # print this help
         You may provide evt_<event_name> methods to override printing
         of specific events.
         """
-        print(f"{name}: {self.format_data(data)}")
+        print(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
 
     def evt_summaryState_callback(self, data):
         try:
             state = sal_enums.State(data.summaryState)
         except Exception:
             state = f"{data.summaryState} (not a known state!)"
-        print(f"summaryState: summaryState={state!r}")
+        print(f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state!r}")
 
     def telemetry_callback(self, data, name):
         """Generic callback for telemetry.
@@ -278,7 +278,7 @@ help  # print this help
             formatted_data = ", ".join(
                 f"{key}={value}" for key, value in public_fields.items()
             )
-            print(f"{name}: {formatted_data}")
+            print(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
 
     def check_arguments(self, args, *names):
         """Check that the required arguments are provided,

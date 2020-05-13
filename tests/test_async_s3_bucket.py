@@ -110,16 +110,16 @@ class AsyncS3BucketTest(asynctest.TestCase):
 class AsyncS3BucketClassmethodTest(asynctest.TestCase):
     async def test_make_bucket_name_good(self):
         s3instance = "5TEST"
-        expected_name = f"rubinobs-lfa-5test"
+        expected_name = "rubinobs-lfa-5test"
         name = salobj.AsyncS3Bucket.make_bucket_name(s3instance=s3instance)
         self.assertEqual(name, expected_name)
 
-        expected_name = f"rubinobs-lfa-5test"
+        expected_name = "rubinobs-lfa-5test"
         name = salobj.AsyncS3Bucket.make_bucket_name(s3instance=s3instance)
         self.assertEqual(name, expected_name)
 
         s3category = "Other3"
-        expected_name = f"rubinobs-other3-5test"
+        expected_name = "rubinobs-other3-5test"
         name = salobj.AsyncS3Bucket.make_bucket_name(
             s3instance=s3instance, s3category=s3category,
         )
@@ -127,7 +127,7 @@ class AsyncS3BucketClassmethodTest(asynctest.TestCase):
 
     async def test_make_bucket_name_bad(self):
         good_kwargs = dict(s3instance="TEST", s3category="other")
-        expected_name = f"rubinobs-other-test"
+        expected_name = "rubinobs-other-test"
         name = salobj.AsyncS3Bucket.make_bucket_name(**good_kwargs)
         self.assertEqual(name, expected_name)
 

@@ -352,10 +352,10 @@ class BaseScript(controller.Controller, abc.ABC):
                 "did you call checkpoint from somewhere other than `run`?"
             )
         if self._run_task is None:
-            raise RuntimeError(f"checkpoint error: state is RUNNING but no run_task")
+            raise RuntimeError("checkpoint error: state is RUNNING but no run_task")
         if self._run_task.done():
             raise RuntimeError(
-                f"checkpoint error: state is RUNNING but run_task is done"
+                "checkpoint error: state is RUNNING but run_task is done"
             )
 
         if re.fullmatch(self.checkpoints.stop, name):
