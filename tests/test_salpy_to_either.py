@@ -21,6 +21,7 @@
 
 import asyncio
 import pathlib
+import time
 import unittest
 import warnings
 
@@ -65,11 +66,14 @@ class SALPYTestCase(asynctest.TestCase):
 
         try:
             print(f"Remote: create SALPY remote with index={self.index}")
+            t0 = time.monotonic()
             manager = SALPY_Test.SAL_Test(self.index)
             manager.setDebugLevel(0)
             manager.salEventSub("Test_logevent_logLevel")
             manager.salTelemetrySub("Test_scalars")
             manager.salCommand("Test_command_setLogLevel")
+            dt = time.monotonic() - t0
+            print(f"Remote: took {dt:0.2f} seconds to create topics")
 
             async def get_logLevel():
                 data = SALPY_Test.Test_logevent_logLevelC()
@@ -109,6 +113,7 @@ class SALPYTestCase(asynctest.TestCase):
                 cmd_id = manager.issueCommand_setLogLevel(cmd_data)
                 if cmd_id <= 0:
                     raise RuntimeError(f"Invalid cmd_id={cmd_id}")
+                await asyncio.sleep(0.001)
 
                 ack_data = SALPY_Test.Test_ackcmdC()
                 while True:

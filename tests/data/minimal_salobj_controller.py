@@ -85,7 +85,7 @@ class MinimalSalobjController(salobj.Controller):
         )
 
         print(
-            f"SalobjController: writing logLevel={data.level}"
+            f"SalobjController: writing logLevel={data.level} "
             "and the same value in telemetry scalars.int0"
         )
         self.evt_logLevel.set_put(level=data.level)

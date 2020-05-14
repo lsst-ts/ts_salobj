@@ -22,6 +22,7 @@
 import asyncio
 import logging
 import pathlib
+import time
 import unittest
 import warnings
 
@@ -64,19 +65,20 @@ class SALPYTestCase(asynctest.TestCase):
         )
 
         try:
-            async with salobj.Domain() as domain:
-                print(f"Remote: create salobj remote with index={self.index}")
-                remote = salobj.Remote(
-                    domain=domain,
-                    name="Test",
-                    index=self.index,
-                    evt_max_history=1,
-                    tel_max_history=1,
+            print(f"Remote: create salobj remote with index={self.index}")
+            t0 = time.monotonic()
+            async with salobj.Domain() as domain, salobj.Remote(
+                domain=domain,
+                name="Test",
+                index=self.index,
+                evt_max_history=1,
+                tel_max_history=1,
+            ) as remote:
+                dt = time.monotonic() - t0
+                print(
+                    f"Remote: creating topics and waiting for historical data took {dt:0.2f} seconds"
                 )
-                handler = logging.StreamHandler()
-                remote.salinfo.log.addHandler(handler)
-                print("Remote: wait for remote to start")
-                await asyncio.wait_for(remote.start_task, timeout=START_TIMEOUT)
+                remote.salinfo.log.addHandler(logging.StreamHandler())
 
                 print("Remote: wait for initial logLevel")
                 data = await remote.evt_logLevel.next(
