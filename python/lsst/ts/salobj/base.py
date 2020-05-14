@@ -68,7 +68,7 @@ MJD_MINUS_UNIX_SECONDS = (
 )
 
 # Regex for a SAL componet name encoded as <name>[:<index>]
-_NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-]+)(:(?P<index>\d+))?$")
+_NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-][a-zA-Z0-9_-]*)(:(?P<index>\d+))?$")
 
 # A table of leap seconds used by `tai_from_utc_unix`.
 # The table is automatically updated by `_update_leap_second_table`.
