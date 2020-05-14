@@ -26,7 +26,9 @@ import asynctest
 
 from lsst.ts import salobj
 
-STD_TIMEOUT = 5  # Time to perform fast operations (seconds)
+# Long enough to perform any reasonable operation
+# including starting a CSC or loading a script (seconds)
+STD_TIMEOUT = 60
 
 
 class SalInfoTestCase(asynctest.TestCase):

@@ -34,9 +34,10 @@ try:
 except ImportError:
     SALPY_Test = None
 
-STD_TIMEOUT = 5
-START_TIMEOUT = 60
-STOP_TIMEOUT = 5
+# Long enough to perform any reasonable operation
+# including starting a CSC or loading a script (seconds)
+STD_TIMEOUT = 60
+
 INITIAL_LOG_LEVEL = 20
 SAL__CMD_COMPLETE = 303
 
@@ -64,6 +65,7 @@ class SALPYTestCase(asynctest.TestCase):
             str(script_path), str(self.index), str(INITIAL_LOG_LEVEL)
         )
 
+        manager = None
         try:
             print(f"Remote: create SALPY remote with index={self.index}")
             t0 = time.monotonic()
@@ -128,7 +130,7 @@ class SALPYTestCase(asynctest.TestCase):
                     await asyncio.sleep(0.01)
 
             print("Remote: wait for initial logLevel")
-            data = await asyncio.wait_for(get_logLevel(), timeout=START_TIMEOUT)
+            data = await asyncio.wait_for(get_logLevel(), timeout=STD_TIMEOUT)
             print(f"Remote: read logLevel.level={data.level}")
             self.assertEqual(data.level, INITIAL_LOG_LEVEL)
             print("Remote: wait for initial scalars")
@@ -150,9 +152,11 @@ class SALPYTestCase(asynctest.TestCase):
                 self.assertEqual(data.int0, level)
                 await asyncio.sleep(0.1)
 
-            await asyncio.wait_for(process.wait(), timeout=STOP_TIMEOUT)
+            await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
         finally:
             print("Remote: done")
+            if manager is not None:
+                manager.salShutdown()
             if process.returncode is None:
                 process.terminate()
                 warnings.warn("Killed a process that was not properly terminated")

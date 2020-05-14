@@ -32,8 +32,10 @@ from . import testutils
 from .domain import Domain
 from .remote import Remote
 
-STD_TIMEOUT = 5  # timeout for command ack
-LONG_TIMEOUT = 30  # timeout for CSCs to start
+# Timeout for fast operations (seconds)
+STD_TIMEOUT = 10
+# Timeout for slow operations, such as CSCs starting (seconds).
+LONG_TIMEOUT = 60
 
 
 class BaseCscTestCase(metaclass=abc.ABCMeta):
