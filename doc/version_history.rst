@@ -1,10 +1,10 @@
 .. py:currentmodule:: lsst.ts.salobj
 
-.. _lsst.ts.salobj.revision_history:
+.. _lsst.ts.salobj.version_history:
 
-################
-Revision History
-################
+###############
+Version History
+###############
 
 v5.12.0
 =======
