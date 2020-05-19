@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import logging
 import unittest
 
 import asynctest
@@ -147,6 +148,29 @@ class SalInfoTestCase(asynctest.TestCase):
                     set(salinfo.metadata.topic_info.keys())
                 )
             )
+
+    async def test_log_level(self):
+        """Test that log level is decreased (verbosity increased) to INFO."""
+        log = logging.getLogger()
+        log.setLevel(logging.WARNING)
+        salinfos = []
+        async with salobj.Domain() as domain:
+            try:
+                # Log level is WARNING; test that log level is decreased
+                # (verbosity increased) to INFO.
+                salinfo = salobj.SalInfo(domain=domain, name="Test")
+                salinfos.append(salinfo)
+                self.assertEqual(salinfo.log.getEffectiveLevel(), logging.INFO)
+
+                # Start with log level DEBUG and test that log level
+                # is unchanged.
+                salinfo.log.setLevel(logging.DEBUG)
+                salinfo = salobj.SalInfo(domain=domain, name="Test")
+                salinfos.append(salinfo)
+                self.assertEqual(salinfo.log.getEffectiveLevel(), logging.DEBUG)
+            finally:
+                for salinfo in salinfos:
+                    await salinfo.close()
 
     async def test_make_ack_cmd(self):
         async with salobj.Domain() as domain:
