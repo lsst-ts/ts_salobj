@@ -30,7 +30,8 @@ from . import domain
 from . import remote
 from . import sal_enums
 
-STD_TIMEOUT = 5  # timeout for command ack
+# Timeout for fast operations (seconds)
+STD_TIMEOUT = 10
 
 
 async def stream_as_generator(stream, encoding="utf-8"):

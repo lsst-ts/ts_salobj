@@ -29,9 +29,13 @@ import numpy as np
 
 from lsst.ts import salobj
 
-STD_TIMEOUT = 10  # timeout for command ack
-EVENT_DELAY = 0.1  # time for events to be output as a result of a command
-NODATA_TIMEOUT = 0.1  # timeout for when we expect no new data
+# Long enough to perform any reasonable operation
+# including starting a CSC or loading a script (seconds)
+STD_TIMEOUT = 60
+# Time for events to be output as a result of a command (seconds).
+EVENT_DELAY = 0.1
+# Timeout for when we expect no new data (seconds)
+NODATA_TIMEOUT = 0.1
 
 np.random.seed(47)
 

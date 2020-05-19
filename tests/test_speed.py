@@ -36,8 +36,9 @@ except ImportError:
 
 from lsst.ts import salobj
 
-STD_TIMEOUT = 2
-OFFLINE_TIMEOUT = 10  # Time for a CSC to exit (seconds)
+# Long enough to perform any reasonable operation
+# including starting a CSC or loading a script (seconds)
+STD_TIMEOUT = 60
 
 index_gen = salobj.index_generator()
 
@@ -130,7 +131,7 @@ class SpeedTestCase(asynctest.TestCase):
                 await salobj.set_summary_state(
                     remote=remote, state=salobj.State.OFFLINE
                 )
-                await asyncio.wait_for(process.wait(), timeout=OFFLINE_TIMEOUT)
+                await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
         finally:
             if process.returncode is None:
                 print("Warning: killing the topic writer")

@@ -1,10 +1,10 @@
 .. py:currentmodule:: lsst.ts.salobj
 
-.. _lsst.ts.salobj.revision_history:
+.. _lsst.ts.salobj.version_history:
 
-################
-Revision History
-################
+###############
+Version History
+###############
 
 v5.12.0
 =======
@@ -23,6 +23,11 @@ Possible Breaking Changes:
 
 Other changes:
 
+* Fixed an error in `name_to_name_index`: it could not handle names that contained integers (DM-24933).
+* Fixed an error in `BaseCscTestCase.make_csc`: ``log_level`` was ignored after the first call, and also ignored if the level was greater than (verbosity less than) WARNING.
+* Improved `BaseCscTestCase.make_csc` to allow ``log_level=None`` (do not change the log level) and make that the default.
+* Update `BaseScript.start` to wait for its remotes to start.
+* Update `CscCommander` to include the received time as part of event and telemetry output.
 * Improved the error message from `BaseCscTestCase.assert_next_sample` to specify which field failed.
 * Improved tests/test_speed.py:
 
@@ -35,10 +40,14 @@ Other changes:
     * Reduced the number of samples read and written, since it doesn't affect the measurements,
       speeds up the test, and may reduce lost samples.
     * Removed the combined read/write speed test because it is redundant with the tests added in v5.11.0.
+* Minor improvements to ``test_salobj_to_either.py`` and ``test_salpy_to_either.py``,
+  including printing how long it takes to create the listeneners,
+  which is an upper limit (and decent approximation) of how long it waits for historical data.
+* Made time limits in unit tests more generous and simpler.
+  This should help test robustness on computers that are slow or starved for resources.
 * Fixed flake8 warnings about f strings with no {}.
 * Removed deprecated ``sudo: false`` entry from ``.travis.yml``, in order to allow github checks to pass once again.
-* Modify `assert_black_formatted` to ignore ``version.py``.
-* Update `CscCommander` to include the received time as part of event and telemetry output.
+* Modified `assert_black_formatted` to ignore ``version.py``.
 
 Requirements:
 

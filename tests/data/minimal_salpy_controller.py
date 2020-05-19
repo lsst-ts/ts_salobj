@@ -91,7 +91,7 @@ class MinimalSALPYController:
             await asyncio.sleep(0.001)
 
             print(
-                f"SALPYController: writing logLevel={logLevel_data.level}"
+                f"SALPYController: writing logLevel={logLevel_data.level} "
                 "and the same value in telemetry scalars.int0"
             )
             logLevel_data.level = setLogLevel_data.level

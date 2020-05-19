@@ -22,6 +22,7 @@
 import asyncio
 import logging
 import pathlib
+import time
 import unittest
 import warnings
 
@@ -34,9 +35,10 @@ try:
 except ImportError:
     SALPY_Test = None
 
-STD_TIMEOUT = 5
-START_TIMEOUT = 60
-STOP_TIMEOUT = 5
+# Long enough to perform any reasonable operation
+# including starting a CSC or loading a script (seconds)
+STD_TIMEOUT = 60
+
 INITIAL_LOG_LEVEL = 20
 SAL__CMD_COMPLETE = 303
 
@@ -64,24 +66,23 @@ class SALPYTestCase(asynctest.TestCase):
         )
 
         try:
-            async with salobj.Domain() as domain:
-                print(f"Remote: create salobj remote with index={self.index}")
-                remote = salobj.Remote(
-                    domain=domain,
-                    name="Test",
-                    index=self.index,
-                    evt_max_history=1,
-                    tel_max_history=1,
+            print(f"Remote: create salobj remote with index={self.index}")
+            t0 = time.monotonic()
+            async with salobj.Domain() as domain, salobj.Remote(
+                domain=domain,
+                name="Test",
+                index=self.index,
+                evt_max_history=1,
+                tel_max_history=1,
+            ) as remote:
+                dt = time.monotonic() - t0
+                print(
+                    f"Remote: creating topics and waiting for historical data took {dt:0.2f} seconds"
                 )
-                handler = logging.StreamHandler()
-                remote.salinfo.log.addHandler(handler)
-                print("Remote: wait for remote to start")
-                await asyncio.wait_for(remote.start_task, timeout=START_TIMEOUT)
+                remote.salinfo.log.addHandler(logging.StreamHandler())
 
                 print("Remote: wait for initial logLevel")
-                data = await remote.evt_logLevel.next(
-                    flush=False, timeout=START_TIMEOUT
-                )
+                data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                 print(f"Remote: read initial logLevel.level={data.level}")
                 self.assertEqual(data.level, INITIAL_LOG_LEVEL)
                 print("Remote: wait for initial scalars")
@@ -94,7 +95,9 @@ class SALPYTestCase(asynctest.TestCase):
                     # remote.cmd_setLogLevel.put()
                     # print(f"Remote: put setLogLevel(level={level})")
                     print(f"Remote: sending setLogLevel(level={level})")
-                    await remote.cmd_setLogLevel.set_start(level=level, timeout=20)
+                    await remote.cmd_setLogLevel.set_start(
+                        level=level, timeout=STD_TIMEOUT
+                    )
                     print("Remote: wait for logLevel")
                     data = await remote.evt_logLevel.next(
                         flush=False, timeout=STD_TIMEOUT
@@ -109,7 +112,7 @@ class SALPYTestCase(asynctest.TestCase):
                     self.assertEqual(data.int0, level)
                     await asyncio.sleep(0.1)
 
-            await asyncio.wait_for(process.wait(), timeout=STOP_TIMEOUT)
+            await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
         finally:
             print("Remote: done")
             if process.returncode is None:
