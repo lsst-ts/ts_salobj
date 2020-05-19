@@ -32,9 +32,9 @@ import yaml
 from lsst.ts import salobj
 from lsst.ts.idl.enums.Script import ScriptState
 
-STD_TIMEOUT = 2
-START_TIMEOUT = 30
-END_TIMEOUT = 10
+# Long enough to perform any reasonable operation
+# including starting a CSC or loading a script (seconds)
+STD_TIMEOUT = 60
 
 index_gen = salobj.index_generator()
 
@@ -360,7 +360,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             resume_data = script.cmd_resume.DataType()
             await script.do_resume(resume_data)
             await asyncio.wait_for(run_task, 2)
-            await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
+            await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
             duration = (
                 script.timestamps[ScriptState.ENDING]
                 - script.timestamps[ScriptState.RUNNING]
@@ -384,7 +384,7 @@ class BaseScriptTestCase(asynctest.TestCase):
 
             run_data = script.cmd_run.DataType()
             await asyncio.wait_for(script.do_run(run_data), 2)
-            await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
+            await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
             self.assertEqual(script.state.lastCheckpoint, checkpoint_named_end)
             self.assertEqual(script.state.state, ScriptState.STOPPED)
             duration = (
@@ -416,7 +416,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             self.assertEqual(script.state.state, ScriptState.PAUSED)
             stop_data = script.cmd_stop.DataType()
             await script.do_stop(stop_data)
-            await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
+            await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
             self.assertEqual(script.state.lastCheckpoint, checkpoint_named_start)
             self.assertEqual(script.state.state, ScriptState.STOPPED)
             duration = (
@@ -445,7 +445,7 @@ class BaseScriptTestCase(asynctest.TestCase):
             await asyncio.sleep(pause_time)
             stop_data = script.cmd_stop.DataType()
             await script.do_stop(stop_data)
-            await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
+            await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
             self.assertEqual(script.state.lastCheckpoint, checkpoint_named_start)
             self.assertEqual(script.state.state, ScriptState.STOPPED)
             duration = (
@@ -476,13 +476,13 @@ class BaseScriptTestCase(asynctest.TestCase):
             run_data = script.cmd_run.DataType()
             await asyncio.wait_for(script.do_run(run_data), 2)
             if fail_run:
-                await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
+                await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
                 self.assertEqual(script.state.lastCheckpoint, "start")
                 self.assertEqual(script.state.state, ScriptState.FAILED)
                 end_run_state = ScriptState.FAILING
             else:
                 with self.assertRaises(salobj.ExpectedError):
-                    await asyncio.wait_for(script.done_task, timeout=END_TIMEOUT)
+                    await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
                 self.assertEqual(script.state.lastCheckpoint, "end")
                 end_run_state = ScriptState.ENDING
             duration = (
@@ -549,7 +549,7 @@ class BaseScriptTestCase(asynctest.TestCase):
                         evt_max_history=0,
                         tel_max_history=0,
                     )
-                    await asyncio.wait_for(remote.start_task, timeout=START_TIMEOUT)
+                    await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
 
                     def logcallback(data):
                         print(f"message={data.message}")
@@ -563,7 +563,7 @@ class BaseScriptTestCase(asynctest.TestCase):
                         self.assertIsNone(process.returncode)
 
                         state = await remote.evt_state.next(
-                            flush=False, timeout=START_TIMEOUT
+                            flush=False, timeout=STD_TIMEOUT
                         )
                         self.assertEqual(state.state, ScriptState.UNCONFIGURED)
                         self.assertEqual(state.groupId, "")
@@ -581,7 +581,7 @@ class BaseScriptTestCase(asynctest.TestCase):
                             config=config, timeout=STD_TIMEOUT
                         )
                         state = await remote.evt_state.next(
-                            flush=False, timeout=START_TIMEOUT
+                            flush=False, timeout=STD_TIMEOUT
                         )
                         self.assertEqual(state.state, ScriptState.CONFIGURED)
                         self.assertEqual(state.groupId, "")
@@ -596,13 +596,13 @@ class BaseScriptTestCase(asynctest.TestCase):
                             groupId=group_id, timeout=STD_TIMEOUT
                         )
                         state = await remote.evt_state.next(
-                            flush=False, timeout=START_TIMEOUT
+                            flush=False, timeout=STD_TIMEOUT
                         )
                         self.assertEqual(state.groupId, group_id)
 
                         await remote.cmd_run.start(timeout=STD_TIMEOUT)
 
-                        await asyncio.wait_for(process.wait(), timeout=END_TIMEOUT)
+                        await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
                         if fail:
                             self.assertEqual(process.returncode, 1)
                         else:
@@ -628,12 +628,12 @@ class BaseScriptTestCase(asynctest.TestCase):
         )
         try:
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=START_TIMEOUT
+                process.communicate(), timeout=STD_TIMEOUT
             )
             schema = yaml.safe_load(stdout)
             self.assertEqual(schema, salobj.TestScript.get_schema())
             self.assertEqual(stderr, b"")
-            await asyncio.wait_for(process.wait(), timeout=END_TIMEOUT)
+            await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
             self.assertEqual(process.returncode, 0)
         finally:
             if process.returncode is None:
@@ -648,13 +648,13 @@ class BaseScriptTestCase(asynctest.TestCase):
         async with salobj.Domain() as domain:
             index = next(index_gen)
             remote = salobj.Remote(domain=domain, name="Script", index=index)
-            await asyncio.wait_for(remote.start_task, timeout=START_TIMEOUT)
+            await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
 
             process = await asyncio.create_subprocess_exec(script_path, str(index))
             try:
                 self.assertIsNone(process.returncode)
 
-                state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                state = await remote.evt_state.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(state.state, ScriptState.UNCONFIGURED)
                 self.assertEqual(state.groupId, "")
 
@@ -666,7 +666,7 @@ class BaseScriptTestCase(asynctest.TestCase):
                 wait_time = 0.1
                 config = f"wait_time: {wait_time}"
                 await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
-                state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                state = await remote.evt_state.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(state.state, ScriptState.CONFIGURED)
                 self.assertEqual(state.groupId, "")
 
@@ -679,12 +679,12 @@ class BaseScriptTestCase(asynctest.TestCase):
                 await remote.cmd_setGroupId.set_start(
                     groupId=group_id, timeout=STD_TIMEOUT
                 )
-                state = await remote.evt_state.next(flush=False, timeout=START_TIMEOUT)
+                state = await remote.evt_state.next(flush=False, timeout=STD_TIMEOUT)
                 self.assertEqual(state.groupId, group_id)
 
                 await remote.cmd_run.start(timeout=STD_TIMEOUT)
 
-                await asyncio.wait_for(process.wait(), timeout=END_TIMEOUT)
+                await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
                 self.assertEqual(process.returncode, 0)
             finally:
                 if process.returncode is None:

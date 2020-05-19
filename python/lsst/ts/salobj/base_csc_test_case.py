@@ -32,8 +32,10 @@ from . import testutils
 from .domain import Domain
 from .remote import Remote
 
-STD_TIMEOUT = 5  # timeout for command ack
-LONG_TIMEOUT = 30  # timeout for CSCs to start
+# Timeout for fast operations (seconds)
+STD_TIMEOUT = 10
+# Timeout for slow operations, such as CSCs starting (seconds).
+LONG_TIMEOUT = 60
 
 
 class BaseCscTestCase(metaclass=abc.ABCMeta):
@@ -81,15 +83,12 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         initial_state,
         config_dir=None,
         simulation_mode=0,
-        log_level=logging.INFO,
+        log_level=None,
         **kwargs,
     ):
         """Create a CSC and remote and wait for them to start.
 
         The csc is accessed as ``self.csc`` and the remote as ``self.remote``.
-
-        If your CSC is indexed, we suggest you use a different index
-        for each call, e.g. by using `index_generator`.
 
         Parameters
         ----------
@@ -105,10 +104,16 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             configuration directory (obtained from `get_default_config_dir`).
         simulation_mode : `int` (optional)
             Simulation mode.
-        log_level : `int` (optional)
+        log_level : `int` or `None` (optional)
             Logging level, such as `logging.INFO`.
+            If None then do not set the log level, leaving the default
+            behavior of `SalInfo`: increase the log level to INFO.
         **kwargs : `dict`
             Extra keyword arguments for `basic_make_csc`.
+
+        Notes
+        -----
+        Adds a logging.StreamHandler if one is not alread present.
         """
         testutils.set_random_lsst_dds_domain()
         self.csc = self.basic_make_csc(
@@ -119,12 +124,13 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         )
         if len(self.csc.log.handlers) < 2:
             self.csc.log.addHandler(logging.StreamHandler())
-            self.csc.log.setLevel(log_level)
         self.remote = Remote(
             domain=self.csc.domain,
             name=self.csc.salinfo.name,
             index=self.csc.salinfo.index,
         )
+        if log_level is not None:
+            self.csc.log.setLevel(log_level)
 
         await asyncio.wait_for(
             asyncio.gather(self.csc.start_task, self.remote.start_task),
@@ -189,7 +195,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             read_value = getattr(data, field_name, None)
             if read_value is None:
                 self.fail(f"No such field {field_name} in topic {topic}")
-            self.assertEqual(read_value, expected_value)
+            self.assertEqual(
+                read_value,
+                expected_value,
+                msg=f"Failed on field {field_name}: read {read_value!r} != expected {expected_value!r}",
+            )
         return data
 
     async def check_bin_script(
@@ -228,8 +238,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 exe_name, str(index), *cmdline_args
             )
         try:
-            async with Domain() as domain:
-                remote = Remote(domain=domain, name=name, index=index)
+            async with Domain() as domain, Remote(
+                domain=domain, name=name, index=index
+            ) as remote:
                 summaryState_data = await remote.evt_summaryState.next(
                     flush=False, timeout=60
                 )

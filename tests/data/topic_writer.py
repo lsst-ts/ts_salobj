@@ -62,6 +62,7 @@ class TopicWriter(salobj.BaseCsc):
             raise salobj.ExpectedError(
                 f"data.settingsToApply={data.settingsToApply} must be logLevel or arrays"
             )
+        print(f"TopicWriter: writing {data.settingsToApply}")
 
     async def do_setArrays(self, data):
         raise salobj.ExpectedError("Not supported")

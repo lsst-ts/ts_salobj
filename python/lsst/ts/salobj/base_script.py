@@ -128,12 +128,15 @@ class BaseScript(controller.Controller, abc.ABC):
 
     async def start(self):
         remote_names = set()
+        remote_start_tasks = []
         for salinfo in self.domain.salinfo_set:
             if salinfo is self.salinfo:
                 continue
             remote_names.add(f"{salinfo.name}:{salinfo.index}")
+            remote_start_tasks.append(salinfo.start_task)
 
         await super().start()
+        await asyncio.gather(*remote_start_tasks)
 
         self.evt_state.set_put(state=ScriptState.UNCONFIGURED)
         self.evt_description.set_put(
@@ -352,10 +355,10 @@ class BaseScript(controller.Controller, abc.ABC):
                 "did you call checkpoint from somewhere other than `run`?"
             )
         if self._run_task is None:
-            raise RuntimeError(f"checkpoint error: state is RUNNING but no run_task")
+            raise RuntimeError("checkpoint error: state is RUNNING but no run_task")
         if self._run_task.done():
             raise RuntimeError(
-                f"checkpoint error: state is RUNNING but run_task is done"
+                "checkpoint error: state is RUNNING but run_task is done"
             )
 
         if re.fullmatch(self.checkpoints.stop, name):

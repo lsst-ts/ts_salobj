@@ -342,7 +342,14 @@ class ReadTopic(BaseTopic):
 
     @property
     def has_data(self):
-        """Has any data been seen for this topic?"""
+        """Has any data been seen for this topic?
+
+        Raises
+        ------
+        RuntimeError
+            If the ``salinfo`` has not started reading.
+        """
+        self.salinfo.assert_started()
         return self._current_data is not None
 
     @property
@@ -380,13 +387,15 @@ class ReadTopic(BaseTopic):
         Raises
         ------
         RuntimeError
-            If a callback function is present.
+            If a callback function is present,
+            or if the ``salinfo`` has not started reading.
 
         Notes
         -----
         Do not modify the returned data. To make a copy that you can modify
         use ``copy.copy(value)``.
         """
+        self.salinfo.assert_started()
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")
         if self._current_data is not None:
@@ -419,7 +428,13 @@ class ReadTopic(BaseTopic):
         -------
         data : ``self.DataType`` or `None`
             Return ``self.data`` if data has been read, else `None`.
+
+        Raises
+        ------
+        RuntimeError
+            If the ``salinfo`` has not started reading.
         """
+        self.salinfo.assert_started()
         if flush and not self.has_callback:
             self.flush()
         return self._current_data
@@ -436,13 +451,15 @@ class ReadTopic(BaseTopic):
         Raises
         ------
         RuntimeError
-            If a callback function is present.
+            If a callback function is present,
+            or if the ``salinfo`` has not started reading.
 
         Notes
         -----
         Use with caution when mixing with `next`, since that also
         consumes data from the queue.
         """
+        self.salinfo.assert_started()
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")
         if self._data_queue:
@@ -469,13 +486,15 @@ class ReadTopic(BaseTopic):
         Raises
         ------
         RuntimeError
-            If a callback function is present.
+            If a callback function is present,
+            or if the ``salinfo`` has not started reading.
 
         Notes
         -----
         Do not modify the returned data. To make a copy that you can modify
         use ``copy.copy(value)``.
         """
+        self.salinfo.assert_started()
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")
         if flush:

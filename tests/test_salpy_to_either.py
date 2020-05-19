@@ -21,6 +21,7 @@
 
 import asyncio
 import pathlib
+import time
 import unittest
 import warnings
 
@@ -33,9 +34,10 @@ try:
 except ImportError:
     SALPY_Test = None
 
-STD_TIMEOUT = 5
-START_TIMEOUT = 60
-STOP_TIMEOUT = 5
+# Long enough to perform any reasonable operation
+# including starting a CSC or loading a script (seconds)
+STD_TIMEOUT = 60
+
 INITIAL_LOG_LEVEL = 20
 SAL__CMD_COMPLETE = 303
 
@@ -63,13 +65,17 @@ class SALPYTestCase(asynctest.TestCase):
             str(script_path), str(self.index), str(INITIAL_LOG_LEVEL)
         )
 
+        manager = None
         try:
             print(f"Remote: create SALPY remote with index={self.index}")
+            t0 = time.monotonic()
             manager = SALPY_Test.SAL_Test(self.index)
             manager.setDebugLevel(0)
             manager.salEventSub("Test_logevent_logLevel")
             manager.salTelemetrySub("Test_scalars")
             manager.salCommand("Test_command_setLogLevel")
+            dt = time.monotonic() - t0
+            print(f"Remote: took {dt:0.2f} seconds to create topics")
 
             async def get_logLevel():
                 data = SALPY_Test.Test_logevent_logLevelC()
@@ -109,6 +115,7 @@ class SALPYTestCase(asynctest.TestCase):
                 cmd_id = manager.issueCommand_setLogLevel(cmd_data)
                 if cmd_id <= 0:
                     raise RuntimeError(f"Invalid cmd_id={cmd_id}")
+                await asyncio.sleep(0.001)
 
                 ack_data = SALPY_Test.Test_ackcmdC()
                 while True:
@@ -123,7 +130,7 @@ class SALPYTestCase(asynctest.TestCase):
                     await asyncio.sleep(0.01)
 
             print("Remote: wait for initial logLevel")
-            data = await asyncio.wait_for(get_logLevel(), timeout=START_TIMEOUT)
+            data = await asyncio.wait_for(get_logLevel(), timeout=STD_TIMEOUT)
             print(f"Remote: read logLevel.level={data.level}")
             self.assertEqual(data.level, INITIAL_LOG_LEVEL)
             print("Remote: wait for initial scalars")
@@ -145,9 +152,11 @@ class SALPYTestCase(asynctest.TestCase):
                 self.assertEqual(data.int0, level)
                 await asyncio.sleep(0.1)
 
-            await asyncio.wait_for(process.wait(), timeout=STOP_TIMEOUT)
+            await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
         finally:
             print("Remote: done")
+            if manager is not None:
+                manager.salShutdown()
             if process.returncode is None:
                 process.terminate()
                 warnings.warn("Killed a process that was not properly terminated")

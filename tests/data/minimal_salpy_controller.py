@@ -45,7 +45,7 @@ class MinimalSALPYController:
     def make_from_cmd_line(cls):
         """Make an instance from the command line.
         """
-        parser = argparse.ArgumentParser(f"Run a minimal SALPY Test controller")
+        parser = argparse.ArgumentParser("Run a minimal SALPY Test controller")
         parser.add_argument("index", type=int, help="Script SAL Component index")
         parser.add_argument("initial_log_level", type=int, help="Initial log level")
         args = parser.parse_args()
@@ -80,8 +80,7 @@ class MinimalSALPYController:
                     break
                 elif cmdid < 0:
                     raise RuntimeError(
-                        f"SALPYController: error reading setLogLevel command; "
-                        "cmdid={cmdid}"
+                        f"SALPYController: error reading setLogLevel command; cmdid={cmdid}"
                     )
                 await asyncio.sleep(0.1)
             print(
@@ -92,7 +91,7 @@ class MinimalSALPYController:
             await asyncio.sleep(0.001)
 
             print(
-                f"SALPYController: writing logLevel={logLevel_data.level}"
+                f"SALPYController: writing logLevel={logLevel_data.level} "
                 "and the same value in telemetry scalars.int0"
             )
             logLevel_data.level = setLogLevel_data.level

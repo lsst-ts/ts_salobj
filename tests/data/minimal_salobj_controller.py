@@ -53,7 +53,7 @@ class MinimalSalobjController(salobj.Controller):
     def make_from_cmd_line(cls):
         """Make an instance from the command line.
         """
-        parser = argparse.ArgumentParser(f"Run a minimal Salobj Test controller")
+        parser = argparse.ArgumentParser("Run a minimal Salobj Test controller")
         parser.add_argument("index", type=int, help="Script SAL Component index")
         parser.add_argument("initial_log_level", type=int, help="Initial log level")
         args = parser.parse_args()
@@ -85,7 +85,7 @@ class MinimalSalobjController(salobj.Controller):
         )
 
         print(
-            f"SalobjController: writing logLevel={data.level}"
+            f"SalobjController: writing logLevel={data.level} "
             "and the same value in telemetry scalars.int0"
         )
         self.evt_logLevel.set_put(level=data.level)

@@ -276,6 +276,8 @@ class BasicsTestCase(asynctest.TestCase):
             ("Script", ("Script", 0)),
             ("Script:0", ("Script", 0)),
             ("Script:15", ("Script", 15)),
+            ("MTM1M3", ("MTM1M3", 0)),
+            ("MTM1M3:47", ("MTM1M3", 47)),
         ):
             with self.subTest(name=name):
                 result = salobj.name_to_name_index(name)

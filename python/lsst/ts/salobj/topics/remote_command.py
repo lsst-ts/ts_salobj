@@ -377,9 +377,12 @@ class RemoteCommand(write_topic.WriteTopic):
             If the command fails.
         salobj.AckTimeoutError
             If the command times out.
+        RuntimeError
+            If the ``salinfo`` has not started reading.
         TypeError
             If ``data`` is not None and not an instance of `DataType`.
         """
+        self.salinfo.assert_started()
         if data is not None:
             self.data = data
         self.put()

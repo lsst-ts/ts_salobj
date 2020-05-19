@@ -27,8 +27,9 @@ import asynctest
 
 from lsst.ts import salobj
 
-STD_TIMEOUT = 5  # timeout for fast operations (sec)
-LONG_TIMEOUT = 30  # timeout for slow operations (sec)
+# Long enough to perform any reasonable operation
+# including starting a CSC or loading a script (seconds)
+STD_TIMEOUT = 60
 
 index_gen = salobj.index_generator()
 TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data" / "config"
