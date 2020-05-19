@@ -141,6 +141,24 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 process.terminate()
             raise
 
+    async def test_log_level(self):
+        """Test that specifying a log level to make_csc works."""
+        # If specified then log level is the value given.
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, log_level=logging.DEBUG
+        ):
+            self.assertEqual(self.csc.log.getEffectiveLevel(), logging.DEBUG)
+
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, log_level=logging.WARNING
+        ):
+            self.assertEqual(self.csc.log.getEffectiveLevel(), logging.WARNING)
+
+        # At this point log level is WARNING; now check that by default
+        # log verbosity is increased (log level decreased) to INFO.
+        async with self.make_csc(initial_state=salobj.State.STANDBY):
+            self.assertEqual(self.csc.log.getEffectiveLevel(), logging.INFO)
+
     async def test_setArrays_command(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             # until the controller gets its first setArrays
