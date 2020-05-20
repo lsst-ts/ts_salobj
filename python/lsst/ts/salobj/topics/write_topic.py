@@ -221,8 +221,6 @@ class WriteTopic(BaseTopic):
         Notes
         -----
         If one or more fields cannot be set, the data may be partially updated.
-        This is not ideal, but is pragmatic because it is difficult to copy
-        SAL topics (see TSS-3195).
         """
         did_change = not self.has_data
         for field_name, value in kwargs.items():
