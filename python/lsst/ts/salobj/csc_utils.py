@@ -83,7 +83,7 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
         Remote for the CSC to be enabled.
     state : `State` or `int`
         Desired summary state.
-    settingsToApply : `str`
+    settingsToApply : `str` or `None`
         SettingsToApply argument for the ``start`` command.
         Ignored unless the CSC has to be taken from state
         `State.STANDBY` to `State.DISABLED`.
@@ -107,6 +107,8 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
     state = State(state)
     if state == State.FAULT:
         raise ValueError("Cannot go into FAULT state using state transition commands")
+    if settingsToApply is None:
+        settingsToApply = ""
 
     # get current summary state
     try:
