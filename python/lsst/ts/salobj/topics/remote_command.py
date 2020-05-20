@@ -309,8 +309,42 @@ class RemoteCommand(write_topic.WriteTopic):
         cmd_info.wait_done = wait_done
         return await cmd_info.next_ackcmd(timeout=timeout)
 
+    def set(self, **kwargs):
+        """Create a new ``self.data`` and set one or more fields.
+
+        Parameters
+        ----------
+        **kwargs : `dict` [`str`, ``any``]
+            Dict of field name: new value for that field:
+
+            * Any key whose value is `None` is checked for existence,
+              but the value of the field is not changed.
+            * If the field being set is an array then the value must either
+              be an array of the same length or a scalar (which replaces
+              every element of the array).
+
+        Returns
+        -------
+        did_change : `bool`
+            True if data was changed or if this was the first call to `set`.
+
+        Raises
+        ------
+        AttributeError
+            If the topic does not have the specified field.
+        ValueError
+            If the field cannot be set to the specified value.
+
+        Notes
+        -----
+        If one or more fields cannot be set, the data may be partially updated.
+        """
+        self.data = self.DataType()
+        super().set(**kwargs)
+
     async def set_start(self, timeout=DEFAULT_TIMEOUT, wait_done=True, **kwargs):
-        """Set zero or more command data fields and start a command.
+        """Create a new ``self.data``, set zero or more fields,
+        and start the command.
 
         Parameters
         ----------

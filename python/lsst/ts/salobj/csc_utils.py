@@ -124,7 +124,7 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
 
     old_settings_to_apply = remote.cmd_start.data.settingsToApply
     try:
-        remote.cmd_start.set(settingsToApply=settingsToApply)
+        remote.cmd_start.data.settingsToApply = settingsToApply
 
         for command, state in command_state_list:
             cmd = getattr(remote, f"cmd_{command}")
