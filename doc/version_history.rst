@@ -18,6 +18,7 @@ Backwards incompatible changes:
 
 Other changes:
 
+* `current_tai` now uses the system TAI clock, if available (only on Linux) and if it gives a reasonable time.
 * `set_summary_state` now accepts ``settingsToApply=None``.
   Formerly it was not supported, but might work.
 

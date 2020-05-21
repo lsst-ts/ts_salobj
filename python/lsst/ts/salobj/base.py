@@ -225,10 +225,8 @@ def name_to_name_index(name):
     return (name, index)
 
 
-def current_tai():
-    """Return the current TAI in unix seconds.
-
-    TODO: DM-21097: improve accuracy near a leap second transition.
+def current_tai_from_utc():
+    """Return the current TAI in unix seconds, using `tai_from_utc`.
     """
     return tai_from_utc_unix(time.time())
 
@@ -411,3 +409,55 @@ def _update_leap_second_table():
 
 
 _update_leap_second_table()
+
+
+def _get_current_tai_function():
+    """Return a function returns the current TAI in unix seconds
+    (and which takes no arguments).
+
+    If ``time.clock_gettime(CLOCK_TAI)`` is available (only on linux)
+    and gives a reasonable answer, then return that. Otherwise return
+    `current_tai_from_utc`, which works on all operating systems, but is
+    slower and can be off by up to a second on the day of a leap second.
+    """
+    if not hasattr(time, "clock_gettime"):
+        _log.info(
+            "current_tai uses current_tai_from_utc; your operating system does not support clock_gettime"
+        )
+        return current_tai_from_utc
+
+    try:
+        # The clock constant CLOCK_TAI will be available in Python 3.9;
+        # meanwhile, the standard value 11 works just fine.
+        clock_tai = getattr(time, "CLOCK_TAI", 11)
+
+        def system_tai():
+            """Return current TAI in unix seconds, using clock_gettime.
+            """
+            return time.clock_gettime(clock_tai)
+
+        # Call current_tai_from_utc once before using the returned value,
+        # to make sure the leap second table is downloaded.
+        current_tai_from_utc()
+        tslow = current_tai_from_utc()
+        tfast = system_tai()
+        time_error = tslow - tfast
+        # Give margin for being on the day of a leap second
+        # (max error is 1 second)
+        if abs(time_error) > 1.1:
+            _log.warning(
+                "current_tai uses current_tai_from_utc; "
+                f"clock_gettime(CLOCK_TAI) is off by {time_error:0.1f} seconds"
+            )
+            return current_tai_from_utc
+
+        _log.info("current_tai uses the system TAI clock")
+        return system_tai
+    except Exception as e:
+        _log.warning(
+            f"current_tai uses current_tai_from_utc; error determining if clock_gettime is usable: {e}"
+        )
+        return current_tai_from_utc
+
+
+current_tai = _get_current_tai_function()
