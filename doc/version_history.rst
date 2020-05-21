@@ -6,6 +6,14 @@
 Version History
 ###############
 
+v5.13.1
+=======
+
+* Improved IO errors handling while accessing schema, labels and configuration
+  file in `ConfigurableCsc`.
+
+* Added a prompt to `CscCommander`.
+
 v5.13.0
 =======
 
