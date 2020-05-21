@@ -926,6 +926,60 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 await topic.set_start(timeout=0)
             await remote.close()
 
+    async def test_remote_command_set(self):
+        """Test that RemoteCommand.set and set_start use new data.
+
+        Test that RemoteCommand.set and set_start both begin with a new sample
+        for each call, rather than remembering anything from the previous
+        command. This is different than WriteTopic.
+        """
+        async with salobj.Domain() as domain1, salobj.Domain() as domain2:
+            self.assertNotEqual(domain1.host, domain2.host)
+            salinfo = salobj.SalInfo(domain=domain1, name="Test", index=1)
+            cmdreader = salobj.topics.ControllerCommand(
+                salinfo=salinfo, name="setScalars"
+            )
+            # set the random seed before each call so both writers
+            # use the same initial seqNum
+            random.seed(52)
+            cmdwriter = salobj.topics.RemoteCommand(salinfo=salinfo, name="setScalars")
+            await salinfo.start()
+            read_data_list = []
+
+            def reader_callback(data):
+                read_data_list.append(data)
+                ackcmd = cmdreader.salinfo.AckCmdType(
+                    private_seqNum=data.private_seqNum,
+                    ack=salobj.SalRetCode.CMD_COMPLETE,
+                )
+                cmdreader.ack(data=data, ackcmd=ackcmd)
+
+            cmdreader.callback = reader_callback
+            kwargs_list = (
+                dict(int0=1),
+                dict(float0=1.3),
+                dict(short0=-3, long0=47),
+            )
+            fields = set()
+            for kwargs in kwargs_list:
+                fields.update(kwargs)
+
+            for kwargs in kwargs_list:
+                cmdwriter.set(**kwargs)
+                for field in fields:
+                    self.assertAlmostEqual(
+                        getattr(cmdwriter.data, field), kwargs.get(field, 0)
+                    )
+
+            for i, kwargs in enumerate(kwargs_list):
+                await cmdwriter.set_start(**kwargs, timeout=STD_TIMEOUT)
+                self.assertEqual(len(read_data_list), i + 1)
+                read_data = read_data_list[-1]
+                for field in fields:
+                    self.assertAlmostEqual(
+                        getattr(read_data, field), kwargs.get(field, 0)
+                    )
+
     async def test_read_topic_not_ready(self):
         """Test ReadTopic for exceptions when the read loop isn't running.
         """
@@ -1182,6 +1236,34 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                         self.assertIn(tel_name, tel_repr)
                         self.assertIn("Test", tel_repr)
                         self.assertIn(classSuffix + "Telemetry", tel_repr)
+
+    async def test_write_topic_set(self):
+        """Test that WriteTopic.set uses existing data for defaults.
+        """
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+            write_topic = salobj.topics.WriteTopic(
+                salinfo=salinfo, name="scalars", sal_prefix="logevent_"
+            )
+            await salinfo.start()
+
+            predicted_data_dict = write_topic.DataType().get_vars()
+            kwargs_list = (
+                dict(int0=1),
+                dict(float0=1.3),
+                dict(int0=-3, long0=47),
+            )
+            fields = set()
+            for kwargs in kwargs_list:
+                fields.update(kwargs)
+
+            for kwargs in kwargs_list:
+                write_topic.set(**kwargs)
+                predicted_data_dict.update(kwargs)
+                for field in fields:
+                    self.assertAlmostEqual(
+                        getattr(write_topic.data, field), predicted_data_dict[field]
+                    )
 
 
 if __name__ == "__main__":
