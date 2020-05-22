@@ -66,7 +66,6 @@ async def stream_as_generator(stream, encoding="utf-8"):
     reader_protocol = asyncio.StreamReaderProtocol(reader)
     await loop.connect_read_pipe(lambda: reader_protocol, sys.stdin)
     while True:
-        print("> ", end="", flush=True)
         line = await reader.readline()
         if not line:  # EOF.
             break
