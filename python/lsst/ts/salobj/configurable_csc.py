@@ -142,7 +142,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             self.schema_version = name_version[1]
 
         except OSError as e:
-            raise ValueError(f"Could not read {schema_path}: {e}")
+            raise ValueError(f"Could not read schema {schema_path}: {e}")
         except Exception as e:
             raise ValueError(f"Schema {schema_path} invalid") from e
 
@@ -155,7 +155,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         )
 
         if config_dir is None:
-            config_dir = self.get_default_config_dir()
+            config_dir = self._get_default_config_dir()
         else:
             config_dir = pathlib.Path(config_dir)
 
@@ -431,7 +431,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         """
         raise NotImplementedError()
 
-    def get_default_config_dir(self):
+    def _get_default_config_dir(self):
         """Compute the default directory for configuration files.
 
         Returns
