@@ -25,7 +25,6 @@ Other changes:
   file in `ConfigurableCsc`.
 * `ConfigurableCsc.get_default_config_dir` renamed to
   `ConfigurableCsc._get_default_config_dir`.
-* Added a prompt to `CscCommander`.
 
 Requirements:
 
