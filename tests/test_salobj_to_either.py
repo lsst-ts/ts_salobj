@@ -91,7 +91,6 @@ class SALPYTestCase(asynctest.TestCase):
                 self.assertEqual(data.int0, INITIAL_LOG_LEVEL)
 
                 for level in (10, 52, 0):
-                    remote.cmd_setLogLevel.set(level=level)
                     # remote.cmd_setLogLevel.put()
                     # print(f"Remote: put setLogLevel(level={level})")
                     print(f"Remote: sending setLogLevel(level={level})")

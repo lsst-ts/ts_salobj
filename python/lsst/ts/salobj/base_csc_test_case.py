@@ -66,7 +66,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             of the controller.
         config_dir : `str`
             Directory of configuration files, or None for the standard
-            configuration directory (obtained from `get_default_config_dir`).
+            configuration directory (obtained from
+            `ConfigureCsc._get_default_config_dir`).
         simulation_mode : `int`
             Simulation mode.
         kwargs : `dict`
@@ -101,7 +102,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             The initial state of the CSC.
         config_dir : `str` (optional)
             Directory of configuration files, or None for the standard
-            configuration directory (obtained from `get_default_config_dir`).
+            configuration directory (obtained from
+            `ConfigureCsc._get_default_config_dir`).
         simulation_mode : `int` (optional)
             Simulation mode.
         log_level : `int` or `None` (optional)

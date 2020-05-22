@@ -632,7 +632,6 @@ class BaseScriptTestCase(asynctest.TestCase):
             )
             schema = yaml.safe_load(stdout)
             self.assertEqual(schema, salobj.TestScript.get_schema())
-            self.assertEqual(stderr, b"")
             await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
             self.assertEqual(process.returncode, 0)
         finally:

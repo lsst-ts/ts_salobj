@@ -384,12 +384,22 @@ class BasicsTestCase(asynctest.TestCase):
     def test_current_tai(self):
         utc0 = time.time()
         tai0 = salobj.tai_from_utc(utc0)
-        tai1 = salobj.current_tai()
+        # salobj.base.current_tai_from_utc uses tai_from_utc,
+        # so it should give the same answer.
+        tai1 = salobj.base.current_tai_from_utc()
+        # salobj.current_tai uses the system TAI clock, if available.
+        # This gives the correct answer (if your operating system
+        # is correctly configured) and can differ from the answer given by
+        # tai_from_utc by as much as a second on the day of a leap second.
+        tai2 = salobj.current_tai()
         print(f"tai1-tai0={tai1-tai0:0.4f}")
-        # the difference should be much less than 0.1
-        # but pytest can introduce unexpected delays
+        # The difference should be much less than 0.1
+        # but pytest can introduce unexpected delays.
         self.assertLess(abs(tai1 - tai0), 0.1)
         self.assertGreaterEqual(tai1, tai0)
+        # The difference between the value returned by current_tai
+        # and current_tai_from_utc
+        self.assertLess(abs(tai2 - tai0), 1.1)
 
     def test_angle_diff(self):
         for angle1, angle2, expected_diff in (

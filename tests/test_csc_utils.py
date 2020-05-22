@@ -124,6 +124,41 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
             for expected_state in states[1:]:
                 await self.assert_next_summary_state(expected_state)
 
+            # If settingsToApply should be applied and the CSC
+            # can be restored to its initial state, try again with
+            # settingsToApply = None and "".
+            # Both of these should result in the default configuration.
+            if initial_state == salobj.State.STANDBY and final_state in (
+                salobj.State.DISABLED,
+                salobj.State.ENABLED,
+            ):
+                # Try again with settingsToApply=None and settingsToApply=""
+                for settingsToApply in (None, ""):
+                    with self.subTest(settingsToApply=settingsToApply):
+                        # Reset state to initial state
+                        states = await salobj.set_summary_state(
+                            remote=self.remote, state=initial_state,
+                        )
+                        # Make sure all summaryState events are seen,
+                        # so the next call to set_summary_state
+                        # starts with the correct state.
+                        for expected_state in states[1:]:
+                            await self.assert_next_summary_state(expected_state)
+                        # Set state to final state
+                        states = await salobj.set_summary_state(
+                            remote=self.remote,
+                            state=final_state,
+                            settingsToApply=settingsToApply,
+                        )
+                        # Make sure all summaryState events are seen
+                        # so the next call to set_summary_state
+                        # starts with the correct state.
+                        for expected_state in states[1:]:
+                            await self.assert_next_summary_state(expected_state)
+                        self.assertEqual(
+                            self.csc.config.string0, "default value for string0"
+                        )
+
 
 if __name__ == "__main__":
     unittest.main()
