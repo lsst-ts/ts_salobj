@@ -46,7 +46,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         Name of SAL component.
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
-    schema_path : `str`
+    schema_path : `str` or `pathlib.Path`
         Path to a schema file used to validate configuration files
         The recommended path is ``<package_root>/"schema"/f"{name}.yaml"``
         for example:
@@ -131,18 +131,18 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         initial_simulation_mode=0,
     ):
 
-        if not pathlib.Path(schema_path).is_file():
-            raise ValueError(f"schema_path={schema_path} is not a file")
-        with open(schema_path, "r") as f:
-            schema_data = f.read()
         try:
-            schema = yaml.safe_load(schema_data)
+            with open(schema_path, "r") as f:
+                schema = yaml.safe_load(f.read())
             self.config_validator = DefaultingValidator(schema=schema)
             title = schema["title"]
             name_version = title.rsplit(" ", 1)
             if len(name_version) != 2 or not name_version[1].startswith("v"):
                 raise ValueError(f"Schema title {title!r} must end with ' v<version>'")
             self.schema_version = name_version[1]
+
+        except OSError as e:
+            raise ValueError(f"Could not read schema {schema_path}: {e}")
         except Exception as e:
             raise ValueError(f"Schema {schema_path} invalid") from e
 
@@ -155,13 +155,15 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         )
 
         if config_dir is None:
-            config_dir = self.get_default_config_dir()
+            config_dir = self._get_default_config_dir()
         else:
             config_dir = pathlib.Path(config_dir)
-            if not config_dir.is_dir():
-                raise ValueError(
-                    f"config_dir={config_dir} does not exists or is not a directory"
-                )
+
+        if not config_dir.is_dir():
+            raise ValueError(
+                f"config_dir={config_dir} does not exists or is not a directory"
+            )
+
         self.config_dir = config_dir
 
     @property
@@ -272,11 +274,12 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         The result should be put in self.config_label_dict
         """
         labels_path = self.config_dir / "_labels.yaml"
-        if not labels_path.is_file():
-            self.log.warning(f"{labels_path} not found")
+        try:
+            with open(labels_path, "r") as f:
+                labels_raw = f.read()
+        except OSError as e:
+            self.log.warning(f"Could not read labels {labels_path}: {e}")
             return {}
-        with open(labels_path, "r") as f:
-            labels_raw = f.read()
         if not labels_raw:
             self.log.debug(f"{labels_path} is empty")
             return {}
@@ -372,13 +375,13 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                 githash = self.evt_settingVersions.data.recommendedSettingsVersion
                 config_file_name = self.config_label_dict.get(config_name, config_name)
                 config_file_path = self.config_dir / config_file_name
-                if not config_file_path.is_file():
+                try:
+                    with open(config_file_path, "r") as f:
+                        config_yaml = f.read()
+                except OSError as e:
                     raise base.ExpectedError(
-                        f"Cannot find config file {config_file_name} "
-                        f"in {self.config_dir}"
+                        f"Cannot read configuration file {config_file_path}: {e}"
                     )
-                with open(config_file_path, "r") as f:
-                    config_yaml = f.read()
             else:
                 raise base.ExpectedError(
                     f"Could not parse {config_name} as name or name:version"
@@ -428,7 +431,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         """
         raise NotImplementedError()
 
-    def get_default_config_dir(self):
+    def _get_default_config_dir(self):
         """Compute the default directory for configuration files.
 
         Returns

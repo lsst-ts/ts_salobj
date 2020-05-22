@@ -21,6 +21,11 @@ Other changes:
 * `current_tai` now uses the system TAI clock, if available (only on Linux) and if it gives a reasonable time.
 * `set_summary_state` now accepts ``settingsToApply=None``.
   Formerly it was not supported, but might work.
+* Improved IO errors handling while accessing schema, labels and configuration
+  file in `ConfigurableCsc`.
+* `ConfigurableCsc.get_default_config_dir` renamed to
+  `ConfigurableCsc._get_default_config_dir`.
+* Added a prompt to `CscCommander`.
 
 Requirements:
 
