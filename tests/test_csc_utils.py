@@ -99,7 +99,10 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
             await self.assert_next_summary_state(initial_state)
 
             states = await salobj.set_summary_state(
-                remote=self.remote, state=final_state, settingsToApply="all_fields"
+                remote=self.remote,
+                state=final_state,
+                settingsToApply="all_fields",
+                timeout=STD_TIMEOUT,
             )
             self.assertEqual(states[0], initial_state)
             self.assertEqual(states[-1], final_state)
@@ -137,7 +140,7 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
                     with self.subTest(settingsToApply=settingsToApply):
                         # Reset state to initial state
                         states = await salobj.set_summary_state(
-                            remote=self.remote, state=initial_state,
+                            remote=self.remote, state=initial_state, timeout=STD_TIMEOUT
                         )
                         # Make sure all summaryState events are seen,
                         # so the next call to set_summary_state
@@ -149,6 +152,7 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
                             remote=self.remote,
                             state=final_state,
                             settingsToApply=settingsToApply,
+                            timeout=STD_TIMEOUT,
                         )
                         # Make sure all summaryState events are seen
                         # so the next call to set_summary_state

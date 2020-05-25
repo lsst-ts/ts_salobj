@@ -214,11 +214,8 @@ class IdlParserTestCase(unittest.TestCase):
                         self.assertEqual(field_metadata.array_length, 5)
                     if field_metadata.name == "TestID":
                         self.assertIsNone(field_metadata.description)
-                    # TODO DM-22307: enable this else condition,
-                    # which doesn't work due to DM-22303.
-                    # else:
-                    #     self.assertIsInstance(
-                    #         field_metadata.description, str)
+                    else:
+                        self.assertIsInstance(field_metadata.description, str)
                     self.assertEqual(
                         field_metadata.type_name, field_types[field_metadata.name]
                     )
