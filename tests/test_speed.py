@@ -129,7 +129,7 @@ class SpeedTestCase(asynctest.TestCase):
             ) as remote:
                 yield remote
                 await salobj.set_summary_state(
-                    remote=remote, state=salobj.State.OFFLINE
+                    remote=remote, state=salobj.State.OFFLINE, timeout=STD_TIMEOUT
                 )
                 await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
         finally:
@@ -187,7 +187,10 @@ class SpeedTestCase(asynctest.TestCase):
     async def test_read_speed(self):
         async with self.make_remote_and_topic_writer() as remote:
             await salobj.set_summary_state(
-                remote=remote, state=salobj.State.ENABLED, settingsToApply="arrays",
+                remote=remote,
+                state=salobj.State.ENABLED,
+                settingsToApply="arrays",
+                timeout=STD_TIMEOUT,
             )
 
             num_samples = 1000
@@ -214,10 +217,13 @@ class SpeedTestCase(asynctest.TestCase):
                 )
 
             await salobj.set_summary_state(
-                remote=remote, state=salobj.State.STANDBY,
+                remote=remote, state=salobj.State.STANDBY, timeout=STD_TIMEOUT
             )
             await salobj.set_summary_state(
-                remote=remote, state=salobj.State.ENABLED, settingsToApply="logLevel",
+                remote=remote,
+                state=salobj.State.ENABLED,
+                settingsToApply="logLevel",
+                timeout=STD_TIMEOUT,
             )
 
             # Wait for the first logLevel sample. This is automatically
