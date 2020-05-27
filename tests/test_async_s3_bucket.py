@@ -32,7 +32,7 @@ class AsyncS3BucketTest(asynctest.TestCase):
         self.bucket_name = "async_bucket_test"
         self.file_data = b"Data for the test case"
         self.key = "test_file"
-        self.bucket = salobj.AsyncS3Bucket(self.bucket_name, domock=True)
+        self.bucket = salobj.AsyncS3Bucket(self.bucket_name, create=True, domock=True)
         self.fileobj = io.BytesIO(self.file_data)
 
     def tearDown(self):

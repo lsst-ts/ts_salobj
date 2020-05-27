@@ -43,7 +43,13 @@ class AsyncS3Bucket:
         <https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html>
         for details. In particular note that bucket names must be globally
         unique across all AWS accounts.
-    domock : `bool`
+    create : `bool` (optional)
+        If True and the bucket does not exist, create it.
+        If False then assume the bucket exists.
+        You will typically want true if using a mock server (``domock`` true).
+    profile : `str` (optional)
+        Profile name; use the default profile if None.
+    domock : `bool` (optional)
         If True then start a mock S3 server.
         This is recommended for running in simulation mode.
 
@@ -53,7 +59,9 @@ class AsyncS3Bucket:
         The resource used to access the S3 service.
         Primarly provided for unit tests.
     name : `str`
-        The bucket name
+        The bucket name.
+    profile : `str`
+        The profile name, or None if not specified.
     bucket : `boto3.resources.s3.Bucket`
         The S3 bucket.
 
@@ -69,16 +77,23 @@ class AsyncS3Bucket:
     is described in `CAP 452 <https://jira.lsstcorp.org/browse/CAP-452>`_
     """
 
-    def __init__(self, name, domock=False):
+    def __init__(self, name, *, create=False, profile=None, domock=False):
         self.mock = None
+        self.profile = profile
         if domock:
             self._start_mock(name)
 
         endpoint_url = os.environ.get("S3_ENDPOINT_URL", None)
         if not endpoint_url:
             endpoint_url = None  # Handle ""
-        self.service_resource = boto3.resource("s3", endpoint_url=endpoint_url)
+
+        session = boto3.Session(profile_name=profile)
+        self.service_resource = session.resource("s3", endpoint_url=endpoint_url)
         self.name = name
+        if create:
+            # create_bucket is a no-op if the bucket already exists
+            self.service_resource.create_bucket(Bucket=name)
+
         self.bucket = self.service_resource.Bucket(name)
 
     def _start_mock(self, name):
@@ -96,10 +111,6 @@ class AsyncS3Bucket:
             "AWS_SESSION_TOKEN",
         ):
             os.environ[env_var_name] = "testing"
-
-        # Make a bucket in mock s3 server so tests can upload to it.
-        conn = boto3.resource("s3")
-        conn.create_bucket(Bucket=name)
 
     def stop_mock(self):
         """Stop the mock s3 service, if running. A no-op if not running.
