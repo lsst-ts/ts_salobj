@@ -396,6 +396,14 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                             flush=False, timeout=STD_TIMEOUT
                         )
 
+    async def test_make_csc_timeout(self):
+        """Test that setting the timeout argument to make_csc works.
+        """
+        with self.assertRaises(asyncio.TimeoutError):
+            # Use such a short timeout that make_csc times out
+            async with self.make_csc(initial_state=salobj.State.STANDBY, timeout=0):
+                pass
+
     async def test_standard_state_transitions(self):
         """Test standard CSC state transitions.
 
