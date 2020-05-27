@@ -177,7 +177,7 @@ class AsyncS3Bucket:
         return bucket_name
 
     @staticmethod
-    def make_key(salname, salindexname, generator, date):
+    def make_key(salname, salindexname, generator, date, other=None, suffix=".dat"):
         """Make a key for an item of data.
 
         Parameters
@@ -193,7 +193,14 @@ class AsyncS3Bucket:
         generator : `str`
             Dataset type.
         date : `astropy.time.Time`
-            Date for the key.
+            A date -- typically the date the data was taken.
+        other : `str` or `None` (optional)
+            Additional text to identify the data and make the key unique.
+            If `None` use ``date.tai.isot``: ``date`` as TAI,
+            in ISO-8601 format, with a "T" between the date and time
+            and a precision of milliseconds.
+        suffix : `str` (optional)
+            Key suffix, e.g. ".fits".
 
         Returns
         -------
@@ -205,7 +212,7 @@ class AsyncS3Bucket:
         The returned key has format::
 
             {fullsalname}/{generator}/{yyyy}/{mm}/{dd}/
-                {fullsalname}-{generator}-{tai_iso}
+                {fullsalname}-{generator}-{other}{suffix}
 
         where:
 
@@ -215,12 +222,9 @@ class AsyncS3Bucket:
           the year, month and day at TAI date - 12 hours,
           with 4, 2, 2 digits, respectively.
           The "observing day" does change during nighttime observing
-          at the summit.
-        * ``tai_iso`` is the TAI date and time in ISO-8601 format,
-          with a "T" between the date and time and a precision of milliseconds.
-
-        The ISO date and observing date both the same precision (milliseconds)
-        so that rounding is consistent.
+          at the summit. Year, month and day are determined after rounding
+          the date to milliseconds, so the reported observing day
+          is consistent with the default value for ``other``.
 
         Note that the url field of the ``largeFileObjectAvailable`` event
         should have the format f"s3://{bucket}/{key}"
@@ -233,7 +237,9 @@ class AsyncS3Bucket:
         yyyy = shifted_isot[0:4]
         mm = shifted_isot[5:7]
         dd = shifted_isot[8:10]
-        return f"{fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{fullsalname}_{generator}_{taidate.isot}"
+        if other is None:
+            other = taidate.isot
+        return f"{fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{fullsalname}_{generator}_{other}{suffix}"
 
     async def upload(self, fileobj, key, callback=None):
         """Upload a file-like object to the bucket.

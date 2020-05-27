@@ -159,7 +159,7 @@ class AsyncS3BucketClassmethodTest(asynctest.TestCase):
         )
         expected_key = (
             "Foo:Blue/testFiberSpecBlue/2020/04/01/"
-            "Foo:Blue_testFiberSpecBlue_2020-04-02T11:59:59.999"
+            "Foo:Blue_testFiberSpecBlue_2020-04-02T11:59:59.999.dat"
         )
         self.assertEqual(key, expected_key)
 
@@ -170,7 +170,7 @@ class AsyncS3BucketClassmethodTest(asynctest.TestCase):
         )
         expected_key = (
             "Foo:Blue/testFiberSpecBlue/2020/04/02/"
-            "Foo:Blue_testFiberSpecBlue_2020-04-02T12:00:00.000"
+            "Foo:Blue_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
         )
         self.assertEqual(key, expected_key)
 
@@ -180,7 +180,7 @@ class AsyncS3BucketClassmethodTest(asynctest.TestCase):
         )
         expected_key = (
             "Foo/testFiberSpecBlue/2020/04/02/"
-            "Foo_testFiberSpecBlue_2020-04-02T12:00:00.000"
+            "Foo_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
         )
         self.assertEqual(key, expected_key)
 
@@ -190,6 +190,34 @@ class AsyncS3BucketClassmethodTest(asynctest.TestCase):
         )
         expected_key = (
             "Foo:5/testFiberSpecBlue/2020/04/02/"
-            "Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000"
+            "Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
+        )
+        self.assertEqual(key, expected_key)
+
+        # Repeat the test with a specified value for "other"
+        key = salobj.AsyncS3Bucket.make_key(
+            salname=salname,
+            salindexname=5,
+            generator=generator,
+            date=date,
+            other="othertext",
+        )
+        expected_key = (
+            "Foo:5/testFiberSpecBlue/2020/04/02/"
+            "Foo:5_testFiberSpecBlue_othertext.dat"
+        )
+        self.assertEqual(key, expected_key)
+
+        # Repeat the test with a specified value for "suffix"
+        key = salobj.AsyncS3Bucket.make_key(
+            salname=salname,
+            salindexname=5,
+            generator=generator,
+            date=date,
+            suffix="suffixtext",
+        )
+        expected_key = (
+            "Foo:5/testFiberSpecBlue/2020/04/02/"
+            "Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000suffixtext"
         )
         self.assertEqual(key, expected_key)
