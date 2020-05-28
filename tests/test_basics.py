@@ -400,6 +400,9 @@ class BasicsTestCase(asynctest.TestCase):
         # The difference between the value returned by current_tai
         # and current_tai_from_utc
         self.assertLess(abs(tai2 - tai0), 1.1)
+        self.assertIs(type(tai0), float)
+        self.assertIs(type(tai1), float)
+        self.assertIs(type(tai2), float)
 
     def test_angle_diff(self):
         for angle1, angle2, expected_diff in (
