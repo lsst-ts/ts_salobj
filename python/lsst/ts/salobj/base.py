@@ -355,7 +355,7 @@ def tai_from_utc_unix(utc_unix):
         tai_minus_utc = tai_minus_utc0 + (tai_minus_utc1 - tai_minus_utc0) * frac_day
     else:
         tai_minus_utc = tai_minus_utc0
-    return utc_unix + tai_minus_utc
+    return float(utc_unix + tai_minus_utc)
 
 
 _log = logging.getLogger("lsst.ts.salobj.base")

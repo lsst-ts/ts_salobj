@@ -85,6 +85,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         config_dir=None,
         simulation_mode=0,
         log_level=None,
+        timeout=LONG_TIMEOUT,
         **kwargs,
     ):
         """Create a CSC and remote and wait for them to start.
@@ -110,6 +111,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Logging level, such as `logging.INFO`.
             If None then do not set the log level, leaving the default
             behavior of `SalInfo`: increase the log level to INFO.
+        timeout : `float`
+            Time limit for the CSC to start (seconds).
         **kwargs : `dict`
             Extra keyword arguments for `basic_make_csc`.
 
@@ -136,7 +139,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         await asyncio.wait_for(
             asyncio.gather(self.csc.start_task, self.remote.start_task),
-            timeout=LONG_TIMEOUT,
+            timeout=timeout,
         )
         try:
             yield

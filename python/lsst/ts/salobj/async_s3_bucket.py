@@ -43,7 +43,13 @@ class AsyncS3Bucket:
         <https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html>
         for details. In particular note that bucket names must be globally
         unique across all AWS accounts.
-    domock : `bool`
+    create : `bool` (optional)
+        If True and the bucket does not exist, create it.
+        If False then assume the bucket exists.
+        You will typically want true if using a mock server (``domock`` true).
+    profile : `str` (optional)
+        Profile name; use the default profile if None.
+    domock : `bool` (optional)
         If True then start a mock S3 server.
         This is recommended for running in simulation mode.
 
@@ -53,7 +59,9 @@ class AsyncS3Bucket:
         The resource used to access the S3 service.
         Primarly provided for unit tests.
     name : `str`
-        The bucket name
+        The bucket name.
+    profile : `str`
+        The profile name, or None if not specified.
     bucket : `boto3.resources.s3.Bucket`
         The S3 bucket.
 
@@ -69,16 +77,23 @@ class AsyncS3Bucket:
     is described in `CAP 452 <https://jira.lsstcorp.org/browse/CAP-452>`_
     """
 
-    def __init__(self, name, domock=False):
+    def __init__(self, name, *, create=False, profile=None, domock=False):
         self.mock = None
+        self.profile = profile
         if domock:
             self._start_mock(name)
 
         endpoint_url = os.environ.get("S3_ENDPOINT_URL", None)
         if not endpoint_url:
             endpoint_url = None  # Handle ""
-        self.service_resource = boto3.resource("s3", endpoint_url=endpoint_url)
+
+        session = boto3.Session(profile_name=profile)
+        self.service_resource = session.resource("s3", endpoint_url=endpoint_url)
         self.name = name
+        if create:
+            # create_bucket is a no-op if the bucket already exists
+            self.service_resource.create_bucket(Bucket=name)
+
         self.bucket = self.service_resource.Bucket(name)
 
     def _start_mock(self, name):
@@ -96,10 +111,6 @@ class AsyncS3Bucket:
             "AWS_SESSION_TOKEN",
         ):
             os.environ[env_var_name] = "testing"
-
-        # Make a bucket in mock s3 server so tests can upload to it.
-        conn = boto3.resource("s3")
-        conn.create_bucket(Bucket=name)
 
     def stop_mock(self):
         """Stop the mock s3 service, if running. A no-op if not running.
@@ -166,7 +177,7 @@ class AsyncS3Bucket:
         return bucket_name
 
     @staticmethod
-    def make_key(salname, salindexname, generator, date):
+    def make_key(salname, salindexname, generator, date, other=None, suffix=".dat"):
         """Make a key for an item of data.
 
         Parameters
@@ -182,7 +193,14 @@ class AsyncS3Bucket:
         generator : `str`
             Dataset type.
         date : `astropy.time.Time`
-            Date for the key.
+            A date -- typically the date the data was taken.
+        other : `str` or `None` (optional)
+            Additional text to identify the data and make the key unique.
+            If `None` use ``date.tai.isot``: ``date`` as TAI,
+            in ISO-8601 format, with a "T" between the date and time
+            and a precision of milliseconds.
+        suffix : `str` (optional)
+            Key suffix, e.g. ".fits".
 
         Returns
         -------
@@ -194,7 +212,7 @@ class AsyncS3Bucket:
         The returned key has format::
 
             {fullsalname}/{generator}/{yyyy}/{mm}/{dd}/
-                {fullsalname}-{generator}-{tai_iso}
+                {fullsalname}-{generator}-{other}{suffix}
 
         where:
 
@@ -204,12 +222,9 @@ class AsyncS3Bucket:
           the year, month and day at TAI date - 12 hours,
           with 4, 2, 2 digits, respectively.
           The "observing day" does change during nighttime observing
-          at the summit.
-        * ``tai_iso`` is the TAI date and time in ISO-8601 format,
-          with a "T" between the date and time and a precision of milliseconds.
-
-        The ISO date and observing date both the same precision (milliseconds)
-        so that rounding is consistent.
+          at the summit. Year, month and day are determined after rounding
+          the date to milliseconds, so the reported observing day
+          is consistent with the default value for ``other``.
 
         Note that the url field of the ``largeFileObjectAvailable`` event
         should have the format f"s3://{bucket}/{key}"
@@ -222,7 +237,9 @@ class AsyncS3Bucket:
         yyyy = shifted_isot[0:4]
         mm = shifted_isot[5:7]
         dd = shifted_isot[8:10]
-        return f"{fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{fullsalname}_{generator}_{taidate.isot}"
+        if other is None:
+            other = taidate.isot
+        return f"{fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{fullsalname}_{generator}_{other}{suffix}"
 
     async def upload(self, fileobj, key, callback=None):
         """Upload a file-like object to the bucket.

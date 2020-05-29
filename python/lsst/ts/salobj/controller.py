@@ -29,9 +29,12 @@ from .sal_info import SalInfo
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
 from .sal_log_handler import SalLogHandler
 
-# This supports is a hack to allow support for ts_sal before and after
-# generics. TODO TSS-3259 remove this and the code that uses it.
-OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue", "setSimulationMode"))
+# TODO DM-25126: Remove setAuthList once ts_salobj supports auth lists.
+# TODO DM-17157: Remove the non-setAuthList entries if and when
+# SALSubsystems.xml explicitly lists all generic topics used.
+OPTIONAL_COMMAND_NAMES = set(
+    ("abort", "enterControl", "setValue", "setSimulationMode", "setAuthList")
+)
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.
