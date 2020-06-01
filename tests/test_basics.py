@@ -21,7 +21,6 @@
 
 import datetime
 import os
-import pathlib
 import random
 import time
 import unittest
@@ -165,9 +164,6 @@ class BasicsTestCase(asynctest.TestCase):
                 self.assertEqual(astropy_time1.scale, "tai")
                 tai_unix_round_trip1 = salobj.tai_from_utc(astropy_time1)
                 self.assertAlmostEqual(tai_unix, tai_unix_round_trip1, delta=1e-6)
-
-    def test_black_formatted(self):
-        salobj.assert_black_formatted(pathlib.Path(__file__).parents[1])
 
     async def test_long_ack_result(self):
         async with salobj.Domain() as domain:
