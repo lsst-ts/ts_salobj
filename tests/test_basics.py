@@ -424,6 +424,46 @@ class BasicsTestCase(asynctest.TestCase):
                 diff = salobj.angle_diff(Angle(angle1, u.deg), Angle(angle2, u.deg))
                 self.assertAlmostEqual(diff.deg, expected_diff)
 
+    def test_angle_wrap_center(self):
+        for base_angle, expected_result in (
+            (-180.001, 179.999),
+            (-180, -180),
+            (0, 0),
+            (179.999, 179.999),
+            (180, -180),
+        ):
+            for nwraps in (-2, -1, 0, 1, 2):
+                with self.subTest(
+                    base_angle=base_angle,
+                    expected_result=expected_result,
+                    nwraps=nwraps,
+                ):
+                    angle = base_angle + 360 * nwraps
+                    result = salobj.angle_wrap_center(angle)
+                    self.assertAlmostEqual(result.deg, expected_result)
+                    result = salobj.angle_wrap_center(Angle(angle, u.deg))
+                    self.assertAlmostEqual(result.deg, expected_result)
+
+    def test_angle_wrap_nonnegative(self):
+        for base_angle, expected_result in (
+            (-0.001, 359.999),
+            (0, 0),
+            (180, 180),
+            (359.999, 359.999),
+            (360, 0),
+        ):
+            for nwraps in (-2, -1, 0, 1, 2):
+                with self.subTest(
+                    base_angle=base_angle,
+                    expected_result=expected_result,
+                    nwraps=nwraps,
+                ):
+                    angle = base_angle + 360 * nwraps
+                    result = salobj.angle_wrap_nonnegative(angle)
+                    self.assertAlmostEqual(result.deg, expected_result)
+                    result = salobj.angle_wrap_nonnegative(Angle(angle, u.deg))
+                    self.assertAlmostEqual(result.deg, expected_result)
+
     def test_assertAnglesAlmostEqual(self):
         for angle1, angle2 in ((5.15, 5.14), (-0.20, 359.81), (270, -90.1)):
             epsilon = Angle(1e-15, u.deg)
