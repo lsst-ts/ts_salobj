@@ -20,7 +20,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = [
-    "angle_diff",
     "assertAnglesAlmostEqual",
     "assertRaisesAckError",
     "assertRaisesAckTimeoutError",
@@ -35,30 +34,10 @@ import socket
 import subprocess
 import time
 
-from astropy.coordinates import Angle
+import astropy.coordinates
 import astropy.units as u
 
-from .base import AckError, AckTimeoutError
-
-MIDDLE_WRAP_ANGLE = Angle(180, u.deg)
-
-
-def angle_diff(angle1, angle2):
-    """Return angle1 - angle2 wrapped into the range [-180, 180] deg.
-
-    Parameters
-    ----------
-    angle1 : `astropy.coordinates.Angle` or `float`
-        Angle 1; if a float then in degrees
-    angle2 : `astropy.coordinates.Angle` or `float`
-        Angle 2; if a float then in degrees
-
-    Returns
-    -------
-    diff : `astropy.coordinates.Angle`
-        angle1 - angle2 wrapped into the range [-180, 180] deg.
-    """
-    return (Angle(angle1, u.deg) - Angle(angle2, u.deg)).wrap_at(MIDDLE_WRAP_ANGLE)
+from .base import AckError, AckTimeoutError, angle_diff
 
 
 def assertAnglesAlmostEqual(angle1, angle2, max_diff=1e-5):
@@ -80,7 +59,7 @@ def assertAnglesAlmostEqual(angle1, angle2, max_diff=1e-5):
         If `angle_diff` of angle1 and angle2 exceeds max_diff.
     """
     diff = abs(angle_diff(angle1, angle2))
-    if diff > Angle(max_diff, u.deg):
+    if diff > astropy.coordinates.Angle(max_diff, u.deg):
         raise AssertionError(f"{angle1} and {angle2} differ by {diff} > {max_diff}")
 
 

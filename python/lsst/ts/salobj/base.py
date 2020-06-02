@@ -28,6 +28,9 @@ __all__ = [
     "AckError",
     "AckTimeoutError",
     "ExpectedError",
+    "angle_diff",
+    "angle_wrap_center",
+    "angle_wrap_nonnegative",
     "astropy_time_from_tai_unix",
     "index_generator",
     "make_done_future",
@@ -48,6 +51,8 @@ import time
 
 import astropy.time
 import astropy.utils.iers
+import astropy.coordinates
+import astropy.units as u
 
 from . import sal_enums
 
@@ -77,6 +82,9 @@ _LEAP_SECOND_TABLE = None
 _LEAP_SECOND_TABLE_UPDATE_TIMER = None
 # When to update the leap second table, in days before expiration.
 _LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS = 10
+
+_MIDDLE_WRAP_ANGLE = astropy.coordinates.Angle(180, u.deg)
+_POSITIVE_WRAP_ANGLE = astropy.coordinates.Angle(360, u.deg)
 
 
 def _ackcmd_str(ackcmd):
@@ -128,6 +136,59 @@ class ExpectedError(Exception):
     """
 
     pass
+
+
+def angle_diff(angle1, angle2):
+    """Return angle1 - angle2 wrapped into the range [-180, 180) deg.
+
+    Parameters
+    ----------
+    angle1 : `astropy.coordinates.Angle` or `float`
+        Angle 1; if a float then in degrees
+    angle2 : `astropy.coordinates.Angle` or `float`
+        Angle 2; if a float then in degrees
+
+    Returns
+    -------
+    diff : `astropy.coordinates.Angle`
+        angle1 - angle2 wrapped into the range -180 <= diff < 180 deg.
+    """
+    return angle_wrap_center(
+        astropy.coordinates.Angle(angle1, u.deg)
+        - astropy.coordinates.Angle(angle2, u.deg)
+    )
+
+
+def angle_wrap_center(angle):
+    """Return an angle wrapped into the range [-180, 180) deg.
+
+    Parameters
+    ----------
+    angle : `astropy.coordinates.Angle` or `float`
+        Angle; if a float then in degrees
+
+    Returns
+    -------
+    wrapped : `astropy.coordinates.Angle`
+        angle wrapped into the range -180 <= wrapped < 180 deg.
+    """
+    return astropy.coordinates.Angle(angle, u.deg).wrap_at(_MIDDLE_WRAP_ANGLE)
+
+
+def angle_wrap_nonnegative(angle):
+    """Return an angle wrapped into the range [0, 360) deg.
+
+    Parameters
+    ----------
+    angle : `astropy.coordinates.Angle` or `float`
+        Angle; if a float then in degrees
+
+    Returns
+    -------
+    wrapped : `astropy.coordinates.Angle`
+        angle wrapped into the range 0 <= wrapped < 360 deg.
+    """
+    return astropy.coordinates.Angle(angle, u.deg).wrap_at(_POSITIVE_WRAP_ANGLE)
 
 
 def astropy_time_from_tai_unix(tai_unix):
