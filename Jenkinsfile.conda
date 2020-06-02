@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    options {
+        disableConcurrentBuilds()
+    }
     environment {
         salobj_version = sh(returnStdout: true, script: "git describe --tags --always --dirty").trim()
         dockerImageName = "lsstts/conda_package_builder:latest"
