@@ -91,7 +91,7 @@ pipeline {
                 }
             }
             steps {
-                build job: 'Develop Environment', parameters: [booleanParam(name: 'build_develop', value: true), booleanParam(name: 'push_tag', value: false)], wait: false
+                build job: 'DevelopEnvironment', parameters: [booleanParam(name: 'build_develop', value: true), booleanParam(name: 'push_tag', value: false)], wait: false
             }
         }
     }
