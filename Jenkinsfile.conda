@@ -6,7 +6,9 @@ pipeline {
         container_name = "salobj_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
         PYPI_CREDS = credentials("pypi")
     }
-
+    parameters {
+        booleanParam defaultValue: false, description: 'Trigger the Develop Environment build?', name: 'Build_DevEnv'
+    }
     stages {
         stage("Pull Docker Image") {
             steps {
@@ -80,6 +82,16 @@ pipeline {
                       unstable("Failed to create/push pypi package.")
                   }
                 }
+            }
+        }
+        stage("Trigger the Develop Environment job") {
+            when {
+                expression {
+                    return params.Build_DevEnv
+                }
+            }
+            steps {
+                build job: 'Develop Environment', parameters: [booleanParam(name: 'build_develop', value: true), booleanParam(name: 'push_tag', value: false)], wait: false
             }
         }
     }
