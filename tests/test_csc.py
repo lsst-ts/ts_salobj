@@ -36,6 +36,8 @@ from lsst.ts import salobj
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 60
+# Timeout for when we expect no new data (seconds).
+NODATA_TIMEOUT = 0.1
 
 np.random.seed(47)
 
@@ -288,7 +290,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             await self.assert_next_summary_state(salobj.State.STANDBY)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(flush=False, timeout=STD_TIMEOUT)
+                await self.remote.evt_errorCode.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             code = 52
             report = "Report for error code"
@@ -299,7 +303,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 self.csc.fault()
             await self.assert_next_summary_state(salobj.State.FAULT)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(flush=False, timeout=STD_TIMEOUT)
+                await self.remote.evt_errorCode.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.STANDBY)
@@ -309,7 +315,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 self.csc.fault(report=report, traceback=traceback)
             await self.assert_next_summary_state(salobj.State.FAULT)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(flush=False, timeout=STD_TIMEOUT)
+                await self.remote.evt_errorCode.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.STANDBY)
@@ -319,7 +327,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.csc.fault(code="not a valid code")
             await self.assert_next_summary_state(salobj.State.FAULT)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(flush=False, timeout=STD_TIMEOUT)
+                await self.remote.evt_errorCode.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.STANDBY)
@@ -366,7 +376,6 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 ) as csc, salobj.Remote(
                     domain=csc.domain, name="Test", index=index
                 ) as remote:
-
                     await self.assert_next_summary_state(
                         salobj.State.ENABLED, remote=remote
                     )
@@ -389,12 +398,20 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                     # make sure FAULT state and errorCode are only sent once
                     with self.assertRaises(asyncio.TimeoutError):
                         await remote.evt_summaryState.next(
-                            flush=False, timeout=STD_TIMEOUT
+                            flush=False, timeout=NODATA_TIMEOUT
                         )
                     with self.assertRaises(asyncio.TimeoutError):
                         await remote.evt_errorCode.next(
-                            flush=False, timeout=STD_TIMEOUT
+                            flush=False, timeout=NODATA_TIMEOUT
                         )
+
+    async def test_make_csc_timeout(self):
+        """Test that setting the timeout argument to make_csc works.
+        """
+        with self.assertRaises(asyncio.TimeoutError):
+            # Use such a short timeout that make_csc times out
+            async with self.make_csc(initial_state=salobj.State.STANDBY, timeout=0):
+                pass
 
     async def test_standard_state_transitions(self):
         """Test standard CSC state transitions.
@@ -872,7 +889,9 @@ class ControllerCommandLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCas
             self.assertEqual(msg.traceback, "")
 
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
+                await self.remote.evt_logMessage.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             await self.remote.cmd_setLogLevel.set_start(
                 level=logging.ERROR, timeout=STD_TIMEOUT
@@ -886,12 +905,16 @@ class ControllerCommandLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCas
             info_message = "test info message"
             self.csc.log.info(info_message)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
+                await self.remote.evt_logMessage.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             warn_message = "test warn message"
             self.csc.log.warning(warn_message)
             with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
+                await self.remote.evt_logMessage.next(
+                    flush=False, timeout=NODATA_TIMEOUT
+                )
 
             with salobj.assertRaisesAckError():
                 await self.remote.cmd_wait.set_start(duration=5, timeout=STD_TIMEOUT)
