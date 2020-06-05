@@ -9,9 +9,6 @@ pipeline {
         container_name = "salobj_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
         PYPI_CREDS = credentials("pypi")
     }
-    parameters {
-        booleanParam defaultValue: false, description: 'Trigger the Develop Environment build?', name: 'Build_DevEnv'
-    }
     stages {
         stage("Pull Docker Image") {
             steps {
@@ -68,33 +65,22 @@ pipeline {
         stage("Create SALObj pypi package") {
             steps {
                 script {
-
-                  sh """
-                      docker exec -u root --privileged \${container_name} sh -c \"chmod -R a+rw /home/saluser/source/\"
-                  """
+                    sh """
+                        docker exec -u root --privileged \${container_name} sh -c \"chmod -R a+rw /home/saluser/source/\"
+                    """
                 
-                  def RESULT = sh returnStatus: true, script: "docker exec -u saluser \${container_name} sh -c \"" +
-                      "source ~/miniconda3/bin/activate && " +
-                      "source /opt/OpenSpliceDDS/V6.9.0/HDE/x86_64.linux/release.com && " +
-                      "pip install --upgrade twine && " +
-                      "cd ~/source/ && " +
-                      "python setup.py sdist bdist_wheel && " +
-                      "python -m twine upload -u ${env.PYPI_CREDS_USR} -p ${env.PYPI_CREDS_PSW} dist/* \""
+                    def RESULT = sh returnStatus: true, script: "docker exec -u saluser \${container_name} sh -c \"" +
+                        "source ~/miniconda3/bin/activate && " +
+                        "source /opt/OpenSpliceDDS/V6.9.0/HDE/x86_64.linux/release.com && " +
+                        "pip install --upgrade twine && " +
+                        "cd ~/source/ && " +
+                        "python setup.py sdist bdist_wheel && " +
+                        "python -m twine upload -u ${env.PYPI_CREDS_USR} -p ${env.PYPI_CREDS_PSW} dist/* \""
 
-                  if ( RESULT != 0 ) {
-                      unstable("Failed to create/push pypi package.")
-                  }
+                    if ( RESULT != 0 ) {
+                        unstable("Failed to create/push pypi package.")
+                    }
                 }
-            }
-        }
-        stage("Trigger the Develop Environment job") {
-            when {
-                expression {
-                    return params.Build_DevEnv
-                }
-            }
-            steps {
-                build job: 'DevelopEnvironment', parameters: [booleanParam(name: 'build_develop', value: true), booleanParam(name: 'push_tag', value: false)], wait: false
             }
         }
     }
