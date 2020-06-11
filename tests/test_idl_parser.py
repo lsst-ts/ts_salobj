@@ -191,6 +191,14 @@ class IdlParserTestCase(unittest.TestCase):
             priority="long",
         )
 
+        # This is a temporary test for ts_sal 4.2. TODO DM-25126:
+        # * Move this entry to the dict above
+        # * Remove the entries for private_host and private_origin
+        # * Update the local sal_revCoded_Simple*.idl files
+        #   and the unit tests that use those files.
+        if "private_identity" in metadata.topic_info["arrays"].field_info:
+            field_types["private_identity"] = "string"
+
         # Check some details of arrays topics, including data type,
         # array length and string length.
         for topic_name in ("arrays", "logevent_arrays", "command_setArrays"):
