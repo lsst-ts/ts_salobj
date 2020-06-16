@@ -192,7 +192,11 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         those two domains.
         """
         async with salobj.Domain() as domain1, salobj.Domain() as domain2:
-            self.assertNotEqual(domain1.host, domain2.host)
+            # Both domains are constructed with the same host
+            # (if $LSST_DDS_DOMAIN is defined) and origin (the process ID).
+            # We need one or both to be different for command isolation,
+            # so modify the host of one of the domains.
+            domain2.host = domain1.host + 1
             salinfo1 = salobj.SalInfo(domain=domain1, name="Test", index=1)
             salinfo2 = salobj.SalInfo(domain=domain2, name="Test", index=1)
             cmdreader = salobj.topics.ControllerCommand(salinfo=salinfo1, name="wait")
@@ -985,9 +989,8 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         for each call, rather than remembering anything from the previous
         command. This is different than WriteTopic.
         """
-        async with salobj.Domain() as domain1, salobj.Domain() as domain2:
-            self.assertNotEqual(domain1.host, domain2.host)
-            salinfo = salobj.SalInfo(domain=domain1, name="Test", index=1)
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
             cmdreader = salobj.topics.ControllerCommand(
                 salinfo=salinfo, name="setScalars"
             )
