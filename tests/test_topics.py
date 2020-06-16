@@ -603,6 +603,58 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             for cmd_data, tel_data in zip(cmd_data_list, tel_data_list):
                 self.csc.assert_scalars_equal(cmd_data, tel_data)
 
+    async def test_multiple_next_readers(self):
+        """Test multiple tasks simultaneously calling ``next``.
+
+        Each reader should get the same data.
+        """
+
+        class Reader:
+            """Read data from a ReadTopic using next
+
+            Parameters
+            ----------
+            read_topic : `topics.ReadTopic`
+                Topic to read.
+            nitems : `int`
+                Number of DDS samples to read.
+            """
+
+            def __init__(self, read_topic, nitems, name):
+                self.read_topic = read_topic
+                self.nitems = nitems
+                self.name = name
+                self.data = []
+                self.read_loop_task = asyncio.create_task(self.read_loop())
+
+            async def close(self):
+                self.read_loop_task.cancel()
+
+            async def read_loop(self):
+                while len(self.data) < self.nitems:
+                    data = await self.read_topic.next(flush=False)
+                    self.data.append(data)
+
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
+            nreaders = 3
+            nitems = 5
+            data = list(range(nitems))
+            readers = [
+                Reader(read_topic=self.remote.tel_scalars, nitems=nitems, name=i)
+                for i in range(nreaders)
+            ]
+            await asyncio.sleep(0.1)  # Let Reader read loops start.
+            for item in data:
+                self.csc.tel_scalars.set_put(int0=item)
+                await asyncio.sleep(0.001)  # Let Readers read.
+            await asyncio.wait_for(
+                asyncio.gather(*[reader.read_loop_task for reader in readers]),
+                timeout=STD_TIMEOUT,
+            )
+            for reader in readers:
+                read_data = [item.int0 for item in reader.data]
+                self.assertEqual(data, read_data)
+
     async def test_callbacks(self):
         evt_data_list = []
 
