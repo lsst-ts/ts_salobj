@@ -1,28 +1,31 @@
-pipeline {
-    agent any
-    environment {
-        network_name = "n_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
-        container_name = "c_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
-        work_branches = "${GIT_BRANCH} ${CHANGE_BRANCH} develop"
-        LSST_IO_CREDS = credentials("lsst-io")
-        SQUASH_CREDS = credentials("squash")
+properties(
+    [
+    buildDiscarder
+        (logRotator (
+            artifactDaysToKeepStr: '',
+            artifactNumToKeepStr: '',
+            daysToKeepStr: '14',
+            numToKeepStr: '10'
+        ) ),
+    disableConcurrentBuilds()
+    ]
+)
+
+node {
+    def network_name = String.format("n_%s_%s", env.BUILD_ID, env.JENKINS_NODE_COOKIE)
+    def container_name = String.format("c_%s_%s", env.BUILD_ID, env.JENKINS_NODE_COOKIE)
+    def work_branches = String.format("%s %s %", env.GIT_BRANCH, env.CHANGE_BRANCH, env.develop)
+    def LSST_IO_CREDS = credentials("lsst-io")
+    def SQUASH_CREDS = credentials("squash")
+    def containerOpt = String.format("-v %s:/home/saluser/repo/ -td --rm -e LTD_USERNAME=%s\${LSST_IO_CREDS_USR} -e LTD_PASSWORD=\${LSST_IO_CREDS_PSW}, env.WORKSPACE, LSST_IO_CREDS_USR, LSST_IO_CREDS_PSW)
+
+    stage("Pulling docker image") {
+        container = docker.image("lsstts/salobj:develop")
+        container.pull()
     }
 
-    stages {
-        stage("Pulling docker image") {
-            steps {
-                script {
-                    sh "docker pull lsstts/salobj:develop"
-                }
-            }
-        }
-        stage("Preparing environment") {
-            steps {
-                script {
-                    sh """
-                    docker network create \${network_name}
-                    chmod -R a+rw \${WORKSPACE}
-                    container=\$(docker run -v \${WORKSPACE}:/home/saluser/repo/ -td --rm --net \${network_name} -e LTD_USERNAME=\${LSST_IO_CREDS_USR} -e LTD_PASSWORD=\${LSST_IO_CREDS_PSW} --name \${container_name} lsstts/salobj:develop)
+    stage("Preparing environment") {
+        container=\$(docker run -v \${WORKSPACE}:/home/saluser/repo/ -td --rm --net \${network_name} -e LTD_USERNAME=\${LSST_IO_CREDS_USR} -e LTD_PASSWORD=\${LSST_IO_CREDS_PSW} --name \${container_name} lsstts/salobj:develop)
                     """
                 }
             }
