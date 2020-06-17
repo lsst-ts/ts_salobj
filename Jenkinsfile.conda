@@ -26,7 +26,7 @@ node {
     }
 
     stage("Pull Docker Image") {
-        container = docker.image("lsstts/conda_package_builder:latest")
+        container = docker.image("lsstts/conda_package_builder")
         container.pull()
     }
 
