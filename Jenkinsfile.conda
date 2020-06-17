@@ -20,7 +20,7 @@ node {
             git url: 'https://github.com/lsst-ts/ts_config_ocs.git'
 
             salobj_version = sh(returnStdout: true, script: "git describe --tags --always --dirty").trim()
-            containerOpt = '--env TS_SALOBJ_VERSION=' + salobj_version + '--env TS_CONFIG_OCS_DIR=/home/saluser/ts_config_ocs -v ' + env.WORKSPACE + ':/home/saluser/source'
+            containerOpt = '--env TS_SALOBJ_VERSION=' + salobj_version + ' --env TS_CONFIG_OCS_DIR=/home/saluser/ts_config_ocs -v ' + env.WORKSPACE + ':/home/saluser/source'
         }
 
     }
