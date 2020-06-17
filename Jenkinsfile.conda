@@ -12,8 +12,6 @@ properties(
 )
 
 node {
-    def dockerImageName = "lsstts/conda_package_builder:latest"
-    def container_name = "salobj_" + env.BUILD_ID + "_" + env.JENKINS_NODE_COOKIE
     def PYPI_CREDS = credentials("pypi")
 
     stage("Clone ts_config_ocs")
@@ -28,7 +26,7 @@ node {
     }
 
     stage("Pull Docker Image") {
-        container = docker.image(dockerImageName)
+        container = docker.image("lsstts/conda_package_builder:latest")
         container.pull()
     }
 
