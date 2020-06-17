@@ -505,14 +505,18 @@ class ReadTopic(BaseTopic):
         """Implement next.
 
         Unlike `next`, this can be called while using a callback function.
+
+        Raises
+        ------
+        RuntimeError
+            If code is already waiting for the next value.
         """
         self.python_queue_length_checker.check_nitems(len(self._data_queue))
         if self._data_queue:
             return self._data_queue.popleft()
         if self._next_task.done():
             self._next_task = asyncio.Future()
-        await asyncio.wait_for(self._next_task, timeout=timeout)
-        return self._data_queue.popleft()
+        return await asyncio.wait_for(self._next_task, timeout=timeout)
 
     async def _callback_loop(self):
         while True:
@@ -561,8 +565,14 @@ class ReadTopic(BaseTopic):
         for data in data_list:
             self._queue_one_item(data)
         self._current_data = data
-        if not self._next_task.done():
-            self._next_task.set_result(None)
+        if not self._data_queue:
+            self.log.warning(
+                f"{self.name}: queue empty after queuing {len(data_list)} items; "
+                "not setting _next_task done."
+            )
+        elif not self._next_task.done():
+            oldest_value = self._data_queue.popleft()
+            self._next_task.set_result(oldest_value)
 
     def _queue_one_item(self, data):
         """Add a single value to the internal queue.
