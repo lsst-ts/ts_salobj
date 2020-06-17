@@ -6,6 +6,15 @@
 Version History
 ###############
 
+v5.15.2
+=======
+
+Changes:
+
+* Made `RemoteCommand.next` capable of being called by multiple coroutines at the same time.
+  This change should also eliminate a source of index errors.
+* Bug fix: two tests in ``test_topics.py`` failed if ``LSST_DDS_IP`` was defined.
+
 v5.15.1
 =======
 
