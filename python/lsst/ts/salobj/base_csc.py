@@ -50,14 +50,11 @@ class BaseCsc(Controller):
         as real CSCs should start up in `State.STANDBY`, the default.
     simulation_mode : `int` (optional)
         Simulation mode. The default is 0: do not simulate.
-    initial_simulation_mode : `int` (optional)
-        A deprecated synonym for simulation_mode.
 
     Raises
     ------
     ValueError
-        If ``initial_state`` is invalid, or
-        ``simulation_mode`` and ``initial_simulation_mode`` are both nonzero.
+        If ``initial_state`` is invalid.
     salobj.ExpectedError
         If ``simulation_mode`` is invalid.
         Note: you will only see this error if you await `start_task`.
@@ -102,26 +99,10 @@ class BaseCsc(Controller):
     """
 
     def __init__(
-        self,
-        name,
-        index=None,
-        initial_state=State.STANDBY,
-        simulation_mode=0,
-        initial_simulation_mode=0,
+        self, name, index=None, initial_state=State.STANDBY, simulation_mode=0,
     ):
         # cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
-        if initial_simulation_mode != 0:
-            if simulation_mode != 0:
-                raise ValueError(
-                    "Cannot specify both simulation_mode and initial_simulation_mode"
-                )
-            warnings.warn(
-                "The initial_simulation_mode argument is deprecated; "
-                "please specify simulation_mode instead",
-                DeprecationWarning,
-            )
-            simulation_mode = initial_simulation_mode
         initial_state = State(initial_state)
         super().__init__(name=name, index=index, do_callbacks=True)
         self._requested_simulation_mode = int(simulation_mode)
@@ -356,9 +337,6 @@ class BaseCsc(Controller):
         ------
         ExpectedError
             If ``simulation_mode`` is not a supported value.
-        ValueError
-            If ``simulation_mode`` and ``initial_simulation_mode``
-            are both nonzero. Only one can be specified.
 
         Notes
         -----
