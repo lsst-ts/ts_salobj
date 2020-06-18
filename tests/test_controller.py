@@ -69,31 +69,32 @@ class ControllerConstructorTestCase(asynctest.TestCase):
 
     async def test_do_callbacks_true(self):
         index = next(index_gen)
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=index
+        ) as salinfo:
             command_names = salinfo.command_names
 
-            # make sure I can build one
-            async with ControllerWithDoMethods(command_names) as good_controller:
-                for cmd_name in command_names:
-                    with self.subTest(cmd_name=cmd_name):
-                        cmd = getattr(good_controller, "cmd_" + cmd_name)
-                        self.assertTrue(cmd.has_callback)
+        # Build a controller and check that callbacks are asigned.
+        async with ControllerWithDoMethods(command_names) as controller:
+            for cmd_name in command_names:
+                with self.subTest(cmd_name=cmd_name):
+                    cmd = getattr(controller, "cmd_" + cmd_name)
+                    self.assertTrue(cmd.has_callback)
 
-            skip_names = salobj.OPTIONAL_COMMAND_NAMES.copy()
-            # do_setLogLevel is provided by Controller
-            skip_names.add("setLogLevel")
-            for missing_name in command_names:
-                if missing_name in skip_names:
-                    continue
-                with self.subTest(missing_name=missing_name):
-                    bad_names = [name for name in command_names if name != missing_name]
-                    with self.assertRaises(TypeError):
-                        ControllerWithDoMethods(bad_names)
+        skip_names = salobj.OPTIONAL_COMMAND_NAMES.copy()
+        # do_setAuthList and do_setLogLevel are provided by Controller
+        skip_names |= {"setAuthList", "setLogLevel"}
+        for missing_name in command_names:
+            if missing_name in skip_names:
+                continue
+            with self.subTest(missing_name=missing_name):
+                bad_names = [name for name in command_names if name != missing_name]
+                with self.assertRaises(TypeError):
+                    ControllerWithDoMethods(bad_names)
 
-            extra_names = list(command_names) + ["extra_command"]
-            with self.assertRaises(TypeError):
-                ControllerWithDoMethods(extra_names)
+        extra_names = list(command_names) + ["extra_command"]
+        with self.assertRaises(TypeError):
+            ControllerWithDoMethods(extra_names)
 
 
 if __name__ == "__main__":

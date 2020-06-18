@@ -98,6 +98,223 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             simulation_mode=simulation_mode,
         )
 
+    async def test_authorization(self):
+        """Test authorization.
+
+        This test authorization checking.
+        For simplicity it calls setAuthList without a +/- prefix.
+        The prefix is tested elsewhere.
+        """
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
+            await self.assert_next_sample(
+                self.remote.evt_authList, authorizedUsers="", nonAuthorizedCSCs="",
+            )
+
+            # Note that the CSC and remote have the same user_host
+            # (until the tests changes the value for the remote).
+            csc_user_host = self.csc.salinfo.domain.user_host
+
+            # Test non-authorized CSCs
+            # Reported non-auth CSCs should always be in alphabetical order;
+            # test this by sending CSC names NOT in alphabetical order.
+            all_csc_names = ["Test:5", "Script:5", "ATDome"]
+            for i in range(len(all_csc_names)):
+                csc_names = all_csc_names[:i]
+                csc_names_str = ", ".join(csc_names)
+                with self.subTest(csc_names_str=csc_names_str):
+                    await self.remote.cmd_setAuthList.set_start(
+                        nonAuthorizedCSCs=csc_names_str, timeout=STD_TIMEOUT
+                    )
+                    await self.assert_next_sample(
+                        self.remote.evt_authList,
+                        authorizedUsers="",
+                        nonAuthorizedCSCs=", ".join(sorted(csc_names)),
+                    )
+                    for j, csc_name in enumerate(all_csc_names):
+                        with self.subTest(j=j, csc_name=csc_name):
+                            self.remote.salinfo.domain.identity = csc_name
+                            if j < i:
+                                # A blocked CSC; this should fail.
+                                with salobj.assertRaisesAckError(
+                                    ack=salobj.SalRetCode.CMD_NOPERM
+                                ):
+                                    await self.remote.cmd_wait.set_start(
+                                        duration=0, timeout=STD_TIMEOUT
+                                    )
+                            else:
+                                # Not a blocked CSC; this should work.
+                                await self.remote.cmd_wait.set_start(
+                                    duration=0, timeout=STD_TIMEOUT
+                                )
+
+                    # My user_host should work regardless of
+                    # non-authorized CSCs.
+                    self.remote.salinfo.domain.identity = csc_user_host
+                    await self.remote.cmd_wait.set_start(
+                        duration=0, timeout=STD_TIMEOUT
+                    )
+
+            # At this point all CSC names in the list are blocked.
+            # Temporarily disable authorization and try again;
+            # the command should be allowed for all CSC names.
+            self.csc.cmd_wait.authorize = False
+            try:
+                for csc_name in csc_names:
+                    with self.subTest(csc_name=csc_name):
+                        self.remote.salinfo.domain.identity = csc_name
+                        await self.remote.cmd_wait.set_start(
+                            duration=0, timeout=STD_TIMEOUT
+                        )
+            finally:
+                self.csc.cmd_wait.authorize = True
+
+            # Test authorized users that are not me.
+            # Reported auth users should always be in alphabetical order;
+            # test this by sending users NOT in alphabetical order.
+            self.remote.salinfo.domain.identity = csc_user_host
+            all_other_user_hosts = [f"notme{i}{csc_user_host}" for i in (3, 2, 1)]
+            for i in range(len(all_other_user_hosts)):
+                other_user_hosts = all_other_user_hosts[:i]
+                users_str = ", ".join(other_user_hosts)
+                with self.subTest(users_str=users_str):
+                    await self.remote.cmd_setAuthList.set_start(
+                        authorizedUsers=users_str,
+                        nonAuthorizedCSCs="",
+                        timeout=STD_TIMEOUT,
+                    )
+                    await self.assert_next_sample(
+                        self.remote.evt_authList,
+                        authorizedUsers=", ".join(sorted(other_user_hosts)),
+                        nonAuthorizedCSCs="",
+                    )
+                    for j, user_host in enumerate(all_other_user_hosts):
+                        with self.subTest(j=j, user_host=user_host):
+                            self.remote.salinfo.domain.identity = user_host
+                            if j < i:
+                                # An allowed user; this should work.
+                                await self.remote.cmd_wait.set_start(
+                                    duration=0, timeout=STD_TIMEOUT
+                                )
+                            else:
+                                # Not an allowed user; this should fail.
+                                with salobj.assertRaisesAckError(
+                                    ack=salobj.SalRetCode.CMD_NOPERM
+                                ):
+                                    await self.remote.cmd_wait.set_start(
+                                        duration=0, timeout=STD_TIMEOUT
+                                    )
+
+                    # Temporarily disable authorization and try again;
+                    # the command should be allowed for all user_hosts.
+                    self.csc.cmd_wait.authorize = False
+                    try:
+                        for user_host in all_other_user_hosts:
+                            with self.subTest(user_host=user_host):
+                                self.remote.salinfo.domain.identity = user_host
+                                await self.remote.cmd_wait.set_start(
+                                    duration=0, timeout=STD_TIMEOUT
+                                )
+                    finally:
+                        self.csc.cmd_wait.authorize = True
+
+                    # My user_host should work regardless of
+                    # authorized users.
+                    self.remote.salinfo.domain.identity = csc_user_host
+                    await self.remote.cmd_wait.set_start(
+                        duration=0, timeout=STD_TIMEOUT
+                    )
+
+    async def test_set_auth_list_prefix(self):
+        """Test the setAuthList command with a +/- prefix
+        """
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
+            await self.assert_next_sample(
+                self.remote.evt_authList, authorizedUsers="", nonAuthorizedCSCs="",
+            )
+
+            all_csc_names = ["Test:5", "ATDome:0", "ATDome"]
+            expected_cscs_set = set()
+            # Test adding non-authorized CSCs.
+            # Test that a trailing :0 is stripped (so, in this test
+            # setAuthList treats ATDome:0 and ATDome as the same CSC).
+            # Reported non-auth CSCs should always be in alphabetical order;
+            # test this by sending CSC names NOT in alphabetical order.
+            for i in range(len(all_csc_names)):
+                csc_names = all_csc_names[:i]
+                # Compute a variant of csc_names with trailing :0 stripped
+                # and use that for the expected output from the authList event.
+                nonzero_csc_names = [
+                    csc[:-2] if csc.endswith(":0") else csc for csc in csc_names
+                ]
+                expected_cscs_set |= set(nonzero_csc_names)
+                add_some_str = "+ " + ", ".join(csc_names)
+                await self.remote.cmd_setAuthList.set_start(
+                    nonAuthorizedCSCs=add_some_str, timeout=STD_TIMEOUT
+                )
+                await self.assert_next_sample(
+                    self.remote.evt_authList,
+                    authorizedUsers="",
+                    nonAuthorizedCSCs=", ".join(sorted(expected_cscs_set)),
+                )
+
+            # Removing CSCs should have the expected effect
+            for i in range(len(all_csc_names)):
+                csc_names = all_csc_names[:i]
+                # Compute a variant of csc_names with trailing :0 stripped
+                # and use that for the expected output from the authList event.
+                nonzero_csc_names = [
+                    csc[:-2] if csc.endswith(":0") else csc for csc in csc_names
+                ]
+                expected_cscs_set -= set(nonzero_csc_names)
+                remove_some_str = "- " + ", ".join(csc_names)
+                await self.remote.cmd_setAuthList.set_start(
+                    nonAuthorizedCSCs=remove_some_str, timeout=STD_TIMEOUT
+                )
+                await self.assert_next_sample(
+                    self.remote.evt_authList,
+                    authorizedUsers="",
+                    nonAuthorizedCSCs=", ".join(sorted(expected_cscs_set)),
+                )
+
+            # Test setting authorized users.
+            # Test that user = csc_user_host (the CSC's user_host) is ignored.
+            # Reported auth users should always be in alphabetical order;
+            # test this by sending users NOT in alphabetical order.
+            csc_user_host = salobj.get_user_host()
+            all_users_hosts = [csc_user_host] + [
+                f"notme{i}{csc_user_host}" for i in (3, 2, 1)
+            ]
+            expected_user_set = set()
+            # Test adding authorized users; only users other than "me"
+            # are actually added.
+            for i in range(len(all_users_hosts)):
+                user_names = all_users_hosts[:i]
+                expected_user_set |= set(user_names)
+                expected_user_set -= {csc_user_host}
+                add_some_str = "+ " + ", ".join(user_names)
+                await self.remote.cmd_setAuthList.set_start(
+                    authorizedUsers=add_some_str, timeout=STD_TIMEOUT
+                )
+                await self.assert_next_sample(
+                    self.remote.evt_authList,
+                    authorizedUsers=", ".join(sorted(expected_user_set)),
+                    nonAuthorizedCSCs="",
+                )
+
+            # Removing authorized users should have the expected effect
+            for i in range(len(all_users_hosts)):
+                user_names = all_users_hosts[:i]
+                expected_user_set -= set(user_names)
+                remove_some_str = "- " + ", ".join(user_names)
+                await self.remote.cmd_setAuthList.set_start(
+                    authorizedUsers=remove_some_str, timeout=STD_TIMEOUT
+                )
+                await self.assert_next_sample(
+                    self.remote.evt_authList,
+                    authorizedUsers=", ".join(sorted(expected_user_set)),
+                    nonAuthorizedCSCs="",
+                )
+
     async def test_heartbeat(self):
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             self.csc.heartbeat_interval = 0.1

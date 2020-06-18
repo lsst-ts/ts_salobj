@@ -165,7 +165,10 @@ class SalInfo:
     subscriber : ``dds.Subscriber``
         A DDS subscriber, used to create DDS readers.
     start_task : `asyncio.Task`
-        A task which is finished when `start` is done.
+        A task which is finished when `start` is done,
+        or to an exception if `start` fails.
+    done_task : `asyncio.Task`
+        A task which is finished when `close` is done.
     command_names : `List` [`str`]
         A tuple of command names without the ``"command_"`` prefix.
     event_names : `List` [`str`]
@@ -179,6 +182,10 @@ class SalInfo:
         A dict of topic name: name_revision.
     topic_info : `dict` [`str`, `TopicMetadata`]
         A dict of SAL topic name: topic metadata.
+    authorized_users : `List` [`str`]
+        Set of users authorized to command this component.
+    non_authorized_cscs : `List` [`str`]
+        Set of CSCs that are not authorized to command this component.
 
     Notes
     -----
@@ -221,24 +228,21 @@ class SalInfo:
 
         publisher_qos = domain.qos_provider.get_publisher_qos()
         publisher_qos.set_policies([partition_qos_policy])
-        # DDS publisher; used to create topic writers. A dds.Publisher.
         self.publisher = domain.participant.create_publisher(publisher_qos)
 
         subscriber_qos = domain.qos_provider.get_subscriber_qos()
         subscriber_qos.set_policies([partition_qos_policy])
-        # DDS subscriber; used to create topic readers. A dds.Subscriber.
         self.subscriber = domain.participant.create_subscriber(subscriber_qos)
 
-        # A task that is set done when SalInfo.start is done
-        # (or to an exception if start fails).
         self.start_task = asyncio.Future()
-
-        # A task that is set Done when SalInfo.close is done.
         self.done_task = asyncio.Future()
 
         self.log = logging.getLogger(self.name)
         if self.log.getEffectiveLevel() > MAX_LOG_LEVEL:
             self.log.setLevel(MAX_LOG_LEVEL)
+
+        self.authorized_users = set()
+        self.non_authorized_cscs = set()
 
         # dict of private_seqNum: salobj.topics.CommandInfo
         self._running_cmds = dict()
@@ -272,7 +276,6 @@ class SalInfo:
             raise ValueError(
                 f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component"
             )
-
         if len(self.command_names) > 0:
             ackcmd_revname = self.revnames.get("ackcmd")
             if ackcmd_revname is None:
@@ -280,6 +283,7 @@ class SalInfo:
             self._ackcmd_type = ddsutil.get_dds_classes_from_idl(
                 idl_path, ackcmd_revname
             )
+
         domain.add_salinfo(self)
 
     def _ackcmd_callback(self, data):
