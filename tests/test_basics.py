@@ -20,8 +20,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import datetime
+import getpass
 import os
 import random
+import socket
 import time
 import unittest
 
@@ -164,6 +166,11 @@ class BasicsTestCase(asynctest.TestCase):
                 self.assertEqual(astropy_time1.scale, "tai")
                 tai_unix_round_trip1 = salobj.tai_from_utc(astropy_time1)
                 self.assertAlmostEqual(tai_unix, tai_unix_round_trip1, delta=1e-6)
+
+    async def test_get_user_host(self):
+        expected_user_host = getpass.getuser() + "@" + socket.getfqdn()
+        user_host = salobj.get_user_host()
+        self.assertEqual(expected_user_host, user_host)
 
     async def test_long_ack_result(self):
         async with salobj.Domain() as domain:

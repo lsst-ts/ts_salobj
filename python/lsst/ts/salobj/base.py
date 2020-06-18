@@ -32,6 +32,7 @@ __all__ = [
     "angle_wrap_center",
     "angle_wrap_nonnegative",
     "astropy_time_from_tai_unix",
+    "get_user_host",
     "index_generator",
     "make_done_future",
     "name_to_name_index",
@@ -43,9 +44,11 @@ __all__ = [
 import asyncio
 import bisect
 import datetime
+import getpass
 import logging
 import math
 import re
+import socket
 import threading
 import time
 
@@ -202,6 +205,14 @@ def astropy_time_from_tai_unix(tai_unix):
     """
     tai_mjd = (MJD_MINUS_UNIX_SECONDS + tai_unix) / SECONDS_PER_DAY
     return astropy.time.Time(tai_mjd, scale="tai", format="mjd")
+
+
+def get_user_host():
+    """Get the username and host as user@host
+
+    host is the fully qualified domain name.
+    """
+    return f"{getpass.getuser()}@{socket.getfqdn()}"
 
 
 def index_generator(imin=1, imax=MAX_SAL_INDEX, i0=None):
