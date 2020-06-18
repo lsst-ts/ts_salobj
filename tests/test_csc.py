@@ -333,33 +333,6 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             name="Test", index=index, exe_name="run_test_csc.py"
         )
 
-    async def test_deprecated_main(self):
-        """Test running from cmd line using deprecated class method ``main``.
-        """
-        exe_path = TEST_DATA_DIR / "run_test_using_deprecated_main.py"
-
-        index = self.next_index()
-        process = await asyncio.create_subprocess_exec(str(exe_path), str(index))
-        try:
-            async with salobj.Domain() as domain, salobj.Remote(
-                domain=domain, name="Test", index=index
-            ) as remote:
-                await self.assert_next_summary_state(
-                    salobj.State.STANDBY, remote=remote, timeout=STD_TIMEOUT
-                )
-
-                ackcmd = await remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
-                self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
-                await self.assert_next_summary_state(
-                    salobj.State.OFFLINE, remote=remote
-                )
-
-                await asyncio.wait_for(process.wait(), 5)
-        except Exception:
-            if process.returncode is None:
-                process.terminate()
-            raise
-
     async def test_log_level(self):
         """Test that specifying a log level to make_csc works."""
         # If specified then log level is the value given.

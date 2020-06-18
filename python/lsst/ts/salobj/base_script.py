@@ -29,7 +29,6 @@ import re
 import sys
 import time
 import types
-import warnings
 
 import yaml
 
@@ -224,34 +223,6 @@ class BaseScript(controller.Controller, abc.ABC):
             ScriptState.FAILED: 1,
         }.get(script.state.state, 2)
         sys.exit(return_code)
-
-    @classmethod
-    def main(cls, descr=None):
-        """Start the script from the command line.
-
-        Parameters
-        ----------
-        descr : `str` (optional)
-            Short description of what the script does, for operator display.
-            Leave at None if the script already has a description, which is
-            the most common case. Primarily intended for unit tests,
-            e.g. running ``TestScript``.
-
-
-        Notes
-        -----
-        The final return code will be:
-
-        * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
-          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`
-        * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
-        * 2 otherwise (which should never happen)
-        """
-        warnings.warn(
-            "Use amain instead, e.g. asyncio.run(cls.amain(descr=descr))",
-            DeprecationWarning,
-        )
-        asyncio.get_event_loop().run_until_complete(cls.amain(descr=descr))
 
     @property
     def checkpoints(self):
