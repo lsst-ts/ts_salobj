@@ -148,6 +148,8 @@ class Controller:
         try:
             self.salinfo = SalInfo(domain=domain, name=name, index=index)
             self.log = self.salinfo.log
+            name_index = f"{name}:{index}" if self.salinfo.indexed else name
+            self.salinfo.domain.identity = name_index
             self.start_called = False
             # Task that is set done when the controller is closed
             self.done_task = asyncio.Future()

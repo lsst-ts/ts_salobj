@@ -32,6 +32,7 @@ import warnings
 import dds
 
 from lsst.ts import idl
+from . import base
 
 # Length of DDS read queue
 # Warning: this must be equal to or longer than the queue length in the
@@ -55,6 +56,15 @@ class Domain:
         See environment variable ``LSST_DDS_IP`` for details.
     origin : `int`
         Process ID. Used to set the ``private_origin`` field of output samples.
+    identity : `str`
+        Value used for the private_identity field of DDS messages.
+        Domain initializes it to username@host but CSCs should
+        replace it with the CSC name:
+        * SAL_component_name for a non-indexed SAL component
+        * SAL_component_name:index for an indexed SAL component.
+    user_host : `str`
+        username@host. This will match ``identity`` unless the latter
+        is set to a CSC name.
     idl_dir : `pathlib.Path`
         Root directory of the ``ts_idl`` package.
     qos_provider : ``dds.QosProvider``
@@ -139,13 +149,20 @@ class Domain:
     def __init__(self):
         self.participant = None
 
-        # accumulators for verifying that close is working
+        self.user_host = base.get_user_host()
+        # Initialize this assuming it is not for use by a Controller or CSC.
+        # Controller will override it. Controller does not know if the
+        # SAL component is indexed until after building its SalInfo,
+        # so the override cannot be provided as a constructor argument.
+        self.identity = self.user_host
+
+        # Accumulators for verifying that close is working.
         self.num_read_loops = 0
         self.num_read_threads = 0
 
         self.done_task = asyncio.Future()
 
-        # set of SalInfo
+        # Set of SalInfo.
         self._salinfo_set = weakref.WeakSet()
 
         host_name = os.environ.get("LSST_DDS_IP")
@@ -197,7 +214,7 @@ class Domain:
             self.volatile_reader_qos = self.qos_provider.get_reader_qos()
             self.volatile_reader_qos.set_policies([read_queue_policy, volatile_policy])
         except Exception:
-            # very unlikely, but just in case...
+            # Very unlikely, but just in case...
             self.participant.close()
             raise
 

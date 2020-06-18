@@ -260,9 +260,16 @@ class ReadTopic(BaseTopic):
         if salinfo.index > 0:
             queries.append(f"{salinfo.name}ID = {salinfo.index}")
         if name == "ackcmd":
+            # TODO DM-25474: enable the identity test
+            # once all CSCs echo identity in their ackcmd topics
+            # (ts_salobj 6 and ts_sal 5 or possibly 4.2 used everywhere).
+            # I tried to write a test that checks for
+            # identity='' or identity=salinfo.domain.origin
+            # but could not get OpenSplice to accept the empty string.
             queries += [
                 f"origin = {salinfo.domain.origin}",
                 f"host = {salinfo.domain.host}",
+                # f"identity = '{salinfo.domain.identity}'",
             ]
         if queries:
             full_query = " AND ".join(queries)

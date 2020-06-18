@@ -190,9 +190,16 @@ class RemoteTestCase(asynctest.TestCase):
         """Test default evt_max_history and tel_max_history ctor arguments.
         """
         index = next(index_gen)
+        expected_identity = salobj.get_user_host()
         async with salobj.Domain() as domain:
+            # Check identity in a newly constructed Domain.
+            self.assertEqual(domain.identity, expected_identity)
+
             remote = salobj.Remote(domain=domain, name="Test", index=index)
             self.assert_max_history(remote)
+
+            # Check identity again to make sure Remote has not changed it.
+            self.assertEqual(domain.identity, expected_identity)
 
     async def test_tel_max_history(self):
         """Test non-default tel_max_history Remote constructor argument.

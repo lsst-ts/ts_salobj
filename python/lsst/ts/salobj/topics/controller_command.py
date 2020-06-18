@@ -106,6 +106,7 @@ class ControllerCommand(read_topic.ReadTopic):
             private_seqNum=data.private_seqNum,
             host=data.private_host,
             origin=data.private_origin,
+            identity=data.private_identity,
             cmdtype=self.cmdtype,
             ack=ackcmd.ack,
             error=ackcmd.error,

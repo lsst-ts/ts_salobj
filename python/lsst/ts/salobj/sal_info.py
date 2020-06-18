@@ -285,6 +285,16 @@ class SalInfo:
     def _ackcmd_callback(self, data):
         if not self._running_cmds:
             return
+        # Note: ReadTopic's reader filters out ackcmd samples
+        # for commands issued by other remotes.
+        # Except... TODO DM-25474: delete the following if statement
+        # and enable the identity test in ReadTopic's read query
+        # once all CSCs echo identity in their ackcmd topics.
+        # See the note there for more information.
+        if data.identity and data.identity != self.domain.identity:
+            # This ackcmd is for a command issued by a different Remote,
+            # so ignore it.
+            return
         cmd_info = self._running_cmds.get(data.private_seqNum, None)
         if cmd_info is None:
             return
