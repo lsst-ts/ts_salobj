@@ -185,45 +185,64 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     async def test_command_isolation(self):
         """Test that multiple RemoteCommands for one command only see
         cmdack replies to their own samples.
-
-        Note that the RemoteCommands must each have a different Domain,
-        as the isolation is based on Domain properties.
-        In order to avoid making extra domains, the command reader uses one of
-        those two domains.
         """
-        async with salobj.Domain() as domain1, salobj.Domain() as domain2:
-            # Both domains are constructed with the same host
-            # (if $LSST_DDS_DOMAIN is defined) and origin (the process ID).
-            # We need one or both to be different for command isolation,
-            # so modify the host of one of the domains.
-            domain2.host = domain1.host + 1
-            salinfo1 = salobj.SalInfo(domain=domain1, name="Test", index=1)
-            salinfo2 = salobj.SalInfo(domain=domain2, name="Test", index=1)
-            cmdreader = salobj.topics.ControllerCommand(salinfo=salinfo1, name="wait")
-            # set the random seed before each call so both writers
-            # use the same initial seqNum
-            random.seed(52)
-            cmdwriter1 = salobj.topics.RemoteCommand(salinfo=salinfo1, name="wait")
-            random.seed(52)
-            cmdwriter2 = salobj.topics.RemoteCommand(salinfo=salinfo2, name="wait")
-            await salinfo1.start()
-            await salinfo2.start()
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+            cmdreader = salobj.topics.ReadTopic(
+                salinfo=salinfo, name="wait", sal_prefix="command_", max_history=0
+            )
+            cmdwriter = salobj.topics.RemoteCommand(salinfo=salinfo, name="wait")
+            cmdtype = salinfo.sal_topic_names.index(cmdwriter.sal_name)
+            ackcmdwriter = salobj.topics.AckCmdWriter(salinfo=salinfo)
+            await salinfo.start()
+
+            # Send and acknowledge 4 commands:
+            # * The first is acknowledged with a different origin.
+            # * The second is acknowledged with a different identity.
+            # * The third is acknowledged with identity=""
+            # * The last is acknowledged normally
+            # The first two will not complete, the second two will.
+            # TODO DM-25474: modify this test to expect the third to fail,
+            # once we can expect identity to always be set.
+            nread = 0
 
             def reader_callback(data):
-                ackcmd = cmdreader.salinfo.AckCmdType(
+                nonlocal nread
+
+                # Write initial ackcmd
+                ackcmdwriter.set(
                     private_seqNum=data.private_seqNum,
-                    ack=salobj.SalRetCode.CMD_COMPLETE,
+                    origin=data.private_origin,
+                    identity=data.private_identity,
+                    cmdtype=cmdtype,
+                    ack=salobj.SalRetCode.CMD_ACK,
                 )
-                cmdreader.ack(data=data, ackcmd=ackcmd)
+                ackcmdwriter.put()
+
+                # Write final ackcmd, after tweaking data if appropriate.
+                ackcmdwriter.set(ack=salobj.SalRetCode.CMD_COMPLETE)
+                if nread == 0:
+                    # Mismatched origin.
+                    ackcmdwriter.set(origin=data.private_origin + 1)
+                elif nread == 1:
+                    # Mismatched identity.
+                    ackcmdwriter.set(identity=data.private_identity + "extra")
+                elif nread == 2:
+                    # No identity.
+                    ackcmdwriter.set(identity="")
+                ackcmdwriter.put()
+                nread += 1
 
             cmdreader.callback = reader_callback
-            num_commands = 3
-            for i in range(num_commands):
-                ack1 = await cmdwriter1.start(timeout=STD_TIMEOUT)
-                ack2 = await cmdwriter2.start(timeout=STD_TIMEOUT)
-                self.assertEqual(ack1.private_seqNum, ack2.private_seqNum)
-                self.assertEqual(ack1.host, domain1.host)
-                self.assertEqual(ack2.host, domain2.host)
+            tasks = []
+            for i in range(4):
+                tasks.append(asyncio.create_task(cmdwriter.start(timeout=STD_TIMEOUT)))
+            await tasks[2]
+            await tasks[3]
+            self.assertFalse(tasks[0].done())  # Origin did not match.
+            self.assertFalse(tasks[1].done())  # Identity did not match.
+            for task in tasks:
+                task.cancel()
 
     async def test_controller_telemetry_put(self):
         """Test ControllerTelemetry.put using data=None and providing data.
@@ -257,7 +276,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     async def test_controller_event_put(self):
         """Test ControllerEvent.put using data=None and providing data.
 
-        Also test setting metadata fields private_host, private_origin,
+        Also test setting metadata fields private_origin,
         private_sndStamp and private_rcvStamp
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
@@ -278,7 +297,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.csc.assert_scalars_equal(data, self.csc.evt_scalars.data)
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
-            self.assertEqual(evt_data1.private_host, self.csc.domain.host)
             self.assertEqual(evt_data1.private_origin, self.csc.domain.origin)
             self.assertAlmostEqual(evt_data1.private_sndStamp, send_tai0, places=1)
             self.assertAlmostEqual(data.private_rcvStamp, rcv_tai0, places=1)

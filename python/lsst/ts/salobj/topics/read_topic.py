@@ -268,7 +268,6 @@ class ReadTopic(BaseTopic):
             # but could not get OpenSplice to accept the empty string.
             queries += [
                 f"origin = {salinfo.domain.origin}",
-                f"host = {salinfo.domain.host}",
                 # f"identity = '{salinfo.domain.identity}'",
             ]
         if queries:

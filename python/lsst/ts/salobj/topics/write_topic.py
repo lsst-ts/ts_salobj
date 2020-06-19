@@ -167,7 +167,6 @@ class WriteTopic(BaseTopic):
             self.data.priority = priority
         self.data.private_sndStamp = base.current_tai()
         self.data.private_revCode = self.rev_code
-        self.data.private_host = self.salinfo.domain.host
         self.data.private_origin = self.salinfo.domain.origin
         self.data.private_identity = self.salinfo.domain.identity
         if self._seq_num_generator is not None:

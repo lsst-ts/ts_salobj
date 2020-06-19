@@ -22,10 +22,7 @@
 __all__ = ["Domain", "DDS_READ_QUEUE_LEN"]
 
 import asyncio
-import ipaddress
 import os
-import random
-import struct
 import weakref
 import warnings
 
@@ -51,9 +48,6 @@ class Domain:
     ----------
     participant : ``dds.DomainParticipant``
         DDS domain participant.
-    host : `int`
-        Value for the ``private_host`` field of output samples.
-        See environment variable ``LSST_DDS_IP`` for details.
     origin : `int`
         Process ID. Used to set the ``private_origin`` field of output samples.
     identity : `str`
@@ -94,8 +88,6 @@ class Domain:
     <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
     follow the link for details:
 
-    * LSST_DDS_IP (optional) is used to set the ``host`` attribute.
-      If provided, it must be a dotted numeric IP address, e.g. "192.168.0.1".
     * OSPL_MASTER_PRIORITY (optional) is used to set the Master Priority.
       If present, it must be a value between 0 and 255.
 
@@ -165,22 +157,6 @@ class Domain:
         # Set of SalInfo.
         self._salinfo_set = weakref.WeakSet()
 
-        host_name = os.environ.get("LSST_DDS_IP")
-        if host_name is None:
-            host = random.randint(1, MAX_RANDOM_HOST)
-        else:
-            try:
-                unsigned_host = int(ipaddress.IPv4Address(host_name))
-            except ipaddress.AddressValueError as e:
-                raise ValueError(
-                    f"Could not parse $LSST_DDS_IP={host_name} "
-                    "as a numeric IP address (e.g. '192.168.0.1')"
-                ) from e
-            # Convert the unsigned long to a signed long
-            packed = struct.pack("=L", unsigned_host)
-            host = struct.unpack("=l", packed)[0]
-
-        self.host = host
         self.origin = os.getpid()
         self.idl_dir = idl.get_idl_dir()
 

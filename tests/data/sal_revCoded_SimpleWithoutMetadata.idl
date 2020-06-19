@@ -5,8 +5,8 @@ struct command_setArrays_1234abcd {
       double    private_sndStamp; //private
       double    private_rcvStamp; //private
       long      private_seqNum; //private
+      string    private_identity; //private
       long      private_origin; //private
-      long      private_host; //private
 	  boolean	boolean0[5];
 	  short	short0[5];
 	  long	long0[5];
@@ -28,8 +28,8 @@ struct logevent_scalars_1234abcd {
       double    private_sndStamp; //private
       double    private_rcvStamp; //private
       long      private_seqNum; //private
+      string    private_identity; //private
       long      private_origin; //private
-      long      private_host; //private
       boolean   boolean0;
       string    char0;
       short short0;
