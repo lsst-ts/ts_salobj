@@ -488,33 +488,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             report = "Report for error code"
             traceback = "Traceback for error code"
 
-            # if code not specified (deprecated) then errorCode is not output
-            with self.assertWarns(DeprecationWarning):
-                self.csc.fault()
-            await self.assert_next_summary_state(salobj.State.FAULT)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(
-                    flush=False, timeout=NODATA_TIMEOUT
-                )
-
-            await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
-            await self.assert_next_summary_state(salobj.State.STANDBY)
-
-            # if code not specified (deprecated) then errorCode is not output
-            with self.assertWarns(DeprecationWarning):
-                self.csc.fault(report=report, traceback=traceback)
-            await self.assert_next_summary_state(salobj.State.FAULT)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(
-                    flush=False, timeout=NODATA_TIMEOUT
-                )
-
-            await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
-            await self.assert_next_summary_state(salobj.State.STANDBY)
-
             # if an invalid code is specified then errorCode is not output
             # but the CSC stil goes into a FAULT state
-            self.csc.fault(code="not a valid code")
+            self.csc.fault(code="not a valid code", report=report)
             await self.assert_next_summary_state(salobj.State.FAULT)
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_errorCode.next(
@@ -544,7 +520,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
-            self.csc.fault(code=code)
+            self.csc.fault(code=code, report="")
             await self.assert_next_summary_state(salobj.State.FAULT)
             await self.assert_next_sample(
                 topic=self.remote.evt_errorCode,

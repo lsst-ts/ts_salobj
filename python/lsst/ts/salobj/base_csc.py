@@ -459,17 +459,17 @@ class BaseCsc(Controller):
         """
         pass
 
-    def fault(self, code=None, report="", traceback=""):
+    def fault(self, code, report, traceback=""):
         """Enter the fault state and output the ``errorCode`` event.
 
         Parameters
         ----------
-        code : `int` (optional)
+        code : `int`
             Error code for the ``errorCode`` event.
             If `None` then ``errorCode`` is not output and you should
             output it yourself. Specifying `None` is deprecated;
             please always specify an integer error code.
-        report : `str` (optional)
+        report : `str`
             Description of the error.
         traceback : `str` (optional)
             Description of the traceback, if any.
@@ -480,20 +480,17 @@ class BaseCsc(Controller):
         try:
             self._faulting = True
             self._summary_state = State.FAULT
-            if code is None:
-                warnings.warn("specifying code=None is deprecated", DeprecationWarning)
-            else:
-                try:
-                    self.evt_errorCode.set_put(
-                        errorCode=code,
-                        errorReport=report,
-                        traceback=traceback,
-                        force_output=True,
-                    )
-                except Exception:
-                    self.log.exception(
-                        f"Failed to output errorCode: code={code!r}; report={report!r}"
-                    )
+            try:
+                self.evt_errorCode.set_put(
+                    errorCode=code,
+                    errorReport=report,
+                    traceback=traceback,
+                    force_output=True,
+                )
+            except Exception:
+                self.log.exception(
+                    f"Failed to output errorCode: code={code!r}; report={report!r}"
+                )
             try:
                 self.report_summary_state()
             except Exception:
