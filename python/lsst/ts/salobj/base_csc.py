@@ -24,7 +24,6 @@ __all__ = ["BaseCsc"]
 import argparse
 import asyncio
 import sys
-import warnings
 
 from . import base
 from . import dds_utils
@@ -537,37 +536,6 @@ class BaseCsc(Controller):
         """Get the summary state as a `State` enum.
         """
         return self._summary_state
-
-    async def set_summary_state(self, summary_state):
-        """Set the summary state
-
-        Parameters
-        ----------
-        summary_state : `State` or `int`
-            The new summary state
-        If you set the state then it is reported as a summaryState event.
-        You can set summary_state to a `State` constant or to
-        the integer equivalent.
-
-        Raises
-        ------
-        ValueError
-            If the new summary state is an invalid integer.
-        """
-        # cast summary_state from an int or State to a State,
-        # and reject invalid int values with ValueError
-        self._summary_state = State(summary_state)
-        self.report_summary_state()
-        await self.handle_summary_state()
-
-    @summary_state.setter
-    def summary_state(self, summary_state):
-        warnings.warn("Please do not set summary state directly", DeprecationWarning)
-        # cast summary_state from an int or State to a State,
-        # and reject invalid int values with ValueError
-        self._summary_state = State(summary_state)
-        self.report_summary_state()
-        asyncio.ensure_future(self.handle_summary_state())
 
     async def handle_summary_state(self):
         """Called when the summary state has changed.
