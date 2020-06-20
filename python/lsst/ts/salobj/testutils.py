@@ -69,12 +69,12 @@ def assertRaisesAckError(ack=None, error=None, result_contains=None):
 
     Parameters
     ----------
-    ack : `int` (optional)
+    ack : `int`, optional
         Ack code, almost always a `SalRetCode` ``CMD_<x>`` constant.
         If None then the ack code is not checked.
-    error : `int` (optional)
+    error : `int`, optional
         Error code. If None then the error value is not checked.
-    result_contains : `str` (optional)
+    result_contains : `str`, optional
         If not None then the result value must contain this string.
     """
     try:
@@ -97,10 +97,10 @@ def assertRaisesAckTimeoutError(ack=None, error=None):
 
     Parameters
     ----------
-    ack : `int` (optional)
+    ack : `int`, optional
         Ack code of the last ack seen, almost always a `SalRetCode`
         ``CMD_<x>`` constant. If None then the ack code is not checked.
-    error : `int` (optional)
+    error : `int`, optional
         Error code. If None then the error value is not checked.
     """
     try:

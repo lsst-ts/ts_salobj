@@ -46,25 +46,25 @@ class Remote:
                 dome = Remote(domain=domain, name="ATDome", index=0)
     name : `str`
         Name of SAL component.
-    index : `int` or `None` (optional)
+    index : `int` or `None`, optional
         SAL component index, or 0 or None if the component is not indexed.
         A value is required if the component is indexed.
     readonly : `bool`
         If True then do not provide commands.
-    include : ``iterable`` of `str` (optional)
+    include : ``iterable`` of `str`, optional
         Names of topics (telemetry or events) to support,
         for example ["FilterChangeInPosition", "TrackingTarget"]
         If `None` then all are included except those in `exclude`.
-    exclude : ``iterable`` of `str` (optional)
+    exclude : ``iterable`` of `str`, optional
         Names of topics (telemetry or events) to not support.
         If `None` or empty then no topics are excluded.
-    evt_max_history : `int` (optional)
+    evt_max_history : `int`, optional
         Maximum number of historical items to read for events.
         Set to 0 if your remote is not interested in "late joiner" data.
-    tel_max_history : `int` (optional)
+    tel_max_history : `int`, optional
         Maximum number of historical items to read for telemetry.
         Set to 0 if your remote is not interested in "late joiner" data.
-    start : `bool` (optional)
+    start : `bool`, optional
         Automatically start the read loop when constructed?
         Normally this should be `True`, but if you are adding topics
         piecemeal after constructing the remote then specify `False`

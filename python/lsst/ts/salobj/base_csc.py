@@ -44,10 +44,10 @@ class BaseCsc(Controller):
         Name of SAL component.
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
-    initial_state : `State` or `int` (optional)
+    initial_state : `State` or `int`, optional
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
-    simulation_mode : `int` (optional)
+    simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
 
     Raises
@@ -154,7 +154,7 @@ class BaseCsc(Controller):
             command line argument, or specify a non-zero `int` to use
             that index.
             If the CSC is not indexed: specify `None` or 0.
-        **kwargs : `dict` (optional)
+        **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
             If any arguments match those from the command line
             the command line values will be used.
@@ -196,7 +196,7 @@ class BaseCsc(Controller):
             command line argument, or specify a non-zero `int` to use
             that index.
             If the CSC is not indexed: specify `None` or 0.
-        **kwargs : `dict` (optional)
+        **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
             If any arguments match those from the command line
             the command line values will be used.
@@ -470,7 +470,7 @@ class BaseCsc(Controller):
             please always specify an integer error code.
         report : `str`
             Description of the error.
-        traceback : `str` (optional)
+        traceback : `str`, optional
             Description of the traceback, if any.
         """
         if self._faulting:
@@ -507,7 +507,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        action : `str` (optional)
+        action : `str`, optional
             Action attempted. Not needed if this is called at the beginning
             of a ``do_...`` method, since the user will know what command
             was called.

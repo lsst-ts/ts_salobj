@@ -129,7 +129,7 @@ class SalInfo:
         DDS domain participant and quality of service information.
     name : `str`
         SAL component name.
-    index : `int` (optional)
+    index : `int`, optional
         Component index; 0 or None if this component is not indexed.
 
     Raises
@@ -194,7 +194,7 @@ class SalInfo:
     follow the link for details:
 
     * ``LSST_DDS_DOMAIN`` (required): the DDS partition name.
-    * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec)
+    * ``LSST_DDS_HISTORYSYNC``, optional: time limit (sec)
       for waiting for historical (late-joiner) data.
 
     **Usage**

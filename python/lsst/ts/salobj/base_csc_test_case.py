@@ -60,7 +60,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode, **kwargs):
         """Make and return a CSC.
 
-        initial_state : `lsst.ts.salobj.State` or `int` (optional)
+        initial_state : `lsst.ts.salobj.State` or `int`, optional
             The initial state of the CSC. Ignored except in simulation mode
             because in normal operation the initial state is the current state
             of the controller.
@@ -96,18 +96,18 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         ----------
         name : `str`
             Name of SAL component.
-        index : `int` or `None` (optional)
+        index : `int` or `None`, optional
             SAL component index, or 0 or None if the component is not indexed.
             A value is required if the component is indexed.
-        initial_state : `lsst.ts.salobj.State` or `int` (optional)
+        initial_state : `lsst.ts.salobj.State` or `int`, optional
             The initial state of the CSC.
-        config_dir : `str` (optional)
+        config_dir : `str`, optional
             Directory of configuration files, or None for the standard
             configuration directory (obtained from
             `ConfigureCsc._get_default_config_dir`).
-        simulation_mode : `int` (optional)
+        simulation_mode : `int`, optional
             Simulation mode.
-        log_level : `int` or `None` (optional)
+        log_level : `int` or `None`, optional
             Logging level, such as `logging.INFO`.
             If None then do not set the log level, leaving the default
             behavior of `SalInfo`: increase the log level to INFO.
@@ -156,11 +156,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         ----------
         state : `lsst.ts.salobj.State` or `int`
             Desired summary state.
-        flush : `bool` (optional)
+        flush : `bool`, optional
             Flush the read queue before waiting?
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit for getting the data sample (sec).
-        remote : `Remote` (optional)
+        remote : `Remote`, optional
             Remote to use; ``self.remote`` if None.
         """
         if remote is None:
@@ -182,9 +182,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         ----------
         topic : `topics.ReadTopic`
             Topic to read, e.g. ``remote.evt_logMessage``.
-        flush : `bool` (optional)
+        flush : `bool`, optional
             Flush the read queue before waiting?
-        timeout : `double` (optional)
+        timeout : `double`, optional
             Time limit for getting the data sample (sec).
         kwargs : `dict`
             Dict of field_name: expected_value
@@ -225,7 +225,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             SAL index of component.
         exe_name : `str`
             Name of executable, e.g. "run_rotator.py"
-        initial_state : `lsst.ts.salobj.State` or `int` (optional)
+        initial_state : `lsst.ts.salobj.State` or `int`, optional
             The expected initial state of the CSC.
         cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
@@ -332,9 +332,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        bad_commands : `List`[`str`] or `None` (optional)
+        bad_commands : `List`[`str`] or `None`, optional
             Names of bad commands to try, or None for all commands.
-        good_commands : `List`[`str`] or `None` (optional)
+        good_commands : `List`[`str`] or `None`, optional
             Names of good commands to skip, or None to skip none.
 
         Notes

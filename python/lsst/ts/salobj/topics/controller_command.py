@@ -136,7 +136,7 @@ class ControllerCommand(read_topic.ReadTopic):
 
         Parameters
         ----------
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
 
         Returns

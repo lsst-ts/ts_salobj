@@ -259,11 +259,11 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         ----------
         sal_name : `str`
             SAL component name, e.g. "Watcher".
-        module_name : `str` or `None` (optional)
+        module_name : `str` or `None`, optional
             Module name, e.g. "lsst.ts.salobj".
             If not None then get the CSC package root by importing
             the module and ignore ``package_name``.
-        package_name : `str` (optional)
+        package_name : `str`, optional
             If ``module_name`` is None then specify this argument
             and get the CSC package root using environment variable
             ``<PACKAGE_NAME>_DIR``.

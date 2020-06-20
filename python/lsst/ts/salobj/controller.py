@@ -79,10 +79,10 @@ class Controller:
     ----------
     name : `str`
         Name of SAL component.
-    index : `int` or `None` (optional)
+    index : `int` or `None`, optional
         SAL component index, or 0 or None if the component is not indexed.
         A value is required if the component is indexed.
-    do_callbacks : `bool` (optional)
+    do_callbacks : `bool`, optional
         Set ``do_<name>`` methods as callbacks for commands?
         If True then there must be exactly one ``do_<name>`` method
         for each command.
@@ -262,7 +262,7 @@ class Controller:
 
         Parameters
         ----------
-        exception : `Exception` (optional)
+        exception : `Exception`, optional
             The exception that caused stopping, if any, in which case
             the ``self.done_task`` exception is set to this value.
             Specify `None` for a normal exit, in which case

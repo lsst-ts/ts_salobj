@@ -33,7 +33,7 @@ class RemoteTelemetry(read_topic.ReadTopic):
         SAL component information
     name : `str`
         Telemetry topic name
-    max_history : `int` (optional)
+    max_history : `int`, optional
         Maximum number of historical items to read:
 
         * 0 if none; strongly recommended for `RemoteCommand` & `AckCmdReader`

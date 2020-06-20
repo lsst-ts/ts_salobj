@@ -53,14 +53,14 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
             schema_path = pathlib.Path(__file__).resolve().parents[4] \
                 / "schema" / f"{name}.yaml"
-    config_dir : `str` (optional)
+    config_dir : `str`, optional
         Directory of configuration files, or None for the standard
         configuration directory (obtained from `get_default_config_dir`).
         This is provided for unit testing.
-    initial_state : `State` or `int` (optional)
+    initial_state : `State` or `int`, optional
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
-    simulation_mode : `int` (optional)
+    simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
 
     Raises

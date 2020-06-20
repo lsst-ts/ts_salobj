@@ -150,7 +150,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        descr : `str` (optional)
+        descr : `str`, optional
             Short description of what the script does, for operator display.
             Leave at None if the script already has a description, which is
             the most common case. Primarily intended for unit tests,
@@ -196,7 +196,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        descr : `str` (optional)
+        descr : `str`, optional
             Short description of what the script does, for operator display.
             Leave at None if the script already has a description, which is
             the most common case. Primarily intended for unit tests,
@@ -277,17 +277,17 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        state : `ScriptState` or `int` (optional)
+        state : `ScriptState` or `int`, optional
             New state, or None if no change
-        reason : `str` (optional)
+        reason : `str`, optional
             Reason for state change. `None` for no new reason.
         keep_old_reason : `bool`
             If True, keep old reason; append the ``reason`` argument after ";"
             if it is is a non-empty string.
             If False replace with ``reason``, or "" if ``reason`` is `None`.
-        last_checkpoint : `str` (optional)
+        last_checkpoint : `str`, optional
             Name of most recently seen checkpoint. None for no change.
-        force_output : `bool` (optional)
+        force_output : `bool`, optional
             If True the output even if not changed.
         """
         if state is not None:
@@ -308,7 +308,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        name : `str` (optional)
+        name : `str`, optional
             Name of checkpoint; "" if it has no name.
 
         Raises

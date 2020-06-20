@@ -54,14 +54,14 @@ class TestCsc(ConfigurableCsc):
     index : `int`
         Index of Test component; each unit test method
         should use a different index.
-    config_dir : `str` (optional)
+    config_dir : `str`, optional
         Path to configuration files.
-    initial_state : `salobj.State` (optional)
+    initial_state : `salobj.State`, optional
         The initial state of the CSC. Typically one of:
 
         * `salobj.State.ENABLED` if you want the CSC immediately usable.
         * `salobj.State.STANDBY` if you want full emulation of a CSC.
-    simulation_mode : `int` (optional)
+    simulation_mode : `int`, optional
         Simulation mode. The only allowed value is 0.
 
     Raises

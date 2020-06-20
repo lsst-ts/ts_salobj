@@ -47,7 +47,7 @@ class ControllerEvent(write_topic.WriteTopic):
 
         Parameters
         ----------
-        force_output : `bool` (optional)
+        force_output : `bool`, optional
             If True then output the event, even if no fields have changed.
         **kwargs : `dict` [`str`, ``any``]
             The remaining keyword arguments are

@@ -222,11 +222,11 @@ def index_generator(imin=1, imax=MAX_SAL_INDEX, i0=None):
 
     Parameters
     ----------
-    imin : `int` (optional)
+    imin : `int`, optional
         Minimum index (inclusive).
-    imax : `int` (optional)
+    imax : `int`, optional
         Maximum index (inclusive).
-    i0 : `int` (optional)
+    i0 : `int`, optional
         Initial index; if None then use ``imin``.
 
     Raises

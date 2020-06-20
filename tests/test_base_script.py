@@ -85,13 +85,13 @@ class BaseScriptTestCase(asynctest.TestCase):
         ----------
         script : `ts.salobj.TestScript`
             A test script
-        log_level : `int` (optional)
+        log_level : `int`, optional
             Log level as a `logging` level,
             or 0 to leave the script's log level unchanged.
-        pause_checkpoint : `str` (optional)
+        pause_checkpoint : `str`, optional
             Checkpoint(s) at which to pause, as a regular expression.
             "" to not pause at any checkpoint; "*" to pause at all checkpoints.
-        stop_checkpoint : `str` (optional)
+        stop_checkpoint : `str`, optional
             Checkpoint(s) at which to stop, as a regular expression.
             "" to not stop at any checkpoint; "*" to stop at all checkpoints.
         kwargs : `dict`

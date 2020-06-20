@@ -59,7 +59,7 @@ class WriteTopic(BaseTopic):
     max_seq_num : `int`
         Maximum value for ``private_seqNum``, inclusive.
         Ignored if ``min_seq_num`` is None.
-    initial_seq_num : `int` (optional)
+    initial_seq_num : `int`, optional
         Initial sequence number; if `None` use min_seq_num.
 
     Attributes
@@ -151,7 +151,7 @@ class WriteTopic(BaseTopic):
         ----------
         data : ``self.DataType`` or `None`
             New data to replace ``self.data``, if any.
-        priority : `int` (optional)
+        priority : `int`, optional
             Priority; used to set the priority field of events.
             Ignored for commands and telemetry.
 

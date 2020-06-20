@@ -169,7 +169,7 @@ class ReadTopic(BaseTopic):
 
         * 0 is required for commands and the ackcmd reader
         * 1 is recommended for events and telemetry
-    queue_len : `int` (optional)
+    queue_len : `int`, optional
         The maximum number of items that can be read and not dealt with
         by a callback function or `next` before older data will be dropped.
     filter_ackcmd : `bool`, optional
@@ -396,7 +396,7 @@ class ReadTopic(BaseTopic):
 
         Parameters
         ----------
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
 
         Returns
@@ -439,7 +439,7 @@ class ReadTopic(BaseTopic):
 
         Parameters
         ----------
-        flush : `bool` (optional)
+        flush : `bool`, optional
             Flush the queue? Defaults to `True` for backwards compatibility.
             This only affects the next value returned by `next`
             and is ignored if there is a callback function.
@@ -495,7 +495,7 @@ class ReadTopic(BaseTopic):
             If True then flush the queue before starting a read.
             If False then pop and return the oldest value from the queue,
             if any, else wait for new data.
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
 
         Returns

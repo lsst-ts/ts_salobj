@@ -91,12 +91,12 @@ class CscCommander:
     ----------
     name : `str`
         SAL component name of CSC.
-    index : `int` (optional)
+    index : `int`, optional
         SAL index of CSC.
-    exclude : `List` [`str`] or `None` (optional)
+    exclude : `List` [`str`] or `None`, optional
         Names of telemetry or event topics to not print.
         If `None` or empty then no topics are excluded.
-    fields_to_ignore : `List` [`str`] (optional)
+    fields_to_ignore : `List` [`str`], optional
         SAL topic fields to ignore when specifying command parameters,
         and when printing events and telemetry.
     enable : `bool`
@@ -527,7 +527,7 @@ help  # print this help
             a required command line argument,
             or specify a non-zero `int` to use that index.
             If the SAL component is not indexed: specify `None` or 0.
-        **kwargs : `dict` (optional)
+        **kwargs : `dict`, optional
             Additional keyword arguments for your class's constructor.
             If any arguments match those from the command line
             the command line values will be used.
