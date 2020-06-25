@@ -683,3 +683,11 @@ class SalInfo:
             rem_time = max(0.01, time_limit - elapsed_time)
             wait_timeout = dds.DDSDuration(sec=rem_time)
         return num_ok > 0 or num_checked == 0
+
+    async def __aenter__(self):
+        if self.start_called:
+            await self.start_task
+        return self
+
+    async def __aexit__(self, type, value, traceback):
+        await self.close()
