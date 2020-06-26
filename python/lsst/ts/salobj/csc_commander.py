@@ -29,6 +29,7 @@ import sys
 from . import domain
 from . import remote
 from . import sal_enums
+from . import csc_utils
 
 # Timeout for fast operations (seconds)
 STD_TIMEOUT = 10
@@ -54,7 +55,6 @@ async def stream_as_generator(stream, encoding="utf-8"):
     -------
     line : `str`
         A line of data, optionally decoded.
-
 
     Notes
     -----
@@ -99,6 +99,23 @@ class CscCommander:
     fields_to_ignore : `List` [`str`] (optional)
         SAL topic fields to ignore when specifying command parameters,
         and when printing events and telemetry.
+    enable : `bool`
+        Enable the CSC (when the commander starts up)?
+
+    Attributes
+    ----------
+    domain : `Domain`
+        DDS domain.
+    remote : `Remote`
+        Remote for the CSC being commanded.
+    help_dict : `dict`
+        Dict of command_name: documentation.
+        You should add one entry for every do_command method you define.
+        Each documentation string should start with a list of argument names
+        (the command name will be prepended for you)
+        optionally followed by # and a brief description.
+        The documentation string should a single line, if practical.
+
 
     Notes
     -----
@@ -140,6 +157,7 @@ class CscCommander:
         index=0,
         exclude=None,
         fields_to_ignore=("ignored", "value", "priority"),
+        enable=False,
     ):
         self.domain = domain.Domain()
         self.remote = remote.Remote(
@@ -147,11 +165,8 @@ class CscCommander:
         )
         self.fields_to_ignore = set(fields_to_ignore)
         self.tasks = set()
-        # Dict of command_name: documentation
-        # You should add one entry for every do_command method
-        # The documentation should start with a list of argument names
-        # The documentation should be on a single line, if possible
         self.help_dict = dict()
+        self.enable = enable
 
         for name in self.remote.salinfo.event_names:
             if name == "heartbeat":
@@ -408,6 +423,25 @@ help  # print this help
             print(f"Command {command_name} failed: {e}")
         self.tasks.discard(task)
 
+    async def start(self):
+        """Start asynchonous processes.
+        """
+        print(f"Waiting for {self.remote.salinfo.name_index} to start.")
+        await self.remote.start_task
+        if self.enable:
+            print(f"Enabling {self.remote.salinfo.name_index}")
+            # Temporarily remove the ``evt_summaryState`` callback
+            # so the `set_summary_state` function can read the topic.
+            summary_state_callback = self.remote.evt_summaryState.callback
+            try:
+                self.remote.evt_summaryState.callback = None
+                await csc_utils.set_summary_state(self.remote, sal_enums.State.ENABLED)
+            finally:
+                summary_state = self.remote.evt_summaryState.get()
+                if summary_state is not None:
+                    summary_state_callback(summary_state)
+                self.remote.evt_summaryState.callback = summary_state_callback
+
     @classmethod
     async def amain(cls, **kwargs):
         """Construct the commander and run it.
@@ -417,8 +451,7 @@ help  # print this help
         """
         self = cls.make_from_cmd_line(**kwargs)
         try:
-            print("Waiting for the remote to start.")
-            await self.remote.start_task
+            await self.start()
 
             self.print_help()
             async for line in stream_as_generator(sys.stdin):
@@ -512,6 +545,9 @@ help  # print this help
         parser = argparse.ArgumentParser(f"Run {cls.__name__}")
         if index is True:
             parser.add_argument("index", type=int, help="Script SAL Component index.")
+        parser.add_argument(
+            "-e", "--enable", action="store_true", help="Enable the CSC?"
+        )
         cls.add_arguments(parser)
 
         args = parser.parse_args()
@@ -521,6 +557,7 @@ help  # print this help
             pass
         else:
             kwargs["index"] = int(index)
+        kwargs["enable"] = args.enable
         cls.add_kwargs_from_args(args=args, kwargs=kwargs)
 
         return cls(**kwargs)
