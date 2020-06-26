@@ -329,6 +329,17 @@ class SalInfo:
         return self.metadata.idl_path
 
     @property
+    def name_index(self):
+        """Get name[:index].
+
+        The suffix is only present if the component is indexed.
+        """
+        if self.indexed:
+            return f"{self.name}:{self.index}"
+        else:
+            return self.name
+
+    @property
     def started(self):
         """Return True if successfully started, False otherwise.
         """
