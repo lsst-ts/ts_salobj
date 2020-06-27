@@ -194,6 +194,16 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             cmdwriter = salobj.topics.RemoteCommand(salinfo=salinfo, name="wait")
             cmdtype = salinfo.sal_topic_names.index(cmdwriter.sal_name)
             ackcmdwriter = salobj.topics.AckCmdWriter(salinfo=salinfo)
+
+            # Also make an ackcmd reader that sees all data,
+            # to test the ``filter_ackcmd`` argument.
+            unfiltered_ackcmd_reader = salobj.topics.ReadTopic(
+                salinfo=salinfo,
+                name="wait",
+                sal_prefix="command_",
+                max_history=0,
+                filter_ackcmd=False,
+            )
             await salinfo.start()
 
             # Send and acknowledge 4 commands:
@@ -233,7 +243,15 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 ackcmdwriter.put()
                 nread += 1
 
+            unfiltered_nread = 0
+
+            def unfiltered_reader_callback(self):
+                nonlocal unfiltered_nread
+                unfiltered_nread += 1
+
             cmdreader.callback = reader_callback
+            unfiltered_ackcmd_reader.callback = unfiltered_reader_callback
+
             tasks = []
             for i in range(4):
                 tasks.append(asyncio.create_task(cmdwriter.start(timeout=STD_TIMEOUT)))
@@ -241,6 +259,8 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             await tasks[3]
             self.assertFalse(tasks[0].done())  # Origin did not match.
             self.assertFalse(tasks[1].done())  # Identity did not match.
+            self.assertEqual(nread, 4)
+            self.assertEqual(unfiltered_nread, 4)
             for task in tasks:
                 task.cancel()
 
