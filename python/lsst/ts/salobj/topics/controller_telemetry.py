@@ -43,7 +43,7 @@ class ControllerTelemetry(write_topic.WriteTopic):
 
         Parameters
         ----------
-        data : ``self.DataType`` (optional)
+        data : ``self.DataType``, optional
             New data to replace ``self.data``, if any.
 
         Raises

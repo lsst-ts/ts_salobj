@@ -20,8 +20,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import datetime
+import getpass
 import os
 import random
+import socket
 import time
 import unittest
 
@@ -165,6 +167,11 @@ class BasicsTestCase(asynctest.TestCase):
                 tai_unix_round_trip1 = salobj.tai_from_utc(astropy_time1)
                 self.assertAlmostEqual(tai_unix, tai_unix_round_trip1, delta=1e-6)
 
+    async def test_get_user_host(self):
+        expected_user_host = getpass.getuser() + "@" + socket.getfqdn()
+        user_host = salobj.get_user_host()
+        self.assertEqual(expected_user_host, user_host)
+
     async def test_long_ack_result(self):
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain, "Test", index=1)
@@ -216,31 +223,9 @@ class BasicsTestCase(asynctest.TestCase):
             with self.assertRaises(RuntimeError):
                 salobj.SalInfo(domain=domain, name="Test", index=1)
 
-    async def test_domain_host_origin(self):
-        for bad_ip in ("57", "192.168", "192.168.0", "www.lsst.org"):
-            with self.subTest(bad_ip=bad_ip):
-                os.environ["LSST_DDS_IP"] = bad_ip
-                with self.assertRaises(ValueError):
-                    salobj.Domain()
-
-        for host_name, expected_host in (
-            # Values small enough that they fit into a signed long.
-            ("0.0.0.1", 1),
-            ("127.255.255.255", 2147483647),
-            # Values large enough that they do not fit into a signed long,
-            # so they must be cast to a negative value.
-            ("128.0.0.0", -2147483648),
-            ("255.255.255.255", -1),
-        ):
-            with self.subTest(host_name=host_name, expected_host=expected_host):
-                os.environ["LSST_DDS_IP"] = host_name
-                async with salobj.Domain() as domain:
-                    self.assertEqual(domain.host, expected_host)
-                    self.assertEqual(domain.origin, os.getpid())
-
-        del os.environ["LSST_DDS_IP"]
+    async def test_domain_origin(self):
         async with salobj.Domain() as domain:
-            self.assertGreater(domain.host, 0)
+            self.assertEqual(domain.origin, os.getpid())
 
     def test_index_generator(self):
         with self.assertRaises(ValueError):

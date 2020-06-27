@@ -169,9 +169,14 @@ class ReadTopic(BaseTopic):
 
         * 0 is required for commands and the ackcmd reader
         * 1 is recommended for events and telemetry
-    queue_len : `int` (optional)
+    queue_len : `int`, optional
         The maximum number of items that can be read and not dealt with
         by a callback function or `next` before older data will be dropped.
+    filter_ackcmd : `bool`, optional
+        Filter out cmdack topics so we only see responses to commands
+        that we sent? This is normally what you want, but it is not wanted
+        for SAL/Kafka producers.
+        Ignored if ``name`` != "ackcmd".
 
     Raises
     ------
@@ -218,7 +223,16 @@ class ReadTopic(BaseTopic):
     its own data.
     """
 
-    def __init__(self, *, salinfo, name, sal_prefix, max_history, queue_len=100):
+    def __init__(
+        self,
+        *,
+        salinfo,
+        name,
+        sal_prefix,
+        max_history,
+        queue_len=100,
+        filter_ackcmd=True,
+    ):
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
         self.isopen = True
         self._allow_multiple_callbacks = False
@@ -259,10 +273,16 @@ class ReadTopic(BaseTopic):
         queries = []
         if salinfo.index > 0:
             queries.append(f"{salinfo.name}ID = {salinfo.index}")
-        if name == "ackcmd":
+        if name == "ackcmd" and filter_ackcmd:
+            # TODO DM-25474: enable the identity test
+            # once all CSCs echo identity in their ackcmd topics
+            # (ts_salobj 6 and ts_sal 5 or possibly 4.2 used everywhere).
+            # I tried to write a test that checks for
+            # identity='' or identity=salinfo.domain.origin
+            # but could not get OpenSplice to accept the empty string.
             queries += [
                 f"origin = {salinfo.domain.origin}",
-                f"host = {salinfo.domain.host}",
+                # f"identity = '{salinfo.domain.identity}'",
             ]
         if queries:
             full_query = " AND ".join(queries)
@@ -376,7 +396,7 @@ class ReadTopic(BaseTopic):
 
         Parameters
         ----------
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
 
         Returns
@@ -419,7 +439,7 @@ class ReadTopic(BaseTopic):
 
         Parameters
         ----------
-        flush : `bool` (optional)
+        flush : `bool`, optional
             Flush the queue? Defaults to `True` for backwards compatibility.
             This only affects the next value returned by `next`
             and is ignored if there is a callback function.
@@ -475,7 +495,7 @@ class ReadTopic(BaseTopic):
             If True then flush the queue before starting a read.
             If False then pop and return the oldest value from the queue,
             if any, else wait for new data.
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
 
         Returns

@@ -34,7 +34,7 @@ def get_dds_version(dds_file=None):
 
     Parameters
     ----------
-    dds_file : `str` or `None` (optional)
+    dds_file : `str` or `None`, optional
         Value of ``dds.__file__``.
         Use `None` except when testing this function.
     """

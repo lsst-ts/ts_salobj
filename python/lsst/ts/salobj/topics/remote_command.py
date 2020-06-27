@@ -153,7 +153,7 @@ class _CommandInfo:
 
         Parameters
         ----------
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Timeout in seconds. If the next command acknowledgement
             does not arrive in time then raise `AckTimeoutError`.
 
@@ -276,12 +276,12 @@ class RemoteCommand(write_topic.WriteTopic):
         ackcmd : `SalInfo.AckCmdType`
             The command acknowledgement returned by
             the previous wait (e.g. from `start`).
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
             This time limit is for the entire command if wait_done
             is true, else it is for the first acknowledgement
             after the initial "SAL__CMD_ACK".
-        wait_done : `bool` (optional)
+        wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
             If False then wait until the next command acknowledgement;
             if that acknowledgement is not final (the ack code is not in
@@ -348,12 +348,12 @@ class RemoteCommand(write_topic.WriteTopic):
 
         Parameters
         ----------
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
             This time limit is for the entire command if wait_done
             is true, else it is for the first acknowledgement
             after the initial "SAL__CMD_ACK".
-        wait_done : `bool` (optional)
+        wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
             If False then wait for the first acknowledgement after the
             initial "SAL__CMD_ACK"; if that acknowledgement is not final
@@ -386,14 +386,14 @@ class RemoteCommand(write_topic.WriteTopic):
 
         Parameters
         ----------
-        data : ``self.DataType`` (optional)
+        data : ``self.DataType``, optional
             Command data. If None then send the current data.
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
             This time limit is for the entire command if wait_done
             is true, else it is for the first acknowledgement
             after the initial "SAL__CMD_ACK".
-        wait_done : `bool` (optional)
+        wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
             If False then wait for the first acknowledgement after the
             initial "SAL__CMD_ACK"; if that acknowledgement is not final

@@ -29,13 +29,16 @@ from .base_topic import BaseTopic
 from .. import base
 
 
-# Maximum value for the ``private_seqNum`` field of each topic; 4 bytes signed
-# For command topics this field is the command ID and it should be unique
-# for each command in order to avoid collisions (since there is only one
-# ackcmd topic that is shared by all commands).
-# For other topics its use is unspecified but it may prove handy to
-# increment it for each data point (until it wraps around again).
 MAX_SEQ_NUM = (1 << 31) - 1
+"""Maximum value for the ``private_seqNum`` field of each topic,
+a 4 byte signed integer.
+
+For command topics this field is the command ID, and it must be unique
+for each command in order to avoid collisions (since there is only one
+``ackcmd`` topic that is shared by all commands).
+For other topics its use is unspecified but it may prove handy to
+increment it (with wraparound) for each data point.
+"""
 
 
 class WriteTopic(BaseTopic):
@@ -54,12 +57,12 @@ class WriteTopic(BaseTopic):
         SAL topic prefix: one of "command\_", "logevent\_" or ""
     min_seq_num : `int` or `None`
         Minimum value for the ``private_seqNum`` field.
-        If None then ``private_seqNum`` is not set; this is needed
+        If `None` then ``private_seqNum`` is not set; this is needed
         for the cmdack writer, which sets the field itself.
     max_seq_num : `int`
         Maximum value for ``private_seqNum``, inclusive.
-        Ignored if ``min_seq_num`` is None.
-    initial_seq_num : `int` (optional)
+        Ignored if ``min_seq_num`` is `None`.
+    initial_seq_num : `int`, optional
         Initial sequence number; if `None` use min_seq_num.
 
     Attributes
@@ -151,7 +154,7 @@ class WriteTopic(BaseTopic):
         ----------
         data : ``self.DataType`` or `None`
             New data to replace ``self.data``, if any.
-        priority : `int` (optional)
+        priority : `int`, optional
             Priority; used to set the priority field of events.
             Ignored for commands and telemetry.
 
@@ -167,8 +170,8 @@ class WriteTopic(BaseTopic):
             self.data.priority = priority
         self.data.private_sndStamp = base.current_tai()
         self.data.private_revCode = self.rev_code
-        self.data.private_host = self.salinfo.domain.host
         self.data.private_origin = self.salinfo.domain.origin
+        self.data.private_identity = self.salinfo.domain.identity
         if self._seq_num_generator is not None:
             self.data.private_seqNum = next(self._seq_num_generator)
         # when index is 0 use the default of 0 and give senders a chance

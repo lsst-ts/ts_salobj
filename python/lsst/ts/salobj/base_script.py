@@ -29,7 +29,6 @@ import re
 import sys
 import time
 import types
-import warnings
 
 import yaml
 
@@ -151,7 +150,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        descr : `str` (optional)
+        descr : `str`, optional
             Short description of what the script does, for operator display.
             Leave at None if the script already has a description, which is
             the most common case. Primarily intended for unit tests,
@@ -197,7 +196,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        descr : `str` (optional)
+        descr : `str`, optional
             Short description of what the script does, for operator display.
             Leave at None if the script already has a description, which is
             the most common case. Primarily intended for unit tests,
@@ -224,34 +223,6 @@ class BaseScript(controller.Controller, abc.ABC):
             ScriptState.FAILED: 1,
         }.get(script.state.state, 2)
         sys.exit(return_code)
-
-    @classmethod
-    def main(cls, descr=None):
-        """Start the script from the command line.
-
-        Parameters
-        ----------
-        descr : `str` (optional)
-            Short description of what the script does, for operator display.
-            Leave at None if the script already has a description, which is
-            the most common case. Primarily intended for unit tests,
-            e.g. running ``TestScript``.
-
-
-        Notes
-        -----
-        The final return code will be:
-
-        * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
-          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`
-        * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
-        * 2 otherwise (which should never happen)
-        """
-        warnings.warn(
-            "Use amain instead, e.g. asyncio.run(cls.amain(descr=descr))",
-            DeprecationWarning,
-        )
-        asyncio.get_event_loop().run_until_complete(cls.amain(descr=descr))
 
     @property
     def checkpoints(self):
@@ -306,17 +277,17 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        state : `ScriptState` or `int` (optional)
+        state : `ScriptState` or `int`, optional
             New state, or None if no change
-        reason : `str` (optional)
+        reason : `str`, optional
             Reason for state change. `None` for no new reason.
         keep_old_reason : `bool`
             If True, keep old reason; append the ``reason`` argument after ";"
             if it is is a non-empty string.
             If False replace with ``reason``, or "" if ``reason`` is `None`.
-        last_checkpoint : `str` (optional)
+        last_checkpoint : `str`, optional
             Name of most recently seen checkpoint. None for no change.
-        force_output : `bool` (optional)
+        force_output : `bool`, optional
             If True the output even if not changed.
         """
         if state is not None:
@@ -337,7 +308,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        name : `str` (optional)
+        name : `str`, optional
             Name of checkpoint; "" if it has no name.
 
         Raises

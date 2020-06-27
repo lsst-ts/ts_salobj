@@ -38,13 +38,6 @@ Used by `Vortex OpenSplice`_, and thus indirectly by `Domain`:
 * ``OSPL_URI`` (required) points to the main DDS configuration file.
   Example: ``file:///home/saluser/tsrepos/ts_opensplice/OpenSpliceDDS/v6.9/HDE/x86_64.linux/etc/config/ospl.xml``
 
-Used by `Domain`:
-
-* ``LSST_DDS_IP`` (optional) is used to set the ``host`` attribute.
-  If defined, it must be a dotted numeric IP address, e.g. "192.168.0.1".
-  The `Domain` ``host`` attribute is set to the integer equivalent, or a positive random integer if the environment variable is not defined.
-  The `Domain` ``host`` value is used to set the ``private_host`` field of messages, when writing them.
-
 Used by `SalInfo`:
 
 * ``LSST_DDS_DOMAIN`` (required): the DDS partition name (*not* the DDS domain, despite the name).

@@ -22,23 +22,23 @@
 __all__ = ["Domain", "DDS_READ_QUEUE_LEN"]
 
 import asyncio
-import ipaddress
 import os
-import random
-import struct
 import weakref
 import warnings
 
 import dds
 
 from lsst.ts import idl
+from . import base
 
-# Length of DDS read queue
-# Warning: this must be equal to or longer than the queue length in the
-# QoS XML file.
-# This information is not available from dds objects, so I set queue depth
-# instead of using the value specified in the QoS XML file.
-DDS_READ_QUEUE_LEN = 100  # length of DDS read queue
+DDS_READ_QUEUE_LEN = 100
+"""Length of DDS read queue
+
+Warning: this must be equal to or longer than the queue length in the
+OpenSplice configuration file (pointed to by $OSPL_URI).
+This information is not available from ``dds`` objects, so I set queue depth
+instead of using the value specified in the QoS XML file.
+"""
 
 MAX_RANDOM_HOST = (1 << 31) - 1
 
@@ -50,11 +50,17 @@ class Domain:
     ----------
     participant : ``dds.DomainParticipant``
         DDS domain participant.
-    host : `int`
-        Value for the ``private_host`` field of output samples.
-        See environment variable ``LSST_DDS_IP`` for details.
     origin : `int`
         Process ID. Used to set the ``private_origin`` field of output samples.
+    identity : `str`
+        Value used for the private_identity field of DDS messages.
+        Domain initializes it to username@host but CSCs should
+        replace it with the CSC name:
+        * SAL_component_name for a non-indexed SAL component
+        * SAL_component_name:index for an indexed SAL component.
+    user_host : `str`
+        username@host. This will match ``identity`` unless the latter
+        is set to a CSC name.
     idl_dir : `pathlib.Path`
         Root directory of the ``ts_idl`` package.
     qos_provider : ``dds.QosProvider``
@@ -84,9 +90,7 @@ class Domain:
     <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
     follow the link for details:
 
-    * LSST_DDS_IP (optional) is used to set the ``host`` attribute.
-      If provided, it must be a dotted numeric IP address, e.g. "192.168.0.1".
-    * OSPL_MASTER_PRIORITY (optional) is used to set the Master Priority.
+    * OSPL_MASTER_PRIORITY, optional is used to set the Master Priority.
       If present, it must be a value between 0 and 255.
 
     **Cleanup**
@@ -139,31 +143,22 @@ class Domain:
     def __init__(self):
         self.participant = None
 
-        # accumulators for verifying that close is working
+        self.user_host = base.get_user_host()
+        # Initialize this assuming it is not for use by a Controller or CSC.
+        # Controller will override it. Controller does not know if the
+        # SAL component is indexed until after building its SalInfo,
+        # so the override cannot be provided as a constructor argument.
+        self.identity = self.user_host
+
+        # Accumulators for verifying that close is working.
         self.num_read_loops = 0
         self.num_read_threads = 0
 
         self.done_task = asyncio.Future()
 
-        # set of SalInfo
+        # Set of SalInfo.
         self._salinfo_set = weakref.WeakSet()
 
-        host_name = os.environ.get("LSST_DDS_IP")
-        if host_name is None:
-            host = random.randint(1, MAX_RANDOM_HOST)
-        else:
-            try:
-                unsigned_host = int(ipaddress.IPv4Address(host_name))
-            except ipaddress.AddressValueError as e:
-                raise ValueError(
-                    f"Could not parse $LSST_DDS_IP={host_name} "
-                    "as a numeric IP address (e.g. '192.168.0.1')"
-                ) from e
-            # Convert the unsigned long to a signed long
-            packed = struct.pack("=L", unsigned_host)
-            host = struct.unpack("=l", packed)[0]
-
-        self.host = host
         self.origin = os.getpid()
         self.idl_dir = idl.get_idl_dir()
 
@@ -197,7 +192,7 @@ class Domain:
             self.volatile_reader_qos = self.qos_provider.get_reader_qos()
             self.volatile_reader_qos.set_policies([read_queue_policy, volatile_policy])
         except Exception:
-            # very unlikely, but just in case...
+            # Very unlikely, but just in case...
             self.participant.close()
             raise
 

@@ -35,7 +35,9 @@ from . import base
 from . import idl_metadata
 from .domain import Domain, DDS_READ_QUEUE_LEN
 
-MAX_RESULT_LEN = 256  # max length for result field of an Ack
+MAX_RESULT_LEN = 256
+"""Maximum length of the ``result`` field in an ``ackcmd`` topic.
+"""
 
 # We want DDS logMessage messages for at least INFO level messages
 # so if the current level is less verbose, set it to INFO.
@@ -129,7 +131,7 @@ class SalInfo:
         DDS domain participant and quality of service information.
     name : `str`
         SAL component name.
-    index : `int` (optional)
+    index : `int`, optional
         Component index; 0 or None if this component is not indexed.
 
     Raises
@@ -165,7 +167,10 @@ class SalInfo:
     subscriber : ``dds.Subscriber``
         A DDS subscriber, used to create DDS readers.
     start_task : `asyncio.Task`
-        A task which is finished when `start` is done.
+        A task which is finished when `start` is done,
+        or to an exception if `start` fails.
+    done_task : `asyncio.Task`
+        A task which is finished when `close` is done.
     command_names : `List` [`str`]
         A tuple of command names without the ``"command_"`` prefix.
     event_names : `List` [`str`]
@@ -179,6 +184,10 @@ class SalInfo:
         A dict of topic name: name_revision.
     topic_info : `dict` [`str`, `TopicMetadata`]
         A dict of SAL topic name: topic metadata.
+    authorized_users : `List` [`str`]
+        Set of users authorized to command this component.
+    non_authorized_cscs : `List` [`str`]
+        Set of CSCs that are not authorized to command this component.
 
     Notes
     -----
@@ -187,7 +196,7 @@ class SalInfo:
     follow the link for details:
 
     * ``LSST_DDS_DOMAIN`` (required): the DDS partition name.
-    * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec)
+    * ``LSST_DDS_HISTORYSYNC``, optional: time limit (sec)
       for waiting for historical (late-joiner) data.
 
     **Usage**
@@ -221,24 +230,21 @@ class SalInfo:
 
         publisher_qos = domain.qos_provider.get_publisher_qos()
         publisher_qos.set_policies([partition_qos_policy])
-        # DDS publisher; used to create topic writers. A dds.Publisher.
         self.publisher = domain.participant.create_publisher(publisher_qos)
 
         subscriber_qos = domain.qos_provider.get_subscriber_qos()
         subscriber_qos.set_policies([partition_qos_policy])
-        # DDS subscriber; used to create topic readers. A dds.Subscriber.
         self.subscriber = domain.participant.create_subscriber(subscriber_qos)
 
-        # A task that is set done when SalInfo.start is done
-        # (or to an exception if start fails).
         self.start_task = asyncio.Future()
-
-        # A task that is set Done when SalInfo.close is done.
         self.done_task = asyncio.Future()
 
         self.log = logging.getLogger(self.name)
         if self.log.getEffectiveLevel() > MAX_LOG_LEVEL:
             self.log.setLevel(MAX_LOG_LEVEL)
+
+        self.authorized_users = set()
+        self.non_authorized_cscs = set()
 
         # dict of private_seqNum: salobj.topics.CommandInfo
         self._running_cmds = dict()
@@ -272,7 +278,6 @@ class SalInfo:
             raise ValueError(
                 f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component"
             )
-
         if len(self.command_names) > 0:
             ackcmd_revname = self.revnames.get("ackcmd")
             if ackcmd_revname is None:
@@ -280,10 +285,21 @@ class SalInfo:
             self._ackcmd_type = ddsutil.get_dds_classes_from_idl(
                 idl_path, ackcmd_revname
             )
+
         domain.add_salinfo(self)
 
     def _ackcmd_callback(self, data):
         if not self._running_cmds:
+            return
+        # Note: ReadTopic's reader filters out ackcmd samples
+        # for commands issued by other remotes.
+        # Except... TODO DM-25474: delete the following if statement
+        # and enable the identity test in ReadTopic's read query
+        # once all CSCs echo identity in their ackcmd topics.
+        # See the note there for more information.
+        if data.identity and data.identity != self.domain.identity:
+            # This ackcmd is for a command issued by a different Remote,
+            # so ignore it.
             return
         cmd_info = self._running_cmds.get(data.private_seqNum, None)
         if cmd_info is None:
@@ -327,6 +343,17 @@ class SalInfo:
         """
         warnings.warn("Use salinfo.metadata.idl_path instead", DeprecationWarning)
         return self.metadata.idl_path
+
+    @property
+    def name_index(self):
+        """Get name[:index].
+
+        The suffix is only present if the component is indexed.
+        """
+        if self.indexed:
+            return f"{self.name}:{self.index}"
+        else:
+            return self.name
 
     @property
     def started(self):
@@ -683,3 +710,11 @@ class SalInfo:
             rem_time = max(0.01, time_limit - elapsed_time)
             wait_timeout = dds.DDSDuration(sec=rem_time)
         return num_ok > 0 or num_checked == 0
+
+    async def __aenter__(self):
+        if self.start_called:
+            await self.start_task
+        return self
+
+    async def __aexit__(self, type, value, traceback):
+        await self.close()

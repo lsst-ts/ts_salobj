@@ -85,13 +85,13 @@ class BaseScriptTestCase(asynctest.TestCase):
         ----------
         script : `ts.salobj.TestScript`
             A test script
-        log_level : `int` (optional)
+        log_level : `int`, optional
             Log level as a `logging` level,
             or 0 to leave the script's log level unchanged.
-        pause_checkpoint : `str` (optional)
+        pause_checkpoint : `str`, optional
             Checkpoint(s) at which to pause, as a regular expression.
             "" to not pause at any checkpoint; "*" to pause at all checkpoints.
-        stop_checkpoint : `str` (optional)
+        stop_checkpoint : `str`, optional
             Checkpoint(s) at which to stop, as a regular expression.
             "" to not stop at any checkpoint; "*" to stop at all checkpoints.
         kwargs : `dict`
@@ -638,57 +638,6 @@ class BaseScriptTestCase(asynctest.TestCase):
             if process.returncode is None:
                 process.terminate()
                 warnings.warn("Killed a process that was not properly terminated")
-
-    async def test_script_deprecated_main_process(self):
-        """Test running a script using deprecated class method ``main``
-        """
-        script_path = os.path.join(self.datadir, "script_with_deprecated_main")
-
-        async with salobj.Domain() as domain:
-            index = next(index_gen)
-            remote = salobj.Remote(domain=domain, name="Script", index=index)
-            await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
-
-            process = await asyncio.create_subprocess_exec(script_path, str(index))
-            try:
-                self.assertIsNone(process.returncode)
-
-                state = await remote.evt_state.next(flush=False, timeout=STD_TIMEOUT)
-                self.assertEqual(state.state, ScriptState.UNCONFIGURED)
-                self.assertEqual(state.groupId, "")
-
-                logLevel_data = await remote.evt_logLevel.next(
-                    flush=False, timeout=STD_TIMEOUT
-                )
-                self.assertEqual(logLevel_data.level, logging.INFO)
-
-                wait_time = 0.1
-                config = f"wait_time: {wait_time}"
-                await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
-                state = await remote.evt_state.next(flush=False, timeout=STD_TIMEOUT)
-                self.assertEqual(state.state, ScriptState.CONFIGURED)
-                self.assertEqual(state.groupId, "")
-
-                metadata = await remote.evt_metadata.next(
-                    flush=False, timeout=STD_TIMEOUT
-                )
-                self.assertEqual(metadata.duration, wait_time)
-
-                group_id = "a non-blank group ID"
-                await remote.cmd_setGroupId.set_start(
-                    groupId=group_id, timeout=STD_TIMEOUT
-                )
-                state = await remote.evt_state.next(flush=False, timeout=STD_TIMEOUT)
-                self.assertEqual(state.groupId, group_id)
-
-                await remote.cmd_run.start(timeout=STD_TIMEOUT)
-
-                await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
-                self.assertEqual(process.returncode, 0)
-            finally:
-                if process.returncode is None:
-                    process.terminate()
-                    warnings.warn("Killed a process that was not properly terminated")
 
 
 if __name__ == "__main__":

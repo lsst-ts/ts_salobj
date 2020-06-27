@@ -29,16 +29,43 @@ from .sal_info import SalInfo
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
 from .sal_log_handler import SalLogHandler
 
-# TODO DM-25126: Remove setAuthList once ts_salobj supports auth lists.
-# TODO DM-17157: Remove the non-setAuthList entries if and when
-# SALSubsystems.xml explicitly lists all generic topics used.
-OPTIONAL_COMMAND_NAMES = set(
-    ("abort", "enterControl", "setValue", "setSimulationMode", "setAuthList")
-)
+OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue", "setSimulationMode"))
+"""Set of generic commands that need not have an associated do_ method.
+
+TODO DM-17157: Remove this constant if and when ``SALSubsystems.xml``
+explicitly lists all generic topics used by every SAL component.
+"""
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.
 SHUTDOWN_DELAY = 1
+
+
+def parse_as_prefix_and_set(items_str):
+    """Parse a string as an optional +/- prefix and a set of items.
+
+    Parameters
+    ----------
+    items_str : `str`
+        Data string formatted as an optional prefix of "+" or "-"
+        followed by a set of comma-separated items (each of which
+        must not contain a comma or space).
+        Whitespace is ignored after the optional prefix and after each comma.
+
+    Returns
+    -------
+    prefix_data : `List` [`str`, `set`]
+        A tuple of two items:
+        * The prefix: "+", "-", or "" (no prefix).
+        * The set of items. Each item is a `str` with no whitespace or comma.
+    """
+    prefix = ""
+    if items_str and items_str[0] in ("+", "-"):
+        prefix = items_str[0]
+        items_str = items_str[1:]
+    data_set = set([name.strip() for name in items_str.split(",")])
+    data_set -= set([""])
+    return prefix, data_set
 
 
 class Controller:
@@ -53,10 +80,10 @@ class Controller:
     ----------
     name : `str`
         Name of SAL component.
-    index : `int` or `None` (optional)
+    index : `int` or `None`, optional
         SAL component index, or 0 or None if the component is not indexed.
         A value is required if the component is indexed.
-    do_callbacks : `bool` (optional)
+    do_callbacks : `bool`, optional
         Set ``do_<name>`` methods as callbacks for commands?
         If True then there must be exactly one ``do_<name>`` method
         for each command.
@@ -148,6 +175,7 @@ class Controller:
         try:
             self.salinfo = SalInfo(domain=domain, name=name, index=index)
             self.log = self.salinfo.log
+            self.salinfo.domain.identity = self.salinfo.name_index
             self.start_called = False
             # Task that is set done when the controller is closed
             self.done_task = asyncio.Future()
@@ -186,12 +214,10 @@ class Controller:
 
             self._sal_log_handler = SalLogHandler(controller=self)
             self.log.addHandler(self._sal_log_handler)
+            # This task is set done when the CSC is fully started.
+            # If `start` fails then the task has an exception set
+            # and the CSC is not usable.
             self.start_task = asyncio.ensure_future(self.start())
-            """This task is set done when the CSC is fully started.
-
-            If `start` fails then the task has an exception set
-            and the CSC is not usable.
-            """
 
         except Exception:
             asyncio.ensure_future(domain.close())
@@ -217,6 +243,10 @@ class Controller:
         await asyncio.gather(*start_tasks)
         await self.salinfo.start()
         self.put_log_level()
+        self.evt_authList.set_put(
+            authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
+            nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
+        )
 
     @property
     def domain(self):
@@ -233,7 +263,7 @@ class Controller:
 
         Parameters
         ----------
-        exception : `Exception` (optional)
+        exception : `Exception`, optional
             The exception that caused stopping, if any, in which case
             the ``self.done_task`` exception is set to this value.
             Specify `None` for a normal exit, in which case
@@ -280,6 +310,56 @@ class Controller:
         and closing the dds domain.
         """
         pass
+
+    def do_setAuthList(self, data):
+        """Update the authorization list.
+
+        Parameters
+        ----------
+        data : ``cmd_setAuthList.DataType``
+            Authorization lists.
+
+        Notes
+        -----
+        Add items if the data string starts with "+", ignoring duplicates
+        (both with respect to the existing items and within the data string).
+        Remove items if the data string starts with "-", ignoring missing
+        items (items specified for removal that do not exist).
+        Ignore whitespace after each comma and after the +/- prefix.
+        """
+        users_prefix, users_set = parse_as_prefix_and_set(data.authorizedUsers)
+        # Remove "me" from users list.
+        users_set.discard(self.salinfo.domain.user_host)
+
+        cscs_prefix, cscs_set = parse_as_prefix_and_set(data.nonAuthorizedCSCs)
+        # Strip :0 suffix, if present, for consistency.
+        cscs_set = {csc[:-2] if csc.endswith(":0") else csc for csc in cscs_set}
+
+        if users_prefix == "+":
+            # + prefix: add users.
+            self.salinfo.authorized_users |= users_set
+        elif users_prefix == "-":
+            # - prefix: remove users.
+            self.salinfo.authorized_users -= users_set
+        else:
+            # No prefix: replace users.
+            self.salinfo.authorized_users = users_set
+
+        if cscs_prefix == "+":
+            # + prefix: add CSCs.
+            self.salinfo.non_authorized_cscs |= cscs_set
+        elif cscs_prefix == "-":
+            # - prefix: remove CSCs.
+            self.salinfo.non_authorized_cscs -= cscs_set
+        else:
+            # No prefix: replace CSCs.
+            self.salinfo.non_authorized_cscs = cscs_set
+
+        self.evt_authList.set_put(
+            authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
+            nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
+            force_output=True,
+        )
 
     def do_setLogLevel(self, data):
         """Set logging level.

@@ -54,24 +54,20 @@ class TestCsc(ConfigurableCsc):
     index : `int`
         Index of Test component; each unit test method
         should use a different index.
-    config_dir : `str` (optional)
+    config_dir : `str`, optional
         Path to configuration files.
-    initial_state : `salobj.State` (optional)
+    initial_state : `salobj.State`, optional
         The initial state of the CSC. Typically one of:
 
         * `salobj.State.ENABLED` if you want the CSC immediately usable.
         * `salobj.State.STANDBY` if you want full emulation of a CSC.
-    simulation_mode : `int` (optional)
+    simulation_mode : `int`, optional
         Simulation mode. The only allowed value is 0.
-    initial_simulation_mode : `int` (optional)
-        A deprecated synonym for ``simulation_mode``.
 
     Raises
     ------
     ValueError
-        If ``config_dir`` is not a directory,
-        ``initial_state`` is invalid, or
-        ``simulation_mode`` and ``initial_simulation_mode`` are both nonzero.
+        If ``config_dir`` is not a directory or ``initial_state`` is invalid.
     salobj.ExpectedError
         If ``simulation_mode`` is invalid.
         Note: you will only see this error if you await `start_task`.
@@ -98,12 +94,7 @@ class TestCsc(ConfigurableCsc):
     __test__ = False  # stop pytest from warning that this is not a test
 
     def __init__(
-        self,
-        index,
-        config_dir=None,
-        initial_state=State.STANDBY,
-        simulation_mode=0,
-        initial_simulation_mode=0,
+        self, index, config_dir=None, initial_state=State.STANDBY, simulation_mode=0,
     ):
         schema_path = (
             pathlib.Path(__file__).resolve().parents[4] / "schema" / "Test.yaml"
@@ -115,7 +106,6 @@ class TestCsc(ConfigurableCsc):
             index=index,
             initial_state=initial_state,
             simulation_mode=simulation_mode,
-            initial_simulation_mode=initial_simulation_mode,
         )
         self.cmd_wait.allow_multiple_callbacks = True
         self.config = None

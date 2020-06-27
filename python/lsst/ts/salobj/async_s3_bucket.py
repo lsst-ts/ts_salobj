@@ -43,13 +43,13 @@ class AsyncS3Bucket:
         <https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html>
         for details. In particular note that bucket names must be globally
         unique across all AWS accounts.
-    create : `bool` (optional)
+    create : `bool`, optional
         If True and the bucket does not exist, create it.
         If False then assume the bucket exists.
         You will typically want true if using a mock server (``domock`` true).
-    profile : `str` (optional)
+    profile : `str`, optional
         Profile name; use the default profile if None.
-    domock : `bool` (optional)
+    domock : `bool`, optional
         If True then start a mock S3 server.
         This is recommended for running in simulation mode.
 
@@ -135,7 +135,7 @@ class AsyncS3Bucket:
             or "ATBlue" for the AT Blue Fiber Spectrograph.
         s3instance : `str`
             S3 server instance. Typically "Summit", "Tucson" or "NCSA".
-        s3category : `str` (optional)
+        s3category : `str`, optional
             Category of S3 server. The default is "LFA",
             for the Large File Annex.
 
@@ -194,12 +194,12 @@ class AsyncS3Bucket:
             Dataset type.
         date : `astropy.time.Time`
             A date -- typically the date the data was taken.
-        other : `str` or `None` (optional)
+        other : `str` or `None`, optional
             Additional text to identify the data and make the key unique.
             If `None` use ``date.tai.isot``: ``date`` as TAI,
             in ISO-8601 format, with a "T" between the date and time
             and a precision of milliseconds.
-        suffix : `str` (optional)
+        suffix : `str`, optional
             Key suffix, e.g. ".fits".
 
         Returns
@@ -250,7 +250,7 @@ class AsyncS3Bucket:
             File-like object that can be read as *binary* data.
         key : `str`
             Name to use for the file in the bucket.
-        callback : callable (optional)
+        callback : callable, optional
             Function to call with updates while writing. The function receives
             one argument: the number of bytes written. If the transfer is
             successful then it will always be called at least once,
@@ -277,7 +277,7 @@ class AsyncS3Bucket:
         ----------
         key : `str`
             Name of the file in the bucket.
-        callback : callable (optional)
+        callback : callable, optional
             Function to call with updates while writing. The function receives
             one argument: the number of bytes read so far. If the transfer is
             successful then it will always be called at least once,

@@ -73,6 +73,8 @@ class SalInfoTestCase(asynctest.TestCase):
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain=domain, name="Test")
 
+            self.assertEqual(salinfo.name_index, f"Test:{salinfo.index}")
+
             # expected_commands omits a few commands that TestCsc
             # does not support, but that are in generics.
             expected_commands = [
@@ -119,6 +121,11 @@ class SalInfoTestCase(asynctest.TestCase):
             self.assertEqual(
                 sorted(expected_sal_topic_names), list(salinfo.sal_topic_names)
             )
+
+            # Check that the name_index for a non-indexed component
+            # has no :index suffix.
+            salinfo.indexed = False
+            self.assertEqual(salinfo.name_index, "Test")
 
     async def test_salinfo_metadata(self):
         """Test some of the metadata in SalInfo.
