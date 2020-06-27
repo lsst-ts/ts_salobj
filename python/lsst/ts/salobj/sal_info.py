@@ -35,7 +35,9 @@ from . import base
 from . import idl_metadata
 from .domain import Domain, DDS_READ_QUEUE_LEN
 
-MAX_RESULT_LEN = 256  # max length for result field of an Ack
+MAX_RESULT_LEN = 256
+"""Maximum length of the ``result`` field in an ``ackcmd`` topic.
+"""
 
 # We want DDS logMessage messages for at least INFO level messages
 # so if the current level is less verbose, set it to INFO.

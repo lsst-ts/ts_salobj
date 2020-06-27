@@ -31,12 +31,14 @@ import dds
 from lsst.ts import idl
 from . import base
 
-# Length of DDS read queue
-# Warning: this must be equal to or longer than the queue length in the
-# QoS XML file.
-# This information is not available from dds objects, so I set queue depth
-# instead of using the value specified in the QoS XML file.
-DDS_READ_QUEUE_LEN = 100  # length of DDS read queue
+DDS_READ_QUEUE_LEN = 100
+"""Length of DDS read queue
+
+Warning: this must be equal to or longer than the queue length in the
+OpenSplice configuration file (pointed to by $OSPL_URI).
+This information is not available from ``dds`` objects, so I set queue depth
+instead of using the value specified in the QoS XML file.
+"""
 
 MAX_RANDOM_HOST = (1 << 31) - 1
 
