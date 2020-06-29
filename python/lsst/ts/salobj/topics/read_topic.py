@@ -172,6 +172,11 @@ class ReadTopic(BaseTopic):
     queue_len : `int` (optional)
         The maximum number of items that can be read and not dealt with
         by a callback function or `next` before older data will be dropped.
+    filter_ackcmd : `bool`, optional
+        Filter out cmdack topics so we only see responses to commands
+        that we sent? This is normally what you want, but it is not wanted
+        for SAL/Kafka producers.
+        Ignored if ``name`` != "ackcmd".
 
     Raises
     ------
@@ -218,7 +223,16 @@ class ReadTopic(BaseTopic):
     its own data.
     """
 
-    def __init__(self, *, salinfo, name, sal_prefix, max_history, queue_len=100):
+    def __init__(
+        self,
+        *,
+        salinfo,
+        name,
+        sal_prefix,
+        max_history,
+        queue_len=100,
+        filter_ackcmd=True,
+    ):
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
         self.isopen = True
         self._allow_multiple_callbacks = False
@@ -259,7 +273,7 @@ class ReadTopic(BaseTopic):
         queries = []
         if salinfo.index > 0:
             queries.append(f"{salinfo.name}ID = {salinfo.index}")
-        if name == "ackcmd":
+        if name == "ackcmd" and filter_ackcmd:
             queries += [
                 f"origin = {salinfo.domain.origin}",
                 f"host = {salinfo.domain.host}",
