@@ -206,6 +206,17 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             cmdwriter1 = salobj.topics.RemoteCommand(salinfo=salinfo1, name="wait")
             random.seed(52)
             cmdwriter2 = salobj.topics.RemoteCommand(salinfo=salinfo2, name="wait")
+
+            # Also make an ackcmd reader that sees all data,
+            # to test the ``filter_ackcmd`` argument.
+            unfiltered_ackcmd_reader = salobj.topics.ReadTopic(
+                salinfo=salinfo1,
+                name="wait",
+                sal_prefix="command_",
+                max_history=0,
+                filter_ackcmd=False,
+            )
+
             await salinfo1.start()
             await salinfo2.start()
 
@@ -216,7 +227,14 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 )
                 cmdreader.ack(data=data, ackcmd=ackcmd)
 
+            unfiltered_nread = 0
+
+            def unfiltered_reader_callback(self):
+                nonlocal unfiltered_nread
+                unfiltered_nread += 1
+
             cmdreader.callback = reader_callback
+            unfiltered_ackcmd_reader.callback = unfiltered_reader_callback
             num_commands = 3
             for i in range(num_commands):
                 ack1 = await cmdwriter1.start(timeout=STD_TIMEOUT)
@@ -224,6 +242,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 self.assertEqual(ack1.private_seqNum, ack2.private_seqNum)
                 self.assertEqual(ack1.host, domain1.host)
                 self.assertEqual(ack2.host, domain2.host)
+
+            # The unfiltered reader should see ackcmd replies
+            # from both command writers.
+            self.assertEqual(unfiltered_nread, num_commands * 2)
 
     async def test_controller_telemetry_put(self):
         """Test ControllerTelemetry.put using data=None and providing data.

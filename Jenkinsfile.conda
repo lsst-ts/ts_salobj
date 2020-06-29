@@ -1,8 +1,20 @@
+properties(
+    [
+    buildDiscarder
+        (logRotator (
+            artifactDaysToKeepStr: '',
+            artifactNumToKeepStr: '',
+            daysToKeepStr: '14',
+            numToKeepStr: '10'
+        ) ),
+    disableConcurrentBuilds()
+    ]
+)
 pipeline {
     agent any
     options {
         disableConcurrentBuilds()
-    }
+    }    
     environment {
         salobj_version = sh(returnStdout: true, script: "git describe --tags --always --dirty").trim()
         dockerImageName = "lsstts/conda_package_builder:latest"
@@ -68,7 +80,7 @@ pipeline {
                     sh """
                         docker exec -u root --privileged \${container_name} sh -c \"chmod -R a+rw /home/saluser/source/\"
                     """
-                
+
                     def RESULT = sh returnStatus: true, script: "docker exec -u saluser \${container_name} sh -c \"" +
                         "source ~/miniconda3/bin/activate && " +
                         "source /opt/OpenSpliceDDS/V6.9.0/HDE/x86_64.linux/release.com && " +
@@ -87,6 +99,7 @@ pipeline {
     post {
         cleanup {
             sh """
+            docker exec -u root --privileged \${container_name} sh -c \"chmod -R a+rw /home/saluser/source/\"
             docker stop ${container_name}
             """
         }
