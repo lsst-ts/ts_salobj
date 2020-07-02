@@ -103,5 +103,11 @@ pipeline {
             docker stop ${container_name}
             """
         }
+        always {
+            step([$class: 'Mailer',
+                notifyEveryUnstableBuild: false,
+                recipients: "cwinslow@lsst.org",
+                sendToIndividuals: true])
+        }
     }
 }
