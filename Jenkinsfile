@@ -80,8 +80,6 @@ pipeline {
                         "cd /home/saluser/repo/ && " +
                         "eups declare -r . -t saluser && " +
                         "setup ts_salobj -t saluser && " +
-                        "export LSST_DDS_IP=192.168.0.1 && " +
-                        "printenv LSST_DDS_IP && " +
                         "py.test --junitxml=tests/.tests/junit.xml\""
                 }
             }
