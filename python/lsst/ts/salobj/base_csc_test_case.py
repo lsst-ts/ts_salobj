@@ -230,6 +230,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
         """
+        testutils.set_random_lsst_dds_domain()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
             self.fail(
