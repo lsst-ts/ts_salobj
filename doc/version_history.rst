@@ -26,6 +26,7 @@ Changes:
 
 * Implemented authorization support.
   This version will communicate with ts_sal 4.2 and ts_salobj 5, but authorization support will be limited until the whole system uses ts_sal 5 and ts_salobj 6.
+* Added the `get_opensplice_version` function.
 * Added the `CscCommander.start` method and the ``--enable`` command-line flag.
 * Added the `SalInfo.name_index` property.
 * Added the ``filter_ackcmd`` argument to `topics.ReadTopic`.
