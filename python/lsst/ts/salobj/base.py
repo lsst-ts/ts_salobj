@@ -32,6 +32,7 @@ __all__ = [
     "angle_wrap_center",
     "angle_wrap_nonnegative",
     "astropy_time_from_tai_unix",
+    "get_opensplice_version",
     "get_user_host",
     "index_generator",
     "make_done_future",
@@ -49,6 +50,7 @@ import logging
 import math
 import re
 import socket
+import subprocess
 import threading
 import time
 
@@ -77,6 +79,9 @@ MJD_MINUS_UNIX_SECONDS = (
 
 # Regex for a SAL componet name encoded as <name>[:<index>]
 _NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-][a-zA-Z0-9_-]*)(:(?P<index>\d+))?$")
+
+# OpenSplice version; None until get_opensplice_version is first called.
+_OPENSPLICE_VERSION = None
 
 # A table of leap seconds used by `tai_from_utc_unix`.
 # The table is automatically updated by `_update_leap_second_table`.
@@ -205,6 +210,40 @@ def astropy_time_from_tai_unix(tai_unix):
     """
     tai_mjd = (MJD_MINUS_UNIX_SECONDS + tai_unix) / SECONDS_PER_DAY
     return astropy.time.Time(tai_mjd, scale="tai", format="mjd")
+
+
+def get_opensplice_version():
+    """Get the version of OpenSplice as a string.
+
+    The form of the version string is:
+
+        major.minor.build
+
+    Where:
+
+        * major: an integer
+        * minor: an integer
+        * build: an integer followed by a patch string, with no delimiter
+          between the two.
+
+    Example version: "6.9.190705OSS"
+
+    If the version can not be determined then the returned value is "?".
+    """
+    global _OPENSPLICE_VERSION
+    if _OPENSPLICE_VERSION is None:
+        _OPENSPLICE_VERSION = "?"  # Fallback value
+        try:
+            result = subprocess.run(["idlpp", "-v"], capture_output=True)
+            vers_str = result.stdout.decode()
+            match = re.match(r"^[^:]+ +: +(\d+\.\d+\.\d+.*)\n$", vers_str)
+            if match:
+                _OPENSPLICE_VERSION = match.group(1)
+            else:
+                _log.warning(f"Could not parse {vers_str} as OpenSplice version")
+        except Exception as e:
+            _log.warning(f"Could not get OpenSplice version: {e}")
+    return _OPENSPLICE_VERSION
 
 
 def get_user_host():
