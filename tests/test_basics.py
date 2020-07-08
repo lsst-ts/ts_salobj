@@ -167,6 +167,10 @@ class BasicsTestCase(asynctest.TestCase):
                 tai_unix_round_trip1 = salobj.tai_from_utc(astropy_time1)
                 self.assertAlmostEqual(tai_unix, tai_unix_round_trip1, delta=1e-6)
 
+    async def test_get_opensplice_version(self):
+        ospl_version = salobj.get_opensplice_version()
+        self.assertRegex(ospl_version, r"^\d+\.\d+\.\d+")
+
     async def test_get_user_host(self):
         expected_user_host = getpass.getuser() + "@" + socket.getfqdn()
         user_host = salobj.get_user_host()
