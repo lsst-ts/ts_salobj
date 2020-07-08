@@ -77,7 +77,7 @@ MJD_MINUS_UNIX_SECONDS = (
     astropy.time.Time(0, scale="utc", format="unix").utc.mjd * SECONDS_PER_DAY
 )
 
-# Regex for a SAL componet name encoded as <name>[:<index>]
+# Regex for a SAL component name encoded as <name>[:<index>]
 _NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-][a-zA-Z0-9_-]*)(:(?P<index>\d+))?$")
 
 # OpenSplice version; None until get_opensplice_version is first called.
