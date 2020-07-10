@@ -55,7 +55,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                 / "schema" / f"{name}.yaml"
     config_dir : `str`, optional
         Directory of configuration files, or None for the standard
-        configuration directory (obtained from `get_default_config_dir`).
+        configuration directory (obtained from `_get_default_config_dir`).
         This is provided for unit testing.
     initial_state : `State` or `int`, optional
         The initial state of the CSC. This is provided for unit testing,
@@ -155,7 +155,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
         if not config_dir.is_dir():
             raise ValueError(
-                f"config_dir={config_dir} does not exists or is not a directory"
+                f"config_dir={config_dir} does not exist or is not a directory"
             )
 
         self.config_dir = config_dir
@@ -426,12 +426,12 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         raise NotImplementedError()
 
     def _get_default_config_dir(self):
-        """Compute the default directory for configuration files.
+        """Compute the default package directory for configuration files.
 
         Returns
         -------
         config_dir : `pathlib.Path`
-            Default configuration directory.
+            Default package directory for configuration files.
 
         Raises
         ------
