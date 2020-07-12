@@ -295,7 +295,7 @@ class SalInfo:
         # Except... TODO DM-25474: delete the following if statement
         # and enable the identity test in ReadTopic's read query
         # once all CSCs echo identity in their ackcmd topics.
-        # See the note there for more information.
+        # See the TODO in read_topic.py for more information.
         if data.identity and data.identity != self.domain.identity:
             # This ackcmd is for a command issued by a different Remote,
             # so ignore it.
@@ -366,8 +366,8 @@ class SalInfo:
         if not self.started:
             raise RuntimeError("Not started")
 
-    def makeAckCmd(
-        self, private_seqNum, ack, error=0, result="", truncate_result=False
+    def make_ackcmd(
+        self, private_seqNum, ack, error=0, result="", timeout=0, truncate_result=False
     ):
         """Make an AckCmdType object from keyword arguments.
 
@@ -384,6 +384,9 @@ class SalInfo:
         result : `str`
             More information. This is arbitrary, but limited to
             `MAX_RESULT_LEN` characters.
+        timeout : `float`
+            Esimated command duration. This should be specified
+            if ``ack`` is ``salobj.SalRetCode.CMD_INPROGRESS``.
         truncate_result : `bool`
             What to do if ``result`` is longer than  `MAX_RESULT_LEN`
             characters:
@@ -409,7 +412,11 @@ class SalInfo:
                     f"len(result) > MAX_RESULT_LEN={MAX_RESULT_LEN}; result={result}"
                 )
         return self.AckCmdType(
-            private_seqNum=private_seqNum, ack=ack, error=error, result=result
+            private_seqNum=private_seqNum,
+            ack=ack,
+            error=error,
+            result=result,
+            timeout=timeout,
         )
 
     def __repr__(self):

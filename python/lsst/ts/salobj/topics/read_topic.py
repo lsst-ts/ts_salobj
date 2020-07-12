@@ -276,8 +276,8 @@ class ReadTopic(BaseTopic):
         if name == "ackcmd" and filter_ackcmd:
             # TODO DM-25474: enable the identity test
             # once all CSCs echo identity in their ackcmd topics
-            # (ts_salobj 6 and ts_sal 5 or possibly 4.2 used everywhere).
-            # I tried to write a test that checks for
+            # (ts_salobj 6 and ts_sal 4.2 used everywhere).
+            # I tried to write a query that checks for
             # identity='' or identity=salinfo.domain.origin
             # but could not get OpenSplice to accept the empty string.
             queries += [

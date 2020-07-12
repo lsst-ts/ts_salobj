@@ -62,8 +62,6 @@ class ControllerCommand(read_topic.ReadTopic):
     After the initial acknowledgement with ``ack=SalRetCode.CMD_ACK``,
     automatic ackowledgement for callback functions works as follows:
 
-    * If the callback function is a coroutine then acknowledge with
-      ``ack=SalRetCode.CMD_INPROGRESS`` just before running the callback.
     * If the callback function returns `None` then send a final
       acknowledgement with ``ack=SalRetCode.CMD_COMPLETE``.
     * If the callback function returns an acknowledgement
@@ -102,9 +100,9 @@ class ControllerCommand(read_topic.ReadTopic):
         Parameters
         ----------
         data : `DataType`
-            Command data.
+            Data for the command being acknowledged.
         ackcmd : `salobj.AckCmdType`
-            Command acknowledgement.
+            Command acknowledgement data.
         """
         self.salinfo._ackcmd_writer.set(
             private_seqNum=data.private_seqNum,
@@ -114,16 +112,27 @@ class ControllerCommand(read_topic.ReadTopic):
             ack=ackcmd.ack,
             error=ackcmd.error,
             result=ackcmd.result,
+            timeout=ackcmd.timeout,
         )
         self.salinfo._ackcmd_writer.put()
 
-    def ackInProgress(self, data, result=""):
+    def ack_in_progress(self, data, *, timeout, result=""):
         """Ackowledge this command as "in progress".
+
+        Parameters
+        ----------
+        data : `DataType`
+            Data for the command being acknowledged.
+        timeout : `float`
+            Estimated command duration (sec).
+        result : `str`, optional
+            Reason for acknowledgement. Typically left "".
         """
-        ackcmd = self.salinfo.makeAckCmd(
+        ackcmd = self.salinfo.make_ackcmd(
             private_seqNum=data.private_seqNum,
             ack=sal_enums.SalRetCode.CMD_INPROGRESS,
             result=result,
+            timeout=timeout,
         )
         self.ack(data, ackcmd)
 
@@ -161,7 +170,7 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         if data.private_seqNum <= 0:
             raise ValueError(f"private_seqNum={data.private_seqNum} must be positive")
-        ack = self.salinfo.makeAckCmd(
+        ack = self.salinfo.make_ackcmd(
             private_seqNum=data.private_seqNum, ack=sal_enums.SalRetCode.CMD_ACK
         )
         self.ack(data, ack)
@@ -194,7 +203,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 elif identity in self.salinfo.non_authorized_cscs:
                     auth_error = f"CSC identity {identity!r} in {self.salinfo.non_authorized_cscs}"
                 if auth_error is not None:
-                    ack = self.salinfo.makeAckCmd(
+                    ack = self.salinfo.make_ackcmd(
                         private_seqNum=data.private_seqNum,
                         ack=sal_enums.SalRetCode.CMD_NOPERM,
                         error=1,
@@ -209,19 +218,18 @@ class ControllerCommand(read_topic.ReadTopic):
         try:
             result = self._callback(data)
             if inspect.isawaitable(result):
-                self.ackInProgress(data)
                 ack = await result
             else:
                 ack = result
             if ack is None:
-                ack = self.salinfo.makeAckCmd(
+                ack = self.salinfo.make_ackcmd(
                     private_seqNum=data.private_seqNum,
                     ack=sal_enums.SalRetCode.CMD_COMPLETE,
                     result="Done",
                 )
             self.ack(data, ack)
         except asyncio.CancelledError:
-            ack = self.salinfo.makeAckCmd(
+            ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
                 ack=sal_enums.SalRetCode.CMD_ABORTED,
                 error=1,
@@ -230,7 +238,7 @@ class ControllerCommand(read_topic.ReadTopic):
             )
             self.ack(data, ack)
         except asyncio.TimeoutError:
-            ack = self.salinfo.makeAckCmd(
+            ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
                 ack=sal_enums.SalRetCode.CMD_TIMEOUT,
                 error=1,
@@ -239,7 +247,7 @@ class ControllerCommand(read_topic.ReadTopic):
             )
             self.ack(data, ack)
         except Exception as e:
-            ack = self.salinfo.makeAckCmd(
+            ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
                 ack=sal_enums.SalRetCode.CMD_FAILED,
                 error=1,
