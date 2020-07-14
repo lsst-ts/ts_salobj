@@ -26,7 +26,6 @@ import concurrent
 import logging
 import os
 import time
-import warnings
 
 import dds
 import ddsutil
@@ -334,15 +333,6 @@ class SalInfo:
         if len(self.command_names) == 0:
             raise RuntimeError("This component has no commands, so no ackcmd topic")
         return self._ackcmd_type.topic_data_class
-
-    @property
-    def idl_loc(self):
-        """Path to the IDL file for this SAL component; a `pathlib.Path`.
-
-        Deprecated; use ``metadata.idl_path`` instead.
-        """
-        warnings.warn("Use salinfo.metadata.idl_path instead", DeprecationWarning)
-        return self.metadata.idl_path
 
     @property
     def name_index(self):
