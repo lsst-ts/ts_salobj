@@ -186,7 +186,7 @@ class SalInfoTestCase(asynctest.TestCase):
             # Use all defaults
             seqNum = 55
             ack = salobj.SalRetCode.CMD_COMPLETE
-            ackcmd = salinfo.makeAckCmd(private_seqNum=seqNum, ack=ack)
+            ackcmd = salinfo.make_ackcmd(private_seqNum=seqNum, ack=ack)
             self.assertEqual(ackcmd.private_seqNum, seqNum)
             self.assertEqual(ackcmd.ack, ack)
             self.assertEqual(ackcmd.error, 0)
@@ -199,7 +199,7 @@ class SalInfoTestCase(asynctest.TestCase):
                     ack = salobj.SalRetCode.CMD_FAILED
                     error = 127
                     result = "why not?"
-                    ackcmd = salinfo.makeAckCmd(
+                    ackcmd = salinfo.make_ackcmd(
                         private_seqNum=seqNum,
                         ack=ack,
                         error=error,
@@ -217,14 +217,14 @@ class SalInfoTestCase(asynctest.TestCase):
             error = 127
             result = "a" * (salobj.MAX_RESULT_LEN + 5)
             with self.assertRaises(ValueError):
-                salinfo.makeAckCmd(
+                salinfo.make_ackcmd(
                     private_seqNum=seqNum,
                     ack=ack,
                     error=error,
                     result=result,
                     truncate_result=False,
                 )
-            ackcmd = salinfo.makeAckCmd(
+            ackcmd = salinfo.make_ackcmd(
                 private_seqNum=seqNum,
                 ack=ack,
                 error=error,
@@ -246,7 +246,7 @@ class SalInfoTestCase(asynctest.TestCase):
             with self.assertRaises(RuntimeError):
                 salinfo.AckCmdType
             with self.assertRaises(RuntimeError):
-                salinfo.makeAckCmd(
+                salinfo.make_ackcmd(
                     private_seqNum=1, ack=salobj.SalRetCode.CMD_COMPLETE, result="Done"
                 )
 

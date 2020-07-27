@@ -68,7 +68,7 @@ class BasicsTestCase(asynctest.TestCase):
             result = "a result"
             err = salobj.AckError(
                 "a message",
-                ackcmd=salinfo.makeAckCmd(
+                ackcmd=salinfo.make_ackcmd(
                     private_seqNum=private_seqNum, ack=ack, error=error, result=result
                 ),
             )
@@ -94,20 +94,20 @@ class BasicsTestCase(asynctest.TestCase):
                 with salobj.assertRaisesAckError(ack=5):
                     raise salobj.AckError(
                         "mismatched ack",
-                        ackcmd=salinfo.makeAckCmd(private_seqNum=1, ack=1),
+                        ackcmd=salinfo.make_ackcmd(private_seqNum=1, ack=1),
                     )
 
             with self.assertRaises(AssertionError):
                 with salobj.assertRaisesAckError(error=47):
                     raise salobj.AckError(
                         "mismatched error",
-                        ackcmd=salinfo.makeAckCmd(private_seqNum=2, ack=25, error=2),
+                        ackcmd=salinfo.make_ackcmd(private_seqNum=2, ack=25, error=2),
                     )
 
             with salobj.assertRaisesAckError():
                 raise salobj.AckError(
                     "no ack or error specified",
-                    ackcmd=salinfo.makeAckCmd(private_seqNum=3, ack=1, error=2),
+                    ackcmd=salinfo.make_ackcmd(private_seqNum=3, ack=1, error=2),
                 )
 
             result = "result for this exception"
@@ -115,7 +115,7 @@ class BasicsTestCase(asynctest.TestCase):
             with salobj.assertRaisesAckError(ack=1, error=2, result_contains=result):
                 raise salobj.AckError(
                     "match ack, error and full result",
-                    ackcmd=salinfo.makeAckCmd(
+                    ackcmd=salinfo.make_ackcmd(
                         private_seqNum=4, ack=1, error=2, result=result
                     ),
                 )
@@ -125,7 +125,7 @@ class BasicsTestCase(asynctest.TestCase):
             ):
                 raise salobj.AckError(
                     "match ack, error and a substring of result",
-                    ackcmd=salinfo.makeAckCmd(
+                    ackcmd=salinfo.make_ackcmd(
                         private_seqNum=4, ack=1, error=2, result=result
                     ),
                 )
@@ -141,7 +141,7 @@ class BasicsTestCase(asynctest.TestCase):
             result = "a result"
             err = salobj.AckError(
                 msg,
-                ackcmd=salinfo.makeAckCmd(
+                ackcmd=salinfo.make_ackcmd(
                     private_seqNum=private_seqNum, ack=ack, error=error, result=result
                 ),
             )
@@ -190,14 +190,14 @@ class BasicsTestCase(asynctest.TestCase):
             )
             self.assertGreater(len(long_result), salobj.MAX_RESULT_LEN)
             with self.assertRaises(ValueError):
-                salinfo.makeAckCmd(
+                salinfo.make_ackcmd(
                     private_seqNum=1,
                     ack=ack,
                     error=error,
                     result=long_result,
                     truncate_result=False,
                 )
-            ackcmd = salinfo.makeAckCmd(
+            ackcmd = salinfo.make_ackcmd(
                 private_seqNum=2,
                 ack=ack,
                 error=error,

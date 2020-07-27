@@ -43,7 +43,7 @@ setuptools.setup(
     packages=setuptools.find_namespace_packages(where="python"),
     package_data={"": ["*.rst", "*.yaml"]},
     data_files=[(os.path.join(data_files_path, "schema"), ["schema/Test.yaml"])],
-    scripts=["bin/purge_topics.py", "bin/run_test_csc.py"],
+    scripts=["bin/run_test_csc.py", "bin/zrun_test_commander.py"],
     tests_require=tests_require,
     extras_require={"dev": dev_requires},
     license="GPL",

@@ -121,6 +121,7 @@ class SALPYTestCase(asynctest.TestCase):
                 while True:
                     response_id = manager.getResponse_setLogLevel(ack_data)
                     if response_id == cmd_id:
+                        self.assertEqual(ack_data.identity, f"Test:{self.index}")
                         if ack_data.ack == SALPY_Test.SAL__CMD_COMPLETE:
                             return ack_data
                         elif ack_data.ack in done_ack_codes:

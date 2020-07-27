@@ -20,6 +20,12 @@ Backward Incompatible Changes:
 * Removed deprecated support for setting ``BaseCsc.summary_state`` directly.
   To transition your CSC to a FAULT state call the `BaseCsc.fault` method.
   Unit tests may call the `set_summary_state` function or issue the usual state transition commands.
+* Renamed `ControllerCommand.ackInProgress` to `ControllerCommand.ack_in_progress` and added a required `timeout` argument.
+* Commands are no longer acknowledged with ``CMD_INPROGRESS`` if the do_xxx callback function is asynchronous.
+  This was needlessly chatty.
+  Instead users are expected to issue such an ack manually (e.g. by calling `topics.ControllerCommand.ack_in_progress`) when beginning to execute a command that will take significant time before it is reported as ``CMD_COMPLETE``.
+* Renamed `SalInfo.makeAckCmd` to `SalInfo.make_ackcmd`.
+* Removed the deprecated `SalInfo.idl_loc` property; use ``SalInfo.metadata.idl_path`` instead.
 * Removed ``bin/purge_topics.py`` command-line script, because it is no longer needed.
 
 Changes:
@@ -27,8 +33,11 @@ Changes:
 * Implemented authorization support.
   This version will communicate with ts_sal 4.2 and ts_salobj 5, but authorization support will be limited until the whole system uses ts_sal 5 and ts_salobj 6.
 * Added the `get_opensplice_version` function.
+* If a command is acknowledged with ``CMD_INPROGRESS`` then the command timeout is extended by the ``timeout`` value in the acknowledgement.
+  Thus a slow command will need a long timeout as long as command issues a ``CMD_INPROGRESS`` acknowledgement with a reasonable ``timeout`` value.
 * Environment variable ``LSST_DDS_IP`` is no longer used.
 * The ``private_host`` field of DDS topics is no longer read nor set.
+* Update ``Jenkinsfile`` to disable concurrent builds and clean up old log files.
 
 v5.17.0
 =======

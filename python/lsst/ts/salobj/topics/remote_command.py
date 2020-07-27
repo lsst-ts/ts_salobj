@@ -25,6 +25,7 @@ import asyncio
 import collections
 import logging
 import random
+import time
 
 from .. import base
 from .. import sal_enums
@@ -80,7 +81,7 @@ class _CommandInfo:
         self.wait_done = bool(wait_done)
 
         self._wait_task = asyncio.Future()
-        self._next_ack_task = asyncio.Future()
+        self._next_ack_event = asyncio.Event()
 
         self.done_ack_codes = frozenset(
             (
@@ -120,8 +121,6 @@ class _CommandInfo:
         """Report command as aborted. Ignored if already done."""
         if not self._wait_task.done():
             self._wait_task.cancel()
-        if not self._next_ack_task.done():
-            self._next_ack_task.cancel()
 
     def add_ackcmd(self, ackcmd):
         """Add a command acknowledgement to the queue.
@@ -139,11 +138,10 @@ class _CommandInfo:
         # print(f"add_ackcmd; ackcmd.ack={ackcmd.ack}")
         isdone = ackcmd.ack in self.done_ack_codes
         self._ack_queue.append(ackcmd)
-        if not self._next_ack_task.done():
-            self._next_ack_task.set_result(None)
+        self._next_ack_event.set()
         return isdone
 
-    async def next_ackcmd(self, timeout):
+    async def next_ackcmd(self, timeout=DEFAULT_TIMEOUT):
         """Get next command acknowledgement of interest.
 
         If ``wait_done`` true then return the final command acknowledgement,
@@ -154,8 +152,15 @@ class _CommandInfo:
         Parameters
         ----------
         timeout : `float`, optional
-            Timeout in seconds. If the next command acknowledgement
-            does not arrive in time then raise `AckTimeoutError`.
+            Time limit, in seconds. If None then use ``DEFAULT_TIMEOUT``.
+            This time limit is for the entire command if ``wait_done``
+            is true, else it is for the first acknowledgement
+            after the initial ``CMD_ACK``.
+            If the command is acknowledged with ``CMD_INPROGRESS`` then the
+            timeout is extended by the timeout value in the acknowledgement.
+            Thus a slow command will not need a long timeout, so long as
+            the command issues a ``CMD_INPROGRESS`` acknowledgement
+            with a reasonable ``timeout`` value.
 
         Returns
         -------
@@ -169,20 +174,19 @@ class _CommandInfo:
         AckError
             If the command fails.
         """
-        if timeout is None:  # for backwards compatibility
+        if timeout is None:  # For backwards compatibility.
             timeout = DEFAULT_TIMEOUT
         try:
             self._wait_task = asyncio.ensure_future(
-                asyncio.wait_for(self._basic_next_ack(), timeout=timeout)
+                self._basic_next_ackcmd(timeout=timeout)
             )
             ackcmd = await self._wait_task
-            # print(f"next_ackcmd got {ackcmd.ack} from _basic_next_ack")
             if ackcmd.ack in self.failed_ack_codes:
                 raise base.AckError(msg="Command failed", ackcmd=ackcmd)
             return ackcmd
         except asyncio.TimeoutError:
             if self._last_ackcmd is None:
-                last_ackcmd = self.remote_command.salinfo.makeAckCmd(
+                last_ackcmd = self.remote_command.salinfo.make_ackcmd(
                     private_seqNum=self.seq_num,
                     ack=sal_enums.SalRetCode.CMD_NOACK,
                     result="No command acknowledgement seen",
@@ -196,16 +200,28 @@ class _CommandInfo:
                 msg="Timed out waiting for command acknowledgement", ackcmd=last_ackcmd
             )
 
-    async def _basic_next_ack(self):
-        """Get the next command acknowledgment of interest.
+    async def _basic_next_ackcmd(self, timeout):
+        """Basic implementation of next_ackcmd.
+        """
+        t0 = time.monotonic()
+        elapsed_time = 0
+        while True:
+            ackcmd = await asyncio.wait_for(
+                self._get_next_ackcmd(), timeout=timeout - elapsed_time
+            )
+            if not self.wait_done or ackcmd.ack in self.done_ack_codes:
+                return ackcmd
+            if ackcmd.ack == sal_enums.SalRetCode.CMD_INPROGRESS:
+                timeout += ackcmd.timeout
+            elapsed_time = time.monotonic() - t0
 
-        Implements `next_ackcmd` but does not interpret the result
-        beyond ignoring acks that are not of interest.
+    async def _get_next_ackcmd(self):
+        """Get the next cmdack sample.
 
         Returns
         -------
         ackcmd : `SalInfo.AckCmdType`
-            Next command acknowledgement of interest.
+            Next ackcmd sample.
         """
         # note: set self._last_ackcmd here instead of in add_ackcmd
         # because it reduces or eliminates a race condition where a new
@@ -214,19 +230,17 @@ class _CommandInfo:
             while self._ack_queue:
                 ackcmd = self._ack_queue.popleft()
                 self._last_ackcmd = ackcmd
-                if not self.wait_done or ackcmd.ack in self.done_ack_codes:
-                    return ackcmd
-            self._next_ack_task = asyncio.Future()
-            await self._next_ack_task
+                return ackcmd
+            await self._next_ack_event.wait()
+            self._next_ack_event.clear()
             ackcmd = self._ack_queue.popleft()
             self._last_ackcmd = ackcmd
-            if not self.wait_done or ackcmd.ack in self.done_ack_codes:
-                return ackcmd
+            return ackcmd
 
     def __del__(self):
-        for task_name in ("_wait_task", "_next_ack_task"):
+        for task_name in ("_wait_task",):
             task = getattr(self, task_name, None)
-            if task is not None and not task.done():
+            if task is not None:
                 task.cancel()
 
     def __repr__(self):
@@ -277,10 +291,10 @@ class RemoteCommand(write_topic.WriteTopic):
             The command acknowledgement returned by
             the previous wait (e.g. from `start`).
         timeout : `float`, optional
-            Time limit, in seconds. If None then no time limit.
+            Time limit, in seconds. If None then use ``DEFAULT_TIMEOUT``.
             This time limit is for the entire command if wait_done
             is true, else it is for the first acknowledgement
-            after the initial "SAL__CMD_ACK".
+            after the initial "CMD_ACK".
         wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
             If False then wait until the next command acknowledgement;
@@ -349,14 +363,19 @@ class RemoteCommand(write_topic.WriteTopic):
         Parameters
         ----------
         timeout : `float`, optional
-            Time limit, in seconds. If None then no time limit.
-            This time limit is for the entire command if wait_done
+            Time limit, in seconds. If None then use ``DEFAULT_TIMEOUT``.
+            This time limit is for the entire command if ``wait_done``
             is true, else it is for the first acknowledgement
-            after the initial "SAL__CMD_ACK".
+            after the initial ``CMD_ACK``.
+            If the command is acknowledged with ``CMD_INPROGRESS`` then the
+            timeout is extended by the timeout value in the acknowledgement.
+            Thus a slow command will not need a long timeout, so long as
+            the command issues a ``CMD_INPROGRESS`` acknowledgement
+            with a reasonable ``timeout`` value.
         wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
             If False then wait for the first acknowledgement after the
-            initial "SAL__CMD_ACK"; if that acknowledgement is not final
+            initial "CMD_ACK"; if that acknowledgement is not final
             (the ack code is not in done_ack_codes), then you will almost
             certainly want to await `next_ackcmd`.
         **kwargs : `dict` [`str`, ``any``]
@@ -389,14 +408,19 @@ class RemoteCommand(write_topic.WriteTopic):
         data : ``self.DataType``, optional
             Command data. If None then send the current data.
         timeout : `float`, optional
-            Time limit, in seconds. If None then no time limit.
-            This time limit is for the entire command if wait_done
+            Time limit, in seconds. If None then use ``DEFAULT_TIMEOUT``.
+            This time limit is for the entire command if ``wait_done``
             is true, else it is for the first acknowledgement
-            after the initial "SAL__CMD_ACK".
+            after the initial ``CMD_ACK``.
+            If the command is acknowledged with ``CMD_INPROGRESS`` then the
+            timeout is extended by the timeout value in the acknowledgement.
+            Thus a slow command will not need a long timeout, so long as
+            the command issues a ``CMD_INPROGRESS`` acknowledgement
+            with a reasonable ``timeout`` value.
         wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
             If False then wait for the first acknowledgement after the
-            initial "SAL__CMD_ACK"; if that acknowledgement is not final
+            initial "CMD_ACK"; if that acknowledgement is not final
             (the ack code is not in done_ack_codes), then you will almost
             certainly want to await `next_ackcmd`.
 

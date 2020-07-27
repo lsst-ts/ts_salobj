@@ -154,13 +154,16 @@ class TestCsc(ConfigurableCsc):
         self.fault(code=1, report="executing the fault command")
 
     async def do_wait(self, data):
-        """Execute the wait command.
+        """Execute the wait command by waiting for the specified duration.
 
-        Wait for the specified time and then acknowledge the command
-        using the specified ack code.
+        If duration is negative then wait for abs(duration) but do not
+        acknowledge the command as "in progress". This is useful for
+        testing command timeout.
         """
         self.assert_enabled()
-        await asyncio.sleep(data.duration)
+        if data.duration >= 0:
+            self.cmd_wait.ack_in_progress(data, timeout=data.duration)
+        await asyncio.sleep(abs(data.duration))
 
     @property
     def field_type(self):
