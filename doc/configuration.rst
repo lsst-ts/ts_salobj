@@ -43,6 +43,7 @@ Used by `SalInfo`:
 * ``LSST_DDS_DOMAIN`` (required): the DDS partition name (*not* the DDS domain, despite the name).
   This is read by `SalInfo` so that different instances of `SalInfo` can communicate with different DDS partitions, even though all share the same `Domain`.
 * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec) for waiting for historical (late-joiner) data.
+  If, and only if, you are running DDS without a durability service then set this negative to avoid waiting for historical data.
 
 Used by `AsyncS3Bucket`:
 

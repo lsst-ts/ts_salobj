@@ -218,6 +218,11 @@ class SalInfo:
         self.index = 0 if index is None else int(index)
         self.start_called = False
 
+        # Dict of SAL topic name: wait_for_historical_data succeeded
+        # for each topic for which wait_for_historical_data was called.
+        # This is primarily intended for unit tests.
+        self.wait_history_isok = dict()
+
         # Create the publisher and subscriber. Both depend on the DDS
         # partition, and so are created here instead of in Domain,
         # where most similar objects are created.
@@ -550,7 +555,7 @@ class SalInfo:
                     self.log.warning(f"Could not read historical data in {dt:0.2f} sec")
 
                 # read historical (late-joiner) data
-                for read_cond, reader in list(self._readers.items()):
+                for read_cond, reader in self._readers.items():
                     if not self.isopen:  # shutting down
                         return
                     if (
@@ -690,17 +695,23 @@ class SalInfo:
             time_limit = DEFAULT_LSST_DDS_HISTORYSYNC
         else:
             time_limit = float(time_limit)
+        if time_limit < 0:
+            self.log.info(
+                f"Time limit {time_limit} < 0; not waiting for historical data"
+            )
+            return True
         wait_timeout = dds.DDSDuration(sec=time_limit)
         num_ok = 0
         num_checked = 0
         t0 = time.monotonic()
-        for reader in list(self._readers.values()):
+        for reader in self._readers.values():
             if not self.isopen:  # shutting down
                 return False
             if reader.volatile or not reader.isopen:
                 continue
             num_checked += 1
             isok = reader._reader.wait_for_historical_data(wait_timeout)
+            self.wait_history_isok[reader.sal_name] = isok
             if isok:
                 num_ok += 1
             elapsed_time = time.monotonic() - t0
