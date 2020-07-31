@@ -443,13 +443,23 @@ help  # print this help
                 self.remote.evt_summaryState.callback = summary_state_callback
 
     @classmethod
-    async def amain(cls, **kwargs):
+    async def amain(cls, *, index, **kwargs):
         """Construct the commander and run it.
 
         Parse the command line to construct the commander,
         then parse and execute commands until the ``exit`` is seen.
+
+        Parameters
+        ----------
+        index : `int`, `True`, `False` or `None`
+            If the CSC is indexed: specify `True` make index a required
+            command line argument, or specify a non-zero `int` to use
+            that index.
+            If the CSC is not indexed: specify `None` or 0.
+        **kwargs : `dict`, optional
+            Additional keyword arguments for your CSC's constructor.
         """
-        self = cls.make_from_cmd_line(**kwargs)
+        self = cls.make_from_cmd_line(index=index, **kwargs)
         try:
             await self.start()
 
@@ -529,8 +539,6 @@ help  # print this help
             If the SAL component is not indexed: specify `None` or 0.
         **kwargs : `dict`, optional
             Additional keyword arguments for your class's constructor.
-            If any arguments match those from the command line
-            the command line values will be used.
 
         Returns
         -------
