@@ -133,9 +133,13 @@ class CscCommander:
       array arguments. It can also be useful for adding a custom command,
       such as a command to execute a tracking sequence.
       If you define a do_<command_name> method then also add an entry
-      to ``help_dict``, where: the key is the command name
-      and the value should be a brief (preferably only one line) help string
-      that lists the arguments first and possibly a brief description after.
+      to ``help_dict``. The key is the command name and the value should be
+      a brief (preferably only one line) help string that lists the arguments
+      first, and a brief description after. Here is an example::
+
+        self.help_dict["sine"] = "start_position amplitude "
+        "# track one cycle of a sine wave",
+
     * evt_<event_name>_callback overrides handling data for the specified
       event (usually this just mean printing the data).
       It receives one argument: the DDS sample.
@@ -143,6 +147,11 @@ class CscCommander:
       telemetry topic (usually this just involves printing the data).
       It receives one argument: the DDS sample.
       This can be useful if the default is too chatty.
+    * Hide unwanted commands by deleting them from ``self.command_dict``
+      in your constructor. The following is appropriate for most CSCs::
+
+        for command_to_ignore in ("abort", "enterControl", "setValue"):
+            del self.command_dict(command_to_ignore)
 
     I have not found a way to write a unit test for this class.
     I tried running a commander in a subprocess but could not figure out
