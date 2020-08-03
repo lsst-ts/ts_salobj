@@ -32,6 +32,8 @@ Changes:
 
 * Implemented authorization support.
   This version will communicate with ts_sal 4.2 and ts_salobj 5, but authorization support will be limited until the whole system uses ts_sal 5 and ts_salobj 6.
+* Added support for running without a durability service:
+  set environment variable ``LSST_DDS_HISTORYSYNC`` to a negative value to prevent waiting for historical data.
 * Added the `get_opensplice_version` function.
 * If a command is acknowledged with ``CMD_INPROGRESS`` then the command timeout is extended by the ``timeout`` value in the acknowledgement.
   Thus a slow command will need a long timeout as long as command issues a ``CMD_INPROGRESS`` acknowledgement with a reasonable ``timeout`` value.

@@ -19,12 +19,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import asyncio
+import os
 import unittest
 
 import asynctest
 import numpy as np
 
 from lsst.ts import salobj
+
+# Long enough to perform any reasonable operation
+# including starting a CSC or loading a script (seconds)
+STD_TIMEOUT = 60
+
+HISTORY_TIMEOUT_NAME = "LSST_DDS_HISTORYSYNC"
+INITIAL_HISTORY_TIMEOUT = os.environ.get(HISTORY_TIMEOUT_NAME, None)
 
 np.random.seed(47)
 
@@ -230,6 +239,39 @@ class RemoteTestCase(asynctest.TestCase):
         async with salobj.Domain() as domain:
             remote = salobj.Remote(domain=domain, name="Test", index=index, start=False)
             self.assertFalse(hasattr(remote, "start_task"))
+
+    @unittest.skipIf(
+        INITIAL_HISTORY_TIMEOUT is not None and float(INITIAL_HISTORY_TIMEOUT) < 0,
+        f"${HISTORY_TIMEOUT_NAME}={INITIAL_HISTORY_TIMEOUT} < 0",
+    )
+    async def test_negative_lsst_dds_historysync(self):
+        """Test that setting LSST_DDS_HISTORYSYNC < 0
+        prevents waiting for historical data.
+
+        This setting applies to SalInfo, not Remote,
+        but it requires some topics in order to be tested,
+        and Remote provides topics.
+        """
+        index = next(index_gen)
+        async with salobj.Domain() as domain:
+            # Make a normal remote that waits for historical data.
+            remote1 = salobj.Remote(domain=domain, name="Test", index=index)
+            await asyncio.wait_for(remote1.start_task, timeout=STD_TIMEOUT)
+            self.assertGreater(len(remote1.salinfo.wait_history_isok), 0)
+
+            # Make a remote that does not wait for historical data
+            # by defining the history timeout env variable < 0.
+            os.environ[HISTORY_TIMEOUT_NAME] = "-1"
+            try:
+                remote2 = salobj.Remote(domain=domain, name="Test", index=index)
+                await asyncio.wait_for(remote2.start_task, timeout=STD_TIMEOUT)
+            finally:
+                if INITIAL_HISTORY_TIMEOUT is None:
+                    del os.environ[HISTORY_TIMEOUT_NAME]
+                else:
+                    os.environ[HISTORY_TIMEOUT_NAME] = INITIAL_HISTORY_TIMEOUT
+
+            self.assertEqual(len(remote2.salinfo.wait_history_isok), 0)
 
 
 if __name__ == "__main__":
