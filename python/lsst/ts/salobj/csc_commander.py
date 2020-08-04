@@ -78,9 +78,16 @@ def round_any(value, digits=4):
     """Round any value to the specified number of digits.
 
     This is a no-op for int and str values.
+
+    Notes
+    -----
+    This is designed for use with DDS samples. As such, it expects
+    array values to be of type `list`.
     """
     if isinstance(value, float):
         return round(value, digits)
+    elif value and isinstance(value, list) and isinstance(value[0], float):
+        return [round(item, digits) for item in value]
     return value
 
 
@@ -99,8 +106,9 @@ class CscCommander:
     fields_to_ignore : `List` [`str`], optional
         SAL topic fields to ignore when specifying command parameters,
         and when printing events and telemetry.
-    enable : `bool`
+    enable : `bool`, optional
         Enable the CSC (when the commander starts up)?
+        Note: `amain` always supplies this argument.
 
     Attributes
     ----------
@@ -124,40 +132,69 @@ class CscCommander:
     that runs a commander, consider picking a name that is obscure
     and not easily confused with the script that runs the CSC.
 
+    Make a subclass of `CscCommander` if you want to add extra commands
+    or provide special handling for some commands, events or telemetry.
     Subclasses may provide overrides as follows:
 
-    * ``do_<command_name>`` override handling a standard command
-      (one defined in the XML), or add a new command.
-      The method receives one argument: a list of arguments, each a string.
-      You must provide such a method for any standard command that takes
-      array arguments. It can also be useful for adding a custom command,
-      such as a command to execute a tracking sequence.
-      If you define a do_<command_name> method then also add an entry
-      to ``help_dict``, where: the key is the command name
-      and the value should be a brief (preferably only one line) help string
-      that lists the arguments first and possibly a brief description after.
-    * evt_<event_name>_callback overrides handling data for the specified
-      event (usually this just mean printing the data).
-      It receives one argument: the DDS sample.
-    * tel_<event_name>_callback overrides handling data for the specified
-      telemetry topic (usually this just involves printing the data).
-      It receives one argument: the DDS sample.
-      This can be useful if the default is too chatty.
+    * To hide unwanted commands: delete them from ``self.command_dict``
+      in your constructor. Most CSCs should hide the "abort", "enterControl"
+      and "setValue" commands, as follows::
+
+        for command_to_ignore in ("abort", "enterControl", "setValue"):
+            del self.command_dict(command_to_ignore)
+
+    * To override handling of a standard command (one defined in the XML):
+      define a ``do_<command_name>`` method.
+      The method receives one argument: a list of str arguments.
+      You should provide a custom handler for, or hide, any command with
+      array parameters, because the command parser only accepts scalars.
+
+    * To add an additional command (one not defined in the XML):
+
+        * Define a  ``do_<command_name>`` to handle the command.
+          The method receives one argument: a list of str arguments.
+
+        * Add an entry to ``help_dict``. The key is the command name
+          and the value is a brief (preferably only one line) help string
+          that lists the arguments first, and a brief description after.
+          Here is an example::
+
+            self.help_dict["sine"] = "start_position amplitude "
+            "# track one cycle of a sine wave",
+
+    * To override handling of an event or telemetry topic: define method
+      ``evt_<event_name>_callback`` or ``tel_<event_name>_callback``,
+      respectively.  It receives one argument: the DDS sample.
+      This can be especially useful if the default behavior is too chatty
+      for one or more telemetry topics.
 
     I have not found a way to write a unit test for this class.
     I tried running a commander in a subprocess but could not figure out
     how to send multiple commands (the ``suprocess.communicate``
     method only allows sending one item of data).
     Instead I suggest manually running it to control the Test CSC.
+
+    Examples
+    --------
+
+    If the default behavior suffices, all you need is a command-line script
+    such as the following::
+
+        import asyncio
+        from lsst.ts import salobj
+        asyncio.run(salobj.CscCommander.amain(name="Test", index=True))
+
+    For an example with extra commands and special telemetry handling,
+    see ``RotatorCommander`` in the ts_rotator package.
     """
 
     def __init__(
         self,
         name,
         index=0,
+        enable=False,
         exclude=None,
         fields_to_ignore=("ignored", "value", "priority"),
-        enable=False,
     ):
         self.domain = domain.Domain()
         self.remote = remote.Remote(
@@ -257,11 +294,11 @@ help  # print this help
             if self.field_is_public(key)
         )
 
-    def get_rounded_public_fields(self, data):
+    def get_rounded_public_fields(self, data, digits=4):
         """Get the public fields for a sample, with float values rounded.
         """
         return {
-            key: round_any(value)
+            key: round_any(value, digits=digits)
             for key, value in data.get_vars().items()
             if self.field_is_public(key)
         }
@@ -443,13 +480,23 @@ help  # print this help
                 self.remote.evt_summaryState.callback = summary_state_callback
 
     @classmethod
-    async def amain(cls, **kwargs):
+    async def amain(cls, *, index, **kwargs):
         """Construct the commander and run it.
 
         Parse the command line to construct the commander,
         then parse and execute commands until the ``exit`` is seen.
+
+        Parameters
+        ----------
+        index : `int`, `True`, `False` or `None`
+            If the CSC is indexed: specify `True` make index a required
+            command line argument, or specify a non-zero `int` to use
+            that index.
+            If the CSC is not indexed: specify `None` or 0.
+        **kwargs : `dict`, optional
+            Additional keyword arguments for your CSC's constructor.
         """
-        self = cls.make_from_cmd_line(**kwargs)
+        self = cls.make_from_cmd_line(index=index, **kwargs)
         try:
             await self.start()
 
@@ -529,8 +576,6 @@ help  # print this help
             If the SAL component is not indexed: specify `None` or 0.
         **kwargs : `dict`, optional
             Additional keyword arguments for your class's constructor.
-            If any arguments match those from the command line
-            the command line values will be used.
 
         Returns
         -------

@@ -156,8 +156,6 @@ class BaseCsc(Controller):
             If the CSC is not indexed: specify `None` or 0.
         **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
-            If any arguments match those from the command line
-            the command line values will be used.
 
         Returns
         -------
@@ -198,8 +196,6 @@ class BaseCsc(Controller):
             If the CSC is not indexed: specify `None` or 0.
         **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
-            If any arguments match those from the command line
-            the command line values will be used.
         """
         csc = cls.make_from_cmd_line(index=index, **kwargs)
         await csc.done_task
