@@ -32,6 +32,7 @@ Changes:
 
 * Implemented authorization support.
   This version will communicate with ts_sal 4.2 and ts_salobj 5, but authorization support will be limited until the whole system uses ts_sal 5 and ts_salobj 6.
+* `CscCommander` now rounds float arrays when displaying events and telemetry (it already rounded float scalars).
 * Added support for running without a durability service:
   set environment variable ``LSST_DDS_HISTORYSYNC`` to a negative value to prevent waiting for historical data.
 * Added the `get_opensplice_version` function.
