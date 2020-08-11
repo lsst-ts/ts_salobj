@@ -25,13 +25,13 @@ Used by `Vortex OpenSplice`_, and thus indirectly by `Domain`:
 * ``OSPL_MASTER_PRIORITY`` (optional) is used to set the Master Priority in ts_sal 4.2 and later.
   Nodes with higher Master Priority are more eager to become master (the primary source of late joiner data).
   Ties are broken by systemId, a random number handed out when a node is created.
-  Every time a new node takes over as master, the entire system is must be "aligned", which is expensive.
-  So it is best to assign the highest Master Priority to one of nodes that will be created early.
-  Valid values are 0-256.
-  0 is used for Scripts, because they should never be master.
-  256 means "use the legacy method for choosing the master".
-  A default value is used if this environment variable is not specified.
-  That default is guaranteed to be >0 and <255.
+  Every time a new node takes over as master, the entire system is must be "aligned", which is expensive,
+  so it is best to assign the highest Master Priority to one of nodes that will be created early.
+  Valid values are 0-255.
+  0 is used for SAL Scripts, because they should never be master.
+  256 means "use the legacy method for choosing the master"; do not use it.
+  A default value is used if this environment variable is not specified,
+  and that default is guaranteed to be >0 and <255.
   Unlike the others in this section, ``OSPL_MASTER_PRIORITY`` is specific to Vera Rubin Observatory.
   If supported (ts_sal 4.2 and later), it will be part of the OpenSplice configuration file pointed to ``OSPL_URI``.
   Constant ``lsst.ts.salobj.MASTER_PRIORITY_ENV_VAR`` is available to make this easier to set from Python.
