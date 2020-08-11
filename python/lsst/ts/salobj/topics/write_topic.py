@@ -105,12 +105,7 @@ class WriteTopic(BaseTopic):
 
     @property
     def data(self):
-        """Get or set internally cached data.
-
-        Parameters
-        ----------
-        data : `DataType`
-            New data.
+        """Internally cached message.
 
         Raises
         ------
@@ -119,8 +114,8 @@ class WriteTopic(BaseTopic):
 
         Notes
         -----
-        You must not modify the returned data, nor assume that it will be
-        constant. If you need a copy then make it yourself.
+        Do not assume the data will be constant. You can make a copy
+        using ``copy.copy(data)``.
         """
         return self._data
 
@@ -153,7 +148,7 @@ class WriteTopic(BaseTopic):
         Parameters
         ----------
         data : ``self.DataType`` or `None`
-            New data to replace ``self.data``, if any.
+            New message data to replace ``self.data``, if any.
         priority : `int`, optional
             Priority; used to set the priority field of events.
             Ignored for commands and telemetry.
@@ -196,7 +191,7 @@ class WriteTopic(BaseTopic):
             ) from e
 
     def set(self, **kwargs):
-        """Set one or more fields of ``self.data``.
+        """Set one or more fields of message data cache ``self.data``.
 
         Parameters
         ----------
@@ -212,7 +207,8 @@ class WriteTopic(BaseTopic):
         Returns
         -------
         did_change : `bool`
-            True if data was changed or if this was the first call to `set`.
+            True if ``self.data`` was changed, or if this was the first call
+            to `set`.
 
         Raises
         ------
@@ -223,7 +219,8 @@ class WriteTopic(BaseTopic):
 
         Notes
         -----
-        If one or more fields cannot be set, the data may be partially updated.
+        If one or more fields cannot be set, the message data may be
+        partially updated.
         """
         did_change = not self.has_data
         for field_name, value in kwargs.items():

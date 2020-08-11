@@ -44,7 +44,7 @@ class ControllerTelemetry(write_topic.WriteTopic):
         Parameters
         ----------
         data : ``self.DataType``, optional
-            New data to replace ``self.data``, if any.
+            New message data to replace ``self.data``, if any.
 
         Raises
         ------
@@ -65,7 +65,8 @@ class ControllerTelemetry(write_topic.WriteTopic):
         Returns
         -------
         did_change : `bool`
-            True if data was changed or if this was the first call to `set`.
+            True if ``self.data`` was changed, or if this was the first call
+            to `set`.
 
         Raises
         ------

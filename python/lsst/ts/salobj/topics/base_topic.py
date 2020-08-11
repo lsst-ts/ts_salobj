@@ -110,7 +110,8 @@ class BaseTopic(abc.ABC):
 
     @property
     def DataType(self):
-        """The class of data for this topic."""
+        """The type (class) for a message of this topic.
+        """
         return self._type.topic_data_class
 
     @property

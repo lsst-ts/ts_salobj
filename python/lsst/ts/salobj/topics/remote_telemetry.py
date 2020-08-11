@@ -40,12 +40,6 @@ class RemoteTelemetry(read_topic.ReadTopic):
         * 1 is recommended for events and telemetry
     queue_len : `int`
         Number of elements that can be queued for `get_oldest`.
-
-    Notes
-    -----
-    All functions that return data return from an internal cache.
-    This cached value is replaced by all read operations, so as long as
-    no other code modifies the data, the returned data will not change.
     """
 
     def __init__(self, salinfo, name, max_history=1, queue_len=100):
