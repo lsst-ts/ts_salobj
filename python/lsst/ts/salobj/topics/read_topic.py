@@ -170,8 +170,8 @@ class ReadTopic(BaseTopic):
         * 0 is required for commands and the ackcmd reader
         * 1 is recommended for events and telemetry
     queue_len : `int`, optional
-        The maximum number of items that can be read and not dealt with
-        by a callback function or `next` before older data will be dropped.
+        The maximum number of messages that can be read and not dealt with
+        by a callback function or `next` before older messages will be dropped.
     filter_ackcmd : `bool`, optional
         Filter out cmdack topics so we only see responses to commands
         that we sent? This is normally what you want, but it is not wanted
@@ -206,21 +206,31 @@ class ReadTopic(BaseTopic):
     is set by ``queue_len`` and a dds queue whose length is set by
     low level configuration. Data can be lost in two ways:
 
-    - If this class cannot read data from the dds queue fast enough, then
-      older data will be dropped from the dds queue. You will get a warning
-      log message if the reader starts to fall behind.
-    - As data is read it is put on the internal queue. if a callback function
-      or `next` does not process data quickly enough then older data
-      is dropped from the internal queue. If you have a callback function
-      you will get several warning log messages as this internal queue
-      fills up. You get no warning otherwise because this class has no way
-      of knowing whether or not you intend to read all data using `next`.
+    - If this class cannot read messages from the dds queue fast enough,
+      then older messages will be dropped from the dds queue. You will get
+      a warning log message if the reader starts to fall behind.
+    - As messages are read they are put on the internal queue.
+      If a callback function or `next` does not process data quickly enough
+      then older messages are dropped from the internal queue.
+      If you have a callback function then you will get several
+      warning log messages as this internal queue fills up.
+      You get no warning otherwise because this class has no way of knowing
+      whether or not you intend to read all messages.
 
     **Reading**
 
     Reading is performed by the `.SalInfo` which has single read loop that
-    reads all topics. This is more efficient than having each `ReadTopic` read
-    its own data.
+    reads messages for all topics. This is more efficient than having each
+    `ReadTopic` read its own messages.
+
+    **Modifying Messages**
+
+    All functions that return messages return from an internal cache.
+    This cached value is replaced by all read operations. So as long as
+    no other code modifies a message, the returned message will not change.
+
+    To safely modify a returned message, make your own copy
+    with ``copy.copy(data)``.
     """
 
     def __init__(
@@ -315,8 +325,9 @@ class ReadTopic(BaseTopic):
     def callback(self):
         """Callback function, or None if there is not one.
 
-        The callback function is called when new data is received;
-        it receives one argument: the data.
+        The callback function is called when a new message is received;
+        it receives one argument: the message (an object of type
+        `topics.BaseTopic.DataType`).
 
         Raises
         ------
@@ -334,7 +345,7 @@ class ReadTopic(BaseTopic):
 
         `get_oldest` and `next` are prohibited if there is a callback function.
         Technically they could both work, but `get_oldest` would always return
-        `None` and `next` would miss data if it arrived while waiting
+        `None` and `next` would miss messages if they arrived while waiting
         for something else. It seemed safer to just raise an exception.
         """
         return self._callback
@@ -392,7 +403,7 @@ class ReadTopic(BaseTopic):
         self._data_queue.clear()
 
     async def aget(self, timeout=None):
-        """Get the current value, if any, else wait for the next value.
+        """Get the current message, if any, else wait for the next message.
 
         Parameters
         ----------
@@ -402,7 +413,7 @@ class ReadTopic(BaseTopic):
         Returns
         -------
         data : `DataType`
-            The current or next value.
+            The current or next message.
 
         Raises
         ------
@@ -412,8 +423,8 @@ class ReadTopic(BaseTopic):
 
         Notes
         -----
-        Do not modify the returned data. To make a copy that you can modify
-        use ``copy.copy(value)``.
+        Do not modify the returned data. To make a copy that you can
+        safely modify, use ``copy.copy(data)``.
         """
         self.salinfo.assert_started()
         if self.has_callback:
@@ -435,13 +446,13 @@ class ReadTopic(BaseTopic):
         self._data_queue.clear()
 
     def get(self, flush=True):
-        """Get the most recently seen value, or `None` if no data ever seen.
+        """Get the most recently seen message, or `None` if no data ever seen.
 
         Parameters
         ----------
         flush : `bool`, optional
             Flush the queue? Defaults to `True` for backwards compatibility.
-            This only affects the next value returned by `next`
+            This only affects the next message returned by `next`
             and is ignored if there is a callback function.
 
         Returns
@@ -460,13 +471,13 @@ class ReadTopic(BaseTopic):
         return self._current_data
 
     def get_oldest(self):
-        """Pop and return the oldest value from the queue, or `None`
+        """Pop and return the oldest message from the queue, or `None`
         if the queue is empty.
 
         Returns
         -------
         data : ``self.DataType`` or `None`
-            The oldest value found on the queue, if any, else `None`.
+            The oldest message found on the queue, if any, else `None`.
 
         Raises
         ------
@@ -487,13 +498,13 @@ class ReadTopic(BaseTopic):
         return None
 
     async def next(self, *, flush, timeout=None):
-        """Wait for a value, possibly returning the oldest queued value.
+        """Wait for a message, possibly returning the oldest queued message.
 
         Parameters
         ----------
         flush : `bool`
             If True then flush the queue before starting a read.
-            If False then pop and return the oldest value from the queue,
+            If False then pop and return the oldest message from the queue,
             if any, else wait for new data.
         timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
@@ -501,7 +512,7 @@ class ReadTopic(BaseTopic):
         Returns
         -------
         data : `DataType`
-            The data.
+            The message data.
 
         Raises
         ------
@@ -511,8 +522,8 @@ class ReadTopic(BaseTopic):
 
         Notes
         -----
-        Do not modify the returned data. To make a copy that you can modify
-        use ``copy.copy(value)``.
+        Do not modify the returned data. To make a copy that you can
+        safely modify, use ``copy.copy(data)``.
         """
         self.salinfo.assert_started()
         if self.has_callback:
@@ -529,7 +540,7 @@ class ReadTopic(BaseTopic):
         Raises
         ------
         RuntimeError
-            If code is already waiting for the next value.
+            If code is already waiting for the next message.
         """
         self.python_queue_length_checker.check_nitems(len(self._data_queue))
         if self._data_queue:
@@ -573,7 +584,7 @@ class ReadTopic(BaseTopic):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
     def _queue_data(self, data_list):
-        """Queue multiple one or more values.
+        """Queue multiple one or more messages.
 
         This is a no-op if ``data_list`` is empty.
 
@@ -591,13 +602,13 @@ class ReadTopic(BaseTopic):
                 "not setting _next_task done."
             )
         elif not self._next_task.done():
-            oldest_value = self._data_queue.popleft()
-            self._next_task.set_result(oldest_value)
+            oldest_message = self._data_queue.popleft()
+            self._next_task.set_result(oldest_message)
 
     def _queue_one_item(self, data):
-        """Add a single value to the internal queue.
+        """Add a single message to the internal queue.
 
-        Subclasses may override to massage the value before queuing.
+        Subclasses may override to massage the message before queuing.
         `ControllerCommand` does this.
         """
         self._data_queue.append(data)

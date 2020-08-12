@@ -128,7 +128,7 @@ class _CommandInfo:
         Parameters
         ----------
         ackcmd : `SalInfo.AckCmdType`
-            Command acknowledgement data.
+            Command acknowledgement message.
 
         Returns
         -------
@@ -340,7 +340,8 @@ class RemoteCommand(write_topic.WriteTopic):
         Returns
         -------
         did_change : `bool`
-            True if data was changed or if this was the first call to `set`.
+            True if ``self.data`` was changed, or if this was the first call
+            to `set`.
 
         Raises
         ------
@@ -406,7 +407,7 @@ class RemoteCommand(write_topic.WriteTopic):
         Parameters
         ----------
         data : ``self.DataType``, optional
-            Command data. If None then send the current data.
+            Command message. If `None` then send the current ``self.data``.
         timeout : `float`, optional
             Time limit, in seconds. If None then use ``DEFAULT_TIMEOUT``.
             This time limit is for the entire command if ``wait_done``
