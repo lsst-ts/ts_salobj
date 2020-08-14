@@ -41,6 +41,7 @@ Changes:
 * Environment variable ``LSST_DDS_IP`` is no longer used.
 * The ``private_host`` field of DDS topics is no longer read nor set.
 * Update ``Jenkinsfile`` to disable concurrent builds and clean up old log files.
+* Removed the ``.travis.yml`` file because it duplicates testing done in Jenkins.
 
 Requirements:
 
