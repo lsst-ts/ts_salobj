@@ -69,11 +69,7 @@ class SALPYTestCase(asynctest.TestCase):
             print(f"Remote: create salobj remote with index={self.index}")
             t0 = time.monotonic()
             async with salobj.Domain() as domain, salobj.Remote(
-                domain=domain,
-                name="Test",
-                index=self.index,
-                evt_max_history=1,
-                tel_max_history=1,
+                domain=domain, name="Test", index=self.index, evt_max_history=1,
             ) as remote:
                 dt = time.monotonic() - t0
                 print(
@@ -86,7 +82,7 @@ class SALPYTestCase(asynctest.TestCase):
                 print(f"Remote: read initial logLevel.level={data.level}")
                 self.assertEqual(data.level, INITIAL_LOG_LEVEL)
                 print("Remote: wait for initial scalars")
-                data = await remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
+                data = await remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
                 print(f"Remote: read initial scalars.int0={data.int0}")
                 self.assertEqual(data.int0, INITIAL_LOG_LEVEL)
 
@@ -104,7 +100,7 @@ class SALPYTestCase(asynctest.TestCase):
                     print(f"Remote: read logLevel={data.level}")
                     self.assertEqual(data.level, level)
                     print("Remote: wait for scalars")
-                    data = await remote.tel_scalars.next(
+                    data = await remote.evt_scalars.next(
                         flush=False, timeout=STD_TIMEOUT
                     )
                     print(f"Remote: read scalars.int0={data.int0}")

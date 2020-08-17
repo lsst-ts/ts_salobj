@@ -47,7 +47,7 @@ class MinimalSalobjController(salobj.Controller):
         super().__init__(name="Test", index=index, do_callbacks=False)
         self.cmd_setLogLevel.callback = self.do_setLogLevel
         self.evt_logLevel.set(level=initial_log_level)
-        self.tel_scalars.set(int0=initial_log_level)
+        self.evt_scalars.set(int0=initial_log_level)
 
     @classmethod
     def make_from_cmd_line(cls):
@@ -76,7 +76,7 @@ class MinimalSalobjController(salobj.Controller):
             "and the same value in telemetry scalars.int0"
         )
         self.evt_logLevel.put()
-        self.tel_scalars.put()
+        self.evt_scalars.put()
 
     def do_setLogLevel(self, data):
         print(
@@ -89,7 +89,7 @@ class MinimalSalobjController(salobj.Controller):
             "and the same value in telemetry scalars.int0"
         )
         self.evt_logLevel.set_put(level=data.level)
-        self.tel_scalars.set_put(int0=data.level)
+        self.evt_scalars.set_put(int0=data.level)
         if data.level == 0:
             print("SalobjController: quitting")
             asyncio.create_task(self.close())

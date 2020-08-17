@@ -72,7 +72,7 @@ class SALPYTestCase(asynctest.TestCase):
             manager = SALPY_Test.SAL_Test(self.index)
             manager.setDebugLevel(0)
             manager.salEventSub("Test_logevent_logLevel")
-            manager.salTelemetrySub("Test_scalars")
+            manager.salEventSub("Test_logevent_scalars")
             manager.salCommand("Test_command_setLogLevel")
             dt = time.monotonic() - t0
             print(f"Remote: took {dt:0.2f} seconds to create topics")
@@ -88,9 +88,9 @@ class SALPYTestCase(asynctest.TestCase):
                     await asyncio.sleep(0.01)
 
             async def get_scalars():
-                data = SALPY_Test.Test_scalarsC()
+                data = SALPY_Test.Test_logevent_scalarsC()
                 while True:
-                    retcode = manager.getNextSample_scalars(data)
+                    retcode = manager.getEvent_scalars(data)
                     if retcode == SALPY_Test.SAL__OK:
                         return data
                     elif retcode != SALPY_Test.SAL__NO_UPDATES:

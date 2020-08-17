@@ -37,7 +37,7 @@ class MinimalSALPYController:
         self.manager = SALPY_Test.SAL_Test(index)
         self.manager.setDebugLevel(0)
         self.manager.salEventPub("Test_logevent_logLevel")
-        self.manager.salTelemetryPub("Test_scalars")
+        self.manager.salEventPub("Test_logevent_scalars")
         self.manager.salProcessor("Test_command_setLogLevel")
         self.initial_log_level = initial_log_level
 
@@ -63,7 +63,7 @@ class MinimalSALPYController:
     async def run(self):
         setLogLevel_data = SALPY_Test.Test_command_setLogLevelC()
         logLevel_data = SALPY_Test.Test_logevent_logLevelC()
-        scalars_data = SALPY_Test.Test_scalarsC()
+        scalars_data = SALPY_Test.Test_logevent_scalarsC()
         print(
             f"SALPYController: outputting initial logLevel {self.initial_log_level} "
             "and the same value in telemetry scalars.int0"
@@ -71,7 +71,7 @@ class MinimalSALPYController:
         logLevel_data.level = self.initial_log_level
         self.manager.logEvent_logLevel(logLevel_data, 1)
         scalars_data.int0 = self.initial_log_level
-        self.manager.putSample_scalars(scalars_data)
+        self.manager.logEvent_scalars(scalars_data, 1)
 
         while True:
             while True:
@@ -97,7 +97,7 @@ class MinimalSALPYController:
             logLevel_data.level = setLogLevel_data.level
             scalars_data.int0 = setLogLevel_data.level
             self.manager.logEvent_logLevel(logLevel_data, 1)
-            self.manager.putSample_scalars(scalars_data)
+            self.manager.logEvent_scalars(scalars_data, 1)
             await asyncio.sleep(0.001)
             if setLogLevel_data.level == 0:
                 print("SALPYController: quitting")
