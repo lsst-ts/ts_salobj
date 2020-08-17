@@ -55,6 +55,7 @@ class AckCmdReader(read_topic.ReadTopic):
             salinfo=salinfo,
             name="ackcmd",
             sal_prefix="",
+            volatile=True,
             max_history=0,
             queue_len=queue_len,
         )
@@ -258,6 +259,7 @@ class RemoteCommand(write_topic.WriteTopic):
             salinfo=salinfo,
             name=name,
             sal_prefix="command_",
+            volatile=True,
             min_seq_num=min_seq_num,
             max_seq_num=max_seq_num,
             initial_seq_num=initial_seq_num,

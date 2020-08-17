@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import itertools
 import random
 import time
 import unittest
@@ -118,19 +119,22 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
             for cmd_name in salinfo.command_names:
                 cmd = salobj.topics.BaseTopic(
-                    salinfo=salinfo, name=cmd_name, sal_prefix="command_"
+                    salinfo=salinfo, name=cmd_name, sal_prefix="command_", volatile=True
                 )
                 self.assertEqual(cmd.name, cmd_name)
 
             for evt_name in salinfo.event_names:
                 evt = salobj.topics.BaseTopic(
-                    salinfo=salinfo, name=evt_name, sal_prefix="logevent_"
+                    salinfo=salinfo,
+                    name=evt_name,
+                    sal_prefix="logevent_",
+                    volatile=False,
                 )
                 self.assertEqual(evt.name, evt_name)
 
             for tel_name in salinfo.telemetry_names:
                 tel = salobj.topics.BaseTopic(
-                    salinfo=salinfo, name=tel_name, sal_prefix=""
+                    salinfo=salinfo, name=tel_name, sal_prefix="", volatile=False
                 )
                 self.assertEqual(tel.name, tel_name)
 
@@ -147,21 +151,30 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 ):
                     with self.assertRaises(RuntimeError):
                         salobj.topics.BaseTopic(
-                            salinfo=salinfo, name=good_name, sal_prefix=bad_prefix
+                            salinfo=salinfo,
+                            name=good_name,
+                            sal_prefix=bad_prefix,
+                            volatile=True,
                         )
 
             for good_prefix in ("", "command_", "logevent_"):
                 for bad_name in ("", "no_such_topic"):
                     with self.assertRaises(RuntimeError):
                         salobj.topics.BaseTopic(
-                            salinfo=salinfo, name=bad_name, sal_prefix=good_prefix
+                            salinfo=salinfo,
+                            name=bad_name,
+                            sal_prefix=good_prefix,
+                            volatile=True,
                         )
 
             for cmd_name in salinfo.command_names:
                 for non_cmd_prefix in ("", "logevent_"):
                     with self.assertRaises(RuntimeError):
                         salobj.topics.BaseTopic(
-                            salinfo=salinfo, name=cmd_name, sal_prefix=non_cmd_prefix
+                            salinfo=salinfo,
+                            name=cmd_name,
+                            sal_prefix=non_cmd_prefix,
+                            volatile=True,
                         )
 
             # there is overlap between event and telemetry names
@@ -170,7 +183,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             for evt_name in salinfo.event_names:
                 with self.assertRaises(RuntimeError):
                     salobj.topics.BaseTopic(
-                        salinfo=salinfo, name=evt_name, sal_prefix=non_evt_prefix
+                        salinfo=salinfo,
+                        name=evt_name,
+                        sal_prefix=non_evt_prefix,
+                        volatile=True,
                     )
 
             # there is overlap between event and telemetry names
@@ -179,7 +195,60 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             for tel_name in salinfo.telemetry_names:
                 with self.assertRaises(RuntimeError):
                     salobj.topics.BaseTopic(
-                        salinfo=salinfo, name=tel_name, sal_prefix=non_tel_prefix
+                        salinfo=salinfo,
+                        name=tel_name,
+                        sal_prefix=non_tel_prefix,
+                        volatile=True,
+                    )
+
+    async def test_read_topic_constructor_errors(self):
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+            # max_history must be 0 for volatile topics
+            for nonzero_max_history in (1, 10):
+                with self.assertRaises(ValueError):
+                    salobj.topics.ReadTopic(
+                        salinfo=salinfo,
+                        name="scalars",
+                        sal_prefix="",
+                        volatile=True,
+                        max_history=nonzero_max_history,
+                    )
+
+            # max_history must be >= 0 for non-volatile topics
+            for negative_max_history in (-1, -10):
+                with self.assertRaises(ValueError):
+                    salobj.topics.ReadTopic(
+                        salinfo=salinfo,
+                        name="scalars",
+                        sal_prefix="",
+                        volatile=False,
+                        max_history=negative_max_history,
+                    )
+
+            # queue_len must be positive
+            for nonpositive_queue_len in (0, -1, -10):
+                with self.assertRaises(ValueError):
+                    salobj.topics.ReadTopic(
+                        salinfo=salinfo,
+                        name="scalars",
+                        sal_prefix="",
+                        volatile=False,
+                        max_history=1,
+                        queue_len=nonpositive_queue_len,
+                    )
+
+            # max_history must be <= queue_len
+            for queue_len, delta in itertools.product((1, 5), (1, 2)):
+                max_history = queue_len + delta
+                with self.assertRaises(ValueError):
+                    salobj.topics.ReadTopic(
+                        salinfo=salinfo,
+                        name="scalars",
+                        sal_prefix="",
+                        volatile=False,
+                        max_history=max_history,
+                        queue_len=nonpositive_queue_len,
                     )
 
     async def test_command_isolation(self):
@@ -213,6 +282,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 salinfo=salinfo1,
                 name="wait",
                 sal_prefix="command_",
+                volatile=True,
                 max_history=0,
                 filter_ackcmd=False,
             )
@@ -1067,7 +1137,11 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # Use a logevent topic in case telemetry becomes volatile
             # (which might cause the read loop to start too quickly).
             topic = salobj.topics.ReadTopic(
-                salinfo=salinfo, name="scalars", sal_prefix="logevent_", max_history=100
+                salinfo=salinfo,
+                name="scalars",
+                sal_prefix="logevent_",
+                max_history=100,
+                volatile=False,
             )
             with self.assertRaises(RuntimeError):
                 topic.has_data
@@ -1320,7 +1394,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
             write_topic = salobj.topics.WriteTopic(
-                salinfo=salinfo, name="scalars", sal_prefix="logevent_"
+                salinfo=salinfo, name="scalars", sal_prefix="logevent_", volatile=False
             )
             await salinfo.start()
 

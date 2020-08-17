@@ -36,7 +36,7 @@ class ControllerTelemetry(write_topic.WriteTopic):
     """
 
     def __init__(self, salinfo, name):
-        super().__init__(salinfo=salinfo, name=name, sal_prefix="")
+        super().__init__(salinfo=salinfo, name=name, sal_prefix="", volatile=False)
 
     def put(self, data=None):
         """Output this topic.

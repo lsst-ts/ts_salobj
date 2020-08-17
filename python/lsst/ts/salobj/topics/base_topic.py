@@ -41,6 +41,10 @@ class BaseTopic(abc.ABC):
         Topic name, without a "command\_" or "logevent\_" prefix.
     sal_prefix : `str`
         SAL topic prefix: one of "command\_", "logevent\_" or ""
+    volatile : `bool`
+        Should this topic have volatile durability
+        (such that joiners receive no historical data)?
+        Note that the durability must match for writers and readers.
 
     Raises
     ------
@@ -72,13 +76,13 @@ class BaseTopic(abc.ABC):
         For example: "Test_logevent_summaryState_90255bf1".
     """
 
-    def __init__(self, *, salinfo, name, sal_prefix):
+    def __init__(self, *, salinfo, name, sal_prefix, volatile):
         try:
             self.salinfo = salinfo
             self.name = str(name)
             self.sal_name = sal_prefix + self.name
             self.log = salinfo.log.getChild(self.sal_name)
-            self.volatile = name == "ackcmd" or sal_prefix == "command_"
+            self.volatile = volatile
 
             attr_prefix = "ack_" if name == "ackcmd" else _ATTR_PREFIXES.get(sal_prefix)
             if attr_prefix is None:

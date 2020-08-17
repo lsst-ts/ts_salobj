@@ -53,6 +53,7 @@ class RemoteTelemetry(read_topic.ReadTopic):
             salinfo=salinfo,
             name=name,
             sal_prefix="",
+            volatile=False,
             max_history=max_history,
             queue_len=queue_len,
         )

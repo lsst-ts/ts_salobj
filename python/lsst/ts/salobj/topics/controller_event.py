@@ -36,7 +36,9 @@ class ControllerEvent(write_topic.WriteTopic):
     """
 
     def __init__(self, salinfo, name):
-        super().__init__(salinfo=salinfo, name=name, sal_prefix="logevent_")
+        super().__init__(
+            salinfo=salinfo, name=name, sal_prefix="logevent_", volatile=False
+        )
 
     def set_put(self, force_output=False, **kwargs):
         """Set zero or more fields of ``self.data`` and put if changed

@@ -52,6 +52,10 @@ class WriteTopic(BaseTopic):
         Topic name, without a "command\_" or "logevent\_" prefix.
     sal_prefix : `str`
         SAL topic prefix: one of "command\_", "logevent\_" or ""
+    volatile : `bool`
+        Should this topic have volatile durability
+        (such that joiners receive no historical data)?
+        Note that the durability must match for writers and readers.
     min_seq_num : `int` or `None`
         Minimum value for the ``private_seqNum`` field.
         If None then ``private_seqNum`` is not set; this is needed
@@ -74,11 +78,14 @@ class WriteTopic(BaseTopic):
         salinfo,
         name,
         sal_prefix,
+        volatile,
         min_seq_num=1,
         max_seq_num=MAX_SEQ_NUM,
         initial_seq_num=None,
     ):
-        super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
+        super().__init__(
+            salinfo=salinfo, name=name, sal_prefix=sal_prefix, volatile=volatile
+        )
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num

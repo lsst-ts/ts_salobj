@@ -35,7 +35,11 @@ class AckCmdWriter(write_topic.WriteTopic):
 
     def __init__(self, salinfo):
         super().__init__(
-            salinfo=salinfo, name="ackcmd", sal_prefix="", min_seq_num=None
+            salinfo=salinfo,
+            name="ackcmd",
+            sal_prefix="",
+            volatile=True,
+            min_seq_num=None,
         )
 
 
@@ -48,6 +52,9 @@ class ControllerCommand(read_topic.ReadTopic):
         SAL component information
     name : `str`
         Command name
+    queue_len : `int` (optional)
+        The maximum number of items that can be read and not dealt with
+        by a callback function or `next` before older data will be dropped.
 
     Notes
     -----
@@ -80,12 +87,13 @@ class ControllerCommand(read_topic.ReadTopic):
       then do the same as `ExpectedError` and also log a traceback.
     """
 
-    def __init__(self, salinfo, name, max_history=0, queue_len=100):
+    def __init__(self, salinfo, name, queue_len=100):
         super().__init__(
             salinfo=salinfo,
             name=name,
             sal_prefix="command_",
-            max_history=max_history,
+            volatile=True,
+            max_history=0,
             queue_len=queue_len,
         )
         self.cmdtype = salinfo.sal_topic_names.index(self.sal_name)

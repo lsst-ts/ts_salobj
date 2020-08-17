@@ -164,11 +164,15 @@ class ReadTopic(BaseTopic):
         Topic name, without a "command\_" or "logevent\_" prefix.
     sal_prefix : `str`
         SAL topic prefix: one of "command\_", "logevent\_" or ""
+    volatile : `bool`
+        Should this topic have volatile durability
+        (such that joiners receive no historical data)?
+        Note that the durability must match for writers and readers.
     max_history : `int`
         Maximum number of historical items to read:
 
-        * 0 is required for commands and the ackcmd reader
-        * 1 is recommended for events and telemetry
+        * 0 is required if volatile is True
+        * 1 is recommended for events
     queue_len : `int` (optional)
         The maximum number of items that can be read and not dealt with
         by a callback function or `next` before older data will be dropped.
@@ -183,7 +187,7 @@ class ReadTopic(BaseTopic):
     ValueError
         If max_history < 0.
     ValueError
-        If max_history > 0 and the topic is volatile (command or ackcmd).
+        If max_history > 0 and volatile true.
     ValueError
         If queue_len <= 0.
     ValueError
@@ -229,16 +233,14 @@ class ReadTopic(BaseTopic):
         salinfo,
         name,
         sal_prefix,
+        volatile,
         max_history,
         queue_len=100,
         filter_ackcmd=True,
     ):
-        super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
-        self.isopen = True
-        self._allow_multiple_callbacks = False
         if max_history < 0:
             raise ValueError(f"max_history={max_history} must be >= 0")
-        if max_history > 0 and self.volatile:
+        if max_history > 0 and volatile:
             raise ValueError(f"max_history={max_history} must be 0 for volatile topics")
         if queue_len <= 0:
             raise ValueError(f"queue_len={queue_len} must be positive")
@@ -246,6 +248,11 @@ class ReadTopic(BaseTopic):
             raise ValueError(
                 f"max_history={max_history} must be <= queue_len={queue_len}"
             )
+        super().__init__(
+            salinfo=salinfo, name=name, sal_prefix=sal_prefix, volatile=volatile
+        )
+        self.isopen = True
+        self._allow_multiple_callbacks = False
         self._max_history = int(max_history)
         self._data_queue = collections.deque(maxlen=queue_len)
         self._current_data = None
