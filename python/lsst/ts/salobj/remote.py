@@ -22,6 +22,7 @@
 __all__ = ["Remote"]
 
 import asyncio
+import warnings
 
 from .topics import RemoteEvent, RemoteTelemetry, RemoteCommand
 from .domain import Domain
@@ -62,8 +63,7 @@ class Remote:
         Maximum number of historical items to read for events.
         Set to 0 if your remote is not interested in "late joiner" data.
     tel_max_history : `int` (optional)
-        Maximum number of historical items to read for telemetry.
-        Set to 0 if your remote is not interested in "late joiner" data.
+        Deprecated: must be 0 if specified.
     start : `bool` (optional)
         Automatically start the read loop when constructed?
         Normally this should be `True`, but if you are adding topics
@@ -138,7 +138,7 @@ class Remote:
         include=None,
         exclude=None,
         evt_max_history=1,
-        tel_max_history=1,
+        tel_max_history=None,
         start=True,
     ):
         self.start_called = False
@@ -147,6 +147,15 @@ class Remote:
             raise ValueError("Cannot specify both include and exclude")
         include_set = set(include) if include is not None else None
         exclude_set = set(exclude) if exclude is not None else None
+
+        if tel_max_history is not None:
+            if tel_max_history == 0:
+                warnings.warn("tel_max_history is deprecated", DeprecationWarning)
+            else:
+                raise ValueError(
+                    f"tel_max_history={tel_max_history} is deprecated "
+                    "and must be 0 if specified"
+                )
 
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
@@ -173,7 +182,7 @@ class Remote:
                     continue
                 elif exclude_set and tel_name in exclude_set:
                     continue
-                tel = RemoteTelemetry(salinfo, tel_name, max_history=tel_max_history)
+                tel = RemoteTelemetry(salinfo, tel_name)
                 setattr(self, tel.attr_name, tel)
 
             if start:

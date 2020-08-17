@@ -543,11 +543,7 @@ class BaseScriptTestCase(asynctest.TestCase):
                 async with salobj.Domain() as domain:
                     index = next(index_gen)
                     remote = salobj.Remote(
-                        domain=domain,
-                        name="Script",
-                        index=index,
-                        evt_max_history=0,
-                        tel_max_history=0,
+                        domain=domain, name="Script", index=index, evt_max_history=0,
                     )
                     await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
 

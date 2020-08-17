@@ -175,35 +175,26 @@ class RemoteTestCase(asynctest.TestCase):
                     exclude=exclude,
                 )
 
-    def assert_max_history(self, remote, evt_max_history=1, tel_max_history=1):
+    def assert_max_history(self, remote, evt_max_history=1):
         for evt in [
             getattr(remote, f"evt_{name}") for name in remote.salinfo.event_names
         ]:
             self.assertEqual(evt.max_history, evt_max_history)
+            self.assertFalse(evt.volatile)
 
         for tel in [
             getattr(remote, f"tel_{name}") for name in remote.salinfo.telemetry_names
         ]:
-            self.assertEqual(tel.max_history, tel_max_history)
+            self.assertEqual(tel.max_history, 0)
+            self.assertTrue(tel.volatile)
 
     async def test_default_max_history(self):
-        """Test default evt_max_history and tel_max_history ctor arguments.
+        """Test default evt_max_history ctor argument.
         """
         index = next(index_gen)
         async with salobj.Domain() as domain:
             remote = salobj.Remote(domain=domain, name="Test", index=index)
             self.assert_max_history(remote)
-
-    async def test_tel_max_history(self):
-        """Test non-default tel_max_history Remote constructor argument.
-        """
-        tel_max_history = 9
-        index = next(index_gen)
-        async with salobj.Domain() as domain:
-            remote = salobj.Remote(
-                domain=domain, name="Test", index=index, tel_max_history=tel_max_history
-            )
-            self.assert_max_history(remote, tel_max_history=tel_max_history)
 
     async def test_evt_max_history(self):
         """Test non-default evt_max_history Remote constructor argument.
