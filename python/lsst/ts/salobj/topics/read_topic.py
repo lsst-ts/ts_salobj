@@ -267,8 +267,7 @@ class ReadTopic(BaseTopic):
         )
         self._reader = salinfo.subscriber.create_datareader(self._topic, qos)
         read_mask = [
-            dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
-            dds.DDSStateKind.ALIVE_INSTANCE_STATE,
+            dds.DDSStateKind.ANY_INSTANCE_STATE,
         ]
         queries = []
         if salinfo.index > 0:
