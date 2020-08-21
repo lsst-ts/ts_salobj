@@ -1,3 +1,9 @@
 #!/bin/sh
-echo "Formatting Python code with black"
-black .
+git stash -q --keep-index
+black . --check
+RESULT=$?
+if [ $RESULT != 0 ]; then
+    echo "Commit rejected. Reformat your code with \"black .\""
+fi
+git stash pop -q
+exit $RESULT
