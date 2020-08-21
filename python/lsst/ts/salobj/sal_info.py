@@ -635,14 +635,6 @@ class SalInfo:
                             for sd, si in data_list
                             if si.valid_data
                         ]
-                        if len(sd_list) < len(data_list):
-                            ninvalid = len(data_list) - len(sd_list)
-                            self.log.warning(
-                                f"Read {ninvalid} invalid items from {reader}. "
-                                "The invalid items were safely skipped, but please examine "
-                                "the code in SalInfo._read_loop to see if it needs an update "
-                                "for changes to OpenSplice dds."
-                            )
                         if sd_list:
                             reader._queue_data(sd_list)
                         await asyncio.sleep(0)  # free the event loop
