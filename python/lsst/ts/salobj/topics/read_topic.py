@@ -266,9 +266,11 @@ class ReadTopic(BaseTopic):
             else salinfo.domain.reader_qos
         )
         self._reader = salinfo.subscriber.create_datareader(self._topic, qos)
+        # TODO DM-26411: replace ANY_INSTANCE_STATE with ALIVE_INSTANCE_STATE
+        # once the OpenSplice issue 00020647 is fixed.
         read_mask = [
             dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
-            dds.DDSStateKind.ALIVE_INSTANCE_STATE,
+            dds.DDSStateKind.ANY_INSTANCE_STATE,
         ]
         queries = []
         if salinfo.index > 0:
