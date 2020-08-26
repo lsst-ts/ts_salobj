@@ -89,7 +89,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                         tel.dds_name,
                         tel.salinfo.name + "_" + tel.sal_name + "_" + tel.rev_code,
                     )
-                    self.assertFalse(tel.volatile)
+                    self.assertTrue(tel.volatile)
                     self.check_topic_metadata(tel)
 
             # cannot add new topics to the existing salinfos

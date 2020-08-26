@@ -59,23 +59,26 @@ class SALPYTestCase(asynctest.TestCase):
         await self.check_salpy_remote("minimal_salpy_controller.py")
 
     async def check_salpy_remote(self, exec_name):
+        # Create at least the scalars telemetry reader before creating
+        # the subprocess, to be sure the remote sees telemetry from the
+        # subprocess (telemetry is volatile, so has no historical data).
+        print(f"Remote: create SALPY object and topics with index={self.index}")
+        t0 = time.monotonic()
+        manager = SALPY_Test.SAL_Test(self.index)
+        manager.setDebugLevel(0)
+        manager.salEventSub("Test_logevent_logLevel")
+        manager.salTelemetrySub("Test_scalars")
+        manager.salCommand("Test_command_setLogLevel")
+        dt = time.monotonic() - t0
+        print(f"Remote: took {dt:0.2f} seconds to create topics")
+
         print(f"Remote: start {exec_name} in a subprocess")
         script_path = self.datadir / exec_name
         process = await asyncio.create_subprocess_exec(
             str(script_path), str(self.index), str(INITIAL_LOG_LEVEL)
         )
 
-        manager = None
         try:
-            print(f"Remote: create SALPY remote with index={self.index}")
-            t0 = time.monotonic()
-            manager = SALPY_Test.SAL_Test(self.index)
-            manager.setDebugLevel(0)
-            manager.salEventSub("Test_logevent_logLevel")
-            manager.salTelemetrySub("Test_scalars")
-            manager.salCommand("Test_command_setLogLevel")
-            dt = time.monotonic() - t0
-            print(f"Remote: took {dt:0.2f} seconds to create topics")
 
             async def get_logLevel():
                 data = SALPY_Test.Test_logevent_logLevelC()
@@ -130,24 +133,24 @@ class SALPYTestCase(asynctest.TestCase):
                             )
                     await asyncio.sleep(0.01)
 
-            print("Remote: wait for initial logLevel")
+            print("Remote: wait for initial logLevel event")
             data = await asyncio.wait_for(get_logLevel(), timeout=STD_TIMEOUT)
             print(f"Remote: read logLevel.level={data.level}")
             self.assertEqual(data.level, INITIAL_LOG_LEVEL)
-            print("Remote: wait for initial scalars")
+            print("Remote: wait for initial scalars telemetry")
             data = await asyncio.wait_for(get_scalars(), timeout=STD_TIMEOUT)
             print(f"Remote: read scalars.int0={data.int0}")
             self.assertEqual(data.int0, INITIAL_LOG_LEVEL)
 
             for level in (10, 52, 0):
-                print(f"Remote: sending setLogLevel(level={level})")
+                print(f"Remote: send setLogLevel(level={level}) command")
                 await asyncio.wait_for(send_setLogLevel(level), timeout=STD_TIMEOUT)
 
-                print("Remote: wait for logLevel")
+                print("Remote: wait for logLevel event")
                 data = await asyncio.wait_for(get_logLevel(), timeout=STD_TIMEOUT)
                 print(f"Remote: read logLevel.level={data.level}")
                 self.assertEqual(data.level, level)
-                print("Remote: wait for scalars")
+                print("Remote: wait for scalars telemetry")
                 data = await asyncio.wait_for(get_scalars(), timeout=STD_TIMEOUT)
                 print(f"Remote: read scalars.int0={data.int0}")
                 self.assertEqual(data.int0, level)
