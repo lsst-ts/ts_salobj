@@ -59,7 +59,7 @@ class BaseTopic(abc.ABC):
     log : `logging.Logger`
         A logger.
     volatile : `bool`
-        Is this topic volatile (does it want no historical data)?
+        Is this topic volatile (in which case it has no historical data)?
     attr_name : `str`
         Name of topic attribute in `Controller` and `Remote`.
         For example: "evt_summaryState".
@@ -78,7 +78,7 @@ class BaseTopic(abc.ABC):
             self.name = str(name)
             self.sal_name = sal_prefix + self.name
             self.log = salinfo.log.getChild(self.sal_name)
-            self.volatile = name == "ackcmd" or sal_prefix == "command_"
+            self.volatile = sal_prefix in ("", "command_")
 
             attr_prefix = "ack_" if name == "ackcmd" else _ATTR_PREFIXES.get(sal_prefix)
             if attr_prefix is None:

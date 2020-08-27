@@ -11,7 +11,9 @@ v6.0.0
 
 Backward Incompatible Changes:
 
-* Requires ts_xml 6 and IDL files built with ts_sal 4.2 or later, for authorization support.
+* Telemetry topics now have volatile durability.
+  All SAL components on your system must use ts_salobj 6 and ts_sal 5 or newer.
+* Requires ts_xml 6 and IDL files built with ts_sal 5 or later, for authorization support.
 * Removed deprecated ``main`` method from `BaseCsc` and `BaseScript`.
   Call `BaseCsc.amain` or `BaseScript.amain` instead, e.g. ``asyncio.run(MyCSC(index=...))`` or ``asyncio.run(MyScript.amain())``.
 * Removed deprecated ``initial_simulation_mode`` argument from `BaseCsc` and `ConfigurableCsc`.
@@ -26,7 +28,12 @@ Backward Incompatible Changes:
   Instead users are expected to issue such an ack manually (e.g. by calling `topics.ControllerCommand.ack_in_progress`) when beginning to execute a command that will take significant time before it is reported as ``CMD_COMPLETE``.
 * Renamed `SalInfo.makeAckCmd` to `SalInfo.make_ackcmd`.
 * Removed the deprecated `SalInfo.idl_loc` property; use ``SalInfo.metadata.idl_path`` instead.
+* The `force_output` argument to `topics.ControllerEvent.set_put` is now keyword-only.
 * Removed ``bin/purge_topics.py`` command-line script, because it is no longer needed.
+* `Remote`: the ``tel_max_history`` constructor argument is deprecated and should not be specified.
+  If specified it must be 0 (or `None`, but please don't do that).
+* `topics.RemoteTelemetry`: the ``max_history`` constructor argument is deprecated and should not be specified.
+  If specified then it must be 0 (or `None`, but please don't do that).
 
 Changes:
 
