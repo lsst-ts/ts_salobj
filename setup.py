@@ -9,6 +9,7 @@ tests_require = [
     "pytest-cov",
     "pytest-flake8",
     "pytest-asyncio",
+    "pytest-black",
     "ts-dds",
     "ts-idl>=1.2",
 ]

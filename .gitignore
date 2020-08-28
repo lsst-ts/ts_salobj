@@ -12,3 +12,4 @@ tests/.tests
 tests/measurements/*.json
 python/lsst/ts/salobj/version.py
 .vscode
+core.*
