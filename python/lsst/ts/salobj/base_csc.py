@@ -24,6 +24,7 @@ __all__ = ["BaseCsc"]
 import argparse
 import asyncio
 import sys
+import warnings
 
 from . import base
 from . import dds_utils
@@ -60,6 +61,16 @@ class BaseCsc(Controller):
 
     Attributes
     ----------
+    valid_simulation_modes : `list` [`int`] or `None`
+        This is a *class* attribute that, if not `None`
+        has the following effect:
+
+        * ``simulation_mode`` will be checked in the constructor
+        * `implement_simulation_mode` will be a no-op.
+        * The `amain` command parser will have a ``--simulate`` argument.
+          The default value will be 0 if that is a valid simulation mode
+          (and it certainly should be).
+          Otherwise the default value will be the first entry.
     heartbeat_interval : `float`
         Interval between heartbeat events, in seconds;
 
@@ -97,12 +108,25 @@ class BaseCsc(Controller):
     * Run `start` asynchronously.
     """
 
+    # See Attributes in the doc string.
+    valid_simulation_modes = None
+
     def __init__(
         self, name, index=None, initial_state=State.STANDBY, simulation_mode=0,
     ):
         # cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
         initial_state = State(initial_state)
+        if self.valid_simulation_modes is None:
+            warnings.warn(
+                "valid_simulation_modes=None is deprecated", DeprecationWarning
+            )
+        else:
+            if simulation_mode not in self.valid_simulation_modes:
+                raise ValueError(
+                    f"simulation_mode={simulation_mode} "
+                    f"not in valid_simulation_modes={self.valid_simulation_modes}"
+                )
         super().__init__(name=name, index=index, do_callbacks=True)
         self._requested_simulation_mode = int(simulation_mode)
         self._summary_state = State(initial_state)
@@ -167,6 +191,22 @@ class BaseCsc(Controller):
         parser = argparse.ArgumentParser(f"Run {cls.__name__}")
         if index is True:
             parser.add_argument("index", type=int, help="Script SAL Component index.")
+        add_simulate_arg = (
+            cls.valid_simulation_modes is not None
+            and len(cls.valid_simulation_modes) > 1
+        )
+        if add_simulate_arg:
+            if 0 in cls.valid_simulation_modes:
+                default_simulation_mode = 0
+            else:
+                default_simulation_mode = cls.valid_simulation_modes[0]
+            parser.add_argument(
+                "--simulate",
+                type=int,
+                help="Simulation mode",
+                default=default_simulation_mode,
+                choices=cls.valid_simulation_modes,
+            )
         cls.add_arguments(parser)
 
         args = parser.parse_args()
@@ -176,6 +216,8 @@ class BaseCsc(Controller):
             pass
         else:
             kwargs["index"] = int(index)
+        if add_simulate_arg:
+            kwargs["simulation_mode"] = args.simulate
         cls.add_kwargs_from_args(args=args, kwargs=kwargs)
 
         return cls(**kwargs)
@@ -320,6 +362,9 @@ class BaseCsc(Controller):
     async def implement_simulation_mode(self, simulation_mode):
         """Implement going into or out of simulation mode.
 
+        Deprecated. See :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`
+        for details.
+
         Parameters
         ----------
         simulation_mode : `int`
@@ -329,18 +374,11 @@ class BaseCsc(Controller):
         ------
         ExpectedError
             If ``simulation_mode`` is not a supported value.
-
-        Notes
-        -----
-        Subclasses should override this method to implement simulation
-        mode. The implementation should:
-
-        * Check the value of ``simulation_mode`` and raise
-          `ExpectedError` if not supported.
-        * If ``simulation_mode`` is 0 then go out of simulation mode.
-        * If ``simulation_mode`` is nonzero then enter the requested
-          simulation mode.
         """
+        if self.valid_simulation_modes is not None:
+            return
+
+        # Handle the deprecated case.
         if simulation_mode != 0:
             raise base.ExpectedError(
                 f"This CSC does not support simulation; simulation_mode={simulation_mode} but must be 0"
