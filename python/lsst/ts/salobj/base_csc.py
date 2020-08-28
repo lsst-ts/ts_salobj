@@ -120,13 +120,9 @@ class BaseCsc(Controller):
         * Set ``self.start_task`` done.
         """
         await super().start()
-        try:
-            self._heartbeat_task.cancel()  # Paranoia
-            self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-            await self.set_simulation_mode(self._requested_simulation_mode)
-        except Exception as e:
-            await self.close(exception=e)
-            raise
+        self._heartbeat_task.cancel()  # Paranoia
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+        await self.set_simulation_mode(self._requested_simulation_mode)
 
         await self.handle_summary_state()
         self.report_summary_state()

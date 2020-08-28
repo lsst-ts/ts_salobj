@@ -217,17 +217,28 @@ class Controller:
             # This task is set done when the CSC is fully started.
             # If `start` fails then the task has an exception set
             # and the CSC is not usable.
-            self.start_task = asyncio.create_task(self.start())
+            self.start_task = asyncio.create_task(self._protected_start())
 
         except Exception:
             asyncio.create_task(domain.close())
             raise
 
-    async def start(self):
-        """Finish construction."""
+    async def _protected_start(self):
+        """Call `start` and handle exceptions."""
         if self.start_called:
             raise RuntimeError("Start already called")
         self.start_called = True
+        try:
+            await self.start()
+        except asyncio.CancelledError:
+            self.log.warning("start canceled")
+        except Exception as e:
+            self.log.exception("start failed")
+            await self.close(exception=e, cancel_start=False)
+            raise
+
+    async def start(self):
+        """Finish construction."""
 
         # Allow each remote constructor to begin running its start method.
         await asyncio.sleep(0)
@@ -252,7 +263,7 @@ class Controller:
     def domain(self):
         return self.salinfo.domain
 
-    async def close(self, exception=None):
+    async def close(self, exception=None, cancel_start=True):
         """Shut down, clean up resources and set done_task done.
 
         May be called multiple times. The first call closes the Controller;
@@ -268,6 +279,9 @@ class Controller:
             the ``self.done_task`` exception is set to this value.
             Specify `None` for a normal exit, in which case
             the ``self.done_task`` result is set to `None`.
+        cancel_start : `bool`, optional
+            Cancel the start task? Leave this true unless calling
+            this from the start task.
 
         Notes
         -----
@@ -275,6 +289,8 @@ class Controller:
         all background tasks, pauses briefly to allow final SAL messages
         to be sent, then closes the dds domain.
         """
+        if cancel_start:
+            self.start_task.cancel()
         if not self.isopen:
             # Closed or closing. Wait for done_task to be finished,
             # ignoring any exception. If you want to know about the exception
