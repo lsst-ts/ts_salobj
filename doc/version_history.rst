@@ -22,14 +22,29 @@ Backward Incompatible Changes:
 * Removed deprecated support for setting ``BaseCsc.summary_state`` directly.
   To transition your CSC to a FAULT state call the `BaseCsc.fault` method.
   Unit tests may call the `set_summary_state` function or issue the usual state transition commands.
-* Renamed `ControllerCommand.ackInProgress` to `ControllerCommand.ack_in_progress` and added a required `timeout` argument.
 * Commands are no longer acknowledged with ``CMD_INPROGRESS`` if the do_xxx callback function is asynchronous.
   This was needlessly chatty.
-  Instead users are expected to issue such an ack manually (e.g. by calling `topics.ControllerCommand.ack_in_progress`) when beginning to execute a command that will take significant time before it is reported as ``CMD_COMPLETE``.
-* Renamed `SalInfo.makeAckCmd` to `SalInfo.make_ackcmd`.
+  Instead users are expected to issue such an ack manually (e.g. by calling `topics.ControllerCommand.ack_in_progress`)
+  when beginning to execute a command that will take significant time before it is reported as ``CMD_COMPLETE``.
 * Removed the deprecated `SalInfo.idl_loc` property; use ``SalInfo.metadata.idl_path`` instead.
 * The `force_output` argument to `topics.ControllerEvent.set_put` is now keyword-only.
 * Removed ``bin/purge_topics.py`` command-line script, because it is no longer needed.
+
+Deprecations:
+
+* Simplified simulation mode support in CSCs.
+  This is described in :ref:`simulation mode<lsst.ts.salobj-simulation_mode>` and results in the following deprecations:
+
+  * CSCs should now set class variable ``valid_simulation_modes``, even if they do not support simulation.
+    Failure to do so will result in a deprecation warning, but supports the old way of doing things.
+  * Deprecated `BaseCsc.implement_simulation_mode`.
+    Start your simulator in whichever other method seems most appropriate.
+  * Deprecated the need to override `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` to add the ``--simulate`` command-line argument.
+    This argument is added automatically if ``valid_simulation_modes`` has more than one entry.
+* Renamed `SalInfo.makeAckCmd` to `SalInfo.make_ackcmd`.
+  The old method is still available, but issues a deprecation warning.
+* Renamed `ControllerCommand.ackInProgress` to `ControllerCommand.ack_in_progress` and added a required `timeout` argument.
+   The old method is still available, but issues a deprecation warning.
 * `Remote`: the ``tel_max_history`` constructor argument is deprecated and should not be specified.
   If specified it must be 0 (or `None`, but please don't do that).
 * `topics.RemoteTelemetry`: the ``max_history`` constructor argument is deprecated and should not be specified.
@@ -38,7 +53,8 @@ Backward Incompatible Changes:
 Changes:
 
 * Implemented authorization support.
-  This version will communicate with ts_sal 4.2 and ts_salobj 5, but authorization support will be limited until the whole system uses ts_sal 5 and ts_salobj 6.
+  This will not be complete until ts_sal has full support.
+* Simplified the simulation support in CSCs, as explained in Deprecations above.
 * `CscCommander` now rounds float arrays when displaying events and telemetry (it already rounded float scalars).
 * Added support for running without a durability service:
   set environment variable ``LSST_DDS_HISTORYSYNC`` to a negative value to prevent waiting for historical data.
@@ -51,6 +67,7 @@ Changes:
   This encourages the user to properly commit the necessary reformatting.
 * Update ``Jenkinsfile`` to disable concurrent builds and clean up old log files.
 * Removed the ``.travis.yml`` file because it duplicates testing done in Jenkins.
+* Use `asynco.create_task` instead of deprecated `asyncio.ensure_future`.
 
 Requirements:
 
