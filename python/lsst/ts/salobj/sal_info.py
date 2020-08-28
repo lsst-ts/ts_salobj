@@ -26,6 +26,7 @@ import concurrent
 import logging
 import os
 import time
+import warnings
 
 import dds
 import ddsutil
@@ -423,6 +424,14 @@ class SalInfo:
             result=result,
             timeout=timeout,
         )
+
+    def makeAckCmd(self, *args, **kwargs):
+        """Deprecated version of make_ackcmd."""
+        # TODO DM-26518: remove this method
+        warnings.warn(
+            f"makeAckCmd is deprecated; use make_ackcmd instead.", DeprecationWarning
+        )
+        return self.make_ackcmd(*args, **kwargs)
 
     def __repr__(self):
         return f"SalBase({self.name}, {self.index})"

@@ -192,6 +192,10 @@ class SalInfoTestCase(asynctest.TestCase):
             self.assertEqual(ackcmd.error, 0)
             self.assertEqual(ackcmd.result, "")
 
+            with self.assertWarns(DeprecationWarning):
+                ackcmd2 = salinfo.makeAckCmd(private_seqNum=seqNum, ack=ack)
+            self.assertEqual(ackcmd.get_vars(), ackcmd2.get_vars())
+
             # Specify an error code and result
             for truncate_result in (False, True):
                 with self.subTest(truncate_result=truncate_result):
@@ -210,6 +214,16 @@ class SalInfoTestCase(asynctest.TestCase):
                     self.assertEqual(ackcmd.ack, ack)
                     self.assertEqual(ackcmd.error, error)
                     self.assertEqual(ackcmd.result, result)
+
+                    with self.assertWarns(DeprecationWarning):
+                        ackcmd2 = salinfo.makeAckCmd(
+                            private_seqNum=seqNum,
+                            ack=ack,
+                            error=error,
+                            result=result,
+                            truncate_result=truncate_result,
+                        )
+                    self.assertEqual(ackcmd.get_vars(), ackcmd2.get_vars())
 
             # Test behavior with too-long result strings
             seqNum = 27
