@@ -366,7 +366,7 @@ class ReadTopic(BaseTopic):
             raise TypeError(f"func={func} not callable")
         self._data_queue.clear()
         self._callback = func
-        self._callback_loop_task = asyncio.ensure_future(self._callback_loop())
+        self._callback_loop_task = asyncio.create_task(self._callback_loop())
 
     @property
     def has_callback(self):
@@ -562,7 +562,7 @@ class ReadTopic(BaseTopic):
                 self._callback_tasks = {
                     task for task in self._callback_tasks if not task.done()
                 }
-                self._callback_tasks.add(asyncio.ensure_future(result))
+                self._callback_tasks.add(asyncio.create_task(result))
             else:
                 await result
 

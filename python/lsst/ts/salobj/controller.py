@@ -217,10 +217,10 @@ class Controller:
             # This task is set done when the CSC is fully started.
             # If `start` fails then the task has an exception set
             # and the CSC is not usable.
-            self.start_task = asyncio.ensure_future(self.start())
+            self.start_task = asyncio.create_task(self.start())
 
         except Exception:
-            asyncio.ensure_future(domain.close())
+            asyncio.create_task(domain.close())
             raise
 
     async def start(self):

@@ -612,7 +612,7 @@ class SalInfo:
                         sd_list = sd_list[-reader.max_history :]
                         if sd_list:
                             reader._queue_data(sd_list)
-            self._read_loop_task = asyncio.ensure_future(self._read_loop())
+            self._read_loop_task = asyncio.create_task(self._read_loop())
             self.start_task.set_result(None)
         except Exception as e:
             self.start_task.set_exception(e)

@@ -121,7 +121,8 @@ class BaseCsc(Controller):
         """
         await super().start()
         try:
-            self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+            self._heartbeat_task.cancel()  # Paranoia
+            self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
             await self.set_simulation_mode(self._requested_simulation_mode)
         except Exception as e:
             await self.close(exception=e)
@@ -266,7 +267,7 @@ class BaseCsc(Controller):
         """
         await self._do_change_state(data, "exitControl", [State.STANDBY], State.OFFLINE)
 
-        asyncio.ensure_future(self.close())
+        asyncio.create_task(self.close())
 
     async def do_standby(self, data):
         """Transition from `State.DISABLED` or `State.FAULT` to
@@ -494,7 +495,7 @@ class BaseCsc(Controller):
                     "some code may not have run."
                 )
                 self.evt_summaryState.set_put(summaryState=self._summary_state)
-            asyncio.ensure_future(self.handle_summary_state())
+            asyncio.create_task(self.handle_summary_state())
         finally:
             self._faulting = False
 
