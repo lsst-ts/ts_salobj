@@ -92,6 +92,12 @@ CSC Details
 Make your CSC a subclass of `ConfigurableCsc` if it can be configured via the ``start`` command, or `BaseCsc` if not.
 Most CSCs can be configured.
 
+* Specify class variable ``valid_simulation_modes`` as a list of valid simulation modes.
+
+    * If your CSC does not support simulation then set ``valid_simulation_modes = [0]``.
+      The value 0 is always used for normal operation.
+    * To implement nonzero simulation modes see :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`.
+
 * Handling commands:
 
     * Your subclass must provide a ``do_<name>`` method for every command that is not part of the standard CSC command set, as well as the following optional standard commands, if you want to support them (these are rare):
@@ -183,12 +189,6 @@ Most CSCs can be configured.
     * Report all information that seem relevant to detailed state and is not covered by summary state.
     * Detailed state should be *orthogonal* to summary state.
       You may provide an enum field in your detailedState event, but it is not required and, if present, should not include summary states.
-
-* Simulation mode (optional):
-
-    * Implement :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`, if practical.
-      This allows testing without putting hardware at risk.
-      If your CSC talks to hardware then this is especially important.
 
 ------------------------
 Configurable CSC Details
@@ -289,7 +289,6 @@ For example:
     asyncio.run(TestCsc.amain(index=True))
 
 If you wish to provide additional command line arguments for your CSC, override the `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` class methods.
-See :ref:`lsst.ts.salobj-simulation_mode` for an example.
 
 .. _lsst.ts.salobj-simulation_mode:
 
@@ -299,31 +298,29 @@ Simulation Mode
 
 CSCs should support a simulation mode if practical; this is especially important if the CSC talks to hardware.
 
-To implement a simulation mode, first pick one or more non-zero values
-for the ``simulation_mode`` property (0 is reserved for normal operation)
-and document what they mean. For example you might use a a bit mask
-to supporting independently simulating multiple different subsystems.
+To implement a simulation mode, first pick one or more non-zero values for the ``simulation_mode``
+constructor argument (0 is reserved for normal operation) and document what they mean.
+It is quite common to support only one simulation mode, in which case the two allowed values are 0 and 1.
+However, you may support additional modes; you can even use a bit mask to supporting independently simulating different subsystems.
 
-Then override `implement_simulation_mode` to implement the specified
-simulation mode, if supported, or raise an exception if not.
-Note that this method is called during construction of the CSC.
-The default implementation of `implement_simulation_mode` is to reject
-all non-zero values for ``simulation_mode``.
+Set class variable ``valid_simulation_modes`` to a list of all supported simulation modes, including 0 for normal operation.
+If your CSC has just one simulation mode::
 
-Finally, override ``add_arguments`` and ``add_kwargs_from_args``.
-If your CSC only supports simulation on or off (the most common case) then you can write:::
+    valid_simulation_modes = (0, 1)
 
-    @classmethod
-    def add_arguments(cls, parser):
-        super().add_arguments(parser=parser)
-        parser.add_argument(
-            "-s", "--simulate", action="store_true", help="Run in simuation mode?"
-        )
+Then decide where to turn on your simulator; here are some common choices:
 
-    @classmethod
-    def add_kwargs_from_args(cls, *args, **kwargs):
-        super().add_kwargs_from_args(*args, **kwargs)
-        kwargs["simulation_mode"] = 1 if args.simulate else 0
+* If your CSC communicates with a low-level controller and your simulator emulates that controller
+  (which is strongly recommended), start the simulator where you connect to the low-level controller.
+  This is often the `configure` method for configurable CSCs.
+
+* If your simulator should only run in certain states, then you may start and stop it in `handle_summary_state`.
+
+* If your simulator needs no configuration and is always running, then you can run it in `start`.
+
+A deprecated way to handle simulation that you may see in older code was to not set class variable ``valid_simulation_modes``.
+This required overriding three methods: `BaseCsc.implement_simulation_mode`, `BaseCsc.add_arguments`, and `BaseCsc.add_kwargs_from_args`.
+This is no longer recommended, and failing to set class variable ``valid_simulation_modes`` will result in a deprecation warning.
 
 --------------------
 External Connections

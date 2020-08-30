@@ -91,6 +91,7 @@ class TestCsc(ConfigurableCsc):
     * 1: the fault command was executed
     """
 
+    valid_simulation_modes = [0]
     __test__ = False  # stop pytest from warning that this is not a test
 
     def __init__(

@@ -118,7 +118,7 @@ class BaseScript(controller.Controller, abc.ABC):
         self.done_task = asyncio.Future()
         self._is_exiting = False
         self.evt_description.set(classname=type(self).__name__, description=str(descr))
-        self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         # Delay (sec) to allow sending the final state and acknowleding
         # the command before exiting.
         self.final_state_delay = 0.3
@@ -538,7 +538,7 @@ class BaseScript(controller.Controller, abc.ABC):
             raise base.ExpectedError("Group ID not set")
         try:
             self.set_state(ScriptState.RUNNING)
-            self._run_task = asyncio.ensure_future(self.run())
+            self._run_task = asyncio.create_task(self.run())
             await self._run_task
             self.set_state(ScriptState.ENDING)
         except asyncio.CancelledError:
@@ -724,7 +724,7 @@ class BaseScript(controller.Controller, abc.ABC):
             self.log.info(f"Setting final state to {final_state!r}")
             self.set_state(final_state, reason=reason, keep_old_reason=True)
             await asyncio.sleep(self.final_state_delay)
-            asyncio.ensure_future(self.close())
+            asyncio.create_task(self.close())
         except Exception as e:
             if not isinstance(e, base.ExpectedError):
                 self.log.exception("Error in run")
@@ -732,4 +732,4 @@ class BaseScript(controller.Controller, abc.ABC):
                 ScriptState.FAILED, reason=f"failed in _exit: {e}", keep_old_reason=True
             )
             await asyncio.sleep(self.final_state_delay)
-            asyncio.ensure_future(self.close(e))
+            asyncio.create_task(self.close(e))

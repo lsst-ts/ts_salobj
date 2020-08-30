@@ -26,6 +26,7 @@ import concurrent
 import logging
 import os
 import time
+import warnings
 
 import dds
 import ddsutil
@@ -424,6 +425,14 @@ class SalInfo:
             timeout=timeout,
         )
 
+    def makeAckCmd(self, *args, **kwargs):
+        """Deprecated version of make_ackcmd."""
+        # TODO DM-26518: remove this method
+        warnings.warn(
+            f"makeAckCmd is deprecated; use make_ackcmd instead.", DeprecationWarning
+        )
+        return self.make_ackcmd(*args, **kwargs)
+
     def __repr__(self):
         return f"SalBase({self.name}, {self.index})"
 
@@ -603,7 +612,7 @@ class SalInfo:
                         sd_list = sd_list[-reader.max_history :]
                         if sd_list:
                             reader._queue_data(sd_list)
-            self._read_loop_task = asyncio.ensure_future(self._read_loop())
+            self._read_loop_task = asyncio.create_task(self._read_loop())
             self.start_task.set_result(None)
         except Exception as e:
             self.start_task.set_exception(e)

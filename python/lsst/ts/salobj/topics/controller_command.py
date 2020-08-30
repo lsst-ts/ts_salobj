@@ -23,6 +23,7 @@ __all__ = ["AckCmdWriter", "ControllerCommand"]
 
 import asyncio
 import inspect
+import warnings
 
 from .. import sal_enums
 from .. import base
@@ -117,6 +118,15 @@ class ControllerCommand(read_topic.ReadTopic):
             timeout=ackcmd.timeout,
         )
         self.salinfo._ackcmd_writer.put()
+
+    def ackInProgress(self, data, result=""):
+        """Deprecated version of ack_in_progress."""
+        # TODO DM-26518: remove this method
+        warnings.warn(
+            "ackInProgress is deprecated; use ack_in_progress and specify timeout instead",
+            DeprecationWarning,
+        )
+        self.ack_in_progress(data=data, result=result, timeout=0)
 
     def ack_in_progress(self, data, *, timeout, result=""):
         """Ackowledge this command as "in progress".

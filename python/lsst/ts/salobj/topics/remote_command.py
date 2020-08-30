@@ -177,7 +177,7 @@ class _CommandInfo:
         if timeout is None:  # For backwards compatibility.
             timeout = DEFAULT_TIMEOUT
         try:
-            self._wait_task = asyncio.ensure_future(
+            self._wait_task = asyncio.create_task(
                 self._basic_next_ackcmd(timeout=timeout)
             )
             ackcmd = await self._wait_task

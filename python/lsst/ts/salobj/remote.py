@@ -189,9 +189,9 @@ class Remote:
                 setattr(self, tel.attr_name, tel)
 
             if start:
-                self.start_task = asyncio.ensure_future(self.start())
+                self.start_task = asyncio.create_task(self.start())
         except Exception:
-            asyncio.ensure_future(self.salinfo.close())
+            asyncio.create_task(self.salinfo.close())
             raise
 
     async def start(self):
