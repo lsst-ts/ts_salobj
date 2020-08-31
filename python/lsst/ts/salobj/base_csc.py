@@ -200,13 +200,27 @@ class BaseCsc(Controller):
                 default_simulation_mode = 0
             else:
                 default_simulation_mode = cls.valid_simulation_modes[0]
-            parser.add_argument(
-                "--simulate",
-                type=int,
-                help="Simulation mode",
-                default=default_simulation_mode,
-                choices=cls.valid_simulation_modes,
-            )
+            if default_simulation_mode == 0 and len(cls.valid_simulation_modes) == 2:
+                # There are only two simulation modes, one of which is 0:
+                # make --simulate a flag that takes no value.
+                nonzero_value = (set(cls.valid_simulation_modes) - set([0])).pop()
+                parser.add_argument(
+                    "--simulate",
+                    help="Run in simulation mode?",
+                    default=0,
+                    action="store_const",
+                    const=nonzero_value,
+                )
+            else:
+                # There are more than 2 simulation modes or none of them is 0:
+                # make --simulate an argument that requires a value.
+                parser.add_argument(
+                    "--simulate",
+                    type=int,
+                    help="Simulation mode",
+                    default=default_simulation_mode,
+                    choices=cls.valid_simulation_modes,
+                )
         cls.add_arguments(parser)
 
         args = parser.parse_args()

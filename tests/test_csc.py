@@ -46,30 +46,6 @@ TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "dat
 TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
-class TestCscWithSimulation(salobj.TestCsc):
-    """A version of TestCsc that specifies class attribute
-    valid_simulation_modes.
-
-    Use to verify that BaseCsc's constructor checks the simulation_mode
-    argument in the constructor and that BaseCsc.make_from_cmd_line
-    adds the --simulate argument.
-    """
-
-    # Make the initial value nonzero to test that 0 is still the default
-    valid_simulation_modes = (4, 1, 0)
-
-
-class TestCscWithDeprecatedSimulation(salobj.TestCsc):
-    """A version of TestCsc that tests valid_simulation_modes=None.
-
-    Use to verify the deprecated behavior that BaseCsc checks the
-    simulation_mode argument after the constructor, as part of start,
-    and that BaseCsc.make_from_cmd_line does not add the --simulate argument.
-    """
-
-    valid_simulation_modes = None
-
-
 class FailInReportFaultCsc(salobj.TestCsc):
     """A Test CSC that fails in report_summary_state when reporting fault.
 
@@ -558,7 +534,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
     async def test_fault_problems(self):
         """Test BaseCsc.fault when report_summary_state misbehaves."""
-        index = next(index_gen)
+        index = self.next_index()
         for doraise, report_first in itertools.product((False, True), (False, True)):
             with self.subTest(doraise=doraise, report_first=report_first):
                 async with FailInReportFaultCsc(
@@ -695,70 +671,172 @@ class TestCscConstructorTestCase(asynctest.TestCase):
         with self.assertRaises(RuntimeError):
             InvalidPkgNameCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
 
-    async def test_valid_simulation_modes(self):
-        for bad_simulation_mode in range(-5, 10):
-            index = next(index_gen)
-            if bad_simulation_mode in TestCscWithSimulation.valid_simulation_modes:
-                continue
-            with self.assertRaises(ValueError):
-                TestCscWithSimulation(index=index, simulation_mode=bad_simulation_mode)
+    async def test_wrong_config_pkg(self):
+        with self.assertRaises(RuntimeError):
+            WrongConfigPkgCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
 
-        # Test explicit simulation modes
-        for simulation_mode in TestCscWithSimulation.valid_simulation_modes:
-            index = next(index_gen)
-            async with TestCscWithSimulation(
-                index=index, simulation_mode=simulation_mode
-            ) as csc:
-                self.assertEqual(csc.simulation_mode, simulation_mode)
+    async def test_invalid_initial_state(self):
+        """Test that invalid integer initial_state is rejected."""
+        for invalid_state in (min(salobj.State) - 1, max(salobj.State) + 1):
+            with self.subTest(invalid_state=invalid_state):
+                with self.assertRaises(ValueError):
+                    salobj.TestCsc(index=next(index_gen), initial_state=invalid_state)
+
+
+class SimulationModeTestCase(asynctest.TestCase):
+    """Test simulation mode handling, including the --simulate
+    command-line argument.
+    """
+
+    def setUp(self):
+        salobj.set_random_lsst_dds_domain()
+        # Valid simulation modes that will exercise several things:
+        # If 0 is present it is the default,
+        # otherwise the first value is the default.
+        # If 0 is present and there are two values then --simulate is a flag,
+        # otherwise --simulate requires a value
+        self.valid_simulation_modes_list = (
+            # (0, 1),
+            # (1, 0),
+            # (0, 3),
+            # (3, 0),
+            (1, 2),
+            (0, 1, 4),
+            (4, 1, 0),
+        )
+
+    def make_csc_class(self, modes):
+        """Make a subclass of TestCsc with specified valid simulation modes
+        """
+
+        class TestCscWithSimulation(salobj.TestCsc):
+            valid_simulation_modes = modes
+
+        return TestCscWithSimulation
+
+    async def test_invalid_simulation_modes(self):
+        index = next(index_gen)
+        for valid_simulation_modes in self.valid_simulation_modes_list:
+            csc_class = self.make_csc_class(valid_simulation_modes)
+            for bad_simulation_mode in range(-1, 5):
+                if bad_simulation_mode in csc_class.valid_simulation_modes:
+                    continue
+                with self.assertRaises(ValueError):
+                    csc_class(index=index, simulation_mode=bad_simulation_mode)
+
+    async def test_valid_simulation_modes(self):
+        for valid_simulation_modes in self.valid_simulation_modes_list:
+            csc_class = self.make_csc_class(valid_simulation_modes)
+            for simulation_mode in csc_class.valid_simulation_modes:
+                index = next(index_gen)
+                async with csc_class(
+                    index=index, simulation_mode=simulation_mode
+                ) as csc:
+                    self.assertEqual(csc.simulation_mode, simulation_mode)
 
     async def test_simulate_cmdline_arg(self):
         orig_argv = sys.argv[:]
         try:
-            index = next(index_gen)
-            bad_simulation_mode = 10
-            sys.argv = [
-                "test_csc.py",
-                str(index),
-                "--simulate",
-                str(bad_simulation_mode),
-            ]
-            with self.assertRaises(SystemExit):
-                TestCscWithSimulation.make_from_cmd_line(index=True)
+            for valid_simulation_modes in self.valid_simulation_modes_list:
+                print(f"valid_simulation_modes={valid_simulation_modes}")
+                if 0 in valid_simulation_modes:
+                    default_simulation_mode = 0
+                else:
+                    default_simulation_mode = valid_simulation_modes[0]
 
-            index = next(index_gen)
-            good_simulation_mode = 4
-            self.assertIn(
-                good_simulation_mode, TestCscWithSimulation.valid_simulation_modes
-            )
-            sys.argv = [
-                "test_csc.py",
-                str(index),
-                "--simulate",
-                str(good_simulation_mode),
-            ]
-            csc = TestCscWithSimulation.make_from_cmd_line(index=True)
-            try:
-                # The simulation mode isn't assigned until the CSC starts
-                await csc.start_task
-                self.assertEqual(csc.simulation_mode, good_simulation_mode)
-            finally:
-                await csc.do_exitControl(data=None)
-                await asyncio.wait_for(csc.done_task, timeout=5)
+                index = next(index_gen)
+                csc_class = self.make_csc_class(valid_simulation_modes)
+                if len(valid_simulation_modes) != 2 or 0 not in valid_simulation_modes:
+                    # This should fail with no value
+                    sys.argv = [
+                        "test_csc.py",  # irrelevant
+                        str(index),
+                        "--simulate",
+                    ]
+                    with self.assertRaises(SystemExit):
+                        csc_class.make_from_cmd_line(index=True)
 
-            # Test that the default simulation mode is 0, even though
-            # valid_simulation_modes starts with a different value.
-            # Start by checking the initial conditions:
-            self.assertIn(0, TestCscWithSimulation.valid_simulation_modes)
-            self.assertNotEqual(0, TestCscWithSimulation.valid_simulation_modes[0])
-            sys.argv = ["test_csc.py", str(index)]
-            csc = TestCscWithSimulation.make_from_cmd_line(index=True)
-            try:
-                # The simulation mode isn't assigned until the CSC starts
-                await csc.start_task
-                self.assertEqual(csc.simulation_mode, 0)
-            finally:
-                await csc.do_exitControl(data=None)
-                await asyncio.wait_for(csc.done_task, timeout=5)
+                    # Test invalid simulation modes
+                    for bad_simulation_mode in range(-1, 5):
+                        if bad_simulation_mode in valid_simulation_modes:
+                            continue
+                        sys.argv = [
+                            "test_csc.py",  # irrelevant
+                            str(index),
+                            "--simulate",
+                            str(bad_simulation_mode),
+                        ]
+                        with self.assertRaises(SystemExit):
+                            csc_class.make_from_cmd_line(index=True)
+
+                    # Test valid simulation modes
+                    for good_simulation_mode in valid_simulation_modes:
+                        sys.argv = [
+                            "test_csc.py",  # irrelevant
+                            str(index),
+                            "--simulate",
+                            str(good_simulation_mode),
+                        ]
+                        csc = csc_class.make_from_cmd_line(index=True)
+                        try:
+                            # The simulation mode isn't assigned
+                            # until the CSC starts.
+                            await csc.start_task
+                            self.assertEqual(csc.simulation_mode, good_simulation_mode)
+                        finally:
+                            await csc.do_exitControl(data=None)
+                            await asyncio.wait_for(csc.done_task, timeout=5)
+
+                else:
+                    # This should fail with any value, valid or not
+                    for simulation_mode in (0, 1):
+                        sys.argv = [
+                            "test_csc.py",  # irrelevant
+                            str(index),
+                            "--simulate",
+                            str(simulation_mode),
+                        ]
+                        with self.assertRaises(SystemExit):
+                            csc_class.make_from_cmd_line(index=True)
+
+                    if valid_simulation_modes[0] == 0:
+                        nondefault_simulation_mode = valid_simulation_modes[1]
+                    else:
+                        nondefault_simulation_mode = valid_simulation_modes[0]
+
+                    index = next(index_gen)
+                    sys.argv = [
+                        "test_csc.py",  # irrelevant
+                        str(index),
+                        "--simulate",
+                    ]
+                    csc = csc_class.make_from_cmd_line(index=True)
+                    try:
+                        # The simulation mode isn't assigned
+                        # until the CSC starts.
+                        await csc.start_task
+                        self.assertEqual(
+                            csc.simulation_mode, nondefault_simulation_mode
+                        )
+                    finally:
+                        await csc.do_exitControl(data=None)
+                        await asyncio.wait_for(csc.done_task, timeout=5)
+
+                # In all cases no --simulate arg should give the default.
+                index = next(index_gen)
+                sys.argv = [
+                    "test_csc.py",  # irrelevant
+                    str(index),
+                ]
+                csc = csc_class.make_from_cmd_line(index=True)
+                try:
+                    # The simulation mode isn't assigned until the CSC starts
+                    await csc.start_task
+                    self.assertEqual(csc.simulation_mode, default_simulation_mode)
+                finally:
+                    await csc.do_exitControl(data=None)
+                    await asyncio.wait_for(csc.done_task, timeout=5)
+
         finally:
             sys.argv[:] = orig_argv
 
@@ -766,8 +844,13 @@ class TestCscConstructorTestCase(asynctest.TestCase):
         """Test that a CSC that uses the deprecated valid_simulation_modes=None
         checks simulation mode in start, not the constructor.
 
-        For this test the only valid simulation_mode is 0.
+        The only valid simulation_mode is 0 because that's what BaseCsc
+        supports and I didn't override that support.
         """
+        TestCscWithDeprecatedSimulation = self.make_csc_class(None)
+
+        self.assertEqual(TestCscWithDeprecatedSimulation.valid_simulation_modes, None)
+
         for bad_simulation_mode in (1, 2):
             index = next(index_gen)
             with self.assertWarns(DeprecationWarning):
@@ -792,6 +875,10 @@ class TestCscConstructorTestCase(asynctest.TestCase):
         """Test that when valid_simulation_modes=None that the command
         parser does not add the --simulate argument.
         """
+        TestCscWithDeprecatedSimulation = self.make_csc_class(None)
+
+        self.assertEqual(TestCscWithDeprecatedSimulation.valid_simulation_modes, None)
+
         orig_argv = sys.argv[:]
         try:
             index = next(index_gen)
@@ -803,17 +890,6 @@ class TestCscConstructorTestCase(asynctest.TestCase):
                 TestCscWithDeprecatedSimulation.make_from_cmd_line(index=True)
         finally:
             sys.argv[:] = orig_argv
-
-    async def test_wrong_config_pkg(self):
-        with self.assertRaises(RuntimeError):
-            WrongConfigPkgCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
-
-    async def test_invalid_initial_state(self):
-        """Test that invalid integer initial_state is rejected."""
-        for invalid_state in (min(salobj.State) - 1, max(salobj.State) + 1):
-            with self.subTest(invalid_state=invalid_state):
-                with self.assertRaises(ValueError):
-                    salobj.TestCsc(index=next(index_gen), initial_state=invalid_state)
 
 
 class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
