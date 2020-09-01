@@ -32,6 +32,8 @@ from lsst.ts import salobj
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 60
 
+index_gen = salobj.index_generator()
+
 
 class SalInfoTestCase(asynctest.TestCase):
     def setUp(self):
@@ -56,8 +58,10 @@ class SalInfoTestCase(asynctest.TestCase):
             with self.assertRaises(RuntimeError):
                 salobj.SalInfo(domain=domain, name="invalid_component_name")
 
-            salinfo = salobj.SalInfo(domain=domain, name="Test")
+            index = next(index_gen)
+            salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
             self.assertEqual(salinfo.name, "Test")
+            self.assertEqual(salinfo.index, index)
             self.assertFalse(salinfo.start_task.done())
             self.assertFalse(salinfo.done_task.done())
             self.assertFalse(salinfo.started)
@@ -83,9 +87,10 @@ class SalInfoTestCase(asynctest.TestCase):
 
     async def test_salinfo_attributes(self):
         async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test")
+            index = next(index_gen)
+            salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
 
-            self.assertEqual(salinfo.name_index, f"Test:{salinfo.index}")
+            self.assertEqual(salinfo.name_index, f"Test:{index}")
 
             # expected_commands omits a few commands that TestCsc
             # does not support, but that are in generics.
@@ -133,6 +138,8 @@ class SalInfoTestCase(asynctest.TestCase):
             self.assertEqual(
                 sorted(expected_sal_topic_names), list(salinfo.sal_topic_names)
             )
+
+            self.assertEqual(salinfo.identity, domain.user_host)
 
             # Check that the name_index for a non-indexed component
             # has no :index suffix.

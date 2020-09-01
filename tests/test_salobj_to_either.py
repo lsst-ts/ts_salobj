@@ -96,7 +96,7 @@ class SALPYTestCase(asynctest.TestCase):
                     ackcmd = await remote.cmd_setLogLevel.set_start(
                         level=level, timeout=STD_TIMEOUT
                     )
-                    self.assertEqual(ackcmd.identity, remote.salinfo.domain.identity)
+                    self.assertEqual(ackcmd.identity, remote.salinfo.identity)
                     print("Remote: wait for logLevel event")
                     data = await remote.evt_logLevel.next(
                         flush=False, timeout=STD_TIMEOUT
