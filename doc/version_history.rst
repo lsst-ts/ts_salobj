@@ -13,6 +13,7 @@ Backward Incompatible Changes:
 
 * Telemetry topics now have volatile durability.
   All SAL components on your system must use ts_salobj 6 and ts_sal 5 or newer.
+* Topics use a new DDS partition naming scheme that is incompatible with ts_sal 4 and ts_salobj 5.
 * Requires ts_xml 6 and IDL files built with ts_sal 5 or later, for authorization support.
 * Removed deprecated ``main`` method from `BaseCsc` and `BaseScript`.
   Call `BaseCsc.amain` or `BaseScript.amain` instead, e.g. ``asyncio.run(MyCSC(index=...))`` or ``asyncio.run(MyScript.amain())``.
@@ -28,6 +29,8 @@ Backward Incompatible Changes:
   when beginning to execute a command that will take significant time before it is reported as ``CMD_COMPLETE``.
 * Removed the deprecated `SalInfo.idl_loc` property; use ``SalInfo.metadata.idl_path`` instead.
 * The `force_output` argument to `topics.ControllerEvent.set_put` is now keyword-only.
+* Removed the deprecated `max_history` argument from `topics.ControllerCommand`\ s constructor.
+  Commands are volatile, so historical data is not available.
 * Removed ``bin/purge_topics.py`` command-line script, because it is no longer needed.
 
 Deprecations:
@@ -41,6 +44,8 @@ Deprecations:
     Start your simulator in whichever other method seems most appropriate.
   * Deprecated the need to override `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` to add the ``--simulate`` command-line argument.
     This argument is added automatically if ``valid_simulation_modes`` has more than one entry.
+* Renamed environment variable ``LSST_DDS_DOMAIN`` to ``LSST_DDS_PARTITION_PREFIX``.
+  The old environment variable is used, with a deprecation warning, if the new one is not defined.
 * Renamed `SalInfo.makeAckCmd` to `SalInfo.make_ackcmd`.
   The old method is still available, but issues a deprecation warning.
 * Renamed `ControllerCommand.ackInProgress` to `ControllerCommand.ack_in_progress` and added a required `timeout` argument.
@@ -68,6 +73,8 @@ Changes:
 * Update ``Jenkinsfile`` to disable concurrent builds and clean up old log files.
 * Removed the ``.travis.yml`` file because it duplicates testing done in Jenkins.
 * Use `asynco.create_task` instead of deprecated `asyncio.ensure_future`.
+* Read topics now use ``DDS_READ_QUEUE_LEN`` as the default value for ``queue_len``.
+  They have the same value, but this makes it easier and safer to change ``DDS_READ_QUEUE_LEN`` in future.
 
 Requirements:
 
