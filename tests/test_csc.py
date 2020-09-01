@@ -636,7 +636,7 @@ class TestCscConstructorTestCase(asynctest.TestCase):
     """
 
     def setUp(self):
-        salobj.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_partition_prefix()
 
     async def test_initial_state(self):
         """Test all allowed initial_state values, both as enums and ints."""
@@ -689,7 +689,7 @@ class SimulationModeTestCase(asynctest.TestCase):
     """
 
     def setUp(self):
-        salobj.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_partition_prefix()
         # Valid simulation modes that will exercise several things:
         # If 0 is present it is the default,
         # otherwise the first value is the default.
@@ -1226,7 +1226,7 @@ class ControllerCommandLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCas
 
 class BaseCscMakeFromCmdLineTestCase(asynctest.TestCase):
     def setUp(self):
-        salobj.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_partition_prefix()
         self.original_argv = sys.argv[:]
 
     def tearDown(self):

@@ -1184,10 +1184,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 prev_max_seq_num = cmd.max_seq_num
 
     async def test_partitions(self):
-        """Test specifying a DDS partition with $LSST_DDS_DOMAIN."""
+        """Test specifying a DDS partition with $LSST_DDS_PARTITION_PREFIX."""
         async with salobj.Domain() as domain:
             salinfo1 = salobj.SalInfo(domain=domain, name="Test", index=0)
-            salobj.set_random_lsst_dds_domain()
+            salobj.set_random_lsst_dds_partition_prefix()
             salinfo2 = salobj.SalInfo(domain=domain, name="Test", index=0)
             writer1 = salobj.topics.ControllerEvent(salinfo=salinfo1, name="errorCode")
             writer2 = salobj.topics.ControllerEvent(salinfo=salinfo2, name="errorCode")

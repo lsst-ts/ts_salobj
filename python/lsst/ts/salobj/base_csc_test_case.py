@@ -120,7 +120,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         -----
         Adds a logging.StreamHandler if one is not alread present.
         """
-        testutils.set_random_lsst_dds_domain()
+        testutils.set_random_lsst_dds_partition_prefix()
         self.csc = self.basic_make_csc(
             initial_state=initial_state,
             config_dir=config_dir,
@@ -230,7 +230,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
         """
-        testutils.set_random_lsst_dds_domain()
+        testutils.set_random_lsst_dds_partition_prefix()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
             self.fail(
