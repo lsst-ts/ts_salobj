@@ -230,9 +230,12 @@ class BasicsTestCase(asynctest.TestCase):
         # any duplicate names will reduce the size of names
         self.assertEqual(len(names), NumToTest)
 
-    async def test_domain_origin(self):
+    async def test_domain_attr(self):
         async with salobj.Domain() as domain:
             self.assertEqual(domain.origin, os.getpid())
+
+            self.assertEqual(domain.user_host, salobj.get_user_host())
+            self.assertEqual(domain.default_identity, domain.user_host)
 
     def test_index_generator(self):
         with self.assertRaises(ValueError):
