@@ -275,7 +275,11 @@ class ReadTopic(BaseTopic):
             if self.volatile
             else salinfo.domain.reader_qos
         )
-        self._reader = salinfo.subscriber.create_datareader(self._topic, qos)
+        if sal_prefix == "command_":
+            subscriber = salinfo.cmd_subscriber
+        else:
+            subscriber = salinfo.data_subscriber
+        self._reader = subscriber.create_datareader(self._topic, qos)
         # TODO DM-26411: replace ANY_INSTANCE_STATE with ALIVE_INSTANCE_STATE
         # once the OpenSplice issue 00020647 is fixed.
         read_mask = [

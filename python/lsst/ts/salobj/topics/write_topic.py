@@ -96,7 +96,11 @@ class WriteTopic(BaseTopic):
             if self.volatile
             else salinfo.domain.writer_qos
         )
-        self._writer = salinfo.publisher.create_datawriter(self._topic, qos)
+        if sal_prefix == "command_":
+            publisher = salinfo.cmd_publisher
+        else:
+            publisher = salinfo.data_publisher
+        self._writer = publisher.create_datawriter(self._topic, qos)
         self._has_data = False
         self._data = self.DataType()
         self._has_priority = sal_prefix == "logevent_"
