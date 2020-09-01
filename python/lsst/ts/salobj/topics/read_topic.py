@@ -275,7 +275,18 @@ class ReadTopic(BaseTopic):
             if self.volatile
             else salinfo.domain.reader_qos
         )
-        self._reader = salinfo.subscriber.create_datareader(self._topic, qos)
+        # Command topics use a different a partition name than
+        # all other topics, including ackcmd, and the partition name
+        # is part of the publisher and subscriber.
+        # This split allows us to create just one subscriber and one publisher
+        # for each Controller or Remote:
+        # `Controller` only needs a cmd_subscriber and data_publisher,
+        # `Remote` only needs a cmd_publisher and data_subscriber.
+        if sal_prefix == "command_":
+            subscriber = salinfo.cmd_subscriber
+        else:
+            subscriber = salinfo.data_subscriber
+        self._reader = subscriber.create_datareader(self._topic, qos)
         # TODO DM-26411: replace ANY_INSTANCE_STATE with ALIVE_INSTANCE_STATE
         # once the OpenSplice issue 00020647 is fixed.
         read_mask = [

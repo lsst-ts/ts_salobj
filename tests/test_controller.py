@@ -54,7 +54,7 @@ class ControllerWithDoMethods(salobj.Controller):
 
 class ControllerConstructorTestCase(asynctest.TestCase):
     def setUp(self):
-        salobj.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_partition_prefix()
 
     async def test_do_callbacks_false(self):
         index = next(index_gen)

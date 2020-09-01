@@ -96,7 +96,18 @@ class WriteTopic(BaseTopic):
             if self.volatile
             else salinfo.domain.writer_qos
         )
-        self._writer = salinfo.publisher.create_datawriter(self._topic, qos)
+        # Command topics use a different a partition name than
+        # all other topics, including ackcmd, and the partition name
+        # is part of the publisher and subscriber.
+        # This split allows us to create just one subscriber and one publisher
+        # for each Controller or Remote:
+        # `Controller` only needs a cmd_subscriber and data_publisher,
+        # `Remote` only needs a cmd_publisher and data_subscriber.
+        if sal_prefix == "command_":
+            publisher = salinfo.cmd_publisher
+        else:
+            publisher = salinfo.data_publisher
+        self._writer = publisher.create_datawriter(self._topic, qos)
         self._has_data = False
         self._data = self.DataType()
         self._has_priority = sal_prefix == "logevent_"
