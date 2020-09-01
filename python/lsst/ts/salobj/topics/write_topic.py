@@ -177,7 +177,7 @@ class WriteTopic(BaseTopic):
         self.data.private_sndStamp = base.current_tai()
         self.data.private_revCode = self.rev_code
         self.data.private_origin = self.salinfo.domain.origin
-        self.data.private_identity = self.salinfo.domain.identity
+        self.data.private_identity = self.salinfo.identity
         if self._seq_num_generator is not None:
             self.data.private_seqNum = next(self._seq_num_generator)
         # when index is 0 use the default of 0 and give senders a chance

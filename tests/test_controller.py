@@ -65,7 +65,7 @@ class ControllerConstructorTestCase(asynctest.TestCase):
                     cmd = getattr(controller, "cmd_" + name)
                     self.assertFalse(cmd.has_callback)
 
-            self.assertEqual(controller.salinfo.domain.identity, f"Test:{index}")
+            self.assertEqual(controller.salinfo.identity, f"Test:{index}")
 
     async def test_do_callbacks_true(self):
         index = next(index_gen)

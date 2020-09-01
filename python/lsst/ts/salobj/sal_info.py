@@ -156,6 +156,11 @@ class SalInfo:
     indexed : `bool`
         `True` if this SAL component is indexed (meaning a non-zero index
         is allowed), `False` if not.
+    identity : `str`
+        Value used for the private_identity field of DDS messages.
+        Defaults to username@host, but CSCs should use the CSC name:
+        * SAL_component_name for a non-indexed SAL component
+        * SAL_component_name:index for an indexed SAL component.
     isopen : `bool`
         Is this read topic open? `True` until `close` is called.
     log : `logging.Logger`
@@ -233,6 +238,7 @@ class SalInfo:
         self.domain = domain
         self.name = name
         self.index = 0 if index is None else int(index)
+        self.identity = domain.default_identity
         self.start_called = False
 
         # Dict of SAL topic name: wait_for_historical_data succeeded
@@ -327,11 +333,7 @@ class SalInfo:
             return
         # Note: ReadTopic's reader filters out ackcmd samples
         # for commands issued by other remotes.
-        # Except... TODO DM-25474: delete the following if statement
-        # and enable the identity test in ReadTopic's read query
-        # once all CSCs echo identity in their ackcmd topics.
-        # See the TODO in read_topic.py for more information.
-        if data.identity and data.identity != self.domain.identity:
+        if data.identity and data.identity != self.identity:
             # This ackcmd is for a command issued by a different Remote,
             # so ignore it.
             return
