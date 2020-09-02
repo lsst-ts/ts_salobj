@@ -34,7 +34,7 @@ from . import base
 DDS_READ_QUEUE_LEN = 100
 """Length of DDS read queue
 
-Warning: this must be equal to or longer than the queue length in the
+Warning: this must be equal to or greater than the queue length in the
 OpenSplice configuration file (pointed to by $OSPL_URI).
 This information is not available from ``dds`` objects, so I set queue depth
 instead of using the value specified in the QoS XML file.

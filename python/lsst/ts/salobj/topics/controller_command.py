@@ -27,6 +27,7 @@ import warnings
 
 from .. import sal_enums
 from .. import base
+from ..domain import DDS_READ_QUEUE_LEN
 from . import read_topic
 from . import write_topic
 
@@ -49,6 +50,8 @@ class ControllerCommand(read_topic.ReadTopic):
         SAL component information
     name : `str`
         Command name
+    queue_len : `int`, optional
+        Number of elements that can be queued for `get_oldest`.
 
     Notes
     -----
@@ -81,7 +84,7 @@ class ControllerCommand(read_topic.ReadTopic):
       then do the same as `ExpectedError` and also log a traceback.
     """
 
-    def __init__(self, salinfo, name, max_history=0, queue_len=100):
+    def __init__(self, salinfo, name, max_history=0, queue_len=DDS_READ_QUEUE_LEN):
         super().__init__(
             salinfo=salinfo,
             name=name,
