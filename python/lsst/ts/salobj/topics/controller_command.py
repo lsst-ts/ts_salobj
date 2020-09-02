@@ -84,12 +84,12 @@ class ControllerCommand(read_topic.ReadTopic):
       then do the same as `ExpectedError` and also log a traceback.
     """
 
-    def __init__(self, salinfo, name, max_history=0, queue_len=DDS_READ_QUEUE_LEN):
+    def __init__(self, salinfo, name, queue_len=DDS_READ_QUEUE_LEN):
         super().__init__(
             salinfo=salinfo,
             name=name,
             sal_prefix="command_",
-            max_history=max_history,
+            max_history=0,
             queue_len=queue_len,
         )
         # Set false to ignore authorization.
