@@ -296,7 +296,12 @@ class ReadTopic(BaseTopic):
             ]
         if queries:
             full_query = " AND ".join(queries)
-            read_condition = dds.QueryCondition(self._reader, read_mask, full_query)
+            try:
+                read_condition = dds.QueryCondition(self._reader, read_mask, full_query)
+            except Exception as e:
+                raise RuntimeError(
+                    f"Could not create QueryCondition using full_query={full_query!r}"
+                ) from e
         else:
             read_condition = self._reader.create_readcondition(read_mask)
         self._read_condition = read_condition
