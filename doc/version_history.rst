@@ -29,6 +29,8 @@ Backward Incompatible Changes:
   when beginning to execute a command that will take significant time before it is reported as ``CMD_COMPLETE``.
 * Removed the deprecated `SalInfo.idl_loc` property; use ``SalInfo.metadata.idl_path`` instead.
 * The `force_output` argument to `topics.ControllerEvent.set_put` is now keyword-only.
+* Removed the deprecated `max_history` argument from `topics.ControllerCommand`\ s constructor.
+  Commands are volatile, so historical data is not available.
 * Removed ``bin/purge_topics.py`` command-line script, because it is no longer needed.
 
 Deprecations:
@@ -71,6 +73,8 @@ Changes:
 * Update ``Jenkinsfile`` to disable concurrent builds and clean up old log files.
 * Removed the ``.travis.yml`` file because it duplicates testing done in Jenkins.
 * Use `asynco.create_task` instead of deprecated `asyncio.ensure_future`.
+* Read topics now use ``DDS_READ_QUEUE_LEN`` as the default value for ``queue_len``.
+  They have the same value, but this makes it easier and safer to change ``DDS_READ_QUEUE_LEN`` in future.
 
 Requirements:
 
