@@ -191,8 +191,10 @@ class SalInfoTestCase(asynctest.TestCase):
             self.assertEqual(salinfo.partition_prefix, os.environ["LSST_DDS_DOMAIN"])
 
     async def test_lsst_dds_domain_required(self):
-        del os.environ["LSST_DDS_PARTITION_PREFIX"]
-        del os.environ["LSST_DDS_DOMAIN"]
+        # Delete the main environment variable and the fallback,
+        # if they are defined.
+        os.environ.pop("LSST_DDS_PARTITION_PREFIX", None)
+        os.environ.pop("LSST_DDS_DOMAIN", None)
 
         async with salobj.Domain() as domain:
             with self.assertRaises(RuntimeError):
