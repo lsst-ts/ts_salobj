@@ -148,6 +148,8 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         The prefix is tested elsewhere.
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
+            # TODO DM-26605 remove this line as no longer needed:
+            self.csc.authorize = True
             await self.assert_next_sample(
                 self.remote.evt_authList, authorizedUsers="", nonAuthorizedCSCs="",
             )

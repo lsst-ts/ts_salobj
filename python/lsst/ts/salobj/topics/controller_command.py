@@ -95,7 +95,8 @@ class ControllerCommand(read_topic.ReadTopic):
         # Set false to ignore authorization.
         # The only command should ignore authorization is
         # the command that handles user requests for authorization.
-        self.authorize = True
+        # TODO DM-26605: Change this to True
+        self.authorize = False
         self.cmdtype = salinfo.sal_topic_names.index(self.sal_name)
         if salinfo._ackcmd_writer is None:
             self.salinfo._ackcmd_writer = AckCmdWriter(salinfo=salinfo)
