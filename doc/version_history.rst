@@ -57,7 +57,7 @@ Deprecations:
 
 Changes:
 
-* Implemented authorization support.
+* Implemented authorization support, though that is off by default for now.
   This will not be complete until ts_sal has full support.
 * Simplified the simulation support in CSCs, as explained in Deprecations above.
 * Added ``--loglevel`` and ``--version`` arguments to `BaseCsc`\ 's command-line argument parser.
