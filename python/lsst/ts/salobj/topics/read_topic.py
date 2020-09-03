@@ -240,7 +240,7 @@ class ReadTopic(BaseTopic):
         name,
         sal_prefix,
         max_history,
-        queue_len=100,
+        queue_len=DDS_READ_QUEUE_LEN,
         filter_ackcmd=True,
     ):
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
