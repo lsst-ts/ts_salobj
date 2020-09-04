@@ -67,6 +67,8 @@ Changes:
 * Added the `get_opensplice_version` function.
 * If a command is acknowledged with ``CMD_INPROGRESS`` then the command timeout is extended by the ``timeout`` value in the acknowledgement.
   Thus a slow command will need a long timeout as long as command issues a ``CMD_INPROGRESS`` acknowledgement with a reasonable ``timeout`` value.
+* Added the ``settingsToApply`` argument to `BaseCscTestCase.check_standard_state_transitions`,
+  to allow testing CSCs that do not have a default configuration.
 * Environment variable ``LSST_DDS_IP`` is no longer used.
 * The ``private_host`` field of DDS topics is no longer read nor set.
 * Updated the git pre-commit hook to prevent the commit if black formatting needed.
