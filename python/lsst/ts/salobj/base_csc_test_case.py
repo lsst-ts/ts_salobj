@@ -256,7 +256,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             process.terminate()
 
     async def check_standard_state_transitions(
-        self, enabled_commands, skip_commands=None, timeout=STD_TIMEOUT
+        self,
+        enabled_commands,
+        skip_commands=None,
+        settingsToApply="",
+        timeout=STD_TIMEOUT,
     ):
         """Test standard CSC state transitions.
 
@@ -266,9 +270,12 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             List of CSC-specific commands that are valid in the enabled state.
             Need not include the standard commands, which are "disable"
             and "setLogLevel" (which is valid in any state).
-        skip_commands : `List` [`str`] or `None`
+        skip_commands : `List` [`str`] or `None`, optional
             List of commands to skip.
-        timeout : `float`
+        settingsToApply : `str`, optional
+            Value for the ``settingsToApply`` argument for the ``start``
+            command.
+        timeout : `float`, optional
             Time limit for state transition commands (seconds).
 
         Notes
@@ -292,7 +299,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         )
 
         # Send start; new state is DISABLED.
-        await self.remote.cmd_start.start(timeout=timeout)
+        await self.remote.cmd_start.set_start(
+            settingsToApply=settingsToApply, timeout=timeout
+        )
         self.assertEqual(self.csc.summary_state, sal_enums.State.DISABLED)
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
         await self.check_bad_commands(

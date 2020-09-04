@@ -624,10 +624,13 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         * standby: DISABLED or FAULT to STANDBY
         * exitControl: STANDBY to OFFLINE (quit)
         """
-        async with self.make_csc(initial_state=salobj.State.STANDBY):
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+        ):
             await self.check_standard_state_transitions(
                 enabled_commands=("setArrays", "setScalars", "wait"),
                 skip_commands=("fault",),
+                settingsToApply="all_fields",
             )
 
 
