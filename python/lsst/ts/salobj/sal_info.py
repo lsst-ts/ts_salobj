@@ -298,12 +298,20 @@ class SalInfo:
         self._waitset.attach(self._guardcond)
         self._read_loop_task = base.make_done_future()
 
-        idl_path = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
+        if self.is_sal:
+            idl_path = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
+        else:
+            idl_path = domain.idl_dir / f"{self.name}.idl"
         if not idl_path.is_file():
             raise RuntimeError(
                 f"Cannot find IDL file {idl_path} for name={self.name!r}"
             )
-        self.metadata = idl_metadata.parse_idl(name=self.name, idl_path=idl_path)
+        if self.is_sal:
+            self.metadata = idl_metadata.parse_idl(name=self.name, idl_path=idl_path)
+        else:
+            self.metadata = idl_metadata.parse_nonsal_idl(
+                name=self.name, idl_path=idl_path
+            )
         self.parse_metadata()  # Adds self.indexed, self.revnames, etc.
         if self.index != 0 and not self.indexed:
             raise ValueError(
@@ -429,6 +437,15 @@ class SalInfo:
         return self._data_subscriber
 
     @property
+    def is_sal(self):
+        """Is this for one of our own SAL components?
+
+        The only supported alternative is OpenSplice's DDS IDL file,
+        but we may expand that at some point.
+        """
+        return self.name != "DDS"
+
+    @property
     def name_index(self):
         """Get name[:index].
 
@@ -540,17 +557,23 @@ class SalInfo:
         event_names = []
         telemetry_names = []
         revnames = {}
-        for topic_metadata in self.metadata.topic_info.values():
-            sal_topic_name = topic_metadata.sal_name
-            if sal_topic_name.startswith("command_"):
-                command_names.append(sal_topic_name[8:])
-            elif sal_topic_name.startswith("logevent_"):
-                event_names.append(sal_topic_name[9:])
-            elif sal_topic_name != "ackcmd":
+        if self.is_sal:
+            for topic_metadata in self.metadata.topic_info.values():
+                sal_topic_name = topic_metadata.sal_name
+                if sal_topic_name.startswith("command_"):
+                    command_names.append(sal_topic_name[8:])
+                elif sal_topic_name.startswith("logevent_"):
+                    event_names.append(sal_topic_name[9:])
+                elif sal_topic_name != "ackcmd":
+                    telemetry_names.append(sal_topic_name)
+                revnames[
+                    sal_topic_name
+                ] = f"{self.name}::{sal_topic_name}_{topic_metadata.version_hash}"
+        else:
+            for topic_metadata in self.metadata.topic_info.values():
+                sal_topic_name = topic_metadata.sal_name
                 telemetry_names.append(sal_topic_name)
-            revnames[
-                sal_topic_name
-            ] = f"{self.name}::{sal_topic_name}_{topic_metadata.version_hash}"
+                revnames[sal_topic_name] = f"{self.name}::{sal_topic_name}"
 
         # Examine last topic (or any topic) to see if component is indexed.
         indexed_field_name = f"{self.name}ID"
