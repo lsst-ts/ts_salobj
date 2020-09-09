@@ -522,7 +522,7 @@ class SalInfo:
         return self.make_ackcmd(*args, **kwargs)
 
     def __repr__(self):
-        return f"SalBase({self.name}, {self.index})"
+        return f"SalInfo({self.name}, {self.index})"
 
     def parse_metadata(self):
         """Parse the IDL metadata to generate some attributes.
