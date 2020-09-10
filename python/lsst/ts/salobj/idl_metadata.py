@@ -245,6 +245,9 @@ def parse_idl(name, idl_path):
                 elif topic_end_pattern.match(line):
                     topic_metadata = None
 
+    # Note: the field types are too complicated to be described
+    # by a FieldMetadata object, so leave that blank.
+
     return IdlMetadata(
         name=name,
         idl_path=idl_path,
