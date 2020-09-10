@@ -388,14 +388,7 @@ class SalInfo:
         This has a different partition name than a data_publisher.
         """
         if self._cmd_publisher is None:
-            partition_name = self.cmd_partition_name
-            partition_qos_policy = dds.PartitionQosPolicy([partition_name])
-
-            publisher_qos = self.domain.qos_provider.get_publisher_qos()
-            publisher_qos.set_policies([partition_qos_policy])
-            self._cmd_publisher = self.domain.participant.create_publisher(
-                publisher_qos
-            )
+            self._cmd_publisher = self.domain.make_publisher([self.cmd_partition_name])
 
         return self._cmd_publisher
 
@@ -406,13 +399,8 @@ class SalInfo:
         This has a different partition name than a data_subscriber.
         """
         if self._cmd_subscriber is None:
-            partition_name = self.cmd_partition_name
-            partition_qos_policy = dds.PartitionQosPolicy([partition_name])
-
-            subscriber_qos = self.domain.qos_provider.get_subscriber_qos()
-            subscriber_qos.set_policies([partition_qos_policy])
-            self._cmd_subscriber = self.domain.participant.create_subscriber(
-                subscriber_qos
+            self._cmd_subscriber = self.domain.make_subscriber(
+                [self.cmd_partition_name]
             )
 
         return self._cmd_subscriber
@@ -424,13 +412,8 @@ class SalInfo:
         This has a different partition name than a cmd_publisher.
         """
         if self._data_publisher is None:
-            partition_name = self.data_partition_name
-            partition_qos_policy = dds.PartitionQosPolicy([partition_name])
-
-            publisher_qos = self.domain.qos_provider.get_publisher_qos()
-            publisher_qos.set_policies([partition_qos_policy])
-            self._data_publisher = self.domain.participant.create_publisher(
-                publisher_qos
+            self._data_publisher = self.domain.make_publisher(
+                [self.data_partition_name]
             )
 
         return self._data_publisher
@@ -442,13 +425,8 @@ class SalInfo:
         This has a different partition name than a cmd_subscriber.
         """
         if self._data_subscriber is None:
-            partition_name = self.data_partition_name
-            partition_qos_policy = dds.PartitionQosPolicy([partition_name])
-
-            subscriber_qos = self.domain.qos_provider.get_subscriber_qos()
-            subscriber_qos.set_policies([partition_qos_policy])
-            self._data_subscriber = self.domain.participant.create_subscriber(
-                subscriber_qos
+            self._data_subscriber = self.domain.make_subscriber(
+                [self.data_partition_name]
             )
 
         return self._data_subscriber

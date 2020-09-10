@@ -81,7 +81,9 @@ class WriteTopic(BaseTopic):
         max_seq_num=MAX_SEQ_NUM,
         initial_seq_num=None,
     ):
-        super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
+        super().__init__(
+            salinfo=salinfo, name=name, sal_prefix=sal_prefix,
+        )
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
@@ -91,11 +93,6 @@ class WriteTopic(BaseTopic):
             self._seq_num_generator = base.index_generator(
                 imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num
             )
-        qos = (
-            salinfo.domain.volatile_writer_qos
-            if self.volatile
-            else salinfo.domain.writer_qos
-        )
         # Command topics use a different a partition name than
         # all other topics, including ackcmd, and the partition name
         # is part of the publisher and subscriber.
@@ -107,7 +104,7 @@ class WriteTopic(BaseTopic):
             publisher = salinfo.cmd_publisher
         else:
             publisher = salinfo.data_publisher
-        self._writer = publisher.create_datawriter(self._topic, qos)
+        self._writer = publisher.create_datawriter(self._topic, self.qos_set.writer_qos)
         self._has_data = False
         self._data = self.DataType()
         self._has_priority = sal_prefix == "logevent_"

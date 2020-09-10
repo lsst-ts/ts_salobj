@@ -236,6 +236,14 @@ class BasicsTestCase(asynctest.TestCase):
 
             self.assertEqual(domain.user_host, salobj.get_user_host())
             self.assertEqual(domain.default_identity, domain.user_host)
+            self.assertEqual(domain.ackcmd_qos_set.profile_name, "AckcmdProfile")
+            self.assertEqual(domain.command_qos_set.profile_name, "CommandProfile")
+            self.assertEqual(domain.event_qos_set.profile_name, "EventProfile")
+            self.assertEqual(domain.telemetry_qos_set.profile_name, "TelemetryProfile")
+            self.assertTrue(domain.ackcmd_qos_set.volatile)
+            self.assertTrue(domain.command_qos_set.volatile)
+            self.assertFalse(domain.event_qos_set.volatile)
+            self.assertTrue(domain.telemetry_qos_set.volatile)
 
     def test_index_generator(self):
         with self.assertRaises(ValueError):

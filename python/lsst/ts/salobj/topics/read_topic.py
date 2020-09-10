@@ -270,11 +270,6 @@ class ReadTopic(BaseTopic):
         self.python_queue_length_checker = QueueCapacityChecker(
             descr=f"{name} python read queue", log=self.log, queue_len=queue_len
         )
-        qos = (
-            salinfo.domain.volatile_reader_qos
-            if self.volatile
-            else salinfo.domain.reader_qos
-        )
         # Command topics use a different a partition name than
         # all other topics, including ackcmd, and the partition name
         # is part of the publisher and subscriber.
@@ -286,7 +281,9 @@ class ReadTopic(BaseTopic):
             subscriber = salinfo.cmd_subscriber
         else:
             subscriber = salinfo.data_subscriber
-        self._reader = subscriber.create_datareader(self._topic, qos)
+        self._reader = subscriber.create_datareader(
+            self._topic, self.qos_set.reader_qos
+        )
         # TODO DM-26411: replace ANY_INSTANCE_STATE with ALIVE_INSTANCE_STATE
         # once the OpenSplice issue 00020647 is fixed.
         read_mask = [
