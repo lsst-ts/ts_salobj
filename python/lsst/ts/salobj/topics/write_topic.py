@@ -28,17 +28,14 @@ import numpy as np
 from .base_topic import BaseTopic
 from .. import base
 
-
+# Maximum value for the ``private_seqNum`` field of each topic,
+# a 4 byte signed integer.
+# For command topics this field is the command ID, and it must be unique
+# for each command in order to avoid collisions (since there is only one
+# ``ackcmd`` topic that is shared by all commands).
+# For other topics its use is unspecified but it may prove handy to
+# increment it (with wraparound) for each data point.
 MAX_SEQ_NUM = (1 << 31) - 1
-"""Maximum value for the ``private_seqNum`` field of each topic,
-a 4 byte signed integer.
-
-For command topics this field is the command ID, and it must be unique
-for each command in order to avoid collisions (since there is only one
-``ackcmd`` topic that is shared by all commands).
-For other topics its use is unspecified but it may prove handy to
-increment it (with wraparound) for each data point.
-"""
 
 
 class WriteTopic(BaseTopic):
