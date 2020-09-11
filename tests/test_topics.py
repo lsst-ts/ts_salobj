@@ -496,7 +496,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # with self.assertRaises(ValueError):
             #     self.csc.evt_arrays.set_put(int0=bad_int0)
 
-    async def set_and_get_scalars(self, num_commands):
+    async def set_scalars(self, num_commands):
         """Send the setScalars command repeatedly and return what was sent.
 
         Each command is sent with new random data. Each command triggers
@@ -536,7 +536,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             )
 
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
 
             # the pending aget calls should receive the first event sent
             evt_data, tel_data = await asyncio.gather(evt_task, tel_task)
@@ -563,7 +563,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     async def test_get(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
             # wait for all events
             await asyncio.sleep(EVENT_DELAY)
 
@@ -586,7 +586,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
             # wait for all events
             await asyncio.sleep(EVENT_DELAY)
 
@@ -613,7 +613,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     async def test_next(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
 
             evt_data_list = []
             while True:
@@ -724,7 +724,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             with self.assertRaises(RuntimeError):
                 await self.remote.tel_scalars.next(flush=False)
 
-            cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
             # give the wait loops time to finish
             await asyncio.sleep(EVENT_DELAY)
 
