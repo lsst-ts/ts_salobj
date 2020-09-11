@@ -174,8 +174,6 @@ class _CommandInfo:
         AckError
             If the command fails.
         """
-        if timeout is None:  # For backwards compatibility.
-            timeout = DEFAULT_TIMEOUT
         try:
             self._wait_task = asyncio.create_task(
                 self._basic_next_ackcmd(timeout=timeout)
@@ -227,15 +225,12 @@ class _CommandInfo:
         # because it reduces or eliminates a race condition where a new
         # command acknowledgement comes in as next_ackcmd is timing out.
         while True:
-            while self._ack_queue:
+            if self._ack_queue:
                 ackcmd = self._ack_queue.popleft()
                 self._last_ackcmd = ackcmd
                 return ackcmd
             await self._next_ack_event.wait()
             self._next_ack_event.clear()
-            ackcmd = self._ack_queue.popleft()
-            self._last_ackcmd = ackcmd
-            return ackcmd
 
     def __del__(self):
         for task_name in ("_wait_task",):
