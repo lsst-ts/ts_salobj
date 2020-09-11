@@ -824,33 +824,39 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertTrue(self.csc.cmd_wait.has_callback)
             self.assertEqual(self.csc.cmd_wait.callback, self.csc.do_wait)
 
-            # replace callback
+            # Set callback to non-callable should fail,
+            # leaving the original callback.
             with self.assertRaises(TypeError):
                 self.csc.cmd_wait.callback = "not callable"
             self.assertEqual(self.csc.cmd_wait.callback, self.csc.do_wait)
 
+            # Set callback to a callable should succeed
+            # (even if it has the wrong number of arguments).
+
             def foo():
+                """A simple callable."""
                 pass
 
             self.csc.cmd_wait.callback = foo
             self.assertEqual(self.csc.cmd_wait.callback, foo)
 
+            # Set callback to None should clear it.
+            self.csc.cmd_wait.callback = None
+            self.assertFalse(self.csc.cmd_wait.has_callback)
+
     async def test_controller_command_success(self):
         """Test ack when a controller command succeeds.
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
-
             ackcmd = await self.remote.cmd_wait.set_start(
                 duration=0, timeout=STD_TIMEOUT
             )
             self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
 
-    async def test_controller_command_return_ackcmd(self):
+    async def test_controller_command_callback_return_failed_ackcmd(self):
         """Test exception raised by remote command when controller command
         callback returns an explicit failed ackcmd.
         """
-        # cannot call check_controller_command_callback_failure
-        # because need a Harness to construct the returned ackcmd
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             failed_ack = salobj.SalRetCode.CMD_NOPERM
             result = "return failed ackcmd"
@@ -860,69 +866,73 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                     private_seqNum=data.private_seqNum, ack=failed_ack, result=result
                 )
 
-            self.csc.cmd_wait.callback = return_ack
-            with salobj.assertRaisesAckError(ack=failed_ack, result_contains=result):
-                await self.remote.cmd_wait.start(timeout=STD_TIMEOUT)
+            await self.check_controller_command_callback_failure(
+                callback=return_ack, ack=failed_ack, result_contains=result,
+            )
 
-    async def test_controller_command_expected_error(self):
+    async def test_controller_command_callback_raises_expected_error(self):
         """Test exception raised by remote command when controller command
         callback raises ExpectedError.
         """
-        msg = "intentional failure"
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
+            msg = "intentional failure"
 
-        def fail_expected_exception(data):
-            raise salobj.ExpectedError(msg)
+            def fail_expected_exception(data):
+                raise salobj.ExpectedError(msg)
 
-        await self.check_controller_command_callback_failure(
-            callback=fail_expected_exception,
-            ack=salobj.SalRetCode.CMD_FAILED,
-            result_contains=msg,
-        )
+            await self.check_controller_command_callback_failure(
+                callback=fail_expected_exception,
+                ack=salobj.SalRetCode.CMD_FAILED,
+                result_contains=msg,
+            )
 
-    async def test_controller_command_exception(self):
+    async def test_controller_command_callback_raises_exception(self):
         """Test exception raised by remote command when controller command
         callback raises an Exception.
         """
-        msg = "intentional failure"
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
+            msg = "intentional failure"
 
-        def fail_exception(data):
-            raise Exception(msg)
+            def fail_exception(data):
+                raise Exception(msg)
 
-        await self.check_controller_command_callback_failure(
-            callback=fail_exception,
-            ack=salobj.SalRetCode.CMD_FAILED,
-            result_contains=msg,
-        )
+            await self.check_controller_command_callback_failure(
+                callback=fail_exception,
+                ack=salobj.SalRetCode.CMD_FAILED,
+                result_contains=msg,
+            )
 
-    async def test_controller_command_timeout(self):
+    async def test_controller_command_callback_times_out(self):
         """Test exception raised by remote command when controller command
-        callback times out.
+        callback times out (raises asyncio.TimeoutError).
         """
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
 
-        def fail_timeout(data):
-            raise asyncio.TimeoutError()
+            def fail_timeout(data):
+                raise asyncio.TimeoutError()
 
-        await self.check_controller_command_callback_failure(
-            callback=fail_timeout, ack=salobj.SalRetCode.CMD_TIMEOUT
-        )
+            await self.check_controller_command_callback_failure(
+                callback=fail_timeout, ack=salobj.SalRetCode.CMD_TIMEOUT
+            )
 
-    async def test_controller_command_cancel(self):
+    async def test_controller_command_callback_canceled(self):
         """Test exception raised by remote command when controller command
-        callback is cancelled.
+        callback is cancelled (raises asyncio.CancelledError).
         """
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
 
-        def fail_cancel(data):
-            raise asyncio.CancelledError()
+            def fail_cancel(data):
+                raise asyncio.CancelledError()
 
-        await self.check_controller_command_callback_failure(
-            callback=fail_cancel, ack=salobj.SalRetCode.CMD_ABORTED
-        )
+            await self.check_controller_command_callback_failure(
+                callback=fail_cancel, ack=salobj.SalRetCode.CMD_ABORTED
+            )
 
     async def check_controller_command_callback_failure(
         self, callback, ack, result_contains=None
     ):
-        """Check the exception raised by remote command when the
-        controller command raises or returns a failed ackcmd.
+        """Check the exception raised by a remote command when the controller
+        controller command raises an exception or returns a failed ackcmd.
 
         Parameters
         ----------
@@ -933,10 +943,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         result_contains : `str`, optional
             Expected substring of the result value of the `AckError`
         """
-        async with self.make_csc(initial_state=salobj.State.ENABLED):
-            self.csc.cmd_wait.callback = callback
-            with salobj.assertRaisesAckError(ack=ack, result_contains=result_contains):
-                await self.remote.cmd_wait.start(timeout=STD_TIMEOUT)
+        self.csc.cmd_wait.callback = callback
+        with salobj.assertRaisesAckError(ack=ack, result_contains=result_contains):
+            await self.remote.cmd_wait.start(timeout=STD_TIMEOUT)
 
     async def test_multiple_commands(self):
         """Test that we can have multiple instances of the same command
