@@ -1085,7 +1085,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             salinfo = salobj.SalInfo(
                 domain=domain, name="Test", index=self.next_index()
             )
-            # Use a logevent topic in case telemetry becomes volatile
+            # Use a logevent topic because it is not volatile
             # (which might cause the read loop to start too quickly).
             topic = salobj.topics.ReadTopic(
                 salinfo=salinfo, name="scalars", sal_prefix="logevent_", max_history=100
@@ -1103,6 +1103,92 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 await topic.aget(timeout=0)
             with self.assertRaises(RuntimeError):
                 await topic.next(flush=False, timeout=0)
+
+    async def test_read_topic_constructor_errors_and_warnings(self):
+        MIN_QUEUE_LEN = salobj.topics.MIN_QUEUE_LEN
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(
+                domain=domain, name="Test", index=self.next_index()
+            )
+            # max_history must not be negative
+            for bad_max_history in (-1, -10):
+                for name, sal_prefix in (
+                    ("ackcmd", ""),
+                    ("setScalars", "command_"),
+                    ("scalars", "logevent_"),
+                    ("scalars", ""),
+                ):
+                    with self.assertRaises(ValueError):
+                        salobj.topics.ReadTopic(
+                            salinfo=salinfo,
+                            name=name,
+                            sal_prefix=sal_prefix,
+                            max_history=bad_max_history,
+                        )
+            # queue_len must be be >= MIN_QUEUE_LEN
+            for bad_queue_len in (-1, 0, MIN_QUEUE_LEN - 1):
+                for name, sal_prefix in (
+                    ("ackcmd", ""),
+                    ("setScalars", "command_"),
+                    ("scalars", "logevent_"),
+                    ("scalars", ""),
+                ):
+                    with self.assertRaises(ValueError):
+                        salobj.topics.ReadTopic(
+                            salinfo=salinfo,
+                            name=name,
+                            sal_prefix=sal_prefix,
+                            max_history=0,
+                            queue_len=bad_queue_len,
+                        )
+
+            # Only events can have non-zero max_history
+            for bad_max_history in (1, 10):
+                for name, sal_prefix in (
+                    ("ackcmd", ""),
+                    ("setScalars", "command_"),
+                    ("scalars", ""),
+                ):
+                    with self.assertRaises(ValueError):
+                        salobj.topics.ReadTopic(
+                            salinfo=salinfo,
+                            name=name,
+                            sal_prefix=sal_prefix,
+                            max_history=bad_max_history,
+                        )
+
+            # An event can have non-zero max_history, but...
+            # max_history must be <= queue_len
+            for queue_len in (1, 10):
+                for delta in (1, 5):
+                    bad_max_history = queue_len + delta
+            with self.assertRaises(ValueError):
+                salobj.topics.ReadTopic(
+                    salinfo=salinfo,
+                    name="scalars",
+                    sal_prefix="logevent_",
+                    max_history=bad_max_history,
+                    queue_len=queue_len,
+                )
+
+            # max_history > DDS queue length or
+            # durability_service history_depth will warn.
+            dds_history_depth = domain.event_qos_set.reader_qos.history.depth
+            dds_durability_history_depth = (
+                domain.event_qos_set.topic_qos.durability_service.history_depth
+            )
+            for warn_max_history in (
+                dds_history_depth + 1,
+                dds_durability_history_depth + 1,
+            ):
+                with self.assertWarns(UserWarning):
+                    salobj.topics.ReadTopic(
+                        salinfo=salinfo,
+                        name="scalars",
+                        sal_prefix="logevent_",
+                        max_history=warn_max_history,
+                        queue_len=warn_max_history + MIN_QUEUE_LEN,
+                    )
 
     async def test_asynchronous_event_callback(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):

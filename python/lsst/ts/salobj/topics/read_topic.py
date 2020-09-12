@@ -19,18 +19,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["QueueCapacityChecker", "ReadTopic"]
+__all__ = ["QueueCapacityChecker", "ReadTopic", "DEFAULT_QUEUE_LEN", "MIN_QUEUE_LEN"]
 
 import asyncio
 import bisect
 import collections
 import inspect
+import warnings
 
 import dds
 
 from .base_topic import BaseTopic
-from ..domain import DDS_READ_QUEUE_LEN
 from .. import base
+
+# Default value for the ``queue_len`` constructor argument.
+DEFAULT_QUEUE_LEN = 100
+
+# Minimum value for the ``queue_len`` constructor argument.
+MIN_QUEUE_LEN = 10
 
 
 class QueueCapacityChecker:
@@ -92,8 +98,10 @@ class QueueCapacityChecker:
     """
 
     def __init__(self, descr, log, queue_len):
-        if queue_len < 10:
-            raise ValueError(f"queue_len {queue_len} must be >= 10")
+        if queue_len < MIN_QUEUE_LEN:
+            raise ValueError(
+                f"queue_len {queue_len} must be >= MIN_QUEUE_LEN={MIN_QUEUE_LEN}"
+            )
         self.descr = descr
         self.log = log
         self.queue_len = queue_len
@@ -167,8 +175,8 @@ class ReadTopic(BaseTopic):
     max_history : `int`
         Maximum number of historical items to read:
 
-        * 0 is required for commands and the ackcmd reader
-        * 1 is recommended for events and telemetry
+        * 0 is required for commands, events, and the ackcmd topic
+        * 1 is recommended for telemetry
     queue_len : `int`, optional
         The maximum number of messages that can be read and not dealt with
         by a callback function or `next` before older messages will be dropped.
@@ -185,9 +193,14 @@ class ReadTopic(BaseTopic):
     ValueError
         If max_history > 0 and the topic is volatile (command or ackcmd).
     ValueError
-        If queue_len <= 0.
+        If queue_len < MIN_QUEUE_LEN.
     ValueError
         If max_history > queue_len.
+    UserWarning
+        If max_history > DDS history queue depth or DDS durability service
+        history depth for this topic.
+        This is a warning rather than an exception, so that the DDS quality
+        of service can be changed without breaking existing code.
 
     Attributes
     ----------
@@ -202,18 +215,18 @@ class ReadTopic(BaseTopic):
     -----
     **Queues**
 
-    There are actually two queues: an internal queue whose length
+    There are actually two queues: a Python queue whose length
     is set by ``queue_len`` and a dds queue whose length is set by
-    low level configuration. Data can be lost in two ways:
+    the DDS QoS file. Data can be lost in two ways:
 
-    - If this class cannot read messages from the dds queue fast enough,
-      then older messages will be dropped from the dds queue. You will get
+    - If this class cannot read messages from the DDS queue fast enough,
+      then older messages will be dropped from the DDS queue. You will get
       a warning log message if the reader starts to fall behind.
-    - As messages are read they are put on the internal queue.
+    - As messages are read they are put on the Python queue.
       If a callback function or `next` does not process data quickly enough
-      then older messages are dropped from the internal queue.
+      then older messages are dropped from the Python queue.
       If you have a callback function then you will get several
-      warning log messages as this internal queue fills up.
+      warning log messages as this Python queue fills up.
       You get no warning otherwise because this class has no way of knowing
       whether or not you intend to read all messages.
 
@@ -240,7 +253,7 @@ class ReadTopic(BaseTopic):
         name,
         sal_prefix,
         max_history,
-        queue_len=DDS_READ_QUEUE_LEN,
+        queue_len=DEFAULT_QUEUE_LEN,
         filter_ackcmd=True,
     ):
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
@@ -250,11 +263,23 @@ class ReadTopic(BaseTopic):
             raise ValueError(f"max_history={max_history} must be >= 0")
         if max_history > 0 and self.volatile:
             raise ValueError(f"max_history={max_history} must be 0 for volatile topics")
-        if queue_len <= 0:
-            raise ValueError(f"queue_len={queue_len} must be positive")
+        if queue_len <= MIN_QUEUE_LEN:
+            raise ValueError(
+                f"queue_len={queue_len} must be >= MIN_QUEUE_LEN={MIN_QUEUE_LEN}"
+            )
         if max_history > queue_len:
             raise ValueError(
                 f"max_history={max_history} must be <= queue_len={queue_len}"
+            )
+        if (
+            max_history > self.qos_set.reader_qos.history.depth
+            or max_history > self.qos_set.topic_qos.durability_service.history_depth
+        ):
+            warnings.warn(
+                f"max_history={max_history} > history depth={self.qos_set.reader_qos.history.depth} "
+                f"and/or {self.qos_set.topic_qos.durability_service.history_depth}; "
+                "you will get less historical data than you asked for.",
+                UserWarning,
             )
         self._max_history = int(max_history)
         self._data_queue = collections.deque(maxlen=queue_len)
@@ -265,7 +290,9 @@ class ReadTopic(BaseTopic):
         self._callback_tasks = set()
         self._callback_loop_task = base.make_done_future()
         self.dds_queue_length_checker = QueueCapacityChecker(
-            descr=f"{name} DDS read queue", log=self.log, queue_len=DDS_READ_QUEUE_LEN
+            descr=f"{name} DDS read queue",
+            log=self.log,
+            queue_len=self.qos_set.reader_qos.history.depth,
         )
         self.python_queue_length_checker = QueueCapacityChecker(
             descr=f"{name} python read queue", log=self.log, queue_len=queue_len
@@ -610,9 +637,9 @@ class ReadTopic(BaseTopic):
             self._next_task.set_result(oldest_message)
 
     def _queue_one_item(self, data):
-        """Add a single message to the internal queue.
+        """Add a single message to the Python queue.
 
-        Subclasses may override to massage the message before queuing.
+        Subclasses may override this to modify the message before queuing.
         `ControllerCommand` does this.
         """
         self._data_queue.append(data)

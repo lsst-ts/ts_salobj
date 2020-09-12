@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["Domain", "DDS_READ_QUEUE_LEN"]
+__all__ = ["Domain"]
 
 import asyncio
 import os
@@ -30,15 +30,6 @@ import dds
 
 from lsst.ts import idl
 from . import base
-
-DDS_READ_QUEUE_LEN = 100
-"""Length of DDS read queue
-
-Warning: this must be equal to or greater than the queue length in the
-OpenSplice configuration file (pointed to by $OSPL_URI).
-This information is not available from ``dds`` objects, so I set queue depth
-instead of using the value specified in the QoS XML file.
-"""
 
 MAX_RANDOM_HOST = (1 << 31) - 1
 
@@ -55,41 +46,41 @@ class QosSet:
 
     Attributes
     ----------
-    volatile : `bool`
-        Is this category of topics volatile?
-        Warning: this is determined from ``profile_name``
-        (because there is no way to read it from the QoS)
-        and that logic needs to be updated if the QoS file changes.
+    profile_name : `str`
+        Profile name; one of "Command", "Event", or "Telemetry".
+    qos_provider : `dds.QosProvider`
+        QoS provider.
+    topic_qos : `dds.Qos`
+        Topic QoS
+    reader_qos : `dds.Qos`
+        Topic reader QoS
+    writer_qos : `dds.Qos`
+        Topic writer QoS
 
     Notes
     -----
     The following QoS should be created elsewhere:
     * publisher and subscriber: these depend on the DDS partition name,
       which is only read when creating the SalInfo object.
-       QoS does not depend on the topic type,
-    * participant: this should not depend on the profile name,
-      and there's no point making 3 of them.
+      Also these QoS are the same for all QoS profiles.
+    * participant: this is the same for all QoS profiles,
+      so there is no point making 3 of them.
     """
 
     def __init__(self, qos_path, profile_name):
         self.profile_name = profile_name
-        self.volatile = dict(
-            AckcmdProfile=True,
-            CommandProfile=True,
-            EventProfile=False,
-            TelemetryProfile=True,
-        )[profile_name]
-
         self.qos_provider = dds.QosProvider(qos_path.as_uri(), profile_name)
         self.topic_qos = self.qos_provider.get_topic_qos()
-
-        read_queue_policy = dds.HistoryQosPolicy(
-            depth=DDS_READ_QUEUE_LEN, kind=dds.DDSHistoryKind.KEEP_LAST
-        )
         self.reader_qos = self.qos_provider.get_reader_qos()
-        self.reader_qos.set_policies([read_queue_policy])
-
         self.writer_qos = self.qos_provider.get_writer_qos()
+
+    @property
+    def volatile(self):
+        """Does this category of topics have volatile durability?
+
+        Volatile topics provide no late-joiner data.
+        """
+        return self.topic_qos.durability.kind == dds.DDSDurabilityKind.VOLATILE
 
 
 class Domain:

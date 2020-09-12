@@ -23,7 +23,6 @@ __all__ = ["RemoteTelemetry"]
 
 import warnings
 
-from ..domain import DDS_READ_QUEUE_LEN
 from . import read_topic
 
 
@@ -43,7 +42,9 @@ class RemoteTelemetry(read_topic.ReadTopic):
         Number of elements that can be queued for `get_oldest`.
     """
 
-    def __init__(self, salinfo, name, max_history=None, queue_len=DDS_READ_QUEUE_LEN):
+    def __init__(
+        self, salinfo, name, max_history=None, queue_len=read_topic.DEFAULT_QUEUE_LEN
+    ):
         # TODO DM-26474: remove the max_history argument and this code block.
         if max_history is not None:
             if max_history == 0:

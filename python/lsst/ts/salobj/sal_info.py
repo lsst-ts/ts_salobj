@@ -33,18 +33,23 @@ import ddsutil
 
 from . import base
 from . import idl_metadata
-from .domain import Domain, DDS_READ_QUEUE_LEN
+from .domain import Domain
 
+# Maximum length of the ``result`` field in an ``ackcmd`` topic.
 MAX_RESULT_LEN = 256
-"""Maximum length of the ``result`` field in an ``ackcmd`` topic.
-"""
 
-# We want DDS logMessage messages for at least INFO level messages
+# We want SAL logMessage messages for at least INFO level messages,
 # so if the current level is less verbose, set it to INFO.
 # Do not change the level if it is already more verbose,
 # because somebody has intentionally increased verbosity
 # (a common thing to do in unit tests).
 MAX_LOG_LEVEL = logging.INFO
+
+# The maximum number of historical samples to read for each topic.
+# This can be any value larger than the length of the longest DDS write queue.
+# If it is too short then you risk mixing historical data
+# with new data samples, which can produce very confusing behavior.
+MAX_HISTORY_READ = 10000
 
 # Default time to wait for historical data (sec);
 # override by setting env var $LSST_DDS_HISTORYSYNC.
@@ -668,7 +673,7 @@ class SalInfo:
                         continue
                     try:
                         data_list = reader._reader.take_cond(
-                            read_cond, DDS_READ_QUEUE_LEN
+                            read_cond, MAX_HISTORY_READ
                         )
                     except dds.DDSException as e:
                         self.log.warning(
@@ -678,7 +683,7 @@ class SalInfo:
                         time.sleep(0.001)
                         try:
                             data_list = reader._reader.take_cond(
-                                read_cond, DDS_READ_QUEUE_LEN
+                                read_cond, MAX_HISTORY_READ
                             )
                         except dds.DDSException as e:
                             raise RuntimeError(
@@ -729,7 +734,7 @@ class SalInfo:
                         data_list = reader._reader.take_cond(
                             condition, reader._data_queue.maxlen
                         )
-                        not reader.dds_queue_length_checker.check_nitems(len(data_list))
+                        reader.dds_queue_length_checker.check_nitems(len(data_list))
                         sd_list = [
                             self._sample_to_data(sd, si)
                             for sd, si in data_list
