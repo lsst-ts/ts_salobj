@@ -137,10 +137,6 @@ class SALPYTestCase(asynctest.TestCase):
             data = await asyncio.wait_for(get_logLevel(), timeout=STD_TIMEOUT)
             print(f"Remote: read logLevel.level={data.level}")
             self.assertEqual(data.level, INITIAL_LOG_LEVEL)
-            print("Remote: wait for initial scalars telemetry")
-            data = await asyncio.wait_for(get_scalars(), timeout=STD_TIMEOUT)
-            print(f"Remote: read scalars.int0={data.int0}")
-            self.assertEqual(data.int0, INITIAL_LOG_LEVEL)
 
             for level in (10, 52, 0):
                 print(f"Remote: send setLogLevel(level={level}) command")
