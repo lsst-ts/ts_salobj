@@ -29,12 +29,10 @@ from .sal_info import SalInfo
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
 from .sal_log_handler import SalLogHandler
 
+# Set of generic commands that need not have an associated do_ method.
+# TODO DM-17157: Remove this constant if and when ``SALSubsystems.xml``
+# explicitly lists all generic topics used by every SAL component.
 OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue", "setSimulationMode"))
-"""Set of generic commands that need not have an associated do_ method.
-
-TODO DM-17157: Remove this constant if and when ``SALSubsystems.xml``
-explicitly lists all generic topics used by every SAL component.
-"""
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.

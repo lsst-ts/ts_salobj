@@ -51,7 +51,7 @@ class AckCmdReader(read_topic.ReadTopic):
     SAL component.
     """
 
-    def __init__(self, salinfo, queue_len=100):
+    def __init__(self, salinfo, queue_len=read_topic.DEFAULT_QUEUE_LEN):
         super().__init__(
             salinfo=salinfo,
             name="ackcmd",

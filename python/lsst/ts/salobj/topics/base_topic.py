@@ -58,6 +58,8 @@ class BaseTopic(abc.ABC):
         For example: "logevent_summaryState".
     log : `logging.Logger`
         A logger.
+    qos_set : `salobj.QosSet`
+        Quality of service set.
     volatile : `bool`
         Is this topic volatile (in which case it has no historical data)?
     attr_name : `str`
@@ -78,12 +80,20 @@ class BaseTopic(abc.ABC):
             self.name = str(name)
             self.sal_name = sal_prefix + self.name
             self.log = salinfo.log.getChild(self.sal_name)
-            self.volatile = sal_prefix in ("", "command_")
 
             attr_prefix = "ack_" if name == "ackcmd" else _ATTR_PREFIXES.get(sal_prefix)
             if attr_prefix is None:
                 raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
             self.attr_name = attr_prefix + name
+
+            if name == "ackcmd":
+                self.qos_set = salinfo.domain.ackcmd_qos_set
+            elif sal_prefix == "command_":
+                self.qos_set = salinfo.domain.command_qos_set
+            elif sal_prefix == "logevent_":
+                self.qos_set = salinfo.domain.event_qos_set
+            else:
+                self.qos_set = salinfo.domain.telemetry_qos_set
 
             revname = salinfo.revnames.get(self.sal_name)
             if revname is None:
@@ -96,13 +106,8 @@ class BaseTopic(abc.ABC):
             self._type = ddsutil.get_dds_classes_from_idl(
                 salinfo.metadata.idl_path, revname
             )
-            qos = (
-                salinfo.domain.volatile_topic_qos
-                if self.volatile
-                else salinfo.domain.topic_qos
-            )
             self._topic = self._type.register_topic(
-                salinfo.domain.participant, self.dds_name, qos
+                salinfo.domain.participant, self.dds_name, self.qos_set.topic_qos
             )
 
         except Exception as e:
@@ -141,6 +146,12 @@ class BaseTopic(abc.ABC):
             await remote.cmd_wait.start(message, timeout=5)
         """
         return self._type.topic_data_class
+
+    @property
+    def volatile(self):
+        """Does this topic have volatile durability?
+        """
+        return self.qos_set.volatile
 
     @property
     def metadata(self):

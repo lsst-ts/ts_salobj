@@ -72,11 +72,9 @@ class MinimalSalobjController(salobj.Controller):
         """Finish construction."""
         await self.salinfo.start()
         print(
-            f"SalobjController: outputting initial logLevel {self.evt_logLevel.data.level} "
-            "and the same value in telemetry scalars.int0"
+            f"SalobjController: writing initial logLevel.level={self.evt_logLevel.data.level} event"
         )
         self.evt_logLevel.put()
-        self.tel_scalars.put()
 
     def do_setLogLevel(self, data):
         print(
@@ -85,8 +83,8 @@ class MinimalSalobjController(salobj.Controller):
         )
 
         print(
-            f"SalobjController: writing logLevel={data.level} "
-            "and the same value in telemetry scalars.int0"
+            f"SalobjController: writing logLevel={data.level} event "
+            "and the same value in scalars.int0 telemetry"
         )
         self.evt_logLevel.set_put(level=data.level)
         self.tel_scalars.set_put(int0=data.level)

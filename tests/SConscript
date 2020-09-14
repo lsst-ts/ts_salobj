@@ -5,11 +5,12 @@ from lsst.sconsUtils import env, scripts
 
 scripts.BasicSConscript.tests(pyList=[])
 
-# HOME makes astropy happier
+# LSST_DDS_QOS is needed by SAL, and thus for the salobj<->SALPY tests;
+# no other salobj-based packages need it.
 # OSPL_HOME is wanted but not required by OpenSplice
 # OSPL_URI is required by OpenSplice
 # ADLINK_LICENSE is needed by licensed OpenSplice
-for name in ("HOME", "OSPL_HOME", "OSPL_URI", "ADLINK_LICENSE"):
+for name in ("LSST_DDS_QOS", "OSPL_HOME", "OSPL_URI", "ADLINK_LICENSE"):
     val = os.environ.get(name)
     if val is not None:
         env.AppendENVPath(name, val)

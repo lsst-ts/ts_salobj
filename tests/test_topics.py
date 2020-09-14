@@ -496,7 +496,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # with self.assertRaises(ValueError):
             #     self.csc.evt_arrays.set_put(int0=bad_int0)
 
-    async def set_and_get_scalars(self, num_commands):
+    async def set_scalars(self, num_commands):
         """Send the setScalars command repeatedly and return what was sent.
 
         Each command is sent with new random data. Each command triggers
@@ -536,7 +536,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             )
 
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
 
             # the pending aget calls should receive the first event sent
             evt_data, tel_data = await asyncio.gather(evt_task, tel_task)
@@ -563,7 +563,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     async def test_get(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
             # wait for all events
             await asyncio.sleep(EVENT_DELAY)
 
@@ -586,7 +586,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
             # wait for all events
             await asyncio.sleep(EVENT_DELAY)
 
@@ -613,7 +613,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     async def test_next(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             num_commands = 3
-            cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
 
             evt_data_list = []
             while True:
@@ -724,7 +724,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             with self.assertRaises(RuntimeError):
                 await self.remote.tel_scalars.next(flush=False)
 
-            cmd_data_list = await self.set_and_get_scalars(num_commands=num_commands)
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
             # give the wait loops time to finish
             await asyncio.sleep(EVENT_DELAY)
 
@@ -824,33 +824,39 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertTrue(self.csc.cmd_wait.has_callback)
             self.assertEqual(self.csc.cmd_wait.callback, self.csc.do_wait)
 
-            # replace callback
+            # Set callback to non-callable should fail,
+            # leaving the original callback.
             with self.assertRaises(TypeError):
                 self.csc.cmd_wait.callback = "not callable"
             self.assertEqual(self.csc.cmd_wait.callback, self.csc.do_wait)
 
+            # Set callback to a callable should succeed
+            # (even if it has the wrong number of arguments).
+
             def foo():
+                """A simple callable."""
                 pass
 
             self.csc.cmd_wait.callback = foo
             self.assertEqual(self.csc.cmd_wait.callback, foo)
 
+            # Set callback to None should clear it.
+            self.csc.cmd_wait.callback = None
+            self.assertFalse(self.csc.cmd_wait.has_callback)
+
     async def test_controller_command_success(self):
         """Test ack when a controller command succeeds.
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
-
             ackcmd = await self.remote.cmd_wait.set_start(
                 duration=0, timeout=STD_TIMEOUT
             )
             self.assertEqual(ackcmd.ack, salobj.SalRetCode.CMD_COMPLETE)
 
-    async def test_controller_command_return_ackcmd(self):
+    async def test_controller_command_callback_return_failed_ackcmd(self):
         """Test exception raised by remote command when controller command
         callback returns an explicit failed ackcmd.
         """
-        # cannot call check_controller_command_callback_failure
-        # because need a Harness to construct the returned ackcmd
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             failed_ack = salobj.SalRetCode.CMD_NOPERM
             result = "return failed ackcmd"
@@ -860,69 +866,73 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                     private_seqNum=data.private_seqNum, ack=failed_ack, result=result
                 )
 
-            self.csc.cmd_wait.callback = return_ack
-            with salobj.assertRaisesAckError(ack=failed_ack, result_contains=result):
-                await self.remote.cmd_wait.start(timeout=STD_TIMEOUT)
+            await self.check_controller_command_callback_failure(
+                callback=return_ack, ack=failed_ack, result_contains=result,
+            )
 
-    async def test_controller_command_expected_error(self):
+    async def test_controller_command_callback_raises_expected_error(self):
         """Test exception raised by remote command when controller command
         callback raises ExpectedError.
         """
-        msg = "intentional failure"
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
+            msg = "intentional failure"
 
-        def fail_expected_exception(data):
-            raise salobj.ExpectedError(msg)
+            def fail_expected_exception(data):
+                raise salobj.ExpectedError(msg)
 
-        await self.check_controller_command_callback_failure(
-            callback=fail_expected_exception,
-            ack=salobj.SalRetCode.CMD_FAILED,
-            result_contains=msg,
-        )
+            await self.check_controller_command_callback_failure(
+                callback=fail_expected_exception,
+                ack=salobj.SalRetCode.CMD_FAILED,
+                result_contains=msg,
+            )
 
-    async def test_controller_command_exception(self):
+    async def test_controller_command_callback_raises_exception(self):
         """Test exception raised by remote command when controller command
         callback raises an Exception.
         """
-        msg = "intentional failure"
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
+            msg = "intentional failure"
 
-        def fail_exception(data):
-            raise Exception(msg)
+            def fail_exception(data):
+                raise Exception(msg)
 
-        await self.check_controller_command_callback_failure(
-            callback=fail_exception,
-            ack=salobj.SalRetCode.CMD_FAILED,
-            result_contains=msg,
-        )
+            await self.check_controller_command_callback_failure(
+                callback=fail_exception,
+                ack=salobj.SalRetCode.CMD_FAILED,
+                result_contains=msg,
+            )
 
-    async def test_controller_command_timeout(self):
+    async def test_controller_command_callback_times_out(self):
         """Test exception raised by remote command when controller command
-        callback times out.
+        callback times out (raises asyncio.TimeoutError).
         """
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
 
-        def fail_timeout(data):
-            raise asyncio.TimeoutError()
+            def fail_timeout(data):
+                raise asyncio.TimeoutError()
 
-        await self.check_controller_command_callback_failure(
-            callback=fail_timeout, ack=salobj.SalRetCode.CMD_TIMEOUT
-        )
+            await self.check_controller_command_callback_failure(
+                callback=fail_timeout, ack=salobj.SalRetCode.CMD_TIMEOUT
+            )
 
-    async def test_controller_command_cancel(self):
+    async def test_controller_command_callback_canceled(self):
         """Test exception raised by remote command when controller command
-        callback is cancelled.
+        callback is cancelled (raises asyncio.CancelledError).
         """
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
 
-        def fail_cancel(data):
-            raise asyncio.CancelledError()
+            def fail_cancel(data):
+                raise asyncio.CancelledError()
 
-        await self.check_controller_command_callback_failure(
-            callback=fail_cancel, ack=salobj.SalRetCode.CMD_ABORTED
-        )
+            await self.check_controller_command_callback_failure(
+                callback=fail_cancel, ack=salobj.SalRetCode.CMD_ABORTED
+            )
 
     async def check_controller_command_callback_failure(
         self, callback, ack, result_contains=None
     ):
-        """Check the exception raised by remote command when the
-        controller command raises or returns a failed ackcmd.
+        """Check the exception raised by a remote command when the controller
+        controller command raises an exception or returns a failed ackcmd.
 
         Parameters
         ----------
@@ -933,10 +943,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         result_contains : `str`, optional
             Expected substring of the result value of the `AckError`
         """
-        async with self.make_csc(initial_state=salobj.State.ENABLED):
-            self.csc.cmd_wait.callback = callback
-            with salobj.assertRaisesAckError(ack=ack, result_contains=result_contains):
-                await self.remote.cmd_wait.start(timeout=STD_TIMEOUT)
+        self.csc.cmd_wait.callback = callback
+        with salobj.assertRaisesAckError(ack=ack, result_contains=result_contains):
+            await self.remote.cmd_wait.start(timeout=STD_TIMEOUT)
 
     async def test_multiple_commands(self):
         """Test that we can have multiple instances of the same command
@@ -1076,7 +1085,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             salinfo = salobj.SalInfo(
                 domain=domain, name="Test", index=self.next_index()
             )
-            # Use a logevent topic in case telemetry becomes volatile
+            # Use a logevent topic because it is not volatile
             # (which might cause the read loop to start too quickly).
             topic = salobj.topics.ReadTopic(
                 salinfo=salinfo, name="scalars", sal_prefix="logevent_", max_history=100
@@ -1094,6 +1103,92 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 await topic.aget(timeout=0)
             with self.assertRaises(RuntimeError):
                 await topic.next(flush=False, timeout=0)
+
+    async def test_read_topic_constructor_errors_and_warnings(self):
+        MIN_QUEUE_LEN = salobj.topics.MIN_QUEUE_LEN
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(
+                domain=domain, name="Test", index=self.next_index()
+            )
+            # max_history must not be negative
+            for bad_max_history in (-1, -10):
+                for name, sal_prefix in (
+                    ("ackcmd", ""),
+                    ("setScalars", "command_"),
+                    ("scalars", "logevent_"),
+                    ("scalars", ""),
+                ):
+                    with self.assertRaises(ValueError):
+                        salobj.topics.ReadTopic(
+                            salinfo=salinfo,
+                            name=name,
+                            sal_prefix=sal_prefix,
+                            max_history=bad_max_history,
+                        )
+            # queue_len must be be >= MIN_QUEUE_LEN
+            for bad_queue_len in (-1, 0, MIN_QUEUE_LEN - 1):
+                for name, sal_prefix in (
+                    ("ackcmd", ""),
+                    ("setScalars", "command_"),
+                    ("scalars", "logevent_"),
+                    ("scalars", ""),
+                ):
+                    with self.assertRaises(ValueError):
+                        salobj.topics.ReadTopic(
+                            salinfo=salinfo,
+                            name=name,
+                            sal_prefix=sal_prefix,
+                            max_history=0,
+                            queue_len=bad_queue_len,
+                        )
+
+            # Only events can have non-zero max_history
+            for bad_max_history in (1, 10):
+                for name, sal_prefix in (
+                    ("ackcmd", ""),
+                    ("setScalars", "command_"),
+                    ("scalars", ""),
+                ):
+                    with self.assertRaises(ValueError):
+                        salobj.topics.ReadTopic(
+                            salinfo=salinfo,
+                            name=name,
+                            sal_prefix=sal_prefix,
+                            max_history=bad_max_history,
+                        )
+
+            # An event can have non-zero max_history, but...
+            # max_history must be <= queue_len
+            for queue_len in (1, 10):
+                for delta in (1, 5):
+                    bad_max_history = queue_len + delta
+            with self.assertRaises(ValueError):
+                salobj.topics.ReadTopic(
+                    salinfo=salinfo,
+                    name="scalars",
+                    sal_prefix="logevent_",
+                    max_history=bad_max_history,
+                    queue_len=queue_len,
+                )
+
+            # max_history > DDS queue length or
+            # durability_service history_depth will warn.
+            dds_history_depth = domain.event_qos_set.reader_qos.history.depth
+            dds_durability_history_depth = (
+                domain.event_qos_set.topic_qos.durability_service.history_depth
+            )
+            for warn_max_history in (
+                dds_history_depth + 1,
+                dds_durability_history_depth + 1,
+            ):
+                with self.assertWarns(UserWarning):
+                    salobj.topics.ReadTopic(
+                        salinfo=salinfo,
+                        name="scalars",
+                        sal_prefix="logevent_",
+                        max_history=warn_max_history,
+                        queue_len=warn_max_history + MIN_QUEUE_LEN,
+                    )
 
     async def test_asynchronous_event_callback(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):

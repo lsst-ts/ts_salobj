@@ -27,7 +27,6 @@ import warnings
 
 from .. import sal_enums
 from .. import base
-from ..domain import DDS_READ_QUEUE_LEN
 from . import read_topic
 from . import write_topic
 
@@ -84,7 +83,7 @@ class ControllerCommand(read_topic.ReadTopic):
       then do the same as `ExpectedError` and also log a traceback.
     """
 
-    def __init__(self, salinfo, name, queue_len=DDS_READ_QUEUE_LEN):
+    def __init__(self, salinfo, name, queue_len=read_topic.DEFAULT_QUEUE_LEN):
         super().__init__(
             salinfo=salinfo,
             name=name,

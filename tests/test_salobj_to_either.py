@@ -84,10 +84,6 @@ class SALPYTestCase(asynctest.TestCase):
                 data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                 print(f"Remote: read initial logLevel.level={data.level}")
                 self.assertEqual(data.level, INITIAL_LOG_LEVEL)
-                print("Remote: wait for initial scalars telemetry")
-                data = await remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
-                print(f"Remote: read initial scalars.int0={data.int0}")
-                self.assertEqual(data.int0, INITIAL_LOG_LEVEL)
 
                 for level in (10, 52, 0):
                     # remote.cmd_setLogLevel.put()

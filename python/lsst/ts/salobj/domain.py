@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["Domain", "DDS_READ_QUEUE_LEN"]
+__all__ = ["Domain"]
 
 import asyncio
 import os
@@ -31,16 +31,56 @@ import dds
 from lsst.ts import idl
 from . import base
 
-DDS_READ_QUEUE_LEN = 100
-"""Length of DDS read queue
-
-Warning: this must be equal to or greater than the queue length in the
-OpenSplice configuration file (pointed to by $OSPL_URI).
-This information is not available from ``dds`` objects, so I set queue depth
-instead of using the value specified in the QoS XML file.
-"""
-
 MAX_RANDOM_HOST = (1 << 31) - 1
+
+
+class QosSet:
+    """QoS profiles for topic, reader and writer.
+
+    Parameters
+    ----------
+    qos_path : `str` or `pathlib.Path`
+        Path to QoS XML file.
+    profile_name : `str`
+        Profile name; one of "Command", "Event", or "Telemetry".
+
+    Attributes
+    ----------
+    profile_name : `str`
+        Profile name; one of "Command", "Event", or "Telemetry".
+    qos_provider : `dds.QosProvider`
+        QoS provider.
+    topic_qos : `dds.Qos`
+        Topic QoS
+    reader_qos : `dds.Qos`
+        Topic reader QoS
+    writer_qos : `dds.Qos`
+        Topic writer QoS
+
+    Notes
+    -----
+    The following QoS should be created elsewhere:
+    * publisher and subscriber: these depend on the DDS partition name,
+      which is only read when creating the SalInfo object.
+      Also these QoS are the same for all QoS profiles.
+    * participant: this is the same for all QoS profiles,
+      so there is no point making 3 of them.
+    """
+
+    def __init__(self, qos_path, profile_name):
+        self.profile_name = profile_name
+        self.qos_provider = dds.QosProvider(qos_path.as_uri(), profile_name)
+        self.topic_qos = self.qos_provider.get_topic_qos()
+        self.reader_qos = self.qos_provider.get_reader_qos()
+        self.writer_qos = self.qos_provider.get_writer_qos()
+
+    @property
+    def volatile(self):
+        """Does this category of topics have volatile durability?
+
+        Volatile topics provide no late-joiner data.
+        """
+        return self.topic_qos.durability.kind == dds.DDSDurabilityKind.VOLATILE
 
 
 class Domain:
@@ -65,26 +105,14 @@ class Domain:
         is set to a CSC name.
     idl_dir : `pathlib.Path`
         Root directory of the ``ts_idl`` package.
-    qos_provider : ``dds.QosProvider``
-        Quality of service provider.
-    topic_qos : ``dds.Qos``
-        Quality of service for non-volatile DDS topics (those that want
-        late-joiner data).
-    volatile_topic_qos : ``dds.Qos``
-        Quality of service for volatile topics (those that do not want any
-        late-joiner data).
-        Note: we cannot just make readers volatile to avoid late-joiner data,
-        as volatile readers receive late-joiner data from non-volatile writers.
-        So we make readers, writers, and topics all volatile.
-        According to ADLink it is a feature, not a bug.
-    reader_qos : ``dds.Qos``
-        Quality of service for non-volatile DDS readers.
-    volatile_reader_qos : ``dds.Qos``
-        Quality of service for volatile DDS readers.
-    writer_qos : ``dds.Qos``
-        Quality of service for non-volatile DDS writers.
-    volatile_writer_qos : ``dds.Qos``
-        Quality of service for volatile DDS writers.
+    ackcmd_qos_set : `QosSet`
+        QoS set for the ackcmd topic.
+    command_qos_set : `QosSet`
+        QoS set for command topics.
+    event_qos_set : `QosSet`
+        QoS set for event topics.
+    telemetry_qos_set : `QosSet`
+        QoS set for telemetry topics.
 
     Notes
     -----
@@ -161,38 +189,16 @@ class Domain:
         self.idl_dir = idl.get_idl_dir()
 
         qos_path = idl.get_qos_path()
-        self.qos_provider = dds.QosProvider(qos_path.as_uri(), "DDS DefaultQosProfile")
+        self.ackcmd_qos_set = QosSet(qos_path=qos_path, profile_name="AckcmdProfile")
+        self.command_qos_set = QosSet(qos_path=qos_path, profile_name="CommandProfile")
+        self.event_qos_set = QosSet(qos_path=qos_path, profile_name="EventProfile")
+        self.telemetry_qos_set = QosSet(
+            qos_path=qos_path, profile_name="TelemetryProfile"
+        )
 
-        participant_qos = self.qos_provider.get_participant_qos()
+        # Any of the three qos providers is fine for the participant qos.
+        participant_qos = self.command_qos_set.qos_provider.get_participant_qos()
         self.participant = dds.DomainParticipant(qos=participant_qos)
-
-        # Create quality of service objects that do not depend on
-        # the DDS partition. The two that do (publisher and subscriber)
-        # are created in SalInfo, so that different SalInfo can be used
-        # with different partitions.
-        try:
-            volatile_policy = dds.DurabilityQosPolicy(dds.DDSDurabilityKind.VOLATILE)
-
-            self.topic_qos = self.qos_provider.get_topic_qos()
-
-            self.volatile_topic_qos = self.qos_provider.get_topic_qos()
-            self.volatile_topic_qos.set_policies([volatile_policy])
-
-            self.writer_qos = self.qos_provider.get_writer_qos()
-            self.volatile_writer_qos = self.qos_provider.get_writer_qos()
-            self.volatile_writer_qos.set_policies([volatile_policy])
-
-            read_queue_policy = dds.HistoryQosPolicy(
-                depth=DDS_READ_QUEUE_LEN, kind=dds.DDSHistoryKind.KEEP_LAST
-            )
-            self.reader_qos = self.qos_provider.get_reader_qos()
-            self.reader_qos.set_policies([read_queue_policy])
-            self.volatile_reader_qos = self.qos_provider.get_reader_qos()
-            self.volatile_reader_qos.set_policies([read_queue_policy, volatile_policy])
-        except Exception:
-            # Very unlikely, but just in case...
-            self.participant.close()
-            raise
 
     @property
     def salinfo_set(self):
@@ -214,6 +220,40 @@ class Domain:
         if salinfo in self._salinfo_set:
             raise RuntimeError(f"salinfo {salinfo} already added")
         self._salinfo_set.add(salinfo)
+
+    def make_publisher(self, partition_names):
+        """Make a dds publisher.
+
+        Parameters
+        ----------
+        partition_names : `list` [`str`]
+            List of DDS partition names.
+        """
+        partition_qos_policy = dds.PartitionQosPolicy(partition_names)
+
+        # Any qos set will do, because the publisher and subscriber QoS
+        # is the same for all of them.
+        publisher_qos = self.event_qos_set.qos_provider.get_publisher_qos()
+        publisher_qos.set_policies([partition_qos_policy])
+
+        return self.participant.create_publisher(publisher_qos)
+
+    def make_subscriber(self, partition_names):
+        """Make a dds subscriber.
+
+        Parameters
+        ----------
+        partition_names : `list` [`str`]
+            List of DDS partition names.
+        """
+        partition_qos_policy = dds.PartitionQosPolicy(partition_names)
+
+        # Any qos set will do, because the publisher and subscriber QoS
+        # is the same for all of them.
+        subscriber_qos = self.event_qos_set.qos_provider.get_subscriber_qos()
+        subscriber_qos.set_policies([partition_qos_policy])
+
+        return self.participant.create_subscriber(subscriber_qos)
 
     def remove_salinfo(self, salinfo):
         """Remove the specified salinfo from the internal registry.
