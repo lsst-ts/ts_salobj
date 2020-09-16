@@ -434,7 +434,11 @@ class ReadTopic(BaseTopic):
         self._data_queue.clear()
 
     async def aget(self, timeout=None):
-        """Get the current message, if any, else wait for the next message.
+        """Get the most recent message, if any, else wait for the next message
+        to appear.
+        This routine is *not* a pop operation (see `next`) and leaves the
+        queue contents unaltered.
+        It is also unaffected by the `flush` method.
 
         Parameters
         ----------
@@ -466,6 +470,7 @@ class ReadTopic(BaseTopic):
 
     def flush(self):
         """Flush the queue of unread data.
+        This flush will not affect the output of `aget`.
 
         Raises
         ------
@@ -478,6 +483,13 @@ class ReadTopic(BaseTopic):
 
     def get(self, flush=True):
         """Get the most recently seen message, or `None` if no data ever seen.
+
+        This routine is *not* a pop operation (see `next`) but will flush
+        the queue (by default), which affects the `next` method.
+
+        This routine is also unaffected by the `flush` method.
+
+        Use the `aget` function if wanting to wait for the next message to arrive.
 
         Parameters
         ----------
@@ -529,7 +541,13 @@ class ReadTopic(BaseTopic):
         return None
 
     async def next(self, *, flush, timeout=None):
-        """Wait for a message, possibly returning the oldest queued message.
+        """Wait for a message, or immediately return the oldest queued message.
+        This is a pop operation and the message will be permanently removed
+        from the queue.
+
+        To ensure the next message is received, the topic should be flushed
+        prior to being populated using the `flush` method, then this method
+        should be called/awaited with the flush attribute set to False
 
         Parameters
         ----------
