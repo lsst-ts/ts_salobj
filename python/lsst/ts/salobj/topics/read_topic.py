@@ -215,35 +215,39 @@ class ReadTopic(BaseTopic):
     -----
     **Queues**
 
-    There are actually two queues: a Python queue whose length
-    is set by ``queue_len`` and a dds queue whose length is set by
-    the DDS QoS file. Data can be lost in two ways:
+    There are two queues: a Python queue whose length is set by ``queue_len``
+    and a dds queue whose length is set by the DDS Quality of Service file.
+    (The Python queue is needed because of limitations in the API for
+    the OpenSplice DDS queue, including no access to the most recent message,
+    no ability to ask how many messages are on the queue, and no asyncio
+    support). In the doc strings for the methods, below, any reference
+    to the queue refers to the Python queue.
+
+    Data can be lost from either queue:
 
     - If this class cannot read messages from the DDS queue fast enough,
       then older messages will be dropped from the DDS queue. You will get
-      a warning log message if the reader starts to fall behind.
-    - As messages are read they are put on the Python queue.
+      several warning log messages as the DDS queue fills.
+    - As messages are read from the DDS queue they are put on the Python queue.
       If a callback function or `next` does not process data quickly enough
       then older messages are dropped from the Python queue.
       If you have a callback function then you will get several
-      warning log messages as this Python queue fills up.
-      You get no warning otherwise because this class has no way of knowing
+      warning log messages as the Python queue fills up;
+      you get no warning otherwise because `ReadTopic` has no way of knowing
       whether or not you intend to read all messages.
 
     **Reading**
 
-    Reading is performed by the `.SalInfo` which has single read loop that
-    reads messages for all topics. This is more efficient than having each
-    `ReadTopic` read its own messages.
+    Reading is performed by the contained `SalInfo`, which has single
+    read loop that reads messages for all topics. This is more efficient
+    than having each `ReadTopic` read its own messages.
 
     **Modifying Messages**
 
-    All functions that return messages return from an internal cache.
-    This cached value is replaced by all read operations. So as long as
-    no other code modifies a message, the returned message will not change.
-
-    To safely modify a returned message, make your own copy
-    with ``copy.copy(data)``.
+    All functions that return messages return them from some form of internal
+    cache. This presents a risk: if any reader modifies a message, then it
+    will be modified for all readers of that message. To safely modify a
+    returned message, make your own copy with ``copy.copy(data)``.
     """
 
     def __init__(
@@ -377,7 +381,7 @@ class ReadTopic(BaseTopic):
         `get_oldest` and `next` are prohibited if there is a callback function.
         Technically they could both work, but `get_oldest` would always return
         `None` and `next` would miss messages if they arrived while waiting
-        for something else. It seemed safer to just raise an exception.
+        for something else. It seems safer to raise an exception.
         """
         return self._callback
 
@@ -404,7 +408,7 @@ class ReadTopic(BaseTopic):
 
     @property
     def has_data(self):
-        """Has any data been seen for this topic?
+        """Has any data ever been seen for this topic?
 
         Raises
         ------
@@ -413,6 +417,11 @@ class ReadTopic(BaseTopic):
         """
         self.salinfo.assert_started()
         return self._current_data is not None
+
+    @property
+    def nqueued(self):
+        """Return the number of messages in the Python queue."""
+        return len(self._data_queue)
 
     @property
     def max_history(self):
@@ -434,7 +443,12 @@ class ReadTopic(BaseTopic):
         self._data_queue.clear()
 
     async def aget(self, timeout=None):
-        """Get the current message, if any, else wait for the next message.
+        """Get the most recent message, or wait for data if no data has
+        ever been seen (`has_data` False).
+
+        This method does not change which message will be returned by
+        any other method (except for the fact that new data
+        will arrive while waiting).
 
         Parameters
         ----------
@@ -460,12 +474,18 @@ class ReadTopic(BaseTopic):
         self.salinfo.assert_started()
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")
-        if self._current_data is not None:
-            return self._current_data
-        return await self._next(timeout=timeout)
+        if self._current_data is None:
+            if self._next_task.done():
+                self._next_task = asyncio.Future()
+            await asyncio.wait_for(self._next_task, timeout=timeout)
+        return self._current_data
 
     def flush(self):
-        """Flush the queue of unread data.
+        """Flush the queue used by `get_oldest` and `next`.
+
+        This makes `get_oldest` return `None` and `next` wait,
+        until a new message arrives.
+        It does not change which message will be returned by `aget` or `get`.
 
         Raises
         ------
@@ -477,14 +497,22 @@ class ReadTopic(BaseTopic):
         self._data_queue.clear()
 
     def get(self, flush=True):
-        """Get the most recently seen message, or `None` if no data ever seen.
+        """Get the most recent message, or `None` if no data has ever been seen
+        (`has_data` False).
+
+        This method does not change which message will be returned by `aget`.
+        If ``flush=False`` this method also does not modify which message
+        will be returned by `get_oldest` and `next`.
 
         Parameters
         ----------
         flush : `bool`, optional
-            Flush the queue? Defaults to `True` for backwards compatibility.
-            This only affects the next message returned by `next`
-            and is ignored if there is a callback function.
+            Flush the queue? True affects which messages will be returned
+            by `get_oldest` and `next`. True is deprecated, but is the default
+            for backwards compatibility. True has no effect if there is
+            a callback function.
+            False leaves the cache alone, which has no effect on the
+            messages returned by any read method.
 
         Returns
         -------
@@ -497,13 +525,22 @@ class ReadTopic(BaseTopic):
             If the ``salinfo`` has not started reading.
         """
         self.salinfo.assert_started()
+        if flush:
+            warnings.warn(
+                "flush=True is deprecated for ReadTopic.get", DeprecationWarning,
+            )
+            flush = True
         if flush and not self.has_callback:
             self.flush()
         return self._current_data
 
     def get_oldest(self):
-        """Pop and return the oldest message from the queue, or `None`
-        if the queue is empty.
+        """Pop and return the oldest message from the queue, or `None` if the
+        queue is empty.
+
+        This is a variant of `next` that does not wait for a new message.
+        This method affects which message will be returned by `next`,
+        but not which message will be returned by `aget` or `get`.
 
         Returns
         -------
@@ -529,14 +566,20 @@ class ReadTopic(BaseTopic):
         return None
 
     async def next(self, *, flush, timeout=None):
-        """Wait for a message, possibly returning the oldest queued message.
+        """Pop and return the oldest message from the queue, waiting for data
+        if the queue is empty.
+
+        This method affects the data returned by `get_oldest`,
+        but not the data returned by `aget` or `get`.
 
         Parameters
         ----------
         flush : `bool`
-            If True then flush the queue before starting a read.
-            If False then pop and return the oldest message from the queue,
-            if any, else wait for new data.
+            If `True` then flush the queue before starting a read.
+            This guarantees that the method will wait for a new message.
+            If `False` and there is data on the queue, then pop and return
+            the oldest message from the queue, without waiting;
+            if queue is empty then wait for a new message.
         timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
 
@@ -627,12 +670,10 @@ class ReadTopic(BaseTopic):
         for data in data_list:
             self._queue_one_item(data)
         self._current_data = data
-        if not self._data_queue:
-            self.log.warning(
-                f"{self.name}: queue empty after queuing {len(data_list)} items; "
-                "not setting _next_task done."
-            )
-        elif not self._next_task.done():
+        if not self._next_task.done():
+            # Return the data in the task instead of having the waiter
+            # get it from the queue to avoid a race condition where
+            # one task flushes the queue as another is waiting for data.
             oldest_message = self._data_queue.popleft()
             self._next_task.set_result(oldest_message)
 
