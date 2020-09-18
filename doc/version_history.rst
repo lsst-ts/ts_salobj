@@ -53,6 +53,10 @@ Deprecations:
     This argument is added automatically if ``valid_simulation_modes`` has more than one entry.
 * Renamed environment variable ``LSST_DDS_DOMAIN`` to ``LSST_DDS_PARTITION_PREFIX``.
   The old environment variable is used, with a deprecation warning, if the new one is not defined.
+* Deprecated having `topics.ReadTopic.get` flush the queue (which is, unfortunately, the default).
+  Flushing the queue turned out to be surprising and rarely useful.
+  All code should use `topics.ReadTopic.get(flush=True)` for now.
+  The ``flush`` argument will eventually be removed.
 * Renamed `SalInfo.makeAckCmd` to `SalInfo.make_ackcmd`.
   The old method is still available, but issues a deprecation warning.
 * Renamed `ControllerCommand.ackInProgress` to `ControllerCommand.ack_in_progress` and added a required `timeout` argument.
@@ -83,8 +87,10 @@ Changes:
 * Update ``Jenkinsfile`` to disable concurrent builds and clean up old log files.
 * Removed the ``.travis.yml`` file because it duplicates testing done in Jenkins.
 * Use `asynco.create_task` instead of deprecated `asyncio.ensure_future`.
-* Read topics now use ``DDS_READ_QUEUE_LEN`` as the default value for ``queue_len``.
-  They have the same value, but this makes it easier and safer to change ``DDS_READ_QUEUE_LEN`` in future.
+* Added property `topics.ReadTopic.nqueued`.
+* Fixed a bug in `topics.ReadTopic.aget`: if multiple messages arrived in the DDS queue while waiting, it would return the oldest message, rather than the newest.
+* Improved the documentation for `topics.ReadTopic`.
+* Read topics now use a named constant ``DEFAULT_QUEUE_LEN`` as the default value for ``queue_len``, making it easy to change in future.
 
 Requirements:
 

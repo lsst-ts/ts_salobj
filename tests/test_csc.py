@@ -391,8 +391,8 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertFalse(self.csc.tel_arrays.has_data)
             self.assertFalse(self.remote.evt_arrays.has_data)
             self.assertFalse(self.remote.tel_arrays.has_data)
-            self.assertIsNone(self.remote.evt_arrays.get())
-            self.assertIsNone(self.remote.tel_arrays.get())
+            self.assertIsNone(self.remote.evt_arrays.get(flush=False))
+            self.assertIsNone(self.remote.tel_arrays.get(flush=False))
 
             # check that info level messages are enabled
             await self.assert_next_sample(
@@ -428,8 +428,12 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertTrue(self.remote.tel_arrays.has_data)
 
             # also test get
-            self.csc.assert_arrays_equal(cmd_data_sent, self.remote.tel_arrays.get())
-            self.csc.assert_arrays_equal(cmd_data_sent, self.remote.evt_arrays.get())
+            self.csc.assert_arrays_equal(
+                cmd_data_sent, self.remote.tel_arrays.get(flush=False)
+            )
+            self.csc.assert_arrays_equal(
+                cmd_data_sent, self.remote.evt_arrays.get(flush=False)
+            )
 
     async def test_setScalars_command(self):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
@@ -439,8 +443,8 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertFalse(self.csc.tel_scalars.has_data)
             self.assertFalse(self.remote.evt_scalars.has_data)
             self.assertFalse(self.remote.tel_scalars.has_data)
-            self.assertIsNone(self.remote.evt_scalars.get())
-            self.assertIsNone(self.remote.tel_scalars.get())
+            self.assertIsNone(self.remote.evt_scalars.get(flush=False))
+            self.assertIsNone(self.remote.tel_scalars.get(flush=False))
 
             # check that info level messages are enabled
             await self.assert_next_sample(
@@ -475,8 +479,12 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertTrue(self.remote.tel_scalars.has_data)
 
             # also test get
-            self.csc.assert_scalars_equal(cmd_data_sent, self.remote.tel_scalars.get())
-            self.csc.assert_scalars_equal(cmd_data_sent, self.remote.evt_scalars.get())
+            self.csc.assert_scalars_equal(
+                cmd_data_sent, self.remote.tel_scalars.get(flush=False)
+            )
+            self.csc.assert_scalars_equal(
+                cmd_data_sent, self.remote.evt_scalars.get(flush=False)
+            )
 
     async def test_fault_state_transitions(self):
         """Test CSC state transitions into fault and out again.
@@ -1153,7 +1161,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                         await self.remote.cmd_start.set_start(
                             settingsToApply=config_file, timeout=STD_TIMEOUT
                         )
-                    data = self.remote.evt_summaryState.get()
+                    data = self.remote.evt_summaryState.get(flush=False)
                     self.assertEqual(self.csc.summary_state, salobj.State.STANDBY)
                     self.assertEqual(data.summaryState, salobj.State.STANDBY)
 
