@@ -22,6 +22,7 @@
 __all__ = ["FieldMetadata", "TopicMetadata", "SalInfo", "MAX_RESULT_LEN"]
 
 import asyncio
+import atexit
 import concurrent
 import logging
 import os
@@ -333,6 +334,9 @@ class SalInfo:
 
         domain.add_salinfo(self)
 
+        # Make sure the background thread terminates.
+        atexit.register(self.exit_handler)
+
     def _ackcmd_callback(self, data):
         if not self._running_cmds:
             return
@@ -570,6 +574,14 @@ class SalInfo:
         self.sal_topic_names = tuple(sorted(self.metadata.topic_info.keys()))
         self.revnames = revnames
 
+    def exit_handler(self):
+        """A simpler version of `close` for exit handlers.
+        """
+        if not self.isopen:
+            return
+        self.isopen = False
+        self._guardcond.trigger()
+
     async def close(self):
         """Shut down and clean up resources.
 
@@ -707,7 +719,7 @@ class SalInfo:
                     if reader.max_history > 0:
                         sd_list = sd_list[-reader.max_history :]
                         if sd_list:
-                            reader._queue_data(sd_list)
+                            reader._queue_data(sd_list, loop=None)
             self._read_loop_task = asyncio.create_task(self._read_loop())
             self.start_task.set_result(None)
         except Exception as e:
@@ -720,35 +732,44 @@ class SalInfo:
         self.domain.num_read_loops += 1
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                while self.isopen:
-                    conditions = await loop.run_in_executor(pool, self._wait_next)
-                    if not self.isopen:
-                        # shutting down; clean everything up
-                        return
-                    for condition in conditions:
-                        reader = self._readers.get(condition)
-                        if reader is None or not reader.isopen:
-                            continue
-                        # odds are we will only get one value per read,
-                        # but read more so we can tell if we are falling behind
-                        data_list = reader._reader.take_cond(
-                            condition, reader._data_queue.maxlen
-                        )
-                        reader.dds_queue_length_checker.check_nitems(len(data_list))
-                        sd_list = [
-                            self._sample_to_data(sd, si)
-                            for sd, si in data_list
-                            if si.valid_data
-                        ]
-                        if sd_list:
-                            reader._queue_data(sd_list)
-                        await asyncio.sleep(0)  # free the event loop
+                await loop.run_in_executor(pool, self._read_loop_thread, loop)
         except asyncio.CancelledError:
             raise
         except Exception:
             self.log.exception("_read_loop failed")
         finally:
             self.domain.num_read_loops -= 1
+
+    def _read_loop_thread(self, loop):
+        """Read and process DDS data in a background thread.
+
+        Parameters
+        ----------
+        loop : `asyncio.AbstractEventLoop`
+            The main asyncio event loop.
+        """
+        while self.isopen:
+            conditions = self._waitset.wait(self._wait_timeout)
+            if not self.isopen:
+                # shutting down; clean everything up
+                return
+            for condition in conditions:
+                reader = self._readers.get(condition)
+                if reader is None or not reader.isopen:
+                    continue
+                # odds are we will only get one value per read,
+                # but read more so we can tell if we are falling behind
+                data_list = reader._reader.take_cond(
+                    condition, reader._data_queue.maxlen
+                )
+                reader.dds_queue_length_checker.check_nitems(len(data_list))
+                sd_list = [
+                    self._sample_to_data(sd, si)
+                    for sd, si in data_list
+                    if si.valid_data
+                ]
+                if sd_list:
+                    reader._queue_data(sd_list, loop=loop)
 
     def _sample_to_data(self, sd, si):
         """Process one sample data, sample info pair.
@@ -760,22 +781,6 @@ class SalInfo:
         rcv_tai = base.tai_from_utc_unix(rcv_utc)
         sd.private_rcvStamp = rcv_tai
         return sd
-
-    def _wait_next(self):
-        """Wait for data to be available for any read topic.
-
-        Blocks, so intended to be run in a background thread.
-
-        Returns
-        -------
-        conditions : `List` of ``dds conditions``
-            List of one or more dds read conditions and/or the guard condition
-            which have been triggered.
-        """
-        self.domain.num_read_threads += 1
-        conditions = self._waitset.wait(self._wait_timeout)
-        self.domain.num_read_threads -= 1
-        return conditions
 
     def _wait_history(self):
         """Wait for historical data to be available for all topics.
