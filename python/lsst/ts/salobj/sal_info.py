@@ -770,22 +770,6 @@ class SalInfo:
         sd.private_rcvStamp = rcv_tai
         return sd
 
-    def _wait_next(self):
-        """Wait for data to be available for any read topic.
-
-        Blocks, so intended to be run in a background thread.
-
-        Returns
-        -------
-        conditions : `List` of ``dds conditions``
-            List of one or more dds read conditions and/or the guard condition
-            which have been triggered.
-        """
-        self.domain.num_read_threads += 1
-        conditions = self._waitset.wait(self._wait_timeout)
-        self.domain.num_read_threads -= 1
-        return conditions
-
     def _wait_history(self):
         """Wait for historical data to be available for all topics.
 
