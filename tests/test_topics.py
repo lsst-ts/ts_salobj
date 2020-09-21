@@ -697,12 +697,14 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 self.name = name
                 self.data = []
                 self.read_loop_task = asyncio.create_task(self.read_loop())
+                self.ready_to_read = asyncio.Event()
 
             async def close(self):
                 self.read_loop_task.cancel()
 
             async def read_loop(self):
                 while len(self.data) < self.nitems:
+                    self.ready_to_read.set()
                     data = await self.read_topic.next(flush=False)
                     self.data.append(data)
 
@@ -714,10 +716,16 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 Reader(read_topic=self.remote.tel_scalars, nitems=nitems, name=i)
                 for i in range(nreaders)
             ]
-            await asyncio.sleep(0.1)  # Let Reader read loops start.
             for item in data:
+                await asyncio.wait_for(
+                    asyncio.gather(
+                        *[reader.ready_to_read.wait() for reader in readers]
+                    ),
+                    timeout=STD_TIMEOUT,
+                )
+                for reader in readers:
+                    reader.ready_to_read.clear()
                 self.csc.tel_scalars.set_put(int0=item)
-                await asyncio.sleep(0.001)  # Let Readers read.
             await asyncio.wait_for(
                 asyncio.gather(*[reader.read_loop_task for reader in readers]),
                 timeout=STD_TIMEOUT,
