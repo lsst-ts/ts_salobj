@@ -189,7 +189,7 @@ class Remote:
             if start:
                 self.start_task = asyncio.create_task(self.start())
         except Exception:
-            asyncio.create_task(self.salinfo.close())
+            self.salinfo.exit_handler()
             raise
 
     async def start(self):
