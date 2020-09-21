@@ -18,6 +18,8 @@ Backward Incompatible Changes:
 * This new QoS file has 4 separate profiles for: commands, events, telemetry topics, and the ackcmd topic,
   and, as of this writing, each profile is different.
 * Topics use a new DDS partition naming scheme.
+* `topics.ReadTopic.get` now defaults to *not* flushing the queue.
+  Also specifying the ``flush`` argument is now deprecated; the argument will be removed in a future version of salobj.
 * Requires ts_xml 6 and IDL files built with ts_sal 5 or later, for authorization support.
 * Commands are no longer acknowledged with ``CMD_INPROGRESS`` if the do_xxx callback function is asynchronous.
   This was needlessly chatty.
@@ -53,10 +55,6 @@ Deprecations:
     This argument is added automatically if ``valid_simulation_modes`` has more than one entry.
 * Renamed environment variable ``LSST_DDS_DOMAIN`` to ``LSST_DDS_PARTITION_PREFIX``.
   The old environment variable is used, with a deprecation warning, if the new one is not defined.
-* Deprecated having `topics.ReadTopic.get` flush the queue (which is, unfortunately, the default).
-  Flushing the queue turned out to be surprising and rarely useful.
-  All code should use `topics.ReadTopic.get(flush=True)` for now.
-  The ``flush`` argument will eventually be removed.
 * Renamed `SalInfo.makeAckCmd` to `SalInfo.make_ackcmd`.
   The old method is still available, but issues a deprecation warning.
 * Renamed `ControllerCommand.ackInProgress` to `ControllerCommand.ack_in_progress` and added a required `timeout` argument.
