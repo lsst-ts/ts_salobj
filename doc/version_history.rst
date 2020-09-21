@@ -91,6 +91,9 @@ Changes:
 * Fixed a bug in `topics.ReadTopic.aget`: if multiple messages arrived in the DDS queue while waiting, it would return the oldest message, rather than the newest.
 * Improved the documentation for `topics.ReadTopic`.
 * Read topics now use a named constant ``DEFAULT_QUEUE_LEN`` as the default value for ``queue_len``, making it easy to change in future.
+* Improved exit handling.
+  The domain participant will be closed if the process receives SIGINT, which may reduce the danger of corrupting the DDS system.
+* Modified the way DDS data is read to lower the risk of the DDS read queue filling up.
 
 Requirements:
 
