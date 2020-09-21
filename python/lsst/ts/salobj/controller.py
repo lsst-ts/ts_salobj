@@ -214,6 +214,7 @@ class Controller:
 
             self._sal_log_handler = SalLogHandler(controller=self)
             self.log.addHandler(self._sal_log_handler)
+
             # This task is set done when the CSC is fully started.
             # If `start` fails then the task has an exception set
             # and the CSC is not usable.
@@ -310,7 +311,6 @@ class Controller:
             # the domain participant.
             await asyncio.sleep(SHUTDOWN_DELAY)
             self.log.removeHandler(self._sal_log_handler)
-            self._sal_log_handler = None
             await self.domain.close()
         finally:
             if not self.done_task.done():
@@ -434,17 +434,3 @@ class Controller:
 
     async def __aexit__(self, type, value, traceback):
         await self.close()
-
-    def __del__(self):
-        """Last-ditch effort to clean up critical resources.
-
-        Users should call `close` instead, because it does more
-        and because ``__del__`` is not reliably called.
-        """
-        handler = getattr(self, "_sal_log_handler", None)
-        log = getattr(self, "log", None)
-        if None not in (handler, log):
-            log.removeHandler(handler)
-        domain = getattr(self, "domain", None)
-        if domain is not None:
-            domain.close_dds()

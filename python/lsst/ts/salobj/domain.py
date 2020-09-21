@@ -171,8 +171,6 @@ class Domain:
     """
 
     def __init__(self):
-        self.participant = None
-
         self.user_host = base.get_user_host()
         self.default_identity = self.user_host
 
@@ -297,7 +295,8 @@ class Domain:
         self.done_task.set_result(None)
 
     def close_dds(self):
-        """Close the dds DomainParticipant."""
+        """Close the dds DomainParticipant.
+        """
         participant = getattr(self, "participant", None)
         if participant is not None:
             participant.close()
@@ -308,11 +307,3 @@ class Domain:
 
     async def __aexit__(self, type, value, traceback):
         await self.close()
-
-    def __del__(self):
-        """Last-ditch effort to clean up critical resources.
-
-        Users should call `close` instead, because it does more,
-        and because ``__del__`` is not reliably called.
-        """
-        self.close_dds()
