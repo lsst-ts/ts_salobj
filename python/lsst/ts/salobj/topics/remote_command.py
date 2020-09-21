@@ -232,12 +232,6 @@ class _CommandInfo:
             await self._next_ack_event.wait()
             self._next_ack_event.clear()
 
-    def __del__(self):
-        for task_name in ("_wait_task",):
-            task = getattr(self, task_name, None)
-            if task is not None:
-                task.cancel()
-
     def __repr__(self):
         return (
             f"_CommandInfo(remote_command={self.remote_command}, seq_num={self.seq_num}, "
