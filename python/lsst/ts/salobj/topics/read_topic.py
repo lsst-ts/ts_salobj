@@ -431,11 +431,11 @@ class ReadTopic(BaseTopic):
     def max_history(self):
         return self._max_history
 
-    async def close(self):
-        """Shut down and release resources.
+    def exit_handler(self):
+        """Shut down gracefully.
 
-        Intended to be called by SalInfo.close(),
-        since that tracks all topics.
+        In theory a simpler version of `close` but in practice this may
+        do everything we need.
         """
         if not self.isopen:
             return
@@ -445,6 +445,14 @@ class ReadTopic(BaseTopic):
         self._next_task.cancel()
         self._reader.close()
         self._data_queue.clear()
+
+    async def close(self):
+        """Shut down and release resources.
+
+        Intended to be called by SalInfo.close(),
+        since that tracks all topics.
+        """
+        self.exit_handler()
 
     async def aget(self, timeout=None):
         """Get the most recent message, or wait for data if no data has
@@ -677,7 +685,7 @@ class ReadTopic(BaseTopic):
         for data in data_list:
             self._queue_one_item(data)
         self._current_data = data
-        if loop is not None:
+        if loop is not None and loop.is_running():
             # Reading messages in a background thread.
             loop.call_soon_threadsafe(self._report_next)
         else:

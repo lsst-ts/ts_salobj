@@ -575,12 +575,16 @@ class SalInfo:
         self.revnames = revnames
 
     def exit_handler(self):
-        """Emergency close.
-
-        Close the background thread.
+        """A simpler version of `close` for exit handlers.
         """
         self.isopen = False
         self._guardcond.trigger()
+        while self._readers:
+            read_cond, reader = self._readers.popitem()
+            reader.exit_handler()
+        while self._writers:
+            writer = self._writers.pop()
+            writer.exit_handler()
 
     async def close(self):
         """Shut down and clean up resources.
