@@ -22,7 +22,9 @@
 __all__ = ["Domain"]
 
 import asyncio
+import atexit
 import os
+import signal
 import weakref
 import warnings
 
@@ -200,6 +202,11 @@ class Domain:
         participant_qos = self.command_qos_set.qos_provider.get_participant_qos()
         self.participant = dds.DomainParticipant(qos=participant_qos)
 
+        atexit.register(self.exit_handler)
+        loop = asyncio.get_running_loop()
+        for s in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            loop.add_signal_handler(s, self.exit_handler)
+
     @property
     def salinfo_set(self):
         return self._salinfo_set
@@ -274,6 +281,15 @@ class Domain:
         except KeyError:
             return False
 
+    def exit_handler(self):
+        """Close the domain participant.
+
+        Avoids corrupting the DDS system in response to SIGINT
+        (and while we are handling that, may as well handle the other
+        common signals, though OpenSplice handles SIGKILL gracefully).
+        """
+        self.participant.close()
+
     async def close(self):
         """Close all registered `SalInfo` and the dds domain participant.
 
@@ -298,10 +314,7 @@ class Domain:
 
     def close_dds(self):
         """Close the dds DomainParticipant."""
-        participant = getattr(self, "participant", None)
-        if participant is not None:
-            participant.close()
-            self.participant = None
+        self.participant.close()
 
     async def __aenter__(self):
         return self
