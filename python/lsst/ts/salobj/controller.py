@@ -170,6 +170,7 @@ class Controller:
 
     def __init__(self, name, index=None, *, do_callbacks=False):
         domain = Domain()
+        self.salinfo = None
         try:
             self.salinfo = SalInfo(domain=domain, name=name, index=index)
             new_identity = self.salinfo.name_index
@@ -220,7 +221,9 @@ class Controller:
             self.start_task = asyncio.create_task(self._protected_start())
 
         except Exception:
-            asyncio.create_task(domain.close())
+            if self.salinfo is not None:
+                self.salinfo.exit_handler()
+            domain.exit_handler()
             raise
 
     async def _protected_start(self):
