@@ -269,7 +269,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # until put is called nothing has been sent
             self.assertFalse(self.csc.tel_scalars.has_data)
             self.assertFalse(self.remote.tel_scalars.has_data)
-            self.assertIsNone(self.remote.tel_scalars.get(flush=False))
+            self.assertIsNone(self.remote.tel_scalars.get())
 
             # put random telemetry data using data=None
             tel_data1 = self.csc.make_random_tel_scalars()
@@ -301,7 +301,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # until put is called nothing has been sent
             self.assertFalse(self.csc.evt_scalars.has_data)
             self.assertFalse(self.remote.evt_scalars.has_data)
-            self.assertIsNone(self.remote.evt_scalars.get(flush=False))
+            self.assertIsNone(self.remote.evt_scalars.get())
 
             # put random event data using data=None
             evt_data1 = self.csc.make_random_evt_scalars()
@@ -335,7 +335,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # until set_put is called nothing has been sent
             self.assertFalse(self.csc.tel_scalars.has_data)
             self.assertFalse(self.remote.tel_scalars.has_data)
-            self.assertIsNone(self.remote.tel_scalars.get(flush=False))
+            self.assertIsNone(self.remote.tel_scalars.get())
 
             # put random telemetry data using set and set_put
             tel_data1 = self.csc.make_random_tel_scalars()
@@ -405,7 +405,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # until set_put is called nothing has been sent
             self.assertFalse(self.csc.tel_scalars.has_data)
             self.assertFalse(self.remote.tel_scalars.has_data)
-            self.assertIsNone(self.remote.tel_scalars.get(flush=False))
+            self.assertIsNone(self.remote.tel_scalars.get())
 
             # set_put random event data
             evt_data1 = self.csc.make_random_evt_scalars()
@@ -513,8 +513,8 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         # until the controller gets its first setArrays
         # it will not send any scalars events or telemetry
         if assert_none:
-            self.assertIsNone(self.remote.evt_scalars.get(flush=False))
-            self.assertIsNone(self.remote.tel_scalars.get(flush=False))
+            self.assertIsNone(self.remote.evt_scalars.get())
+            self.assertIsNone(self.remote.tel_scalars.get())
 
         # send the setScalars command with random data
         cmd_data_list = [
@@ -584,7 +584,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 # no matter now many times it is called.
                 # Use flush=False to leave queued data for a later
                 # call to get that will flush the queue.
-                data_list = [read_topic.get(flush=False) for i in range(5)]
+                data_list = [read_topic.get() for i in range(5)]
                 for data in data_list:
                     self.assertIsNotNone(data)
                     self.csc.assert_scalars_equal(cmd_data_list[-1], data)
@@ -592,23 +592,17 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 # Make sure the data queue was not flushed.
                 self.assertEqual(read_topic.nqueued, num_commands)
 
-                # get with no flush argument should warn and flush.
+                # get with flush=False should warn and not flush the queue
                 with self.assertWarns(DeprecationWarning):
-                    data = read_topic.get()
-                self.assertEqual(read_topic.nqueued, 0)
+                    data = read_topic.get(flush=False)
+                self.assertEqual(read_topic.nqueued, num_commands)
                 self.csc.assert_scalars_equal(cmd_data_list[-1], data)
 
-                # Put more data on the queue to show that flush=True
-                # also warns and flushes.
-                cmd_data_list = await self.set_scalars(
-                    num_commands=num_commands, assert_none=False
-                )
-                await asyncio.sleep(EVENT_DELAY)
-                self.assertEqual(read_topic.nqueued, num_commands)
+                # get with flush=True should warn and flush the queue
                 with self.assertWarns(DeprecationWarning):
                     data = read_topic.get(flush=True)
-                self.csc.assert_scalars_equal(cmd_data_list[-1], data)
                 self.assertEqual(read_topic.nqueued, 0)
+                self.csc.assert_scalars_equal(cmd_data_list[-1], data)
 
                 is_first = False
 
@@ -833,7 +827,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 self.remote.cmd_wait.set_start(duration=duration)
             )
             next_data = await self.csc.cmd_wait.next(timeout=STD_TIMEOUT)
-            get_data = self.csc.cmd_wait.get(flush=False)
+            get_data = self.csc.cmd_wait.get()
             self.assertIsNotNone(get_data)
             self.assertEqual(get_data.duration, duration)
             self.assertEqual(next_data.duration, duration)
@@ -847,7 +841,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 self.remote.cmd_wait.set_start(duration=duration)
             )
             await asyncio.sleep(0.5)
-            get_data = self.csc.cmd_wait.get(flush=False)
+            get_data = self.csc.cmd_wait.get()
             next_data = await self.csc.cmd_wait.next(timeout=STD_TIMEOUT)
             self.assertIsNotNone(get_data)
             self.assertEqual(get_data.duration, duration)
@@ -1132,7 +1126,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             with self.assertRaises(RuntimeError):
                 topic.has_data
             with self.assertRaises(RuntimeError):
-                topic.get(flush=False)
+                topic.get()
             with self.assertRaises(RuntimeError):
                 topic.get_oldest()
             with self.assertRaises(RuntimeError):

@@ -474,7 +474,7 @@ help  # print this help
                 self.remote.evt_summaryState.callback = None
                 await csc_utils.set_summary_state(self.remote, sal_enums.State.ENABLED)
             finally:
-                summary_state = self.remote.evt_summaryState.get(flush=False)
+                summary_state = self.remote.evt_summaryState.get()
                 if summary_state is not None:
                     summary_state_callback(summary_state)
                 self.remote.evt_summaryState.callback = summary_state_callback

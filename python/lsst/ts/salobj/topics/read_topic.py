@@ -500,7 +500,7 @@ class ReadTopic(BaseTopic):
             raise RuntimeError("Not allowed because there is a callback function")
         self._data_queue.clear()
 
-    def get(self, flush=True):
+    def get(self, flush=None):
         """Get the most recent message, or `None` if no data has ever been seen
         (`has_data` False).
 
@@ -511,12 +511,14 @@ class ReadTopic(BaseTopic):
         Parameters
         ----------
         flush : `bool`, optional
-            Flush the queue? True affects which messages will be returned
-            by `get_oldest` and `next`. True is deprecated, but is the default
-            for backwards compatibility. True has no effect if there is
-            a callback function.
-            False leaves the cache alone, which has no effect on the
-            messages returned by any read method.
+            Flush the queue? Flushing the queue is deprecated and so
+            is specifying this argument.
+            False (the default) leaves the cache alone, which has no effect
+            on the messages returned by any read method.
+            True affects which messages will be returned by `get_oldest`
+            and `next`. True has no effect if there is a callback function.
+            Note: `None` is treated as `False`, but please do not specify
+            it; it only supported for now to handle deprecation warnings..
 
         Returns
         -------
@@ -529,11 +531,20 @@ class ReadTopic(BaseTopic):
             If the ``salinfo`` has not started reading.
         """
         self.salinfo.assert_started()
-        if flush:
-            warnings.warn(
-                "flush=True is deprecated for ReadTopic.get", DeprecationWarning,
-            )
-            flush = True
+        if flush is None:
+            flush = False
+        else:
+            if flush:
+                warnings.warn(
+                    "flush=True is deprecated for ReadTopic.get", DeprecationWarning,
+                )
+            else:
+                warnings.warn(
+                    "Specifying a value for the flush argument is deprecated "
+                    "for ReadTopic.get; use the default of False.",
+                    DeprecationWarning,
+                )
+
         if flush and not self.has_callback:
             self.flush()
         return self._current_data
