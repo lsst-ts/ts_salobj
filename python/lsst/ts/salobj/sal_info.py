@@ -22,6 +22,7 @@
 __all__ = ["FieldMetadata", "TopicMetadata", "SalInfo", "MAX_RESULT_LEN"]
 
 import asyncio
+import atexit
 import concurrent
 import logging
 import os
@@ -333,6 +334,9 @@ class SalInfo:
 
         domain.add_salinfo(self)
 
+        # Make sure the background thread terminates.
+        atexit.register(self.exit_handler)
+
     def _ackcmd_callback(self, data):
         if not self._running_cmds:
             return
@@ -569,6 +573,14 @@ class SalInfo:
         self.telemetry_names = tuple(telemetry_names)
         self.sal_topic_names = tuple(sorted(self.metadata.topic_info.keys()))
         self.revnames = revnames
+
+    def exit_handler(self):
+        """Emergency close.
+
+        Close the background thread.
+        """
+        self.isopen = False
+        self._guardcond.trigger()
 
     async def close(self):
         """Shut down and clean up resources.
