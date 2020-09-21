@@ -141,15 +141,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         except Exception as e:
             raise ValueError(f"Schema {schema_path} invalid") from e
 
-        super().__init__(
-            name=name,
-            index=index,
-            initial_state=initial_state,
-            simulation_mode=simulation_mode,
-        )
-
         if config_dir is None:
-            config_dir = self._get_default_config_dir()
+            config_dir = self._get_default_config_dir(name)
         else:
             config_dir = pathlib.Path(config_dir)
 
@@ -159,6 +152,13 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
 
         self.config_dir = config_dir
+
+        super().__init__(
+            name=name,
+            index=index,
+            initial_state=initial_state,
+            simulation_mode=simulation_mode,
+        )
 
     @property
     def config_dir(self):
@@ -425,8 +425,13 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         """
         raise NotImplementedError()
 
-    def _get_default_config_dir(self):
+    def _get_default_config_dir(self, name):
         """Compute the default package directory for configuration files.
+
+        Parameters
+        ----------
+        name : `str`
+            SAL component name.
 
         Returns
         -------
@@ -468,7 +473,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                 "does not exists or is not a directory"
             )
 
-        config_dir = config_pkg_dir / self.salinfo.name / self.schema_version
+        config_dir = config_pkg_dir / name / self.schema_version
         if not config_dir.is_dir():
             raise RuntimeError(
                 f"{config_dir} = ${config_env_var_name}/SAL_component_name/schema_version "
