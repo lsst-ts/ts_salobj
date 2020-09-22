@@ -221,7 +221,8 @@ class Controller:
             self.start_task = asyncio.create_task(self._protected_start())
 
         except Exception:
-            asyncio.create_task(domain.close())
+            # Note: Domain.basic_close closes all its SalInfo instances.
+            domain.basic_close()
             raise
 
     async def _protected_start(self):

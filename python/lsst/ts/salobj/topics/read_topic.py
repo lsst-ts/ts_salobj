@@ -431,20 +431,31 @@ class ReadTopic(BaseTopic):
     def max_history(self):
         return self._max_history
 
+    def basic_close(self):
+        """A synchronous and possibly less thorough version of `close`.
+
+        Intended for exit handlers and constructor error handlers.
+        """
+        if not self.isopen:
+            return
+        self.isopen = False
+        self._callback = None
+        try:
+            # These raise RuntimeError if the asyncio loop is not running.
+            self._cancel_callbacks()
+            self._next_task.cancel()
+        except RuntimeError:
+            pass
+        self._reader.close()
+        self._data_queue.clear()
+
     async def close(self):
         """Shut down and release resources.
 
         Intended to be called by SalInfo.close(),
         since that tracks all topics.
         """
-        if not self.isopen:
-            return
-        self.isopen = False
-        self._cancel_callbacks()
-        self._callback = None
-        self._next_task.cancel()
-        self._reader.close()
-        self._data_queue.clear()
+        self.basic_close()
 
     async def aget(self, timeout=None):
         """Get the most recent message, or wait for data if no data has

@@ -335,7 +335,7 @@ class SalInfo:
         domain.add_salinfo(self)
 
         # Make sure the background thread terminates.
-        atexit.register(self.exit_handler)
+        atexit.register(self.basic_close)
 
     def _ackcmd_callback(self, data):
         if not self._running_cmds:
@@ -574,13 +574,21 @@ class SalInfo:
         self.sal_topic_names = tuple(sorted(self.metadata.topic_info.keys()))
         self.revnames = revnames
 
-    def exit_handler(self):
-        """A simpler version of `close` for exit handlers.
+    def basic_close(self):
+        """A synchronous and less thorough version of `close`.
+
+        Intended for exit handlers and constructor error handlers.
         """
         if not self.isopen:
             return
         self.isopen = False
         self._guardcond.trigger()
+        while self._readers:
+            read_cond, reader = self._readers.popitem()
+            reader.basic_close()
+        while self._writers:
+            writer = self._writers.pop()
+            writer.basic_close()
 
     async def close(self):
         """Shut down and clean up resources.
