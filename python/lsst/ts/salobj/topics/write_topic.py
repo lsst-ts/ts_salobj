@@ -136,16 +136,23 @@ class WriteTopic(BaseTopic):
         """Has `data` ever been set?"""
         return self._has_data
 
+    def basic_close(self):
+        """A synchronous and possibly less thorough version of `close`.
+
+        Intended for exit handlers and constructor error handlers.
+        """
+        if not self.isopen:
+            return
+        self.isopen = False
+        self._writer.close()
+
     async def close(self):
         """Shut down and release resources.
 
         Intended to be called by SalInfo.close(),
         since that tracks all topics.
         """
-        if not self.isopen:
-            return
-        self.isopen = False
-        self._writer.close()
+        self.basic_close()
 
     def put(self, data=None, priority=0):
         """Output this topic.
