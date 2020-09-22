@@ -267,7 +267,7 @@ class AsyncS3Bucket:
             hdulist.writeto(fileobj)
             fileobj.seek(0)
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._sync_upload, fileobj, key, callback)
 
     async def download(self, key, callback=None):
@@ -298,7 +298,7 @@ class AsyncS3Bucket:
 
         The callback function is called by ``S3.Bucket.download_fileobj``.
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._sync_download, key, callback)
 
     async def exists(self, key):
@@ -309,7 +309,7 @@ class AsyncS3Bucket:
         key : `str`
             Name of the potential file in the bucket.
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         try:
             await loop.run_in_executor(None, self._sync_size, key)
         except botocore.exceptions.ClientError as e:
@@ -327,7 +327,7 @@ class AsyncS3Bucket:
         key : `str`
             Name of the file in the bucket.
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._sync_size, key)
 
     def _sync_upload(self, fileobj, key, callback):
