@@ -92,7 +92,7 @@ pipeline {
                         "cd /home/saluser/repo/ && " +
                         "eups declare -r . -t saluser && " +
                         "setup ts_salobj -t saluser && " +
-                        "py.test --junitxml=tests/.tests/junit.xml\""
+                        "pytest --junitxml=tests/.tests/junit.xml\""
                 }
             }
         }
