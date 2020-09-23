@@ -163,35 +163,33 @@ class Remote:
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
 
-        salinfo = SalInfo(domain=domain, name=name, index=index)
-        self.salinfo = salinfo
-
+        self.salinfo = SalInfo(domain=domain, name=name, index=index)
         try:
             if not readonly:
-                for cmd_name in salinfo.command_names:
-                    cmd = RemoteCommand(salinfo, cmd_name)
+                for cmd_name in self.salinfo.command_names:
+                    cmd = RemoteCommand(self.salinfo, cmd_name)
                     setattr(self, cmd.attr_name, cmd)
 
-            for evt_name in salinfo.event_names:
+            for evt_name in self.salinfo.event_names:
                 if include_set is not None and evt_name not in include_set:
                     continue
                 elif exclude_set and evt_name in exclude_set:
                     continue
-                evt = RemoteEvent(salinfo, evt_name, max_history=evt_max_history)
+                evt = RemoteEvent(self.salinfo, evt_name, max_history=evt_max_history)
                 setattr(self, evt.attr_name, evt)
 
-            for tel_name in salinfo.telemetry_names:
+            for tel_name in self.salinfo.telemetry_names:
                 if include_set is not None and tel_name not in include_set:
                     continue
                 elif exclude_set and tel_name in exclude_set:
                     continue
-                tel = RemoteTelemetry(salinfo, tel_name)
+                tel = RemoteTelemetry(self.salinfo, tel_name)
                 setattr(self, tel.attr_name, tel)
 
             if start:
                 self.start_task = asyncio.create_task(self.start())
         except Exception:
-            asyncio.create_task(self.salinfo.close())
+            self.salinfo.basic_close()
             raise
 
     async def start(self):

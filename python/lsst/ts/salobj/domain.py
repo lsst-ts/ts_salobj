@@ -171,14 +171,12 @@ class Domain:
     """
 
     def __init__(self):
-        self.participant = None
-
+        self.isopen = True
         self.user_host = base.get_user_host()
         self.default_identity = self.user_host
 
         # Accumulators for verifying that close is working.
         self.num_read_loops = 0
-        self.num_read_threads = 0
 
         self.done_task = asyncio.Future()
 
@@ -274,45 +272,42 @@ class Domain:
         except KeyError:
             return False
 
+    def basic_close(self):
+        """A synchronous and less thorough version of `close`.
+
+        Intended for exit handlers and constructor error handlers.
+        """
+        try:
+            while self._salinfo_set:
+                salinfo = self._salinfo_set.pop()
+                salinfo.basic_close()
+        finally:
+            self.participant.close()
+
     async def close(self):
         """Close all registered `SalInfo` and the dds domain participant.
 
         May be called multiple times. The first call closes the Domain;
         subsequent calls wait until the Domain is closed.
         """
-        if self.participant is None:
+        if not self.isopen:
             await self.done_task
             return
+        self.isopen = False
         try:
             while self._salinfo_set:
                 salinfo = self._salinfo_set.pop()
                 await salinfo.close()
         finally:
-            self.close_dds()
-        if self.num_read_loops != 0 or self.num_read_threads != 0:
+            self.participant.close()
+        if self.num_read_loops != 0:
             warnings.warn(
-                f"After Domain.close num_read_loops={self.num_read_loops} and "
-                f"num_read_threads={self.num_read_threads}; both should be 0"
+                f"After Domain.close num_read_loops={self.num_read_loops}; it should be 0"
             )
         self.done_task.set_result(None)
-
-    def close_dds(self):
-        """Close the dds DomainParticipant."""
-        participant = getattr(self, "participant", None)
-        if participant is not None:
-            participant.close()
-            self.participant = None
 
     async def __aenter__(self):
         return self
 
     async def __aexit__(self, type, value, traceback):
         await self.close()
-
-    def __del__(self):
-        """Last-ditch effort to clean up critical resources.
-
-        Users should call `close` instead, because it does more,
-        and because ``__del__`` is not reliably called.
-        """
-        self.close_dds()

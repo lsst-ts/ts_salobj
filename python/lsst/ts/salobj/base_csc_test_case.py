@@ -121,31 +121,33 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         Adds a logging.StreamHandler if one is not alread present.
         """
         testutils.set_random_lsst_dds_partition_prefix()
-        self.csc = self.basic_make_csc(
-            initial_state=initial_state,
-            config_dir=config_dir,
-            simulation_mode=simulation_mode,
-            **kwargs,
-        )
-        if len(self.csc.log.handlers) < 2:
-            self.csc.log.addHandler(logging.StreamHandler())
-        self.remote = Remote(
-            domain=self.csc.domain,
-            name=self.csc.salinfo.name,
-            index=self.csc.salinfo.index,
-        )
-        if log_level is not None:
-            self.csc.log.setLevel(log_level)
-
-        await asyncio.wait_for(
-            asyncio.gather(self.csc.start_task, self.remote.start_task),
-            timeout=timeout,
-        )
         try:
+            self.csc = self.basic_make_csc(
+                initial_state=initial_state,
+                config_dir=config_dir,
+                simulation_mode=simulation_mode,
+                **kwargs,
+            )
+            if len(self.csc.log.handlers) < 2:
+                self.csc.log.addHandler(logging.StreamHandler())
+            self.remote = Remote(
+                domain=self.csc.domain,
+                name=self.csc.salinfo.name,
+                index=self.csc.salinfo.index,
+            )
+            if log_level is not None:
+                self.csc.log.setLevel(log_level)
+
+            await asyncio.wait_for(
+                asyncio.gather(self.csc.start_task, self.remote.start_task),
+                timeout=timeout,
+            )
             yield
         finally:
-            await self.remote.close()
-            await self.csc.close()
+            if self.remote is not None:
+                await self.remote.close()
+            if self.csc is not None:
+                await self.csc.close()
 
     async def assert_next_summary_state(
         self, state, flush=False, timeout=STD_TIMEOUT, remote=None
@@ -254,6 +256,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         finally:
             process.terminate()
+            await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
 
     async def check_standard_state_transitions(
         self,

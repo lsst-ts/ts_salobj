@@ -288,7 +288,11 @@ class ReadTopic(BaseTopic):
         self._max_history = int(max_history)
         self._data_queue = collections.deque(maxlen=queue_len)
         self._current_data = None
-        # task that `next` waits on
+        # Task that `next` waits on.
+        # Its result is set to the oldest message on the queue.
+        # We do this instead of having `next` itself pop the oldest message
+        # because it allows multiple callers of `next` to all get the same
+        # message, and it avoids a potential race condition with `flush`.
         self._next_task = base.make_done_future()
         self._callback = None
         self._callback_tasks = set()
@@ -427,20 +431,31 @@ class ReadTopic(BaseTopic):
     def max_history(self):
         return self._max_history
 
+    def basic_close(self):
+        """A synchronous and possibly less thorough version of `close`.
+
+        Intended for exit handlers and constructor error handlers.
+        """
+        if not self.isopen:
+            return
+        self.isopen = False
+        self._callback = None
+        try:
+            # These raise RuntimeError if the asyncio loop is not running.
+            self._cancel_callbacks()
+            self._next_task.cancel()
+        except RuntimeError:
+            pass
+        self._reader.close()
+        self._data_queue.clear()
+
     async def close(self):
         """Shut down and release resources.
 
         Intended to be called by SalInfo.close(),
         since that tracks all topics.
         """
-        if not self.isopen:
-            return
-        self.isopen = False
-        self._cancel_callbacks()
-        self._callback = None
-        self._next_task.cancel()
-        self._reader.close()
-        self._data_queue.clear()
+        self.basic_close()
 
     async def aget(self, timeout=None):
         """Get the most recent message, or wait for data if no data has
@@ -496,7 +511,7 @@ class ReadTopic(BaseTopic):
             raise RuntimeError("Not allowed because there is a callback function")
         self._data_queue.clear()
 
-    def get(self, flush=True):
+    def get(self, flush=None):
         """Get the most recent message, or `None` if no data has ever been seen
         (`has_data` False).
 
@@ -507,12 +522,14 @@ class ReadTopic(BaseTopic):
         Parameters
         ----------
         flush : `bool`, optional
-            Flush the queue? True affects which messages will be returned
-            by `get_oldest` and `next`. True is deprecated, but is the default
-            for backwards compatibility. True has no effect if there is
-            a callback function.
-            False leaves the cache alone, which has no effect on the
-            messages returned by any read method.
+            Flush the queue? Flushing the queue is deprecated and so
+            is specifying this argument.
+            False (the default) leaves the cache alone, which has no effect
+            on the messages returned by any read method.
+            True affects which messages will be returned by `get_oldest`
+            and `next`. True has no effect if there is a callback function.
+            Note: `None` is treated as `False`, but please do not specify
+            it; it only supported for now to handle deprecation warnings..
 
         Returns
         -------
@@ -525,11 +542,20 @@ class ReadTopic(BaseTopic):
             If the ``salinfo`` has not started reading.
         """
         self.salinfo.assert_started()
-        if flush:
-            warnings.warn(
-                "flush=True is deprecated for ReadTopic.get", DeprecationWarning,
-            )
-            flush = True
+        if flush is None:
+            flush = False
+        else:
+            if flush:
+                warnings.warn(
+                    "flush=True is deprecated for ReadTopic.get", DeprecationWarning,
+                )
+            else:
+                warnings.warn(
+                    "Specifying a value for the flush argument is deprecated "
+                    "for ReadTopic.get; use the default of False.",
+                    DeprecationWarning,
+                )
+
         if flush and not self.has_callback:
             self.flush()
         return self._current_data
@@ -610,11 +636,6 @@ class ReadTopic(BaseTopic):
         """Implement next.
 
         Unlike `next`, this can be called while using a callback function.
-
-        Raises
-        ------
-        RuntimeError
-            If code is already waiting for the next message.
         """
         self.python_queue_length_checker.check_nitems(len(self._data_queue))
         if self._data_queue:
@@ -657,10 +678,18 @@ class ReadTopic(BaseTopic):
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
-    def _queue_data(self, data_list):
+    def _queue_data(self, data_list, loop):
         """Queue multiple one or more messages.
 
-        This is a no-op if ``data_list`` is empty.
+        Parameters
+        ----------
+        data_list : `list` [dds_messages]
+            DDS messages to be queueued.
+        loop : `asyncio.AbstractEventLoop` or `None`
+            Foreground asyncio loop.
+            Specify the loop if and only if running from a background thread.
+            If running from the main asyncio loop specify ``loop = None``
+            (this is done to read historical data while starting).
 
         Also update ``self._current_data`` and fire `self._next_task`
         (if pending).
@@ -670,12 +699,12 @@ class ReadTopic(BaseTopic):
         for data in data_list:
             self._queue_one_item(data)
         self._current_data = data
-        if not self._next_task.done():
-            # Return the data in the task instead of having the waiter
-            # get it from the queue to avoid a race condition where
-            # one task flushes the queue as another is waiting for data.
-            oldest_message = self._data_queue.popleft()
-            self._next_task.set_result(oldest_message)
+        if loop is not None and loop.is_running():
+            # Reading messages in a background thread.
+            loop.call_soon_threadsafe(self._report_next)
+        else:
+            # Reading messages in the main thread.
+            self._report_next()
 
     def _queue_one_item(self, data):
         """Add a single message to the Python queue.
@@ -684,3 +713,12 @@ class ReadTopic(BaseTopic):
         `ControllerCommand` does this.
         """
         self._data_queue.append(data)
+
+    def _report_next(self):
+        """Set self._next_task to the oldest message on the queue.
+
+        A no-op if self._next_task is done or the queue is empty.
+        """
+        if not self._next_task.done() and self._data_queue:
+            oldest_message = self._data_queue.popleft()
+            self._next_task.set_result(oldest_message)
