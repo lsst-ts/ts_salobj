@@ -23,6 +23,7 @@ __all__ = ["stream_as_generator", "CscCommander"]
 
 import argparse
 import asyncio
+import collections
 import functools
 import sys
 
@@ -141,7 +142,7 @@ class CscCommander:
       and "setValue" commands, as follows::
 
         for command_to_ignore in ("abort", "enterControl", "setValue"):
-            del self.command_dict(command_to_ignore)
+            del self.command_dict[command_to_ignore]
 
     * To override handling of a standard command (one defined in the XML):
       define a ``do_<command_name>`` method.
@@ -177,15 +178,39 @@ class CscCommander:
     Examples
     --------
 
-    If the default behavior suffices, all you need is a command-line script
-    such as the following::
+    You can do a lot with just the base class. This command-line script
+    will control the Test CSC pretty well::
 
         import asyncio
         from lsst.ts import salobj
         asyncio.run(salobj.CscCommander.amain(name="Test", index=True))
 
+    However, this will claim to support some generic commands that the
+    Test CSC does not support ( "abort", "enterControl", and "setValue")
+    and it mishandles the "setArrays" command.
+    See `TestCscCommander` for a version that fixes these deficiencies.
+    `TestCscCommander` is run as follows::
+
+        import asyncio
+        from lsst.ts import salobj
+        asyncio.run(salobj.TestCscCommander.amain(index=True))
+
     For an example with extra commands and special telemetry handling,
     see ``RotatorCommander`` in the ts_rotator package.
+
+    Unit Testing
+    ------------
+    To unit test a commander:
+
+    * Set ``commander.testing = True``.
+      This appends all output messages to output queue
+      ``commander.output_queue``, a `collections.deque`.
+      The messages are also printed to ``stdout``, as usual.
+    * Call ``commander.run_command`` to run a command.
+    * Check the output using the output queue.
+    * Clear the output queue with ``commander.output_queue.clear()``
+      whenever you like, e.g. before running a command whose output
+      you want to check.
     """
 
     def __init__(
@@ -204,6 +229,8 @@ class CscCommander:
         self.tasks = set()
         self.help_dict = dict()
         self.enable = enable
+        self.testing = False
+        self.output_queue = collections.deque()
 
         for name in self.remote.salinfo.event_names:
             if name == "heartbeat":
@@ -234,7 +261,7 @@ class CscCommander:
         """Print help.
         """
         command_help = "\n".join(self.get_commands_help())
-        print(
+        self.output(
             f"""Send commands to the {self.remote.salinfo.name} CSC and print events and telemetry.
 
 CSC Commands:
@@ -252,6 +279,19 @@ help  # print this help
             task.cancel()
         await self.remote.close()
         await self.domain.close()
+
+    def output(self, str):
+        """Print a string to output, appending a final newline.
+
+        Please call this instead of print to support unit tests.
+
+        If ``self.testing`` is True then append ``str`` to
+        ``self.output_queue`` instead of printing it.
+        Use this mode for unit testing a CSC commander.
+        """
+        if self.testing:
+            self.output_queue.append(str)
+        print(str)
 
     def format_item(self, key, value):
         """Format one event or telemetry field for printing.
@@ -309,14 +349,16 @@ help  # print this help
         You may provide evt_<event_name> methods to override printing
         of specific events.
         """
-        print(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
+        self.output(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
 
     def evt_summaryState_callback(self, data):
         try:
             state = sal_enums.State(data.summaryState)
         except Exception:
             state = f"{data.summaryState} (not a known state!)"
-        print(f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state!r}")
+        self.output(
+            f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state!r}"
+        )
 
     def telemetry_callback(self, data, name):
         """Generic callback for telemetry.
@@ -331,7 +373,7 @@ help  # print this help
             formatted_data = ", ".join(
                 f"{key}={value}" for key, value in public_fields.items()
             )
-            print(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
+            self.output(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
 
     def check_arguments(self, args, *names):
         """Check that the required arguments are provided,
@@ -441,32 +483,64 @@ help  # print this help
             kwargs[name] = type(default_value)(str_value)
         await command.set_start(**kwargs)
 
-    async def run_coroutine(self, coro, command_name):
-        """Run a coroutine and manage the task in self.tasks.
-
-        This allows the task to be cancelled in `close`.
+    async def run_command(self, cmd):
+        """Run the specified command string and wait for it to finish.
 
         Parameters
         ----------
-        coro : awaitable
-            Coroutine or other awaitable.
+        cmd : `str`
+            Command string (command name and arguments).
+            Note: does not handle the "exit" command.
         """
-        task = asyncio.create_task(coro)
+        tokens = cmd.split()
+        command_name = tokens[0]
+        args = tokens[1:]
+        command_method = getattr(self, f"do_{command_name}", None)
+        coro = None
+        if command_name == "help":
+            self.print_help()
+        elif command_method is not None:
+            coro = command_method(args)
+        elif command_name in self.command_dict:
+            coro = self.run_command_topic(command_name, args)
+        else:
+            self.output(f"Unrecognized command: {command_name}")
+
+        if coro is None:
+            return
+        await coro
+
+    async def _run_command_and_output(self, cmd):
+        """Execute a command and wait for it to finish. Output the result.
+
+        A wrapper around `run_command` that adds a task to self.tasks
+        and catches and outputs exceptions. For use by the interactive
+        command loop.
+
+        Parameters
+        ----------
+        cmd : `str`
+            Command string (command name and arguments).
+            Note: does not handle the "exit" command.
+        """
+        task = asyncio.create_task(self.run_command(cmd))
         self.tasks.add(task)
         try:
             await task
-            print(f"Finished command {command_name}")
+            command_name = cmd.split()[0]
+            self.output(f"Finished command {command_name}")
         except Exception as e:
-            print(f"Command {command_name} failed: {e}")
-        self.tasks.discard(task)
+            self.output(str(e))
+        finally:
+            self.tasks.remove(task)
 
     async def start(self):
         """Start asynchonous processes.
         """
-        print(f"Waiting for {self.remote.salinfo.name_index} to start.")
+        self.output(f"Waiting for {self.remote.salinfo.name_index} to start.")
         await self.remote.start_task
         if self.enable:
-            print(f"Enabling {self.remote.salinfo.name_index}")
+            self.output(f"Enabling {self.remote.salinfo.name_index}")
             # Temporarily remove the ``evt_summaryState`` callback
             # so the `set_summary_state` function can read the topic.
             summary_state_callback = self.remote.evt_summaryState.callback
@@ -502,28 +576,20 @@ help  # print this help
 
             self.print_help()
             async for line in stream_as_generator(sys.stdin):
+                # Purge done tasks
+                self.tasks = {task for task in self.tasks if not task.done()}
+
+                # Execute the new command
                 line = line.strip()
                 # Strip trailing comment, if any.
                 if "#" in line:
                     line = line.split("#", maxsplit=1)[0].strip()
                 if not line:
                     continue
-                tokens = line.split()
-                command_name = tokens[0]
-                args = tokens[1:]
-                command_method = getattr(self, f"do_{command_name}", None)
-                if command_name == "exit":
+                if line == "exit":
                     break
-                elif command_name == "help":
-                    self.print_help()
-                elif command_method is not None:
-                    coro = command_method(args)
-                    asyncio.create_task(self.run_coroutine(coro, command_name))
-                elif command_name in self.command_dict:
-                    coro = self.run_command_topic(command_name, args)
-                    asyncio.create_task(self.run_coroutine(coro, command_name))
-                else:
-                    print(f"Unrecognized command: {command_name}")
+                task = asyncio.create_task(self._run_command_and_output(line))
+                self.tasks.add(task)
         finally:
             await self.close()
 

@@ -295,9 +295,9 @@ class SalInfo:
         # dict of private_seqNum: salobj.topics.CommandInfo
         self._running_cmds = dict()
         # dict of dds.ReadCondition: salobj ReadTopic
-        self._readers = dict()
+        self._reader_dict = dict()
         # list of salobj WriteTopic
-        self._writers = list()
+        self._writer_list = list()
         # the first RemoteCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdReader
         # and set its callback to self._ackcmd_callback
@@ -583,11 +583,9 @@ class SalInfo:
             return
         self.isopen = False
         self._guardcond.trigger()
-        while self._readers:
-            read_cond, reader = self._readers.popitem()
+        for reader in self._reader_dict.values():
             reader.basic_close()
-        while self._writers:
-            writer = self._writers.pop()
+        for writer in self._writer_list:
             writer.basic_close()
 
     async def close(self):
@@ -605,11 +603,9 @@ class SalInfo:
             # Give the read loop time to exit.
             await asyncio.sleep(0.01)
             self._read_loop_task.cancel()
-            while self._readers:
-                read_cond, reader = self._readers.popitem()
+            for reader in self._reader_dict.values():
                 await reader.close()
-            while self._writers:
-                writer = self._writers.pop()
+            for writer in self._writer_list:
                 await writer.close()
             while self._running_cmds:
                 private_seqNum, cmd_info = self._running_cmds.popitem()
@@ -638,9 +634,9 @@ class SalInfo:
         """
         if self.start_called:
             raise RuntimeError("Cannot add topics after the start called")
-        if topic._read_condition in self._readers:
+        if topic._read_condition in self._reader_dict:
             raise RuntimeError(f"{topic} already added")
-        self._readers[topic._read_condition] = topic
+        self._reader_dict[topic._read_condition] = topic
         self._waitset.attach(topic._read_condition)
 
     def add_writer(self, topic):
@@ -651,7 +647,7 @@ class SalInfo:
         topic : `topics.WriteTopic`
             Write topic to (eventually) close.
         """
-        self._writers.append(topic)
+        self._writer_list.append(topic)
 
     async def start(self):
         """Start the read loop.
@@ -680,7 +676,7 @@ class SalInfo:
                     self.log.warning(f"Could not read historical data in {dt:0.2f} sec")
 
                 # read historical (late-joiner) data
-                for read_cond, reader in self._readers.items():
+                for read_cond, reader in self._reader_dict.items():
                     if not self.isopen:  # shutting down
                         return
                     if (
@@ -767,7 +763,7 @@ class SalInfo:
                 # shutting down; clean everything up
                 return
             for condition in conditions:
-                reader = self._readers.get(condition)
+                reader = self._reader_dict.get(condition)
                 if reader is None or not reader.isopen:
                     continue
                 # odds are we will only get one value per read,
@@ -819,7 +815,7 @@ class SalInfo:
         num_ok = 0
         num_checked = 0
         t0 = time.monotonic()
-        for reader in self._readers.values():
+        for reader in self._reader_dict.values():
             if not self.isopen:  # shutting down
                 return False
             if reader.volatile or not reader.isopen:

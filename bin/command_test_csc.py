@@ -30,4 +30,4 @@ import asyncio
 
 from lsst.ts import salobj
 
-asyncio.run(salobj.CscCommander.amain(name="Test", index=True))
+asyncio.run(salobj.TestCscCommander.amain(index=True))

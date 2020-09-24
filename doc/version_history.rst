@@ -71,6 +71,8 @@ Changes:
 * Simplified the simulation support in CSCs, as explained in Deprecations above.
 * Added ``--loglevel`` and ``--version`` arguments to `BaseCsc`\ 's command-line argument parser.
 * `CscCommander` now rounds float arrays when displaying events and telemetry (it already rounded float scalars).
+* `CscCommander` now supports unit testing.
+  To better support unit testing, please write output using the new `CscCommander.output` method, instead of `print`.
 * Added support for running without a durability service:
   set environment variable ``LSST_DDS_HISTORYSYNC`` to a negative value to prevent waiting for historical data.
 * Added the `get_opensplice_version` function.
