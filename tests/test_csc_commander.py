@@ -101,12 +101,12 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             # Test the special setArrays command
             # Too many values
             with self.assertRaises(RuntimeError):
-                await self.commander.run_command(f"setArrays int0=1,2,3,4,5,6")
+                await self.commander.run_command("setArrays int0=1,2,3,4,5,6")
             # No such field
             with self.assertRaises(RuntimeError):
-                await self.commander.run_command(f"setArrays no_such_field=1,2,3,4,5,6")
+                await self.commander.run_command("setArrays no_such_field=1,2,3,4,5,6")
             # A valid command
-            await self.commander.run_command(f"setArrays boolean0=0,1 int0=-2,33,42")
+            await self.commander.run_command("setArrays boolean0=0,1 int0=-2,33,42")
             for topic in self.csc.evt_arrays, self.csc.tel_arrays:
                 self.assertEqual(
                     topic.data.boolean0, [False, True, False, False, False]
