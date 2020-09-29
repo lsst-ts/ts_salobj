@@ -60,10 +60,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode, **kwargs):
         """Make and return a CSC.
 
-        initial_state : `lsst.ts.salobj.State` or `int`, optional
-            The initial state of the CSC. Ignored except in simulation mode
-            because in normal operation the initial state is the current state
-            of the controller.
+        Parameters
+        ----------
+        initial_state : `lsst.ts.salobj.State` or `int`
+            The initial state of the CSC.
         config_dir : `str`
             Directory of configuration files, or None for the standard
             configuration directory (obtained from
@@ -81,7 +81,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     @contextlib.asynccontextmanager
     async def make_csc(
         self,
-        initial_state,
+        initial_state=sal_enums.State.STANDBY,
         config_dir=None,
         simulation_mode=0,
         log_level=None,
@@ -96,20 +96,19 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         ----------
         name : `str`
             Name of SAL component.
-        index : `int` or `None`, optional
-            SAL component index, or 0 or None if the component is not indexed.
-            A value is required if the component is indexed.
         initial_state : `lsst.ts.salobj.State` or `int`, optional
-            The initial state of the CSC.
+            The initial state of the CSC. Defaults to STANDBY.
         config_dir : `str`, optional
-            Directory of configuration files, or None for the standard
-            configuration directory (obtained from
+            Directory of configuration files, or `None` (the default)
+            for the standard configuration directory (obtained from
             `ConfigureCsc._get_default_config_dir`).
         simulation_mode : `int`, optional
-            Simulation mode.
+            Simulation mode. Defaults to 0 because not all CSCs support
+            simulation. However, tests of CSCs that support simulation
+            will almost certainly want to set this nonzero.
         log_level : `int` or `None`, optional
             Logging level, such as `logging.INFO`.
-            If None then do not set the log level, leaving the default
+            If `None` then do not set the log level, leaving the default
             behavior of `SalInfo`: increase the log level to INFO.
         timeout : `float`
             Time limit for the CSC to start (seconds).
@@ -228,7 +227,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         exe_name : `str`
             Name of executable, e.g. "run_rotator.py"
         initial_state : `lsst.ts.salobj.State` or `int`, optional
-            The expected initial state of the CSC.
+            The expected initial state of the CSC. Defaults to STANDBY.
         cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
         """
