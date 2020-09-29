@@ -614,6 +614,8 @@ class SalInfo:
                 except Exception:
                     pass
             self.domain.remove_salinfo(self)
+        except Exception:
+            self.log.exception("close failed")
         finally:
             if not self.done_task.done():
                 self.done_task.set_result(None)
