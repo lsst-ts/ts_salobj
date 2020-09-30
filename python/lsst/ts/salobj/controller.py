@@ -291,28 +291,35 @@ class Controller:
         all background tasks, pauses briefly to allow final SAL messages
         to be sent, then closes the dds domain.
         """
-        if cancel_start:
+        if cancel_start and not self.start_task.done():
             self.start_task.cancel()
         if not self.isopen:
             # Closed or closing. Wait for done_task to be finished,
             # ignoring any exception. If you want to know about the exception
             # you can examine done_task yourself.
             try:
+                self.log.info("Already closing; waiting for done_task")
                 await self.done_task
             except Exception:
                 pass
             return
+
         self.isopen = False
         try:
             await self.close_tasks()
         except Exception:
-            self.log.exception("Controller.close_tasks failed")
+            self.log.exception("Controller.close_tasks failed; close continues")
         try:
             # Give remotes time to read final DDS messages before closing
             # the domain participant.
-            await asyncio.sleep(SHUTDOWN_DELAY)
             self.log.removeHandler(self._sal_log_handler)
+            await asyncio.sleep(SHUTDOWN_DELAY)
             await self.domain.close()
+        except asyncio.CancelledError:
+            self.domain.basic_close()
+        except Exception:
+            self.domain.basic_close()
+            self.log.exception("Controller.close failed near the end; close continues")
         finally:
             if not self.done_task.done():
                 if exception:
