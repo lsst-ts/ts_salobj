@@ -60,10 +60,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode, **kwargs):
         """Make and return a CSC.
 
-        initial_state : `lsst.ts.salobj.State` or `int` (optional)
-            The initial state of the CSC. Ignored except in simulation mode
-            because in normal operation the initial state is the current state
-            of the controller.
+        Parameters
+        ----------
+        initial_state : `lsst.ts.salobj.State` or `int`
+            The initial state of the CSC.
         config_dir : `str`
             Directory of configuration files, or None for the standard
             configuration directory (obtained from
@@ -81,7 +81,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     @contextlib.asynccontextmanager
     async def make_csc(
         self,
-        initial_state,
+        initial_state=sal_enums.State.STANDBY,
         config_dir=None,
         simulation_mode=0,
         log_level=None,
@@ -96,20 +96,19 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         ----------
         name : `str`
             Name of SAL component.
-        index : `int` or `None` (optional)
-            SAL component index, or 0 or None if the component is not indexed.
-            A value is required if the component is indexed.
-        initial_state : `lsst.ts.salobj.State` or `int` (optional)
-            The initial state of the CSC.
-        config_dir : `str` (optional)
-            Directory of configuration files, or None for the standard
-            configuration directory (obtained from
+        initial_state : `lsst.ts.salobj.State` or `int`, optional
+            The initial state of the CSC. Defaults to STANDBY.
+        config_dir : `str`, optional
+            Directory of configuration files, or `None` (the default)
+            for the standard configuration directory (obtained from
             `ConfigureCsc._get_default_config_dir`).
-        simulation_mode : `int` (optional)
-            Simulation mode.
-        log_level : `int` or `None` (optional)
+        simulation_mode : `int`, optional
+            Simulation mode. Defaults to 0 because not all CSCs support
+            simulation. However, tests of CSCs that support simulation
+            will almost certainly want to set this nonzero.
+        log_level : `int` or `None`, optional
             Logging level, such as `logging.INFO`.
-            If None then do not set the log level, leaving the default
+            If `None` then do not set the log level, leaving the default
             behavior of `SalInfo`: increase the log level to INFO.
         timeout : `float`
             Time limit for the CSC to start (seconds).
@@ -120,32 +119,34 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         -----
         Adds a logging.StreamHandler if one is not alread present.
         """
-        testutils.set_random_lsst_dds_domain()
-        self.csc = self.basic_make_csc(
-            initial_state=initial_state,
-            config_dir=config_dir,
-            simulation_mode=simulation_mode,
-            **kwargs,
-        )
-        if len(self.csc.log.handlers) < 2:
-            self.csc.log.addHandler(logging.StreamHandler())
-        self.remote = Remote(
-            domain=self.csc.domain,
-            name=self.csc.salinfo.name,
-            index=self.csc.salinfo.index,
-        )
-        if log_level is not None:
-            self.csc.log.setLevel(log_level)
-
-        await asyncio.wait_for(
-            asyncio.gather(self.csc.start_task, self.remote.start_task),
-            timeout=timeout,
-        )
+        testutils.set_random_lsst_dds_partition_prefix()
         try:
+            self.csc = self.basic_make_csc(
+                initial_state=initial_state,
+                config_dir=config_dir,
+                simulation_mode=simulation_mode,
+                **kwargs,
+            )
+            if len(self.csc.log.handlers) < 2:
+                self.csc.log.addHandler(logging.StreamHandler())
+            self.remote = Remote(
+                domain=self.csc.domain,
+                name=self.csc.salinfo.name,
+                index=self.csc.salinfo.index,
+            )
+            if log_level is not None:
+                self.csc.log.setLevel(log_level)
+
+            await asyncio.wait_for(
+                asyncio.gather(self.csc.start_task, self.remote.start_task),
+                timeout=timeout,
+            )
             yield
         finally:
-            await self.remote.close()
-            await self.csc.close()
+            if self.remote is not None:
+                await self.remote.close()
+            if self.csc is not None:
+                await self.csc.close()
 
     async def assert_next_summary_state(
         self, state, flush=False, timeout=STD_TIMEOUT, remote=None
@@ -156,11 +157,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         ----------
         state : `lsst.ts.salobj.State` or `int`
             Desired summary state.
-        flush : `bool` (optional)
+        flush : `bool`, optional
             Flush the read queue before waiting?
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit for getting the data sample (sec).
-        remote : `Remote` (optional)
+        remote : `Remote`, optional
             Remote to use; ``self.remote`` if None.
         """
         if remote is None:
@@ -182,9 +183,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         ----------
         topic : `topics.ReadTopic`
             Topic to read, e.g. ``remote.evt_logMessage``.
-        flush : `bool` (optional)
+        flush : `bool`, optional
             Flush the read queue before waiting?
-        timeout : `double` (optional)
+        timeout : `double`, optional
             Time limit for getting the data sample (sec).
         kwargs : `dict`
             Dict of field_name: expected_value
@@ -225,11 +226,12 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             SAL index of component.
         exe_name : `str`
             Name of executable, e.g. "run_rotator.py"
-        initial_state : `lsst.ts.salobj.State` or `int` (optional)
-            The expected initial state of the CSC.
+        initial_state : `lsst.ts.salobj.State` or `int`, optional
+            The expected initial state of the CSC. Defaults to STANDBY.
         cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
         """
+        testutils.set_random_lsst_dds_partition_prefix()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
             self.fail(
@@ -253,9 +255,14 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         finally:
             process.terminate()
+            await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
 
     async def check_standard_state_transitions(
-        self, enabled_commands, skip_commands=None, timeout=STD_TIMEOUT
+        self,
+        enabled_commands,
+        skip_commands=None,
+        settingsToApply="",
+        timeout=STD_TIMEOUT,
     ):
         """Test standard CSC state transitions.
 
@@ -265,9 +272,12 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             List of CSC-specific commands that are valid in the enabled state.
             Need not include the standard commands, which are "disable"
             and "setLogLevel" (which is valid in any state).
-        skip_commands : `List` [`str`] or `None`
+        skip_commands : `List` [`str`] or `None`, optional
             List of commands to skip.
-        timeout : `float`
+        settingsToApply : `str`, optional
+            Value for the ``settingsToApply`` argument for the ``start``
+            command.
+        timeout : `float`, optional
             Time limit for state transition commands (seconds).
 
         Notes
@@ -286,15 +296,19 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         self.assertEqual(self.csc.summary_state, sal_enums.State.STANDBY)
         await self.assert_next_summary_state(sal_enums.State.STANDBY)
         await self.check_bad_commands(
-            good_commands=("start", "exitControl", "setLogLevel") + skip_commands
+            good_commands=("start", "exitControl", "setAuthList", "setLogLevel")
+            + skip_commands
         )
 
         # Send start; new state is DISABLED.
-        await self.remote.cmd_start.start(timeout=timeout)
+        await self.remote.cmd_start.set_start(
+            settingsToApply=settingsToApply, timeout=timeout
+        )
         self.assertEqual(self.csc.summary_state, sal_enums.State.DISABLED)
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
         await self.check_bad_commands(
-            good_commands=("enable", "standby", "setLogLevel") + skip_commands
+            good_commands=("enable", "standby", "setAuthList", "setLogLevel")
+            + skip_commands
         )
 
         # Send enable; new state is ENABLED.
@@ -302,7 +316,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         self.assertEqual(self.csc.summary_state, sal_enums.State.ENABLED)
         await self.assert_next_summary_state(sal_enums.State.ENABLED)
         all_enabled_commands = tuple(
-            sorted(set(("disable", "setLogLevel")) | set(enabled_commands))
+            sorted(
+                set(("disable", "setAuthList", "setLogLevel")) | set(enabled_commands)
+            )
         )
         await self.check_bad_commands(
             good_commands=all_enabled_commands + skip_commands
@@ -328,9 +344,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        bad_commands : `List`[`str`] or `None` (optional)
+        bad_commands : `List`[`str`] or `None`, optional
             Names of bad commands to try, or None for all commands.
-        good_commands : `List`[`str`] or `None` (optional)
+        good_commands : `List`[`str`] or `None`, optional
             Names of good commands to skip, or None to skip none.
 
         Notes

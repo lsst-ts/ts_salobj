@@ -22,6 +22,7 @@
 __all__ = ["FieldMetadata", "TopicMetadata", "SalInfo", "MAX_RESULT_LEN"]
 
 import asyncio
+import atexit
 import concurrent
 import logging
 import os
@@ -33,16 +34,23 @@ import ddsutil
 
 from . import base
 from . import idl_metadata
-from .domain import Domain, DDS_READ_QUEUE_LEN
+from .domain import Domain
 
-MAX_RESULT_LEN = 256  # max length for result field of an Ack
+# Maximum length of the ``result`` field in an ``ackcmd`` topic.
+MAX_RESULT_LEN = 256
 
-# We want DDS logMessage messages for at least INFO level messages
+# We want SAL logMessage messages for at least INFO level messages,
 # so if the current level is less verbose, set it to INFO.
 # Do not change the level if it is already more verbose,
 # because somebody has intentionally increased verbosity
 # (a common thing to do in unit tests).
 MAX_LOG_LEVEL = logging.INFO
+
+# The maximum number of historical samples to read for each topic.
+# This can be any value larger than the length of the longest DDS write queue.
+# If it is too short then you risk mixing historical data
+# with new data samples, which can produce very confusing behavior.
+MAX_HISTORY_READ = 10000
 
 # Default time to wait for historical data (sec);
 # override by setting env var $LSST_DDS_HISTORYSYNC.
@@ -121,7 +129,7 @@ class TopicMetadata:
 
 
 class SalInfo:
-    """DDS information for one SAL component and its DDS partition
+    r"""DDS information for one SAL component and its DDS partition
 
     Parameters
     ----------
@@ -129,13 +137,13 @@ class SalInfo:
         DDS domain participant and quality of service information.
     name : `str`
         SAL component name.
-    index : `int` (optional)
+    index : `int`, optional
         Component index; 0 or None if this component is not indexed.
 
     Raises
     ------
     RuntimeError
-        If environment variable ``LSST_DDS_DOMAIN`` is not defined.
+        If environment variable ``LSST_DDS_PARTITION_PREFIX`` is not defined.
     RuntimeError
         If the IDL file cannot be found for the specified ``name``.
     TypeError
@@ -154,18 +162,27 @@ class SalInfo:
     indexed : `bool`
         `True` if this SAL component is indexed (meaning a non-zero index
         is allowed), `False` if not.
+    identity : `str`
+        Value used for the private_identity field of DDS messages.
+        Defaults to username@host, but CSCs should use the CSC name:
+        * SAL_component_name for a non-indexed SAL component
+        * SAL_component_name:index for an indexed SAL component.
     isopen : `bool`
         Is this read topic open? `True` until `close` is called.
     log : `logging.Logger`
         A logger.
-    partition_name : `str`
-        The DDS partition name, from environment variable ``LSST_DDS_DOMAIN``.
+    partition_prefix : `str`
+        The DDS partition name prefix, from environment variable
+        ``LSST_DDS_PARTITION_PREFIX``.
     publisher : ``dds.Publisher``
         A DDS publisher, used to create DDS writers.
     subscriber : ``dds.Subscriber``
         A DDS subscriber, used to create DDS readers.
     start_task : `asyncio.Task`
-        A task which is finished when `start` is done.
+        A task which is finished when `start` is done,
+        or to an exception if `start` fails.
+    done_task : `asyncio.Task`
+        A task which is finished when `close` is done.
     command_names : `List` [`str`]
         A tuple of command names without the ``"command_"`` prefix.
     event_names : `List` [`str`]
@@ -179,6 +196,10 @@ class SalInfo:
         A dict of topic name: name_revision.
     topic_info : `dict` [`str`, `TopicMetadata`]
         A dict of SAL topic name: topic metadata.
+    authorized_users : `List` [`str`]
+        Set of users authorized to command this component.
+    non_authorized_cscs : `List` [`str`]
+        Set of CSCs that are not authorized to command this component.
 
     Notes
     -----
@@ -186,8 +207,8 @@ class SalInfo:
     <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
     follow the link for details:
 
-    * ``LSST_DDS_DOMAIN`` (required): the DDS partition name.
-    * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec)
+    * ``LSST_DDS_PARTITION_PREFIX`` (required): the DDS partition name.
+    * ``LSST_DDS_HISTORYSYNC``, optional: time limit (sec)
       for waiting for historical (late-joiner) data.
 
     **Usage**
@@ -199,6 +220,21 @@ class SalInfo:
     for cleanup using a weak reference to avoid circular dependencies.
     You may safely close a `SalInfo` before closing its domain,
     and this is recommended if you create and destroy many remotes.
+
+    **DDS Partition Names**
+
+    The DDS partition name for each topic is {prefix}.{name}.{suffix}, where:
+
+    * ``prefix`` = $LSST_DDS_PARTITION_PREFIX
+      (fall back to $LSST_DDS_DOMAIN if necessary).
+    * ``name`` = the ``name`` constructor argument.
+    * ``suffix`` = "cmd" for command topics, and "data" for all other topics,
+      including ``ackcmd``.
+
+    The idea is that each `Remote` and `Controller` should have just one
+    subscriber and one publisher, and that the durability service for
+    a `Controller` will not read topics that a controller writes:
+    events, telemetry, and the ``ackcmd`` topic.
     """
 
     def __init__(self, domain, name, index=0):
@@ -208,44 +244,60 @@ class SalInfo:
         self.domain = domain
         self.name = name
         self.index = 0 if index is None else int(index)
+        self.identity = domain.default_identity
         self.start_called = False
 
-        # Create the publisher and subscriber. Both depend on the DDS
-        # partition, and so are created here instead of in Domain,
-        # where most similar objects are created.
-        self.partition_name = os.environ.get("LSST_DDS_DOMAIN")
-        if self.partition_name is None:
-            raise RuntimeError("Environment variable $LSST_DDS_DOMAIN not defined")
+        # Dict of SAL topic name: wait_for_historical_data succeeded
+        # for each topic for which wait_for_historical_data was called.
+        # This is primarily intended for unit tests.
+        self.wait_history_isok = dict()
 
-        partition_qos_policy = dds.PartitionQosPolicy([self.partition_name])
+        partition_prefix = os.environ.get("LSST_DDS_PARTITION_PREFIX")
+        if partition_prefix is None:
+            partition_prefix = os.environ.get("LSST_DDS_DOMAIN")
+            if partition_prefix is None:
+                raise RuntimeError(
+                    "Environment variable $LSST_DDS_PARTITION_PREFIX not defined, "
+                    "nor is the deprecated fallback $LSST_DDS_DOMAIN"
+                )
+            warnings.warn(
+                "Environment variable $LSST_DDS_PARTITION_PREFIX not defined; "
+                "using deprecated fallback $LSST_DDS_DOMAIN instead",
+                DeprecationWarning,
+            )
+        elif os.environ.get("LSST_DDS_DOMAIN") is not None:
+            warnings.warn(
+                "Using environment variable $LSST_DDS_PARTITION_PREFIX "
+                "instead of deprecated $LSST_DDS_DOMAIN",
+                DeprecationWarning,
+            )
+        self.partition_prefix = partition_prefix
 
-        publisher_qos = domain.qos_provider.get_publisher_qos()
-        publisher_qos.set_policies([partition_qos_policy])
-        # DDS publisher; used to create topic writers. A dds.Publisher.
-        self.publisher = domain.participant.create_publisher(publisher_qos)
-
-        subscriber_qos = domain.qos_provider.get_subscriber_qos()
-        subscriber_qos.set_policies([partition_qos_policy])
-        # DDS subscriber; used to create topic readers. A dds.Subscriber.
-        self.subscriber = domain.participant.create_subscriber(subscriber_qos)
-
-        # A task that is set done when SalInfo.start is done
-        # (or to an exception if start fails).
         self.start_task = asyncio.Future()
-
-        # A task that is set Done when SalInfo.close is done.
         self.done_task = asyncio.Future()
 
         self.log = logging.getLogger(self.name)
         if self.log.getEffectiveLevel() > MAX_LOG_LEVEL:
             self.log.setLevel(MAX_LOG_LEVEL)
 
+        self.authorized_users = set()
+        self.non_authorized_cscs = set()
+
+        # Publishers and subscribers.
+        # Create at need to avoid unnecessary instances.
+        # Controller needs a _cmd_publisher and _data_subscriber.
+        # Remote needs a _cmd_subscriber and _data_publisher.
+        self._cmd_publisher = None
+        self._cmd_subscriber = None
+        self._data_publisher = None
+        self._data_subscriber = None
+
         # dict of private_seqNum: salobj.topics.CommandInfo
         self._running_cmds = dict()
         # dict of dds.ReadCondition: salobj ReadTopic
-        self._readers = dict()
+        self._reader_dict = dict()
         # list of salobj WriteTopic
-        self._writers = list()
+        self._writer_list = list()
         # the first RemoteCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdReader
         # and set its callback to self._ackcmd_callback
@@ -272,7 +324,6 @@ class SalInfo:
             raise ValueError(
                 f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component"
             )
-
         if len(self.command_names) > 0:
             ackcmd_revname = self.revnames.get("ackcmd")
             if ackcmd_revname is None:
@@ -280,10 +331,20 @@ class SalInfo:
             self._ackcmd_type = ddsutil.get_dds_classes_from_idl(
                 idl_path, ackcmd_revname
             )
+
         domain.add_salinfo(self)
+
+        # Make sure the background thread terminates.
+        atexit.register(self.basic_close)
 
     def _ackcmd_callback(self, data):
         if not self._running_cmds:
+            return
+        # Note: ReadTopic's reader filters out ackcmd samples
+        # for commands issued by other remotes.
+        if data.identity and data.identity != self.identity:
+            # This ackcmd is for a command issued by a different Remote,
+            # so ignore it.
             return
         cmd_info = self._running_cmds.get(data.private_seqNum, None)
         if cmd_info is None:
@@ -320,13 +381,75 @@ class SalInfo:
         return self._ackcmd_type.topic_data_class
 
     @property
-    def idl_loc(self):
-        """Path to the IDL file for this SAL component; a `pathlib.Path`.
+    def cmd_partition_name(self):
+        """Partition name for command topics."""
+        return f"{self.partition_prefix}.{self.name}.cmd"
 
-        Deprecated; use ``metadata.idl_path`` instead.
+    @property
+    def data_partition_name(self):
+        """Partition name for non-command topics."""
+        return f"{self.partition_prefix}.{self.name}.data"
+
+    @property
+    def cmd_publisher(self):
+        """Publisher for command topics, but not ackcmd.
+
+        This has a different partition name than a data_publisher.
         """
-        warnings.warn("Use salinfo.metadata.idl_path instead", DeprecationWarning)
-        return self.metadata.idl_path
+        if self._cmd_publisher is None:
+            self._cmd_publisher = self.domain.make_publisher([self.cmd_partition_name])
+
+        return self._cmd_publisher
+
+    @property
+    def cmd_subscriber(self):
+        """Subscriber for command topics, but not ackcmd.
+
+        This has a different partition name than a data_subscriber.
+        """
+        if self._cmd_subscriber is None:
+            self._cmd_subscriber = self.domain.make_subscriber(
+                [self.cmd_partition_name]
+            )
+
+        return self._cmd_subscriber
+
+    @property
+    def data_publisher(self):
+        """Publisher for ackcmd, events and telemetry topics.
+
+        This has a different partition name than a cmd_publisher.
+        """
+        if self._data_publisher is None:
+            self._data_publisher = self.domain.make_publisher(
+                [self.data_partition_name]
+            )
+
+        return self._data_publisher
+
+    @property
+    def data_subscriber(self):
+        """Subscriber for ackcmd, events and telemetry topics.
+
+        This has a different partition name than a cmd_subscriber.
+        """
+        if self._data_subscriber is None:
+            self._data_subscriber = self.domain.make_subscriber(
+                [self.data_partition_name]
+            )
+
+        return self._data_subscriber
+
+    @property
+    def name_index(self):
+        """Get name[:index].
+
+        The suffix is only present if the component is indexed.
+        """
+        if self.indexed:
+            return f"{self.name}:{self.index}"
+        else:
+            return self.name
 
     @property
     def started(self):
@@ -349,8 +472,8 @@ class SalInfo:
         if not self.started:
             raise RuntimeError("Not started")
 
-    def makeAckCmd(
-        self, private_seqNum, ack, error=0, result="", truncate_result=False
+    def make_ackcmd(
+        self, private_seqNum, ack, error=0, result="", timeout=0, truncate_result=False
     ):
         """Make an AckCmdType object from keyword arguments.
 
@@ -367,6 +490,9 @@ class SalInfo:
         result : `str`
             More information. This is arbitrary, but limited to
             `MAX_RESULT_LEN` characters.
+        timeout : `float`
+            Esimated command duration. This should be specified
+            if ``ack`` is ``salobj.SalRetCode.CMD_INPROGRESS``.
         truncate_result : `bool`
             What to do if ``result`` is longer than  `MAX_RESULT_LEN`
             characters:
@@ -392,11 +518,23 @@ class SalInfo:
                     f"len(result) > MAX_RESULT_LEN={MAX_RESULT_LEN}; result={result}"
                 )
         return self.AckCmdType(
-            private_seqNum=private_seqNum, ack=ack, error=error, result=result
+            private_seqNum=private_seqNum,
+            ack=ack,
+            error=error,
+            result=result,
+            timeout=timeout,
         )
 
+    def makeAckCmd(self, *args, **kwargs):
+        """Deprecated version of make_ackcmd."""
+        # TODO DM-26518: remove this method
+        warnings.warn(
+            "makeAckCmd is deprecated; use make_ackcmd instead.", DeprecationWarning
+        )
+        return self.make_ackcmd(*args, **kwargs)
+
     def __repr__(self):
-        return f"SalBase({self.name}, {self.index})"
+        return f"SalInfo({self.name}, {self.index})"
 
     def parse_metadata(self):
         """Parse the IDL metadata to generate some attributes.
@@ -436,6 +574,20 @@ class SalInfo:
         self.sal_topic_names = tuple(sorted(self.metadata.topic_info.keys()))
         self.revnames = revnames
 
+    def basic_close(self):
+        """A synchronous and less thorough version of `close`.
+
+        Intended for exit handlers and constructor error handlers.
+        """
+        if not self.isopen:
+            return
+        self.isopen = False
+        self._guardcond.trigger()
+        for reader in self._reader_dict.values():
+            reader.basic_close()
+        for writer in self._writer_list:
+            writer.basic_close()
+
     async def close(self):
         """Shut down and clean up resources.
 
@@ -451,11 +603,9 @@ class SalInfo:
             # Give the read loop time to exit.
             await asyncio.sleep(0.01)
             self._read_loop_task.cancel()
-            while self._readers:
-                read_cond, reader = self._readers.popitem()
+            for reader in self._reader_dict.values():
                 await reader.close()
-            while self._writers:
-                writer = self._writers.pop()
+            for writer in self._writer_list:
                 await writer.close()
             while self._running_cmds:
                 private_seqNum, cmd_info = self._running_cmds.popitem()
@@ -464,6 +614,8 @@ class SalInfo:
                 except Exception:
                     pass
             self.domain.remove_salinfo(self)
+        except Exception:
+            self.log.exception("close failed")
         finally:
             if not self.done_task.done():
                 self.done_task.set_result(None)
@@ -484,9 +636,9 @@ class SalInfo:
         """
         if self.start_called:
             raise RuntimeError("Cannot add topics after the start called")
-        if topic._read_condition in self._readers:
+        if topic._read_condition in self._reader_dict:
             raise RuntimeError(f"{topic} already added")
-        self._readers[topic._read_condition] = topic
+        self._reader_dict[topic._read_condition] = topic
         self._waitset.attach(topic._read_condition)
 
     def add_writer(self, topic):
@@ -497,7 +649,7 @@ class SalInfo:
         topic : `topics.WriteTopic`
             Write topic to (eventually) close.
         """
-        self._writers.append(topic)
+        self._writer_list.append(topic)
 
     async def start(self):
         """Start the read loop.
@@ -513,7 +665,7 @@ class SalInfo:
             raise RuntimeError("Start already called")
         self.start_called = True
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 t0 = time.monotonic()
                 isok = await loop.run_in_executor(pool, self._wait_history)
@@ -526,7 +678,7 @@ class SalInfo:
                     self.log.warning(f"Could not read historical data in {dt:0.2f} sec")
 
                 # read historical (late-joiner) data
-                for read_cond, reader in list(self._readers.items()):
+                for read_cond, reader in self._reader_dict.items():
                     if not self.isopen:  # shutting down
                         return
                     if (
@@ -539,7 +691,7 @@ class SalInfo:
                         continue
                     try:
                         data_list = reader._reader.take_cond(
-                            read_cond, DDS_READ_QUEUE_LEN
+                            read_cond, MAX_HISTORY_READ
                         )
                     except dds.DDSException as e:
                         self.log.warning(
@@ -549,7 +701,7 @@ class SalInfo:
                         time.sleep(0.001)
                         try:
                             data_list = reader._reader.take_cond(
-                                read_cond, DDS_READ_QUEUE_LEN
+                                read_cond, MAX_HISTORY_READ
                             )
                         except dds.DDSException as e:
                             raise RuntimeError(
@@ -573,56 +725,62 @@ class SalInfo:
                     if reader.max_history > 0:
                         sd_list = sd_list[-reader.max_history :]
                         if sd_list:
-                            reader._queue_data(sd_list)
-            self._read_loop_task = asyncio.ensure_future(self._read_loop())
+                            reader._queue_data(sd_list, loop=None)
+            self._read_loop_task = asyncio.create_task(self._read_loop(loop=loop))
             self.start_task.set_result(None)
         except Exception as e:
             self.start_task.set_exception(e)
             raise
 
-    async def _read_loop(self):
-        """Read and process data."""
-        loop = asyncio.get_event_loop()
+    async def _read_loop(self, loop):
+        """Read and process data.
+
+        Parameters
+        ----------
+        loop : `asyncio.AbstractEventLoop`
+            The main thread's event loop (which must be running).
+        """
         self.domain.num_read_loops += 1
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                while self.isopen:
-                    conditions = await loop.run_in_executor(pool, self._wait_next)
-                    if not self.isopen:
-                        # shutting down; clean everything up
-                        return
-                    for condition in conditions:
-                        reader = self._readers.get(condition)
-                        if reader is None or not reader.isopen:
-                            continue
-                        # odds are we will only get one value per read,
-                        # but read more so we can tell if we are falling behind
-                        data_list = reader._reader.take_cond(
-                            condition, reader._data_queue.maxlen
-                        )
-                        not reader.dds_queue_length_checker.check_nitems(len(data_list))
-                        sd_list = [
-                            self._sample_to_data(sd, si)
-                            for sd, si in data_list
-                            if si.valid_data
-                        ]
-                        if len(sd_list) < len(data_list):
-                            ninvalid = len(data_list) - len(sd_list)
-                            self.log.warning(
-                                f"Read {ninvalid} invalid items from {reader}. "
-                                "The invalid items were safely skipped, but please examine "
-                                "the code in SalInfo._read_loop to see if it needs an update "
-                                "for changes to OpenSplice dds."
-                            )
-                        if sd_list:
-                            reader._queue_data(sd_list)
-                        await asyncio.sleep(0)  # free the event loop
+                await loop.run_in_executor(pool, self._read_loop_thread, loop)
         except asyncio.CancelledError:
             raise
         except Exception:
             self.log.exception("_read_loop failed")
         finally:
             self.domain.num_read_loops -= 1
+
+    def _read_loop_thread(self, loop):
+        """Read and process DDS data in a background thread.
+
+        Parameters
+        ----------
+        loop : `asyncio.AbstractEventLoop`
+            The main asyncio event loop.
+        """
+        while self.isopen:
+            conditions = self._waitset.wait(self._wait_timeout)
+            if not self.isopen:
+                # shutting down; clean everything up
+                return
+            for condition in conditions:
+                reader = self._reader_dict.get(condition)
+                if reader is None or not reader.isopen:
+                    continue
+                # odds are we will only get one value per read,
+                # but read more so we can tell if we are falling behind
+                data_list = reader._reader.take_cond(
+                    condition, reader._data_queue.maxlen
+                )
+                reader.dds_queue_length_checker.check_nitems(len(data_list))
+                sd_list = [
+                    self._sample_to_data(sd, si)
+                    for sd, si in data_list
+                    if si.valid_data
+                ]
+                if sd_list:
+                    reader._queue_data(sd_list, loop=loop)
 
     def _sample_to_data(self, sd, si):
         """Process one sample data, sample info pair.
@@ -634,22 +792,6 @@ class SalInfo:
         rcv_tai = base.tai_from_utc_unix(rcv_utc)
         sd.private_rcvStamp = rcv_tai
         return sd
-
-    def _wait_next(self):
-        """Wait for data to be available for any read topic.
-
-        Blocks, so intended to be run in a background thread.
-
-        Returns
-        -------
-        conditions : `List` of ``dds conditions``
-            List of one or more dds read conditions and/or the guard condition
-            which have been triggered.
-        """
-        self.domain.num_read_threads += 1
-        conditions = self._waitset.wait(self._wait_timeout)
-        self.domain.num_read_threads -= 1
-        return conditions
 
     def _wait_history(self):
         """Wait for historical data to be available for all topics.
@@ -666,20 +808,34 @@ class SalInfo:
             time_limit = DEFAULT_LSST_DDS_HISTORYSYNC
         else:
             time_limit = float(time_limit)
+        if time_limit < 0:
+            self.log.info(
+                f"Time limit {time_limit} < 0; not waiting for historical data"
+            )
+            return True
         wait_timeout = dds.DDSDuration(sec=time_limit)
         num_ok = 0
         num_checked = 0
         t0 = time.monotonic()
-        for reader in list(self._readers.values()):
+        for reader in self._reader_dict.values():
             if not self.isopen:  # shutting down
                 return False
             if reader.volatile or not reader.isopen:
                 continue
             num_checked += 1
             isok = reader._reader.wait_for_historical_data(wait_timeout)
+            self.wait_history_isok[reader.sal_name] = isok
             if isok:
                 num_ok += 1
             elapsed_time = time.monotonic() - t0
             rem_time = max(0.01, time_limit - elapsed_time)
             wait_timeout = dds.DDSDuration(sec=rem_time)
         return num_ok > 0 or num_checked == 0
+
+    async def __aenter__(self):
+        if self.start_called:
+            await self.start_task
+        return self
+
+    async def __aexit__(self, type, value, traceback):
+        await self.close()

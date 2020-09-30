@@ -22,6 +22,7 @@
 __all__ = ["Remote"]
 
 import asyncio
+import warnings
 
 from .topics import RemoteEvent, RemoteTelemetry, RemoteCommand
 from .domain import Domain
@@ -46,25 +47,25 @@ class Remote:
                 dome = Remote(domain=domain, name="ATDome", index=0)
     name : `str`
         Name of SAL component.
-    index : `int` or `None` (optional)
+    index : `int` or `None`, optional
         SAL component index, or 0 or None if the component is not indexed.
         A value is required if the component is indexed.
     readonly : `bool`
         If True then do not provide commands.
-    include : ``iterable`` of `str` (optional)
+    include : ``iterable`` of `str`, optional
         Names of topics (telemetry or events) to support,
         for example ["FilterChangeInPosition", "TrackingTarget"]
         If `None` then all are included except those in `exclude`.
-    exclude : ``iterable`` of `str` (optional)
+    exclude : ``iterable`` of `str`, optional
         Names of topics (telemetry or events) to not support.
         If `None` or empty then no topics are excluded.
-    evt_max_history : `int` (optional)
+    evt_max_history : `int`, optional
         Maximum number of historical items to read for events.
         Set to 0 if your remote is not interested in "late joiner" data.
-    tel_max_history : `int` (optional)
-        Maximum number of historical items to read for telemetry.
-        Set to 0 if your remote is not interested in "late joiner" data.
-    start : `bool` (optional)
+    tel_max_history : `int`, optional
+        Deprecated because historical telemetry data is no longer available.
+        Must be 0 (or None, but please don't do that) if specified.
+    start : `bool`, optional
         Automatically start the read loop when constructed?
         Normally this should be `True`, but if you are adding topics
         piecemeal after constructing the remote then specify `False`
@@ -138,7 +139,7 @@ class Remote:
         include=None,
         exclude=None,
         evt_max_history=1,
-        tel_max_history=1,
+        tel_max_history=None,
         start=True,
     ):
         self.start_called = False
@@ -148,38 +149,47 @@ class Remote:
         include_set = set(include) if include is not None else None
         exclude_set = set(exclude) if exclude is not None else None
 
+        # TODO DM-26474: remove the tel_max_history argument
+        # and this code block.
+        if tel_max_history is not None:
+            if tel_max_history == 0:
+                warnings.warn("tel_max_history is deprecated", DeprecationWarning)
+            else:
+                raise ValueError(
+                    f"tel_max_history={tel_max_history} is deprecated "
+                    "and must be 0 (or None, but please don't do that) if specified"
+                )
+
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
 
-        salinfo = SalInfo(domain=domain, name=name, index=index)
-        self.salinfo = salinfo
-
+        self.salinfo = SalInfo(domain=domain, name=name, index=index)
         try:
             if not readonly:
-                for cmd_name in salinfo.command_names:
-                    cmd = RemoteCommand(salinfo, cmd_name)
+                for cmd_name in self.salinfo.command_names:
+                    cmd = RemoteCommand(self.salinfo, cmd_name)
                     setattr(self, cmd.attr_name, cmd)
 
-            for evt_name in salinfo.event_names:
+            for evt_name in self.salinfo.event_names:
                 if include_set is not None and evt_name not in include_set:
                     continue
                 elif exclude_set and evt_name in exclude_set:
                     continue
-                evt = RemoteEvent(salinfo, evt_name, max_history=evt_max_history)
+                evt = RemoteEvent(self.salinfo, evt_name, max_history=evt_max_history)
                 setattr(self, evt.attr_name, evt)
 
-            for tel_name in salinfo.telemetry_names:
+            for tel_name in self.salinfo.telemetry_names:
                 if include_set is not None and tel_name not in include_set:
                     continue
                 elif exclude_set and tel_name in exclude_set:
                     continue
-                tel = RemoteTelemetry(salinfo, tel_name, max_history=tel_max_history)
+                tel = RemoteTelemetry(self.salinfo, tel_name)
                 setattr(self, tel.attr_name, tel)
 
             if start:
-                self.start_task = asyncio.ensure_future(self.start())
+                self.start_task = asyncio.create_task(self.start())
         except Exception:
-            asyncio.ensure_future(self.salinfo.close())
+            self.salinfo.basic_close()
             raise
 
     async def start(self):

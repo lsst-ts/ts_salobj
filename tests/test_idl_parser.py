@@ -40,7 +40,7 @@ class IdlParserTestCase(unittest.TestCase):
         """Parse one of the Simple IDL files and check all of the
         resulting metadata.
 
-        Note that the Test IDL file is a simplified version of the Test IDL
+        Note that the Simple IDL file is a simplified version of the Test IDL
         file, with only a few topics and removing user-defined fields
         with duplicate types.
         """
@@ -69,8 +69,8 @@ class IdlParserTestCase(unittest.TestCase):
             private_sndStamp="double",
             private_rcvStamp="double",
             private_seqNum="long",
+            private_identity="string",
             private_origin="long",
-            private_host="long",
             boolean0="boolean",
             char0="string",
             short0="short",
@@ -172,8 +172,8 @@ class IdlParserTestCase(unittest.TestCase):
             private_sndStamp="double",
             private_rcvStamp="double",
             private_seqNum="long",
+            private_identity="string",
             private_origin="long",
-            private_host="long",
             boolean0="boolean",
             byte0="octet",
             char0="string",
@@ -191,13 +191,11 @@ class IdlParserTestCase(unittest.TestCase):
             priority="long",
         )
 
-        # This is a temporary test for ts_sal 4.2. TODO DM-25126:
-        # * Move this entry to the dict above
-        # * Remove the entries for private_host and private_origin
-        # * Update the local sal_revCoded_Simple*.idl files
-        #   and the unit tests that use those files.
-        if "private_identity" in metadata.topic_info["arrays"].field_info:
-            field_types["private_identity"] = "string"
+        # TODO DM-25478: remove this code once we are using a modern enough
+        # ts_sal everywhere that we no longer have the private_host field
+        # in our SAL topics.
+        if "private_host" in metadata.topic_info["scalars"].field_info:
+            field_types["private_host"] = "long"
 
         # Check some details of arrays topics, including data type,
         # array length and string length.

@@ -21,6 +21,7 @@
 
 import asyncio
 import logging
+import os
 import unittest
 
 import asynctest
@@ -31,10 +32,23 @@ from lsst.ts import salobj
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 60
 
+index_gen = salobj.index_generator()
+
 
 class SalInfoTestCase(asynctest.TestCase):
     def setUp(self):
-        salobj.set_random_lsst_dds_domain()
+        self.initial_env_vars = {
+            name: os.environ.get(name)
+            for name in ("LSST_DDS_PARTITION_PREFIX", "LSST_DDS_DOMAIN")
+        }
+        salobj.set_random_lsst_dds_partition_prefix()
+
+    def tearDown(self):
+        for name, value in self.initial_env_vars.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
 
     async def test_salinfo_constructor(self):
         with self.assertRaises(TypeError):
@@ -44,8 +58,10 @@ class SalInfoTestCase(asynctest.TestCase):
             with self.assertRaises(RuntimeError):
                 salobj.SalInfo(domain=domain, name="invalid_component_name")
 
-            salinfo = salobj.SalInfo(domain=domain, name="Test")
+            index = next(index_gen)
+            salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
             self.assertEqual(salinfo.name, "Test")
+            self.assertEqual(salinfo.index, index)
             self.assertFalse(salinfo.start_task.done())
             self.assertFalse(salinfo.done_task.done())
             self.assertFalse(salinfo.started)
@@ -71,7 +87,10 @@ class SalInfoTestCase(asynctest.TestCase):
 
     async def test_salinfo_attributes(self):
         async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test")
+            index = next(index_gen)
+            salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
+
+            self.assertEqual(salinfo.name_index, f"Test:{index}")
 
             # expected_commands omits a few commands that TestCsc
             # does not support, but that are in generics.
@@ -120,6 +139,17 @@ class SalInfoTestCase(asynctest.TestCase):
                 sorted(expected_sal_topic_names), list(salinfo.sal_topic_names)
             )
 
+            self.assertEqual(salinfo.identity, domain.user_host)
+
+            # Check that the name_index for a non-indexed component
+            # has no :index suffix.
+            salinfo.indexed = False
+            self.assertEqual(salinfo.name_index, "Test")
+
+            self.assertEqual(
+                salinfo.partition_prefix, os.environ["LSST_DDS_PARTITION_PREFIX"]
+            )
+
     async def test_salinfo_metadata(self):
         """Test some of the metadata in SalInfo.
 
@@ -148,6 +178,37 @@ class SalInfoTestCase(asynctest.TestCase):
                     set(salinfo.metadata.topic_info.keys())
                 )
             )
+
+    async def test_lsst_dds_domain_fallback(self):
+        # Test that LSST_DDS_DOMAIN is ignored, with a warning,
+        # if both that and LSST_DDS_PARTITION_PREFIX are defined.
+        os.environ["LSST_DDS_DOMAIN"] = (
+            os.environ["LSST_DDS_PARTITION_PREFIX"] + "Extra text"
+        )
+        async with salobj.Domain() as domain:
+            with self.assertWarns(DeprecationWarning):
+                salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+            self.assertEqual(
+                salinfo.partition_prefix, os.environ["LSST_DDS_PARTITION_PREFIX"]
+            )
+
+        # Test that LSST_DDS_DOMAIN is used, with a warning,
+        # if LSST_DDS_PARTITION_PREFIX is not defined.
+        os.environ["LSST_DDS_DOMAIN"] = os.environ.pop("LSST_DDS_PARTITION_PREFIX")
+        async with salobj.Domain() as domain:
+            with self.assertWarns(DeprecationWarning):
+                salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+            self.assertEqual(salinfo.partition_prefix, os.environ["LSST_DDS_DOMAIN"])
+
+    async def test_lsst_dds_domain_required(self):
+        # Delete the main environment variable and the fallback,
+        # if they are defined.
+        os.environ.pop("LSST_DDS_PARTITION_PREFIX", None)
+        os.environ.pop("LSST_DDS_DOMAIN", None)
+
+        async with salobj.Domain() as domain:
+            with self.assertRaises(RuntimeError):
+                salobj.SalInfo(domain=domain, name="Test", index=1)
 
     async def test_log_level(self):
         """Test that log level is decreased (verbosity increased) to INFO."""
@@ -179,11 +240,15 @@ class SalInfoTestCase(asynctest.TestCase):
             # Use all defaults
             seqNum = 55
             ack = salobj.SalRetCode.CMD_COMPLETE
-            ackcmd = salinfo.makeAckCmd(private_seqNum=seqNum, ack=ack)
+            ackcmd = salinfo.make_ackcmd(private_seqNum=seqNum, ack=ack)
             self.assertEqual(ackcmd.private_seqNum, seqNum)
             self.assertEqual(ackcmd.ack, ack)
             self.assertEqual(ackcmd.error, 0)
             self.assertEqual(ackcmd.result, "")
+
+            with self.assertWarns(DeprecationWarning):
+                ackcmd2 = salinfo.makeAckCmd(private_seqNum=seqNum, ack=ack)
+            self.assertEqual(ackcmd.get_vars(), ackcmd2.get_vars())
 
             # Specify an error code and result
             for truncate_result in (False, True):
@@ -192,7 +257,7 @@ class SalInfoTestCase(asynctest.TestCase):
                     ack = salobj.SalRetCode.CMD_FAILED
                     error = 127
                     result = "why not?"
-                    ackcmd = salinfo.makeAckCmd(
+                    ackcmd = salinfo.make_ackcmd(
                         private_seqNum=seqNum,
                         ack=ack,
                         error=error,
@@ -204,20 +269,30 @@ class SalInfoTestCase(asynctest.TestCase):
                     self.assertEqual(ackcmd.error, error)
                     self.assertEqual(ackcmd.result, result)
 
+                    with self.assertWarns(DeprecationWarning):
+                        ackcmd2 = salinfo.makeAckCmd(
+                            private_seqNum=seqNum,
+                            ack=ack,
+                            error=error,
+                            result=result,
+                            truncate_result=truncate_result,
+                        )
+                    self.assertEqual(ackcmd.get_vars(), ackcmd2.get_vars())
+
             # Test behavior with too-long result strings
             seqNum = 27
             ack = salobj.SalRetCode.CMD_FAILED
             error = 127
             result = "a" * (salobj.MAX_RESULT_LEN + 5)
             with self.assertRaises(ValueError):
-                salinfo.makeAckCmd(
+                salinfo.make_ackcmd(
                     private_seqNum=seqNum,
                     ack=ack,
                     error=error,
                     result=result,
                     truncate_result=False,
                 )
-            ackcmd = salinfo.makeAckCmd(
+            ackcmd = salinfo.make_ackcmd(
                 private_seqNum=seqNum,
                 ack=ack,
                 error=error,
@@ -239,7 +314,7 @@ class SalInfoTestCase(asynctest.TestCase):
             with self.assertRaises(RuntimeError):
                 salinfo.AckCmdType
             with self.assertRaises(RuntimeError):
-                salinfo.makeAckCmd(
+                salinfo.make_ackcmd(
                     private_seqNum=1, ack=salobj.SalRetCode.CMD_COMPLETE, result="Done"
                 )
 

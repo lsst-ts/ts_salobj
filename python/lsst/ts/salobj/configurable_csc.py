@@ -53,24 +53,20 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
             schema_path = pathlib.Path(__file__).resolve().parents[4] \
                 / "schema" / f"{name}.yaml"
-    config_dir : `str` (optional)
+    config_dir : `str`, optional
         Directory of configuration files, or None for the standard
-        configuration directory (obtained from `get_default_config_dir`).
+        configuration directory (obtained from `_get_default_config_dir`).
         This is provided for unit testing.
-    initial_state : `State` or `int` (optional)
+    initial_state : `State` or `int`, optional
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
-    simulation_mode : `int` (optional)
+    simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
-    initial_simulation_mode : `int` (optional)
-        A deprecated synonym for ``simulation_mode``.
 
     Raises
     ------
     ValueError
-        If ``config_dir`` is not a directory,
-        ``initial_state`` is invalid, or
-        ``simulation_mode`` and ``initial_simulation_mode`` are both nonzero.
+        If ``config_dir`` is not a directory or ``initial_state`` is invalid.
     salobj.ExpectedError
         If ``simulation_mode`` is invalid.
         Note: you will only see this error if you await `start_task`.
@@ -128,7 +124,6 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         config_dir=None,
         initial_state=State.STANDBY,
         simulation_mode=0,
-        initial_simulation_mode=0,
     ):
 
         try:
@@ -146,25 +141,24 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         except Exception as e:
             raise ValueError(f"Schema {schema_path} invalid") from e
 
-        super().__init__(
-            name=name,
-            index=index,
-            initial_state=initial_state,
-            simulation_mode=simulation_mode,
-            initial_simulation_mode=initial_simulation_mode,
-        )
-
         if config_dir is None:
-            config_dir = self._get_default_config_dir()
+            config_dir = self._get_default_config_dir(name)
         else:
             config_dir = pathlib.Path(config_dir)
 
         if not config_dir.is_dir():
             raise ValueError(
-                f"config_dir={config_dir} does not exists or is not a directory"
+                f"config_dir={config_dir} does not exist or is not a directory"
             )
 
         self.config_dir = config_dir
+
+        super().__init__(
+            name=name,
+            index=index,
+            initial_state=initial_state,
+            simulation_mode=simulation_mode,
+        )
 
     @property
     def config_dir(self):
@@ -431,13 +425,18 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         """
         raise NotImplementedError()
 
-    def _get_default_config_dir(self):
-        """Compute the default directory for configuration files.
+    def _get_default_config_dir(self, name):
+        """Compute the default package directory for configuration files.
+
+        Parameters
+        ----------
+        name : `str`
+            SAL component name.
 
         Returns
         -------
         config_dir : `pathlib.Path`
-            Default configuration directory.
+            Default package directory for configuration files.
 
         Raises
         ------
@@ -474,7 +473,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                 "does not exists or is not a directory"
             )
 
-        config_dir = config_pkg_dir / self.salinfo.name / self.schema_version
+        config_dir = config_pkg_dir / name / self.schema_version
         if not config_dir.is_dir():
             raise RuntimeError(
                 f"{config_dir} = ${config_env_var_name}/SAL_component_name/schema_version "
@@ -486,7 +485,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     def add_arguments(cls, parser):
         parser.add_argument(
             "--configdir",
-            help="Directory containing configuration files for the start command.",
+            help="directory containing configuration files for the start command.",
         )
 
     @classmethod

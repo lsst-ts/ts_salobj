@@ -23,12 +23,14 @@ __all__ = ["stream_as_generator", "CscCommander"]
 
 import argparse
 import asyncio
+import collections
 import functools
 import sys
 
 from . import domain
 from . import remote
 from . import sal_enums
+from . import csc_utils
 
 # Timeout for fast operations (seconds)
 STD_TIMEOUT = 10
@@ -55,7 +57,6 @@ async def stream_as_generator(stream, encoding="utf-8"):
     line : `str`
         A line of data, optionally decoded.
 
-
     Notes
     -----
     Thanks to
@@ -78,9 +79,16 @@ def round_any(value, digits=4):
     """Round any value to the specified number of digits.
 
     This is a no-op for int and str values.
+
+    Notes
+    -----
+    This is designed for use with DDS samples. As such, it expects
+    array values to be of type `list`.
     """
     if isinstance(value, float):
         return round(value, digits)
+    elif value and isinstance(value, list) and isinstance(value[0], float):
+        return [round(item, digits) for item in value]
     return value
 
 
@@ -91,14 +99,32 @@ class CscCommander:
     ----------
     name : `str`
         SAL component name of CSC.
-    index : `int` (optional)
+    index : `int`, optional
         SAL index of CSC.
-    exclude : `List` [`str`] or `None` (optional)
+    exclude : `List` [`str`] or `None`, optional
         Names of telemetry or event topics to not print.
         If `None` or empty then no topics are excluded.
-    fields_to_ignore : `List` [`str`] (optional)
+    fields_to_ignore : `List` [`str`], optional
         SAL topic fields to ignore when specifying command parameters,
         and when printing events and telemetry.
+    enable : `bool`, optional
+        Enable the CSC (when the commander starts up)?
+        Note: `amain` always supplies this argument.
+
+    Attributes
+    ----------
+    domain : `Domain`
+        DDS domain.
+    remote : `Remote`
+        Remote for the CSC being commanded.
+    help_dict : `dict`
+        Dict of command_name: documentation.
+        You should add one entry for every do_command method you define.
+        Each documentation string should start with a list of argument names
+        (the command name will be prepended for you)
+        optionally followed by # and a brief description.
+        The documentation string should a single line, if practical.
+
 
     Notes
     -----
@@ -107,37 +133,91 @@ class CscCommander:
     that runs a commander, consider picking a name that is obscure
     and not easily confused with the script that runs the CSC.
 
+    Make a subclass of `CscCommander` if you want to add extra commands
+    or provide special handling for some commands, events or telemetry.
     Subclasses may provide overrides as follows:
 
-    * ``do_<command_name>`` override handling a standard command
-      (one defined in the XML), or add a new command.
-      The method receives one argument: a list of arguments, each a string.
-      You must provide such a method for any standard command that takes
-      array arguments. It can also be useful for adding a custom command,
-      such as a command to execute a tracking sequence.
-      If you define a do_<command_name> method then also add an entry
-      to ``help_dict``, where: the key is the command name
-      and the value should be a brief (preferably only one line) help string
-      that lists the arguments first and possibly a brief description after.
-    * evt_<event_name>_callback overrides handling data for the specified
-      event (usually this just mean printing the data).
-      It receives one argument: the DDS sample.
-    * tel_<event_name>_callback overrides handling data for the specified
-      telemetry topic (usually this just involves printing the data).
-      It receives one argument: the DDS sample.
-      This can be useful if the default is too chatty.
+    * To hide unwanted commands: delete them from ``self.command_dict``
+      in your constructor. Most CSCs should hide the "abort", "enterControl"
+      and "setValue" commands, as follows::
+
+        for command_to_ignore in ("abort", "enterControl", "setValue"):
+            del self.command_dict[command_to_ignore]
+
+    * To override handling of a standard command (one defined in the XML):
+      define a ``do_<command_name>`` method.
+      The method receives one argument: a list of str arguments.
+      You should provide a custom handler for, or hide, any command with
+      array parameters, because the command parser only accepts scalars.
+
+    * To add an additional command (one not defined in the XML):
+
+        * Define a  ``do_<command_name>`` to handle the command.
+          The method receives one argument: a list of str arguments.
+
+        * Add an entry to ``help_dict``. The key is the command name
+          and the value is a brief (preferably only one line) help string
+          that lists the arguments first, and a brief description after.
+          Here is an example::
+
+            self.help_dict["sine"] = "start_position amplitude "
+            "# track one cycle of a sine wave",
+
+    * To override handling of an event or telemetry topic: define method
+      ``evt_<event_name>_callback`` or ``tel_<event_name>_callback``,
+      respectively.  It receives one argument: the DDS sample.
+      This can be especially useful if the default behavior is too chatty
+      for one or more telemetry topics.
 
     I have not found a way to write a unit test for this class.
     I tried running a commander in a subprocess but could not figure out
     how to send multiple commands (the ``suprocess.communicate``
     method only allows sending one item of data).
     Instead I suggest manually running it to control the Test CSC.
+
+    Examples
+    --------
+
+    You can do a lot with just the base class. This command-line script
+    will control the Test CSC pretty well::
+
+        import asyncio
+        from lsst.ts import salobj
+        asyncio.run(salobj.CscCommander.amain(name="Test", index=True))
+
+    However, this will claim to support some generic commands that the
+    Test CSC does not support ( "abort", "enterControl", and "setValue")
+    and it mishandles the "setArrays" command.
+    See `TestCscCommander` for a version that fixes these deficiencies.
+    `TestCscCommander` is run as follows::
+
+        import asyncio
+        from lsst.ts import salobj
+        asyncio.run(salobj.TestCscCommander.amain(index=True))
+
+    For an example with extra commands and special telemetry handling,
+    see ``RotatorCommander`` in the ts_rotator package.
+
+    Unit Testing
+    ------------
+    To unit test a commander:
+
+    * Set ``commander.testing = True``.
+      This appends all output messages to output queue
+      ``commander.output_queue``, a `collections.deque`.
+      The messages are also printed to ``stdout``, as usual.
+    * Call ``commander.run_command`` to run a command.
+    * Check the output using the output queue.
+    * Clear the output queue with ``commander.output_queue.clear()``
+      whenever you like, e.g. before running a command whose output
+      you want to check.
     """
 
     def __init__(
         self,
         name,
         index=0,
+        enable=False,
         exclude=None,
         fields_to_ignore=("ignored", "value", "priority"),
     ):
@@ -147,11 +227,10 @@ class CscCommander:
         )
         self.fields_to_ignore = set(fields_to_ignore)
         self.tasks = set()
-        # Dict of command_name: documentation
-        # You should add one entry for every do_command method
-        # The documentation should start with a list of argument names
-        # The documentation should be on a single line, if possible
         self.help_dict = dict()
+        self.enable = enable
+        self.testing = False
+        self.output_queue = collections.deque()
 
         for name in self.remote.salinfo.event_names:
             if name == "heartbeat":
@@ -182,7 +261,7 @@ class CscCommander:
         """Print help.
         """
         command_help = "\n".join(self.get_commands_help())
-        print(
+        self.output(
             f"""Send commands to the {self.remote.salinfo.name} CSC and print events and telemetry.
 
 CSC Commands:
@@ -200,6 +279,19 @@ help  # print this help
             task.cancel()
         await self.remote.close()
         await self.domain.close()
+
+    def output(self, str):
+        """Print a string to output, appending a final newline.
+
+        Please call this instead of print to support unit tests.
+
+        If ``self.testing`` is True then append ``str`` to
+        ``self.output_queue`` instead of printing it.
+        Use this mode for unit testing a CSC commander.
+        """
+        if self.testing:
+            self.output_queue.append(str)
+        print(str)
 
     def format_item(self, key, value):
         """Format one event or telemetry field for printing.
@@ -242,11 +334,11 @@ help  # print this help
             if self.field_is_public(key)
         )
 
-    def get_rounded_public_fields(self, data):
+    def get_rounded_public_fields(self, data, digits=4):
         """Get the public fields for a sample, with float values rounded.
         """
         return {
-            key: round_any(value)
+            key: round_any(value, digits=digits)
             for key, value in data.get_vars().items()
             if self.field_is_public(key)
         }
@@ -257,14 +349,16 @@ help  # print this help
         You may provide evt_<event_name> methods to override printing
         of specific events.
         """
-        print(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
+        self.output(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
 
     def evt_summaryState_callback(self, data):
         try:
             state = sal_enums.State(data.summaryState)
         except Exception:
             state = f"{data.summaryState} (not a known state!)"
-        print(f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state!r}")
+        self.output(
+            f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state!r}"
+        )
 
     def telemetry_callback(self, data, name):
         """Generic callback for telemetry.
@@ -279,7 +373,7 @@ help  # print this help
             formatted_data = ", ".join(
                 f"{key}={value}" for key, value in public_fields.items()
             )
-            print(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
+            self.output(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
 
     def check_arguments(self, args, *names):
         """Check that the required arguments are provided,
@@ -389,61 +483,113 @@ help  # print this help
             kwargs[name] = type(default_value)(str_value)
         await command.set_start(**kwargs)
 
-    async def run_coroutine(self, coro, command_name):
-        """Run a coroutine and manage the task in self.tasks.
-
-        This allows the task to be cancelled in `close`.
+    async def run_command(self, cmd):
+        """Run the specified command string and wait for it to finish.
 
         Parameters
         ----------
-        coro : awaitable
-            Coroutine or other awaitable.
+        cmd : `str`
+            Command string (command name and arguments).
+            Note: does not handle the "exit" command.
         """
-        task = asyncio.create_task(coro)
+        tokens = cmd.split()
+        command_name = tokens[0]
+        args = tokens[1:]
+        command_method = getattr(self, f"do_{command_name}", None)
+        coro = None
+        if command_name == "help":
+            self.print_help()
+        elif command_method is not None:
+            coro = command_method(args)
+        elif command_name in self.command_dict:
+            coro = self.run_command_topic(command_name, args)
+        else:
+            self.output(f"Unrecognized command: {command_name}")
+
+        if coro is None:
+            return
+        await coro
+
+    async def _run_command_and_output(self, cmd):
+        """Execute a command and wait for it to finish. Output the result.
+
+        A wrapper around `run_command` that adds a task to self.tasks
+        and catches and outputs exceptions. For use by the interactive
+        command loop.
+
+        Parameters
+        ----------
+        cmd : `str`
+            Command string (command name and arguments).
+            Note: does not handle the "exit" command.
+        """
+        task = asyncio.create_task(self.run_command(cmd))
         self.tasks.add(task)
         try:
             await task
-            print(f"Finished command {command_name}")
+            command_name = cmd.split()[0]
+            self.output(f"Finished command {command_name}")
         except Exception as e:
-            print(f"Command {command_name} failed: {e}")
-        self.tasks.discard(task)
+            self.output(str(e))
+        finally:
+            self.tasks.remove(task)
+
+    async def start(self):
+        """Start asynchonous processes.
+        """
+        self.output(f"Waiting for {self.remote.salinfo.name_index} to start.")
+        await self.remote.start_task
+        if self.enable:
+            self.output(f"Enabling {self.remote.salinfo.name_index}")
+            # Temporarily remove the ``evt_summaryState`` callback
+            # so the `set_summary_state` function can read the topic.
+            summary_state_callback = self.remote.evt_summaryState.callback
+            try:
+                self.remote.evt_summaryState.callback = None
+                await csc_utils.set_summary_state(self.remote, sal_enums.State.ENABLED)
+            finally:
+                summary_state = self.remote.evt_summaryState.get()
+                if summary_state is not None:
+                    summary_state_callback(summary_state)
+                self.remote.evt_summaryState.callback = summary_state_callback
 
     @classmethod
-    async def amain(cls, **kwargs):
+    async def amain(cls, *, index, **kwargs):
         """Construct the commander and run it.
 
         Parse the command line to construct the commander,
         then parse and execute commands until the ``exit`` is seen.
+
+        Parameters
+        ----------
+        index : `int`, `True`, `False` or `None`
+            If the CSC is indexed: specify `True` make index a required
+            command line argument, or specify a non-zero `int` to use
+            that index.
+            If the CSC is not indexed: specify `None` or 0.
+        **kwargs : `dict`, optional
+            Additional keyword arguments for your CSC's constructor.
         """
-        self = cls.make_from_cmd_line(**kwargs)
+        self = cls.make_from_cmd_line(index=index, **kwargs)
         try:
-            print("Waiting for the remote to start.")
-            await self.remote.start_task
+            await self.start()
 
             self.print_help()
             async for line in stream_as_generator(sys.stdin):
+                # Purge done tasks
+                self.tasks = {task for task in self.tasks if not task.done()}
+
+                # Execute the new command
                 line = line.strip()
                 # Strip trailing comment, if any.
                 if "#" in line:
                     line = line.split("#", maxsplit=1)[0].strip()
                 if not line:
                     continue
-                tokens = line.split()
-                command_name = tokens[0]
-                args = tokens[1:]
-                command_method = getattr(self, f"do_{command_name}", None)
-                if command_name == "exit":
+                if line == "exit":
                     break
-                elif command_name == "help":
-                    self.print_help()
-                elif command_method is not None:
-                    coro = command_method(args)
-                    asyncio.create_task(self.run_coroutine(coro, command_name))
-                elif command_name in self.command_dict:
-                    coro = self.run_command_topic(command_name, args)
-                    asyncio.create_task(self.run_coroutine(coro, command_name))
-                else:
-                    print(f"Unrecognized command: {command_name}")
+                task = asyncio.create_task(self._run_command_and_output(line))
+                self.tasks.add(task)
         finally:
             await self.close()
 
@@ -494,10 +640,8 @@ help  # print this help
             a required command line argument,
             or specify a non-zero `int` to use that index.
             If the SAL component is not indexed: specify `None` or 0.
-        **kwargs : `dict` (optional)
+        **kwargs : `dict`, optional
             Additional keyword arguments for your class's constructor.
-            If any arguments match those from the command line
-            the command line values will be used.
 
         Returns
         -------
@@ -512,6 +656,9 @@ help  # print this help
         parser = argparse.ArgumentParser(f"Run {cls.__name__}")
         if index is True:
             parser.add_argument("index", type=int, help="Script SAL Component index.")
+        parser.add_argument(
+            "-e", "--enable", action="store_true", help="Enable the CSC?"
+        )
         cls.add_arguments(parser)
 
         args = parser.parse_args()
@@ -521,6 +668,7 @@ help  # print this help
             pass
         else:
             kwargs["index"] = int(index)
+        kwargs["enable"] = args.enable
         cls.add_kwargs_from_args(args=args, kwargs=kwargs)
 
         return cls(**kwargs)

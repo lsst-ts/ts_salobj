@@ -25,31 +25,27 @@ Used by `Vortex OpenSplice`_, and thus indirectly by `Domain`:
 * ``OSPL_MASTER_PRIORITY`` (optional) is used to set the Master Priority in ts_sal 4.2 and later.
   Nodes with higher Master Priority are more eager to become master (the primary source of late joiner data).
   Ties are broken by systemId, a random number handed out when a node is created.
-  Every time a new node takes over as master, the entire system is must be "aligned", which is expensive.
-  So it is best to assign the highest Master Priority to one of nodes that will be created early.
-  Valid values are 0-256.
-  0 is used for Scripts, because they should never be master.
-  256 means "use the legacy method for choosing the master".
-  A default value is used if this environment variable is not specified.
-  That default is guaranteed to be >0 and <255.
+  Every time a new node takes over as master, the entire system is must be "aligned", which is expensive,
+  so it is best to assign the highest Master Priority to one of nodes that will be created early.
+  Valid values are 0-255.
+  0 is used for SAL Scripts, because they should never be master.
+  256 means "use the legacy method for choosing the master"; do not use it.
+  A default value is used if this environment variable is not specified,
+  and that default is guaranteed to be >0 and <255.
   Unlike the others in this section, ``OSPL_MASTER_PRIORITY`` is specific to Vera Rubin Observatory.
   If supported (ts_sal 4.2 and later), it will be part of the OpenSplice configuration file pointed to ``OSPL_URI``.
   Constant ``lsst.ts.salobj.MASTER_PRIORITY_ENV_VAR`` is available to make this easier to set from Python.
 * ``OSPL_URI`` (required) points to the main DDS configuration file.
   Example: ``file:///home/saluser/tsrepos/ts_opensplice/OpenSpliceDDS/v6.9/HDE/x86_64.linux/etc/config/ospl.xml``
 
-Used by `Domain`:
-
-* ``LSST_DDS_IP`` (optional) is used to set the ``host`` attribute.
-  If defined, it must be a dotted numeric IP address, e.g. "192.168.0.1".
-  The `Domain` ``host`` attribute is set to the integer equivalent, or a positive random integer if the environment variable is not defined.
-  The `Domain` ``host`` value is used to set the ``private_host`` field of messages, when writing them.
-
 Used by `SalInfo`:
 
-* ``LSST_DDS_DOMAIN`` (required): the DDS partition name (*not* the DDS domain, despite the name).
-  This is read by `SalInfo` so that different instances of `SalInfo` can communicate with different DDS partitions, even though all share the same `Domain`.
+* ``LSST_DDS_PARTITION_PREFIX`` (required): a prefix for DDS partition names.
+  This is read by `SalInfo` so that different instances of `SalInfo` (thus different `Remote`\ s and `Controller`\ s) can communicate with different DDS partitions, even though all share the same `Domain`.
+  See `SalInfo` for DDS partition name details.
+* ``LSST_DDS_DOMAIN`` (deprecated): a deprecated alias for ``LSST_DDS_PARTITION_PREFIX`` that is used if ``LSST_DDS_PARTITION_PREFIX`` is not defined.
 * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec) for waiting for historical (late-joiner) data.
+  If, and only if, you are running DDS without a durability service then set this negative to avoid waiting for historical data.
 
 Used by `AsyncS3Bucket`:
 

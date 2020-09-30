@@ -19,28 +19,68 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["Domain", "DDS_READ_QUEUE_LEN"]
+__all__ = ["Domain"]
 
 import asyncio
-import ipaddress
 import os
-import random
-import struct
 import weakref
 import warnings
 
 import dds
 
 from lsst.ts import idl
-
-# Length of DDS read queue
-# Warning: this must be equal to or longer than the queue length in the
-# QoS XML file.
-# This information is not available from dds objects, so I set queue depth
-# instead of using the value specified in the QoS XML file.
-DDS_READ_QUEUE_LEN = 100  # length of DDS read queue
+from . import base
 
 MAX_RANDOM_HOST = (1 << 31) - 1
+
+
+class QosSet:
+    """QoS profiles for topic, reader and writer.
+
+    Parameters
+    ----------
+    qos_path : `str` or `pathlib.Path`
+        Path to QoS XML file.
+    profile_name : `str`
+        Profile name; one of "Command", "Event", or "Telemetry".
+
+    Attributes
+    ----------
+    profile_name : `str`
+        Profile name; one of "Command", "Event", or "Telemetry".
+    qos_provider : `dds.QosProvider`
+        QoS provider.
+    topic_qos : `dds.Qos`
+        Topic QoS
+    reader_qos : `dds.Qos`
+        Topic reader QoS
+    writer_qos : `dds.Qos`
+        Topic writer QoS
+
+    Notes
+    -----
+    The following QoS should be created elsewhere:
+    * publisher and subscriber: these depend on the DDS partition name,
+      which is only read when creating the SalInfo object.
+      Also these QoS are the same for all QoS profiles.
+    * participant: this is the same for all QoS profiles,
+      so there is no point making 3 of them.
+    """
+
+    def __init__(self, qos_path, profile_name):
+        self.profile_name = profile_name
+        self.qos_provider = dds.QosProvider(qos_path.as_uri(), profile_name)
+        self.topic_qos = self.qos_provider.get_topic_qos()
+        self.reader_qos = self.qos_provider.get_reader_qos()
+        self.writer_qos = self.qos_provider.get_writer_qos()
+
+    @property
+    def volatile(self):
+        """Does this category of topics have volatile durability?
+
+        Volatile topics provide no late-joiner data.
+        """
+        return self.topic_qos.durability.kind == dds.DDSDurabilityKind.VOLATILE
 
 
 class Domain:
@@ -50,33 +90,29 @@ class Domain:
     ----------
     participant : ``dds.DomainParticipant``
         DDS domain participant.
-    host : `int`
-        Value for the ``private_host`` field of output samples.
-        See environment variable ``LSST_DDS_IP`` for details.
     origin : `int`
         Process ID. Used to set the ``private_origin`` field of output samples.
+    default_identity : `str`
+        Default value used for the identity field of `SalInfo`.
+        Initalized to ``user_host`` but `Controller`\ 's constructor
+        sets it to `SalInfo.user_index` so that all `Remote`\ s
+        constructed with the controller's domain will have the
+        controller's identity.
+        For testing purposes, it is allowed to change this field
+        before constructing a `Remote`.
+    user_host : `str`
+        username@host. This will match ``identity`` unless the latter
+        is set to a CSC name.
     idl_dir : `pathlib.Path`
         Root directory of the ``ts_idl`` package.
-    qos_provider : ``dds.QosProvider``
-        Quality of service provider.
-    topic_qos : ``dds.Qos``
-        Quality of service for non-volatile DDS topics (those that want
-        late-joiner data).
-    volatile_topic_qos : ``dds.Qos``
-        Quality of service for volatile topics (those that do not want any
-        late-joiner data).
-        Note: we cannot just make readers volatile to avoid late-joiner data,
-        as volatile readers receive late-joiner data from non-volatile writers.
-        So we make readers, writers, and topics all volatile.
-        According to ADLink it is a feature, not a bug.
-    reader_qos : ``dds.Qos``
-        Quality of service for non-volatile DDS readers.
-    volatile_reader_qos : ``dds.Qos``
-        Quality of service for volatile DDS readers.
-    writer_qos : ``dds.Qos``
-        Quality of service for non-volatile DDS writers.
-    volatile_writer_qos : ``dds.Qos``
-        Quality of service for volatile DDS writers.
+    ackcmd_qos_set : `QosSet`
+        QoS set for the ackcmd topic.
+    command_qos_set : `QosSet`
+        QoS set for command topics.
+    event_qos_set : `QosSet`
+        QoS set for event topics.
+    telemetry_qos_set : `QosSet`
+        QoS set for telemetry topics.
 
     Notes
     -----
@@ -84,9 +120,7 @@ class Domain:
     <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
     follow the link for details:
 
-    * LSST_DDS_IP (optional) is used to set the ``host`` attribute.
-      If provided, it must be a dotted numeric IP address, e.g. "192.168.0.1".
-    * OSPL_MASTER_PRIORITY (optional) is used to set the Master Priority.
+    * OSPL_MASTER_PRIORITY, optional is used to set the Master Priority.
       If present, it must be a value between 0 and 255.
 
     **Cleanup**
@@ -137,69 +171,32 @@ class Domain:
     """
 
     def __init__(self):
-        self.participant = None
+        self.isopen = True
+        self.user_host = base.get_user_host()
+        self.default_identity = self.user_host
 
-        # accumulators for verifying that close is working
+        # Accumulators for verifying that close is working.
         self.num_read_loops = 0
-        self.num_read_threads = 0
 
         self.done_task = asyncio.Future()
 
-        # set of SalInfo
+        # Set of SalInfo.
         self._salinfo_set = weakref.WeakSet()
 
-        host_name = os.environ.get("LSST_DDS_IP")
-        if host_name is None:
-            host = random.randint(1, MAX_RANDOM_HOST)
-        else:
-            try:
-                unsigned_host = int(ipaddress.IPv4Address(host_name))
-            except ipaddress.AddressValueError as e:
-                raise ValueError(
-                    f"Could not parse $LSST_DDS_IP={host_name} "
-                    "as a numeric IP address (e.g. '192.168.0.1')"
-                ) from e
-            # Convert the unsigned long to a signed long
-            packed = struct.pack("=L", unsigned_host)
-            host = struct.unpack("=l", packed)[0]
-
-        self.host = host
         self.origin = os.getpid()
         self.idl_dir = idl.get_idl_dir()
 
         qos_path = idl.get_qos_path()
-        self.qos_provider = dds.QosProvider(qos_path.as_uri(), "DDS DefaultQosProfile")
+        self.ackcmd_qos_set = QosSet(qos_path=qos_path, profile_name="AckcmdProfile")
+        self.command_qos_set = QosSet(qos_path=qos_path, profile_name="CommandProfile")
+        self.event_qos_set = QosSet(qos_path=qos_path, profile_name="EventProfile")
+        self.telemetry_qos_set = QosSet(
+            qos_path=qos_path, profile_name="TelemetryProfile"
+        )
 
-        participant_qos = self.qos_provider.get_participant_qos()
+        # Any of the three qos providers is fine for the participant qos.
+        participant_qos = self.command_qos_set.qos_provider.get_participant_qos()
         self.participant = dds.DomainParticipant(qos=participant_qos)
-
-        # Create quality of service objects that do not depend on
-        # the DDS partition. The two that do (publisher and subscriber)
-        # are created in SalInfo, so that different SalInfo can be used
-        # with different partitions.
-        try:
-            volatile_policy = dds.DurabilityQosPolicy(dds.DDSDurabilityKind.VOLATILE)
-
-            self.topic_qos = self.qos_provider.get_topic_qos()
-
-            self.volatile_topic_qos = self.qos_provider.get_topic_qos()
-            self.volatile_topic_qos.set_policies([volatile_policy])
-
-            self.writer_qos = self.qos_provider.get_writer_qos()
-            self.volatile_writer_qos = self.qos_provider.get_writer_qos()
-            self.volatile_writer_qos.set_policies([volatile_policy])
-
-            read_queue_policy = dds.HistoryQosPolicy(
-                depth=DDS_READ_QUEUE_LEN, kind=dds.DDSHistoryKind.KEEP_LAST
-            )
-            self.reader_qos = self.qos_provider.get_reader_qos()
-            self.reader_qos.set_policies([read_queue_policy])
-            self.volatile_reader_qos = self.qos_provider.get_reader_qos()
-            self.volatile_reader_qos.set_policies([read_queue_policy, volatile_policy])
-        except Exception:
-            # very unlikely, but just in case...
-            self.participant.close()
-            raise
 
     @property
     def salinfo_set(self):
@@ -222,6 +219,40 @@ class Domain:
             raise RuntimeError(f"salinfo {salinfo} already added")
         self._salinfo_set.add(salinfo)
 
+    def make_publisher(self, partition_names):
+        """Make a dds publisher.
+
+        Parameters
+        ----------
+        partition_names : `list` [`str`]
+            List of DDS partition names.
+        """
+        partition_qos_policy = dds.PartitionQosPolicy(partition_names)
+
+        # Any qos set will do, because the publisher and subscriber QoS
+        # is the same for all of them.
+        publisher_qos = self.event_qos_set.qos_provider.get_publisher_qos()
+        publisher_qos.set_policies([partition_qos_policy])
+
+        return self.participant.create_publisher(publisher_qos)
+
+    def make_subscriber(self, partition_names):
+        """Make a dds subscriber.
+
+        Parameters
+        ----------
+        partition_names : `list` [`str`]
+            List of DDS partition names.
+        """
+        partition_qos_policy = dds.PartitionQosPolicy(partition_names)
+
+        # Any qos set will do, because the publisher and subscriber QoS
+        # is the same for all of them.
+        subscriber_qos = self.event_qos_set.qos_provider.get_subscriber_qos()
+        subscriber_qos.set_policies([partition_qos_policy])
+
+        return self.participant.create_subscriber(subscriber_qos)
+
     def remove_salinfo(self, salinfo):
         """Remove the specified salinfo from the internal registry.
 
@@ -241,45 +272,42 @@ class Domain:
         except KeyError:
             return False
 
+    def basic_close(self):
+        """A synchronous and less thorough version of `close`.
+
+        Intended for exit handlers and constructor error handlers.
+        """
+        try:
+            while self._salinfo_set:
+                salinfo = self._salinfo_set.pop()
+                salinfo.basic_close()
+        finally:
+            self.participant.close()
+
     async def close(self):
         """Close all registered `SalInfo` and the dds domain participant.
 
         May be called multiple times. The first call closes the Domain;
         subsequent calls wait until the Domain is closed.
         """
-        if self.participant is None:
+        if not self.isopen:
             await self.done_task
             return
+        self.isopen = False
         try:
             while self._salinfo_set:
                 salinfo = self._salinfo_set.pop()
                 await salinfo.close()
         finally:
-            self.close_dds()
-        if self.num_read_loops != 0 or self.num_read_threads != 0:
+            self.participant.close()
+        if self.num_read_loops != 0:
             warnings.warn(
-                f"After Domain.close num_read_loops={self.num_read_loops} and "
-                f"num_read_threads={self.num_read_threads}; both should be 0"
+                f"After Domain.close num_read_loops={self.num_read_loops}; it should be 0"
             )
         self.done_task.set_result(None)
-
-    def close_dds(self):
-        """Close the dds DomainParticipant."""
-        participant = getattr(self, "participant", None)
-        if participant is not None:
-            participant.close()
-            self.participant = None
 
     async def __aenter__(self):
         return self
 
     async def __aexit__(self, type, value, traceback):
         await self.close()
-
-    def __del__(self):
-        """Last-ditch effort to clean up critical resources.
-
-        Users should call `close` instead, because it does more,
-        and because ``__del__`` is not reliably called.
-        """
-        self.close_dds()

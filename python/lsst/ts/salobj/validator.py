@@ -31,7 +31,7 @@ class DefaultingValidator:
     ----------
     schema : `dict`
         Schema against which to validate.
-    ValidatorClass : ``jsonschema.IValidator`` (optional)
+    ValidatorClass : ``jsonschema.IValidator``, optional
         jsonschema validator class, e.g. ``jsonschema.Draft7Validator``.
 
     Notes

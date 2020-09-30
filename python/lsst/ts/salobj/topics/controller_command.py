@@ -23,6 +23,7 @@ __all__ = ["AckCmdWriter", "ControllerCommand"]
 
 import asyncio
 import inspect
+import warnings
 
 from .. import sal_enums
 from .. import base
@@ -48,6 +49,8 @@ class ControllerCommand(read_topic.ReadTopic):
         SAL component information
     name : `str`
         Command name
+    queue_len : `int`, optional
+        Number of elements that can be queued for `get_oldest`.
 
     Notes
     -----
@@ -62,13 +65,13 @@ class ControllerCommand(read_topic.ReadTopic):
     After the initial acknowledgement with ``ack=SalRetCode.CMD_ACK``,
     automatic ackowledgement for callback functions works as follows:
 
-    * If the callback function is a coroutine then acknowledge with
-      ``ack=SalRetCode.CMD_INPROGRESS`` just before running the callback.
     * If the callback function returns `None` then send a final
       acknowledgement with ``ack=SalRetCode.CMD_COMPLETE``.
     * If the callback function returns an acknowledgement
       (instance of `SalInfo.AckType`) instead of `None`, then send that
-      as the final acknowledgement.
+      as the final acknowledgement. This is very unusual, but might
+      be useful if the callback wants to exit early and leave some
+      background task or thread processing the rest of the command.
     * If the callback function raises `asyncio.TimeoutError` then send a
       final acknowledgement with ``ack=SalRetCode.CMD_TIMEOUT``.
     * If the callback function raises `asyncio.CancelledError` then send
@@ -80,14 +83,19 @@ class ControllerCommand(read_topic.ReadTopic):
       then do the same as `ExpectedError` and also log a traceback.
     """
 
-    def __init__(self, salinfo, name, max_history=0, queue_len=100):
+    def __init__(self, salinfo, name, queue_len=read_topic.DEFAULT_QUEUE_LEN):
         super().__init__(
             salinfo=salinfo,
             name=name,
             sal_prefix="command_",
-            max_history=max_history,
+            max_history=0,
             queue_len=queue_len,
         )
+        # Set false to ignore authorization.
+        # The only command should ignore authorization is
+        # the command that handles user requests for authorization.
+        # TODO DM-26605: Change this to True
+        self.authorize = False
         self.cmdtype = salinfo.sal_topic_names.index(self.sal_name)
         if salinfo._ackcmd_writer is None:
             self.salinfo._ackcmd_writer = AckCmdWriter(salinfo=salinfo)
@@ -98,28 +106,48 @@ class ControllerCommand(read_topic.ReadTopic):
         Parameters
         ----------
         data : `DataType`
-            Command data.
+            Data for the command being acknowledged.
         ackcmd : `salobj.AckCmdType`
-            Command acknowledgement.
+            Command acknowledgement data.
         """
         self.salinfo._ackcmd_writer.set(
             private_seqNum=data.private_seqNum,
-            host=data.private_host,
             origin=data.private_origin,
+            identity=data.private_identity,
             cmdtype=self.cmdtype,
             ack=ackcmd.ack,
             error=ackcmd.error,
             result=ackcmd.result,
+            timeout=ackcmd.timeout,
         )
         self.salinfo._ackcmd_writer.put()
 
     def ackInProgress(self, data, result=""):
+        """Deprecated version of ack_in_progress."""
+        # TODO DM-26518: remove this method
+        warnings.warn(
+            "ackInProgress is deprecated; use ack_in_progress and specify timeout instead",
+            DeprecationWarning,
+        )
+        self.ack_in_progress(data=data, result=result, timeout=0)
+
+    def ack_in_progress(self, data, *, timeout, result=""):
         """Ackowledge this command as "in progress".
+
+        Parameters
+        ----------
+        data : `DataType`
+            Data for the command being acknowledged.
+        timeout : `float`
+            Estimated command duration (sec).
+        result : `str`, optional
+            Reason for acknowledgement. Typically left "".
         """
-        ackcmd = self.salinfo.makeAckCmd(
+        ackcmd = self.salinfo.make_ackcmd(
             private_seqNum=data.private_seqNum,
             ack=sal_enums.SalRetCode.CMD_INPROGRESS,
             result=result,
+            timeout=timeout,
         )
         self.ack(data, ackcmd)
 
@@ -132,7 +160,7 @@ class ControllerCommand(read_topic.ReadTopic):
 
         Parameters
         ----------
-        timeout : `float` (optional)
+        timeout : `float`, optional
             Time limit, in seconds. If None then no time limit.
 
         Returns
@@ -157,7 +185,7 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         if data.private_seqNum <= 0:
             raise ValueError(f"private_seqNum={data.private_seqNum} must be positive")
-        ack = self.salinfo.makeAckCmd(
+        ack = self.salinfo.make_ackcmd(
             private_seqNum=data.private_seqNum, ack=sal_enums.SalRetCode.CMD_ACK
         )
         self.ack(data, ack)
@@ -172,22 +200,51 @@ class ControllerCommand(read_topic.ReadTopic):
         data : `DataType`
             Command data.
         """
+        if self.authorize:
+            try:
+                identity = data.private_identity
+                auth_error = None
+                if "@" in identity:
+                    # A user
+                    if (
+                        identity != self.salinfo.domain.user_host
+                        and identity not in self.salinfo.authorized_users
+                    ):
+                        auth_error = (
+                            f"User identity {identity!r} "
+                            f"not self ({self.salinfo.domain.user_host}) "
+                            f"and not in {self.salinfo.authorized_users}"
+                        )
+                elif identity in self.salinfo.non_authorized_cscs:
+                    auth_error = f"CSC identity {identity!r} in {self.salinfo.non_authorized_cscs}"
+                if auth_error is not None:
+                    ack = self.salinfo.make_ackcmd(
+                        private_seqNum=data.private_seqNum,
+                        ack=sal_enums.SalRetCode.CMD_NOPERM,
+                        error=1,
+                        result=f"Not authorized: {auth_error}",
+                        truncate_result=True,
+                    )
+                    self.ack(data, ack)
+                    return
+            except Exception:
+                self.log.exception("Error checking identity")
+
         try:
             result = self._callback(data)
             if inspect.isawaitable(result):
-                self.ackInProgress(data)
                 ack = await result
             else:
                 ack = result
             if ack is None:
-                ack = self.salinfo.makeAckCmd(
+                ack = self.salinfo.make_ackcmd(
                     private_seqNum=data.private_seqNum,
                     ack=sal_enums.SalRetCode.CMD_COMPLETE,
                     result="Done",
                 )
             self.ack(data, ack)
         except asyncio.CancelledError:
-            ack = self.salinfo.makeAckCmd(
+            ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
                 ack=sal_enums.SalRetCode.CMD_ABORTED,
                 error=1,
@@ -196,7 +253,7 @@ class ControllerCommand(read_topic.ReadTopic):
             )
             self.ack(data, ack)
         except asyncio.TimeoutError:
-            ack = self.salinfo.makeAckCmd(
+            ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
                 ack=sal_enums.SalRetCode.CMD_TIMEOUT,
                 error=1,
@@ -205,7 +262,7 @@ class ControllerCommand(read_topic.ReadTopic):
             )
             self.ack(data, ack)
         except Exception as e:
-            ack = self.salinfo.makeAckCmd(
+            ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
                 ack=sal_enums.SalRetCode.CMD_FAILED,
                 error=1,

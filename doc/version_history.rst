@@ -6,12 +6,153 @@
 Version History
 ###############
 
+v6.0.0
+======
+
+Backward Incompatible Changes:
+
+* All SAL components on your system must use ts_salobj v6, ts_sal v5, and ts_idl v2.
+* All quality of service (QoS) settings are now defined in ts_idl ``idl/QoS.xml``, both for ts_salobj v6 and ts_sal v5.
+  Thus QoS changes no longer require any code changes.
+  This change requires ts_idl v2.
+* This new QoS file has 4 separate profiles for: commands, events, telemetry topics, and the ackcmd topic,
+  and, as of this writing, each profile is different.
+* Topics use a new DDS partition naming scheme.
+* `topics.ReadTopic.get` now defaults to *not* flushing the queue.
+  Also specifying the ``flush`` argument is now deprecated; the argument will be removed in a future version of salobj.
+* Requires ts_xml 6 and IDL files built with ts_sal 5 or later, for authorization support.
+* Commands are no longer acknowledged with ``CMD_INPROGRESS`` if the do_xxx callback function is asynchronous.
+  This was needlessly chatty.
+  Instead users are expected to issue such an ack manually (e.g. by calling `topics.ControllerCommand.ack_in_progress`)
+  when beginning to execute a command that will take significant time before it is reported as ``CMD_COMPLETE``.
+* The `force_output` argument to `topics.ControllerEvent.set_put` is now keyword-only.
+* Removed constant ``DDS_READ_QUEUE_LEN``.
+  It is very unlikely that any code outside of ts_salobj was using this.
+* Removed ``bin/purge_topics.py`` command-line script, because it is no longer needed.
+* Removed many deprecated features:
+    * Removed ``main`` method from `BaseCsc` and `BaseScript`.
+      Call `BaseCsc.amain` or `BaseScript.amain` instead, e.g. ``asyncio.run(MyCSC(index=...))`` or ``asyncio.run(MyScript.amain())``.
+    * Removed ``initial_simulation_mode`` argument from `BaseCsc` and `ConfigurableCsc`.
+      Use ``simulation_mode`` instead.
+    * Removed support for calling `BaseCsc.fault` without an error code or report; both must now be specified.
+    * Removed support for setting ``BaseCsc.summary_state`` directly.
+      To transition your CSC to a FAULT state call the `BaseCsc.fault` method.
+      Unit tests may call the `set_summary_state` function or issue the usual state transition commands.
+    * Removed the `SalInfo.idl_loc` property; use ``SalInfo.metadata.idl_path`` instead.
+    * Removed the `max_history` argument from `topics.ControllerCommand`\ 's constructor.
+      Commands are volatile, so historical data is not available.
+
+Deprecations:
+
+* Simplified simulation mode support in CSCs.
+  This is described in :ref:`simulation mode<lsst.ts.salobj-simulation_mode>` and results in the following deprecations:
+
+  * CSCs should now set class variable ``valid_simulation_modes``, even if they do not support simulation.
+    Failure to do so will result in a deprecation warning, but supports the old way of doing things.
+  * Deprecated `BaseCsc.implement_simulation_mode`.
+    Start your simulator in whichever other method seems most appropriate.
+  * Deprecated the need to override `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` to add the ``--simulate`` command-line argument.
+    This argument is added automatically if ``valid_simulation_modes`` has more than one entry.
+* Renamed environment variable ``LSST_DDS_DOMAIN`` to ``LSST_DDS_PARTITION_PREFIX``.
+  The old environment variable is used, with a deprecation warning, if the new one is not defined.
+* Renamed `SalInfo.makeAckCmd` to `SalInfo.make_ackcmd`.
+  The old method is still available, but issues a deprecation warning.
+* Renamed `ControllerCommand.ackInProgress` to `ControllerCommand.ack_in_progress` and added a required `timeout` argument.
+   The old method is still available, but issues a deprecation warning.
+* `Remote`: the ``tel_max_history`` constructor argument is deprecated and should not be specified.
+  If specified it must be 0 (or `None`, but please don't do that).
+* `topics.RemoteTelemetry`: the ``max_history`` constructor argument is deprecated and should not be specified.
+  If specified then it must be 0 (or `None`, but please don't do that).
+
+Changes:
+
+* Implemented authorization support, though that is off by default for now.
+  This will not be complete until ts_sal has full support.
+* Simplified the simulation support in CSCs, as explained in Deprecations above.
+* Added ``--loglevel`` and ``--version`` arguments to `BaseCsc`\ 's command-line argument parser.
+* `CscCommander` now rounds float arrays when displaying events and telemetry (it already rounded float scalars).
+* `CscCommander` now supports unit testing.
+  To better support unit testing, please write output using the new `CscCommander.output` method, instead of `print`.
+* Added support for running without a durability service:
+  set environment variable ``LSST_DDS_HISTORYSYNC`` to a negative value to prevent waiting for historical data.
+* Added the `get_opensplice_version` function.
+* If a command is acknowledged with ``CMD_INPROGRESS`` then the command timeout is extended by the ``timeout`` value in the acknowledgement.
+  Thus a slow command will need a long timeout as long as command issues a ``CMD_INPROGRESS`` acknowledgement with a reasonable ``timeout`` value.
+* Added the ``settingsToApply`` argument to `BaseCscTestCase.check_standard_state_transitions`,
+  to allow testing CSCs that do not have a default configuration.
+* Environment variable ``LSST_DDS_IP`` is no longer used.
+* The ``private_host`` field of DDS topics is no longer read nor set.
+* Updated the git pre-commit hook to prevent the commit if black formatting needed.
+  This encourages the user to properly commit the necessary reformatting.
+* Update ``Jenkinsfile`` to disable concurrent builds and clean up old log files.
+* Removed the ``.travis.yml`` file because it duplicates testing done in Jenkins.
+* Use `asynco.create_task` instead of deprecated `asyncio.ensure_future`.
+* Added property `topics.ReadTopic.nqueued`.
+* Fixed a bug in `topics.ReadTopic.aget`: if multiple messages arrived in the DDS queue while waiting, it would return the oldest message, rather than the newest.
+* Improved the documentation for `topics.ReadTopic`.
+* Read topics now use a named constant ``DEFAULT_QUEUE_LEN`` as the default value for ``queue_len``, making it easy to change in future.
+* Modified the way DDS data is read to lower the risk of the DDS read queue filling up.
+* Improved cleanup to fix warnings exposed by setting $PYTHONDEVMODE=1.
+* Improved ``Jenkinsfile`` to run tests with ``pytest`` instead of ``py.test``.
+
+Requirements:
+
+* ts_idl 2
+* ts_xml 6.1 (older versions might work but have not been tested)
+* IDL files for Test, Script, and LOVE generated by ts_sal 4.2 or later
+* SALPY_Test generated by ts_sal 4.2 or later
+
+v5.17.2
+=======
+
+Changes:
+
+* Work around a bug in licensed OpenSplice 6.10.4 and 6.10.3 (case 00020647).
+  The workaround is compatible with the community edition of OpenSplice 6.9.190705.
+
+Requirements:
+
+* ts_idl 1
+* ts_xml 4.7
+* IDL files for Test, Script, and LOVE generated by ts_sal 4.1 or later
+* SALPY_Test generated by ts_sal 4.1 or later
+
+v5.17.1
+=======
+
+Changes:
+
+* Bug fix: `BaseCscTestCase.check_bin_script` now sets a random ``LSST_DDS_DOMAIN``, just like ``make_csc``.
+
+Requirements:
+
+* ts_idl 1
+* ts_xml 4.7
+* IDL files for Test, Script, and LOVE generated by ts_sal 4.1 or later
+* SALPY_Test generated by ts_sal 4.1 or later
+
+v5.17.0
+=======
+
+Changes:
+
+* Added the `CscCommander.start` method and the ``--enable`` command-line flag.
+* Added the `SalInfo.name_index` property.
+* Made `SalInfo` an async contextual manager. This is primarily useful for unit tests.
+
+Requirements:
+
+* ts_idl 1
+* ts_xml 4.7
+* IDL files for Test, Script, and LOVE generated by ts_sal 4.1 or later
+* SALPY_Test generated by ts_sal 4.1 or later
+
 v5.16.0
 =======
 
 Changes:
 
-* Add the ``filter_ackcmd`` argument to `ReadTopic`\ s constructor.
+* Add the ``filter_ackcmd`` argument to `ReadTopic`\ 's constructor.
 * Improve Jenkins.conda cleanup.
 
 Requirements:

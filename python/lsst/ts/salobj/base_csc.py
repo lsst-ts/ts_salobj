@@ -45,25 +45,32 @@ class BaseCsc(Controller):
         Name of SAL component.
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
-    initial_state : `State` or `int` (optional)
+    initial_state : `State` or `int`, optional
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
-    simulation_mode : `int` (optional)
+    simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
-    initial_simulation_mode : `int` (optional)
-        A deprecated synonym for simulation_mode.
 
     Raises
     ------
     ValueError
-        If ``initial_state`` is invalid, or
-        ``simulation_mode`` and ``initial_simulation_mode`` are both nonzero.
+        If ``initial_state`` is invalid.
     salobj.ExpectedError
         If ``simulation_mode`` is invalid.
         Note: you will only see this error if you await `start_task`.
 
     Attributes
     ----------
+    valid_simulation_modes : `list` [`int`] or `None`
+        This is a *class* attribute that, if not `None`
+        has the following effect:
+
+        * ``simulation_mode`` will be checked in the constructor
+        * `implement_simulation_mode` will be a no-op.
+        * The `amain` command parser will have a ``--simulate`` argument.
+          The default value will be 0 if that is a valid simulation mode
+          (and it certainly should be).
+          Otherwise the default value will be the first entry.
     heartbeat_interval : `float`
         Interval between heartbeat events, in seconds;
 
@@ -101,28 +108,25 @@ class BaseCsc(Controller):
     * Run `start` asynchronously.
     """
 
+    # See Attributes in the doc string.
+    valid_simulation_modes = None
+
     def __init__(
-        self,
-        name,
-        index=None,
-        initial_state=State.STANDBY,
-        simulation_mode=0,
-        initial_simulation_mode=0,
+        self, name, index=None, initial_state=State.STANDBY, simulation_mode=0,
     ):
         # cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
-        if initial_simulation_mode != 0:
-            if simulation_mode != 0:
-                raise ValueError(
-                    "Cannot specify both simulation_mode and initial_simulation_mode"
-                )
-            warnings.warn(
-                "The initial_simulation_mode argument is deprecated; "
-                "please specify simulation_mode instead",
-                DeprecationWarning,
-            )
-            simulation_mode = initial_simulation_mode
         initial_state = State(initial_state)
+        if self.valid_simulation_modes is None:
+            warnings.warn(
+                "valid_simulation_modes=None is deprecated", DeprecationWarning
+            )
+        else:
+            if simulation_mode not in self.valid_simulation_modes:
+                raise ValueError(
+                    f"simulation_mode={simulation_mode} "
+                    f"not in valid_simulation_modes={self.valid_simulation_modes}"
+                )
         super().__init__(name=name, index=index, do_callbacks=True)
         self._requested_simulation_mode = int(simulation_mode)
         self._summary_state = State(initial_state)
@@ -140,12 +144,9 @@ class BaseCsc(Controller):
         * Set ``self.start_task`` done.
         """
         await super().start()
-        try:
-            self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
-            await self.set_simulation_mode(self._requested_simulation_mode)
-        except Exception as e:
-            await self.close(exception=e)
-            raise
+        self._heartbeat_task.cancel()  # Paranoia
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+        await self.set_simulation_mode(self._requested_simulation_mode)
 
         await self.handle_summary_state()
         self.report_summary_state()
@@ -174,10 +175,8 @@ class BaseCsc(Controller):
             command line argument, or specify a non-zero `int` to use
             that index.
             If the CSC is not indexed: specify `None` or 0.
-        **kwargs : `dict` (optional)
+        **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
-            If any arguments match those from the command line
-            the command line values will be used.
 
         Returns
         -------
@@ -191,7 +190,54 @@ class BaseCsc(Controller):
         """
         parser = argparse.ArgumentParser(f"Run {cls.__name__}")
         if index is True:
-            parser.add_argument("index", type=int, help="Script SAL Component index.")
+            parser.add_argument("index", type=int, help="SAL index.")
+        parser.add_argument(
+            "--loglevel",
+            type=int,
+            help="log level: error=40, warning=30, info=20, debug=10",
+        )
+        add_simulate_arg = (
+            cls.valid_simulation_modes is not None
+            and len(cls.valid_simulation_modes) > 1
+        )
+        if add_simulate_arg:
+            if 0 in cls.valid_simulation_modes:
+                default_simulation_mode = 0
+            else:
+                default_simulation_mode = cls.valid_simulation_modes[0]
+            if default_simulation_mode == 0 and len(cls.valid_simulation_modes) == 2:
+                # There are only two simulation modes, one of which is 0:
+                # make --simulate a flag that takes no value.
+                nonzero_value = (set(cls.valid_simulation_modes) - set([0])).pop()
+                parser.add_argument(
+                    "--simulate",
+                    help="Run in simulation mode?",
+                    default=0,
+                    action="store_const",
+                    const=nonzero_value,
+                )
+            else:
+                # There are more than 2 simulation modes or none of them is 0:
+                # make --simulate an argument that requires a value.
+                parser.add_argument(
+                    "--simulate",
+                    type=int,
+                    help="Simulation mode",
+                    default=default_simulation_mode,
+                    choices=cls.valid_simulation_modes,
+                )
+
+        try:
+            # Import __version__ this here because it is not available
+            # when base_csc is first imported.
+            from . import __version__
+
+            parser.add_argument("--version", action="version", version=__version__)
+        except ImportError:
+            warnings.warn(
+                "No --version command-line argument because __version__ is unavailable.",
+                RuntimeWarning,
+            )
         cls.add_arguments(parser)
 
         args = parser.parse_args()
@@ -201,9 +247,14 @@ class BaseCsc(Controller):
             pass
         else:
             kwargs["index"] = int(index)
+        if add_simulate_arg:
+            kwargs["simulation_mode"] = args.simulate
         cls.add_kwargs_from_args(args=args, kwargs=kwargs)
 
-        return cls(**kwargs)
+        csc = cls(**kwargs)
+        if args.loglevel is not None:
+            csc.log.setLevel(args.loglevel)
+        return csc
 
     @classmethod
     async def amain(cls, index, **kwargs):
@@ -216,45 +267,11 @@ class BaseCsc(Controller):
             command line argument, or specify a non-zero `int` to use
             that index.
             If the CSC is not indexed: specify `None` or 0.
-        **kwargs : `dict` (optional)
+        **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
-            If any arguments match those from the command line
-            the command line values will be used.
         """
         csc = cls.make_from_cmd_line(index=index, **kwargs)
         await csc.done_task
-
-    @classmethod
-    def main(cls, index, **kwargs):
-        """Start the CSC from the command line.
-
-        Parameters
-        ----------
-        index : `int`, `True`, `False` or `None`
-            If the CSC is indexed: specify `True` make index a required
-            command line argument, or specify a non-zero `int` to use
-            that index.
-            If the CSC is not indexed: specify `None` or 0.
-        **kwargs : `dict` (optional)
-            Additional keyword arguments for your CSC's constructor.
-            If any arguments match those from the command line
-            the command line values will be used.
-
-        Returns
-        -------
-        csc : ``cls``
-            The CSC.
-
-        Notes
-        -----
-        To add additional command-line arguments, override `add_arguments`
-        and `add_kwargs_from_args`.
-        """
-        warnings.warn(
-            "Use amain instead, e.g. asyncio.run(cls.amain(index=...))",
-            DeprecationWarning,
-        )
-        asyncio.run(cls.amain(index=index, **kwargs))
 
     @classmethod
     def add_arguments(cls, parser):
@@ -322,7 +339,7 @@ class BaseCsc(Controller):
         """
         await self._do_change_state(data, "exitControl", [State.STANDBY], State.OFFLINE)
 
-        asyncio.ensure_future(self.close())
+        asyncio.create_task(self.close())
 
     async def do_standby(self, data):
         """Transition from `State.DISABLED` or `State.FAULT` to
@@ -379,6 +396,9 @@ class BaseCsc(Controller):
     async def implement_simulation_mode(self, simulation_mode):
         """Implement going into or out of simulation mode.
 
+        Deprecated. See :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`
+        for details.
+
         Parameters
         ----------
         simulation_mode : `int`
@@ -388,21 +408,11 @@ class BaseCsc(Controller):
         ------
         ExpectedError
             If ``simulation_mode`` is not a supported value.
-        ValueError
-            If ``simulation_mode`` and ``initial_simulation_mode``
-            are both nonzero. Only one can be specified.
-
-        Notes
-        -----
-        Subclasses should override this method to implement simulation
-        mode. The implementation should:
-
-        * Check the value of ``simulation_mode`` and raise
-          `ExpectedError` if not supported.
-        * If ``simulation_mode`` is 0 then go out of simulation mode.
-        * If ``simulation_mode`` is nonzero then enter the requested
-          simulation mode.
         """
+        if self.valid_simulation_modes is not None:
+            return
+
+        # Handle the deprecated case.
         if simulation_mode != 0:
             raise base.ExpectedError(
                 f"This CSC does not support simulation; simulation_mode={simulation_mode} but must be 0"
@@ -513,19 +523,19 @@ class BaseCsc(Controller):
         """
         pass
 
-    def fault(self, code=None, report="", traceback=""):
+    def fault(self, code, report, traceback=""):
         """Enter the fault state and output the ``errorCode`` event.
 
         Parameters
         ----------
-        code : `int` (optional)
+        code : `int`
             Error code for the ``errorCode`` event.
             If `None` then ``errorCode`` is not output and you should
             output it yourself. Specifying `None` is deprecated;
             please always specify an integer error code.
-        report : `str` (optional)
+        report : `str`
             Description of the error.
-        traceback : `str` (optional)
+        traceback : `str`, optional
             Description of the traceback, if any.
         """
         if self._faulting:
@@ -534,20 +544,17 @@ class BaseCsc(Controller):
         try:
             self._faulting = True
             self._summary_state = State.FAULT
-            if code is None:
-                warnings.warn("specifying code=None is deprecated", DeprecationWarning)
-            else:
-                try:
-                    self.evt_errorCode.set_put(
-                        errorCode=code,
-                        errorReport=report,
-                        traceback=traceback,
-                        force_output=True,
-                    )
-                except Exception:
-                    self.log.exception(
-                        f"Failed to output errorCode: code={code!r}; report={report!r}"
-                    )
+            try:
+                self.evt_errorCode.set_put(
+                    errorCode=code,
+                    errorReport=report,
+                    traceback=traceback,
+                    force_output=True,
+                )
+            except Exception:
+                self.log.exception(
+                    f"Failed to output errorCode: code={code!r}; report={report!r}"
+                )
             try:
                 self.report_summary_state()
             except Exception:
@@ -556,7 +563,7 @@ class BaseCsc(Controller):
                     "some code may not have run."
                 )
                 self.evt_summaryState.set_put(summaryState=self._summary_state)
-            asyncio.ensure_future(self.handle_summary_state())
+            asyncio.create_task(self.handle_summary_state())
         finally:
             self._faulting = False
 
@@ -565,7 +572,7 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        action : `str` (optional)
+        action : `str`, optional
             Action attempted. Not needed if this is called at the beginning
             of a ``do_...`` method, since the user will know what command
             was called.
@@ -594,37 +601,6 @@ class BaseCsc(Controller):
         """Get the summary state as a `State` enum.
         """
         return self._summary_state
-
-    async def set_summary_state(self, summary_state):
-        """Set the summary state
-
-        Parameters
-        ----------
-        summary_state : `State` or `int`
-            The new summary state
-        If you set the state then it is reported as a summaryState event.
-        You can set summary_state to a `State` constant or to
-        the integer equivalent.
-
-        Raises
-        ------
-        ValueError
-            If the new summary state is an invalid integer.
-        """
-        # cast summary_state from an int or State to a State,
-        # and reject invalid int values with ValueError
-        self._summary_state = State(summary_state)
-        self.report_summary_state()
-        await self.handle_summary_state()
-
-    @summary_state.setter
-    def summary_state(self, summary_state):
-        warnings.warn("Please do not set summary state directly", DeprecationWarning)
-        # cast summary_state from an int or State to a State,
-        # and reject invalid int values with ValueError
-        self._summary_state = State(summary_state)
-        self.report_summary_state()
-        asyncio.ensure_future(self.handle_summary_state())
 
     async def handle_summary_state(self):
         """Called when the summary state has changed.

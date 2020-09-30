@@ -20,8 +20,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from lsst.ts.salobj import TestScript
+"""A command-line script to interact with a Test CSC.
 
+For most CSCs running a commander can be quite dangerous
+so please pick a script name that is not easily confused
+with the script that runs the CSC.
+"""
+import asyncio
 
-if __name__ == "__main__":
-    TestScript.main(descr="standard script1 run with deprecated class method `main`")
+from lsst.ts import salobj
+
+asyncio.run(salobj.TestCscCommander.amain(index=True))

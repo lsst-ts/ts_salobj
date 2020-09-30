@@ -29,7 +29,6 @@ import re
 import sys
 import time
 import types
-import warnings
 
 import yaml
 
@@ -119,7 +118,7 @@ class BaseScript(controller.Controller, abc.ABC):
         self.done_task = asyncio.Future()
         self._is_exiting = False
         self.evt_description.set(classname=type(self).__name__, description=str(descr))
-        self._heartbeat_task = asyncio.ensure_future(self._heartbeat_loop())
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         # Delay (sec) to allow sending the final state and acknowleding
         # the command before exiting.
         self.final_state_delay = 0.3
@@ -151,7 +150,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        descr : `str` (optional)
+        descr : `str`, optional
             Short description of what the script does, for operator display.
             Leave at None if the script already has a description, which is
             the most common case. Primarily intended for unit tests,
@@ -197,7 +196,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        descr : `str` (optional)
+        descr : `str`, optional
             Short description of what the script does, for operator display.
             Leave at None if the script already has a description, which is
             the most common case. Primarily intended for unit tests,
@@ -224,34 +223,6 @@ class BaseScript(controller.Controller, abc.ABC):
             ScriptState.FAILED: 1,
         }.get(script.state.state, 2)
         sys.exit(return_code)
-
-    @classmethod
-    def main(cls, descr=None):
-        """Start the script from the command line.
-
-        Parameters
-        ----------
-        descr : `str` (optional)
-            Short description of what the script does, for operator display.
-            Leave at None if the script already has a description, which is
-            the most common case. Primarily intended for unit tests,
-            e.g. running ``TestScript``.
-
-
-        Notes
-        -----
-        The final return code will be:
-
-        * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
-          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`
-        * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
-        * 2 otherwise (which should never happen)
-        """
-        warnings.warn(
-            "Use amain instead, e.g. asyncio.run(cls.amain(descr=descr))",
-            DeprecationWarning,
-        )
-        asyncio.get_event_loop().run_until_complete(cls.amain(descr=descr))
 
     @property
     def checkpoints(self):
@@ -306,17 +277,17 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        state : `ScriptState` or `int` (optional)
+        state : `ScriptState` or `int`, optional
             New state, or None if no change
-        reason : `str` (optional)
+        reason : `str`, optional
             Reason for state change. `None` for no new reason.
         keep_old_reason : `bool`
             If True, keep old reason; append the ``reason`` argument after ";"
             if it is is a non-empty string.
             If False replace with ``reason``, or "" if ``reason`` is `None`.
-        last_checkpoint : `str` (optional)
+        last_checkpoint : `str`, optional
             Name of most recently seen checkpoint. None for no change.
-        force_output : `bool` (optional)
+        force_output : `bool`, optional
             If True the output even if not changed.
         """
         if state is not None:
@@ -337,7 +308,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Parameters
         ----------
-        name : `str` (optional)
+        name : `str`, optional
             Name of checkpoint; "" if it has no name.
 
         Raises
@@ -567,7 +538,7 @@ class BaseScript(controller.Controller, abc.ABC):
             raise base.ExpectedError("Group ID not set")
         try:
             self.set_state(ScriptState.RUNNING)
-            self._run_task = asyncio.ensure_future(self.run())
+            self._run_task = asyncio.create_task(self.run())
             await self._run_task
             self.set_state(ScriptState.ENDING)
         except asyncio.CancelledError:
@@ -753,7 +724,7 @@ class BaseScript(controller.Controller, abc.ABC):
             self.log.info(f"Setting final state to {final_state!r}")
             self.set_state(final_state, reason=reason, keep_old_reason=True)
             await asyncio.sleep(self.final_state_delay)
-            asyncio.ensure_future(self.close())
+            asyncio.create_task(self.close())
         except Exception as e:
             if not isinstance(e, base.ExpectedError):
                 self.log.exception("Error in run")
@@ -761,4 +732,4 @@ class BaseScript(controller.Controller, abc.ABC):
                 ScriptState.FAILED, reason=f"failed in _exit: {e}", keep_old_reason=True
             )
             await asyncio.sleep(self.final_state_delay)
-            asyncio.ensure_future(self.close(e))
+            asyncio.create_task(self.close(e))

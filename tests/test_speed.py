@@ -105,7 +105,7 @@ class SpeedTestCase(asynctest.TestCase):
         cls.verify_job.write(measurements_dir / "speed.json")
 
     def setUp(self):
-        salobj.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_partition_prefix()
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"
         self.index = next(index_gen)
 
@@ -227,13 +227,12 @@ class SpeedTestCase(asynctest.TestCase):
             )
 
             # Wait for the first logLevel sample. This is automatically
-            # output by the Controller and probably has level=20.
-            data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
-            self.assertGreater(data.level, 0)
-            # Wait for the next logLevel sample, which is the first
-            # one output by the write loop.
-            data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
-            self.assertEqual(data.level, 0)
+            # output by the Controller and probably has level=20
+            # (unless data has been lost).
+            await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
+            # Wait for the next logLevel sample, which is the first one
+            # output by the write loop (unless data has been lost).
+            await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
             t0 = time.monotonic()
             for i in range(num_samples):
                 data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)

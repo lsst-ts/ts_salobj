@@ -19,7 +19,7 @@ The CSC responds to commands and outputs events and telemetry.
 Make it a subclass of `ConfigurableCsc` if it can be configured via the ``start`` command, or `BaseCsc` if not.
 Most CSCs are configurable.
 
-ts_ATDome is one of the simplest CSCs, and makes good example of how to write a CSC.
+ts_ATDome is one of the simplest CSCs, and is a good example of how to write a configurable CSC.
 
 Connections
 ^^^^^^^^^^^
@@ -29,23 +29,24 @@ Examples include:
 * ts_ATDome, one of the simplest CSCs, communicates to its low-level controller using a single client TCP/IP socket.
 * ts_hexapod and ts_rotator communicate to its low-level controller via a pair of TCP/IP client sockets, one for commands and the other for replies.
 * ts_MTMount communicates to its low-level controller via a pair of TCP/IP sockets, one a client, one a socket.
+* ts_FiberSpectrograph communicates to the spectrograph via USB.
 
 If your CSC communicates with other SAL components then it will need one or more `Remote`\ s (one per SAL component).
 Examples of CSCs with `Remote`\ s include:
 
-* ts_ATDomeTrajectory has a remote to talk command ATDome and another to listen to ATMCS target event.
+* ts_ATDomeTrajectory: has one remote to command ATDome and another to listen to ATMCS's target event.
   This is one of the simplest CSCs with remotes.
-* ts_Watcher uses remotes to listen to the SAL components that it monitors.
-* ts_scriptqueue uses a single remote to communicate with all queued scripts.
-  This relies on the feature that specifying index=0 allows one to communicate with all indices of an indexed SAL component.
+* ts_Watcher: uses remotes to listen to all SAL components that it monitors.
+* ts_scriptqueue: uses a single remote to communicate with all queued scripts.
+  This relies on the feature that specifying index=0 allows one to communicate with all instances of an indexed SAL component.
 
-LFA Writer
-^^^^^^^^^^
-If your CSC writes data to the Large File Annex (or another `S3 <https://docs.aws.amazon.com/s3/index.html>`_ server) then create an `AsyncS3Bucket`, using `AsyncS3Bucket.make_bucket_name` to construct the bucket name.
+Large File Annex Writer
+^^^^^^^^^^^^^^^^^^^^^^^
+If your CSC writes data to the Large File Annex (LFA) or another `S3 <https://docs.aws.amazon.com/s3/index.html>`_ server, create an `AsyncS3Bucket` using `AsyncS3Bucket.make_bucket_name` to construct the bucket name.
 To upload data:
 
 * Call `AsyncS3Bucket.make_key` to construct a key.
-* Call `AsyncS3Bucket.upload` to upload the data (see the doc string for details on getting your data into the required format).
+* Call `AsyncS3Bucket.upload` to upload the data. See the doc string for details on getting your data into the required format.
 * Fall back to writing your data to local disk if S3 upload fails.
 * Call ``evt_largeFileObjectAvailable.set_put`` to report the upload.
 
@@ -53,7 +54,7 @@ See ts_FiberSpectrograph for a simple example.
 
 Note that users of your CSC will have to configure access to the S3 server in the standard way.
 Most of such configuration is standard and well documented on the internet.
-However, if the S3 server is not part of Amazon Web Services (AWS), you will also have to define salobj-specific environment variable ``S3_ENDPOINT_URL``; see :ref:`lsst.ts.salobj-configuration_environment_variables` for details.
+However, if the S3 server is not part of Amazon Web Services (AWS), you will also have to define the salobj-specific environment variable ``S3_ENDPOINT_URL``; see :ref:`lsst.ts.salobj-configuration_environment_variables` for details.
 
 A Model
 ^^^^^^^
@@ -69,7 +70,7 @@ Examples of CSCs with models include:
 A Simulator
 ^^^^^^^^^^^
 If your CSC controls hardware then we strongly recommend that you support running in simulation mode.
-This allows unit testing integration testing of your CSC.
+This allows unit testing of your CSC and integration testing with other CSCs.
 
 If your CSC talks to a low level controller then consider simulating the low-level controller.
 That allows your CSC to use its standard communication protocol to communicate with the simulator, which in turn means that your unit test exercise more of your code.
@@ -91,19 +92,25 @@ CSC Details
 Make your CSC a subclass of `ConfigurableCsc` if it can be configured via the ``start`` command, or `BaseCsc` if not.
 Most CSCs can be configured.
 
+* Specify class variable ``valid_simulation_modes`` as a list of valid simulation modes.
+
+    * If your CSC does not support simulation then set ``valid_simulation_modes = [0]``.
+      The value 0 is always used for normal operation.
+    * To implement nonzero simulation modes see :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`.
+
 * Handling commands:
 
     * Your subclass must provide a ``do_<name>`` method for every command that is not part of the standard CSC command set, as well as the following optional standard commands, if you want to support them (these are rare):
 
       * ``abort``. Use of this command is discouraged.
         It is usually better to provide CSC-specific commands to stop specific actions.
-      * ``enterControl``. This command is only relevant for :ref:`externally commandable CSCs <lsst.ts.salobj-externally_commandable_csc>`.
+      * ``enterControl``. This command is only relevant for :ref:`externally commandable CSCs <lsst.ts.salobj-externally_commandable_csc>`, and we have few salobj-based CSCs that are externally commandable.
       * ``setValue``. This is strongly discouraged, for reasons given below.
 
-    * Each ``do_<name>`` method may be synchronous (``def do_<name>...``) or asynchronous (``async def do_<name>...``).
-      If ``do_<name>`` is asynchronous then the command is automatically acknowledged as in progress just before ``do_<name>`` method starts.
+    * Each ``do_<name>`` method should be asynchronous (``async def do_<name>...``). Synchronous (``def do_<name>...``) methods are allowed, but deprecated.
+    * If the command will take a long time before completion then you should issue a ``CMD_INPROGRESS`` acknowledgement, e.g. by calling `topics.ControllerCommand.ack_in_progress` on the ``cmd_<name>`` instance.
     * Most commands should only be allowed to run when the summary state is `State.ENABLED`.
-      To enforce this, put the following as the first line of your ``do_<name>`` method: ``self.assert_enabled()``
+      To enforce this, put the following as the first line of your ``do_<name>`` method: ``self.assert_enabled()``.
     * Your CSC reports the command as unsuccessful if the ``do_<name>`` method raises an exception.
       The ``ack`` value depends on the exception; see `topics.ControllerCommand` for details.
     * Your CSC reports the command as successful when ``do_<name>`` finishes and returns `None`.
@@ -118,16 +125,16 @@ Most CSCs can be configured.
 
 * In your constructor call:
 
-    * ``self.evt_softwareVersions.set(version=...)``; that is ``set`` not ``set_put`` because `BaseCsc` will add more information and then output the event.
-      If your CSC has individually versions subsystems then also set the ``subsystemVersions`` field, else leave it blank.
+    * ``self.evt_softwareVersions.set(version=...)``; that is ``set``, not ``set_put``, because `BaseCsc` will add more information and then output the event.
+      If your CSC has individually versioned subsystems, then also set the ``subsystemVersions`` field, else leave it blank.
     * If your CSC outputs settings information in events other than ``settingsApplied`` then call:
-      ``self.evt_settingsApplied.set(otherSettingsEvents=...)`` with a comma-separated list of the name of those events (without the ``logevent_`` prefix).
+      ``self.evt_settingsApplied.set(otherSettingsEvents=...)`` with a comma-separated list of the name of those events, without the ``logevent_`` prefix.
     
 * Override `BaseCsc.handle_summary_state`  to handle tasks such as:
 
   * Constructing a model, if your CSC has one.
-  * Starting or stopping a telemetry loop and other background tasks.
   * Constructing the simulator, if in simulation mode.
+  * Starting or stopping a telemetry loop and other background tasks.
   * Connecting to or disconnecting from a low-level controller (or simulator).
 
   Here is a typical outline::
@@ -138,19 +145,19 @@ Most CSCs can be configured.
                 self.model = ...
             if self.telemetry_task.done():
                 self.telemetry_task = asyncio.create_task(self.telemetry_loop())
-            if self.simulation_mode and not self.simulator:
+            if self.simulation_mode and self.simulator is None:
                 self.simulator = ...
             if self.connection is None:
                 self.connection = ...
         else:
-            if self.connection:
+            if self.connection is not None:
                 await self.connection.close()
                 self.connection = None
-            if self.simulator:
+            if self.simulator is not None:
                 await self.simulator.close()
                 self.simulator = None
             self.telemetry_task.cancel()
-            if self.model:
+            if self.model is not None:
                 await self.model.close()
                 self.model = None
 
@@ -174,25 +181,14 @@ Most CSCs can be configured.
       line of your ``do_<name>`` method: ``self.assert_enabled()``
 
     * Call `BaseCsc.fault` to send your CSC into the `State.FAULT` summary state.
-      Specify the ``code`` and ``report`` arguments so that BaseCsc can output the ``errorCode`` event
-      (which should only be output when going to FAULT state).
 
 * Detailed state (optional):
 
     * The ``detailedState`` event is unique to each CSC.
-    * ``detailedState`` is optional, but strongly recommended for
-      CSCs that are complex enough to have interesting internal state.
-    * Report all information that seem relevant to detailed state
-      and is not covered by summary state.
+    * ``detailedState`` is optional, but strongly recommended for CSCs that are complex enough to have interesting internal state.
+    * Report all information that seem relevant to detailed state and is not covered by summary state.
     * Detailed state should be *orthogonal* to summary state.
-      You may provide an enum field in your detailedState event, but it
-      is not required and, if present, should not include summary states.
-
-* Simulation mode (optional):
-
-    * Implement :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`, if practical.
-      This allows testing without putting hardware at risk.
-      If your CSC talks to hardware then this is especially important.
+      You may provide an enum field in your detailedState event, but it is not required and, if present, should not include summary states.
 
 ------------------------
 Configurable CSC Details
@@ -292,22 +288,7 @@ For example:
 
     asyncio.run(TestCsc.amain(index=True))
 
-If you wish to provide additional command line arguments for your CSC then you may
-override the `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` class methods.
-You will have to do this if your CSC supports simulation mode.
-If your CSC only supports simulation on or off (the most common case) then you can write:::
-
-    @classmethod
-    def add_arguments(cls, parser):
-        super(ATDomeCsc, cls).add_arguments(parser)
-        parser.add_argument(
-            "-s", "--simulate", action="store_true", help="Run in simuation mode?"
-        )
-
-    @classmethod
-    def add_kwargs_from_args(cls, args, kwargs):
-        super(ATDomeCsc, cls).add_kwargs_from_args(args, kwargs)
-        kwargs["simulation_mode"] = 1 if args.simulate else 0
+If you wish to provide additional command line arguments for your CSC, override the `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` class methods.
 
 .. _lsst.ts.salobj-simulation_mode:
 
@@ -317,16 +298,29 @@ Simulation Mode
 
 CSCs should support a simulation mode if practical; this is especially important if the CSC talks to hardware.
 
-To implement a simulation mode, first pick one or more non-zero values
-for the ``simulation_mode`` property (0 is reserved for normal operation)
-and document what they mean. For example you might use a a bit mask
-to supporting independently simulating multiple different subsystems.
+To implement a simulation mode, first pick one or more non-zero values for the ``simulation_mode``
+constructor argument (0 is reserved for normal operation) and document what they mean.
+It is quite common to support only one simulation mode, in which case the two allowed values are 0 and 1.
+However, you may support additional modes; you can even use a bit mask to supporting independently simulating different subsystems.
 
-Then override `implement_simulation_mode` to implement the specified
-simulation mode, if supported, or raise an exception if not.
-Note that this method is called during construction of the CSC.
-The default implementation of `implement_simulation_mode` is to reject
-all non-zero values for ``simulation_mode``.
+Set class variable ``valid_simulation_modes`` to a list of all supported simulation modes, including 0 for normal operation.
+If your CSC has just one simulation mode::
+
+    valid_simulation_modes = (0, 1)
+
+Then decide where to turn on your simulator; here are some common choices:
+
+* If your CSC communicates with a low-level controller and your simulator emulates that controller
+  (which is strongly recommended), start the simulator where you connect to the low-level controller.
+  This is often the `configure` method for configurable CSCs.
+
+* If your simulator should only run in certain states, then you may start and stop it in `handle_summary_state`.
+
+* If your simulator needs no configuration and is always running, then you can run it in `start`.
+
+A deprecated way to handle simulation that you may see in older code was to not set class variable ``valid_simulation_modes``.
+This required overriding three methods: `BaseCsc.implement_simulation_mode`, `BaseCsc.add_arguments`, and `BaseCsc.add_kwargs_from_args`.
+This is no longer recommended, and failing to set class variable ``valid_simulation_modes`` will result in a deprecation warning.
 
 --------------------
 External Connections

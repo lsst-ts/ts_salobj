@@ -44,6 +44,8 @@ class TopicWriter(salobj.BaseCsc):
         SAL index.
     """
 
+    valid_simulation_modes = [0]
+
     def __init__(self, index):
         print(f"TopicWriter: starting with index={index}")
         super().__init__(name="Test", index=index)

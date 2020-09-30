@@ -20,8 +20,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import datetime
+import getpass
 import os
 import random
+import socket
 import time
 import unittest
 
@@ -53,7 +55,7 @@ def alternate_tai_from_utc_unix(utc_unix):
 
 class BasicsTestCase(asynctest.TestCase):
     def setUp(self):
-        salobj.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_partition_prefix()
 
     async def test_assert_raises_ack_error(self):
         """Test the assertRaisesAckError function.
@@ -66,7 +68,7 @@ class BasicsTestCase(asynctest.TestCase):
             result = "a result"
             err = salobj.AckError(
                 "a message",
-                ackcmd=salinfo.makeAckCmd(
+                ackcmd=salinfo.make_ackcmd(
                     private_seqNum=private_seqNum, ack=ack, error=error, result=result
                 ),
             )
@@ -92,20 +94,20 @@ class BasicsTestCase(asynctest.TestCase):
                 with salobj.assertRaisesAckError(ack=5):
                     raise salobj.AckError(
                         "mismatched ack",
-                        ackcmd=salinfo.makeAckCmd(private_seqNum=1, ack=1),
+                        ackcmd=salinfo.make_ackcmd(private_seqNum=1, ack=1),
                     )
 
             with self.assertRaises(AssertionError):
                 with salobj.assertRaisesAckError(error=47):
                     raise salobj.AckError(
                         "mismatched error",
-                        ackcmd=salinfo.makeAckCmd(private_seqNum=2, ack=25, error=2),
+                        ackcmd=salinfo.make_ackcmd(private_seqNum=2, ack=25, error=2),
                     )
 
             with salobj.assertRaisesAckError():
                 raise salobj.AckError(
                     "no ack or error specified",
-                    ackcmd=salinfo.makeAckCmd(private_seqNum=3, ack=1, error=2),
+                    ackcmd=salinfo.make_ackcmd(private_seqNum=3, ack=1, error=2),
                 )
 
             result = "result for this exception"
@@ -113,7 +115,7 @@ class BasicsTestCase(asynctest.TestCase):
             with salobj.assertRaisesAckError(ack=1, error=2, result_contains=result):
                 raise salobj.AckError(
                     "match ack, error and full result",
-                    ackcmd=salinfo.makeAckCmd(
+                    ackcmd=salinfo.make_ackcmd(
                         private_seqNum=4, ack=1, error=2, result=result
                     ),
                 )
@@ -123,7 +125,7 @@ class BasicsTestCase(asynctest.TestCase):
             ):
                 raise salobj.AckError(
                     "match ack, error and a substring of result",
-                    ackcmd=salinfo.makeAckCmd(
+                    ackcmd=salinfo.make_ackcmd(
                         private_seqNum=4, ack=1, error=2, result=result
                     ),
                 )
@@ -139,7 +141,7 @@ class BasicsTestCase(asynctest.TestCase):
             result = "a result"
             err = salobj.AckError(
                 msg,
-                ackcmd=salinfo.makeAckCmd(
+                ackcmd=salinfo.make_ackcmd(
                     private_seqNum=private_seqNum, ack=ack, error=error, result=result
                 ),
             )
@@ -165,6 +167,15 @@ class BasicsTestCase(asynctest.TestCase):
                 tai_unix_round_trip1 = salobj.tai_from_utc(astropy_time1)
                 self.assertAlmostEqual(tai_unix, tai_unix_round_trip1, delta=1e-6)
 
+    async def test_get_opensplice_version(self):
+        ospl_version = salobj.get_opensplice_version()
+        self.assertRegex(ospl_version, r"^\d+\.\d+\.\d+")
+
+    async def test_get_user_host(self):
+        expected_user_host = getpass.getuser() + "@" + socket.getfqdn()
+        user_host = salobj.get_user_host()
+        self.assertEqual(expected_user_host, user_host)
+
     async def test_long_ack_result(self):
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain, "Test", index=1)
@@ -179,14 +190,14 @@ class BasicsTestCase(asynctest.TestCase):
             )
             self.assertGreater(len(long_result), salobj.MAX_RESULT_LEN)
             with self.assertRaises(ValueError):
-                salinfo.makeAckCmd(
+                salinfo.make_ackcmd(
                     private_seqNum=1,
                     ack=ack,
                     error=error,
                     result=long_result,
                     truncate_result=False,
                 )
-            ackcmd = salinfo.makeAckCmd(
+            ackcmd = salinfo.make_ackcmd(
                 private_seqNum=2,
                 ack=ack,
                 error=error,
@@ -198,49 +209,41 @@ class BasicsTestCase(asynctest.TestCase):
             self.assertEqual(ackcmd.error, error)
 
     def test_set_random_lsst_dds_domain(self):
+        """Test that set_random_lsst_dds_domain is a deprecated
+        alias for set_random_lsst_dds_partition_prefix.
+        """
+        old_prefix = os.environ["LSST_DDS_PARTITION_PREFIX"]
+        with self.assertWarns(DeprecationWarning):
+            salobj.set_random_lsst_dds_domain()
+        new_prefix = os.environ["LSST_DDS_PARTITION_PREFIX"]
+        self.assertNotEqual(old_prefix, new_prefix)
+
+    def test_set_random_lsst_dds_partition_prefix(self):
         random.seed(42)
         NumToTest = 1000
         names = set()
         for i in range(NumToTest):
-            salobj.set_random_lsst_dds_domain()
-            name = os.environ.get("LSST_DDS_DOMAIN")
+            salobj.set_random_lsst_dds_partition_prefix()
+            name = os.environ.get("LSST_DDS_PARTITION_PREFIX")
             self.assertTrue(name)
             names.add(name)
         # any duplicate names will reduce the size of names
         self.assertEqual(len(names), NumToTest)
 
-    async def test_lsst_dds_domain_required(self):
-        del os.environ["LSST_DDS_DOMAIN"]
-
+    async def test_domain_attr(self):
         async with salobj.Domain() as domain:
-            with self.assertRaises(RuntimeError):
-                salobj.SalInfo(domain=domain, name="Test", index=1)
+            self.assertEqual(domain.origin, os.getpid())
 
-    async def test_domain_host_origin(self):
-        for bad_ip in ("57", "192.168", "192.168.0", "www.lsst.org"):
-            with self.subTest(bad_ip=bad_ip):
-                os.environ["LSST_DDS_IP"] = bad_ip
-                with self.assertRaises(ValueError):
-                    salobj.Domain()
-
-        for host_name, expected_host in (
-            # Values small enough that they fit into a signed long.
-            ("0.0.0.1", 1),
-            ("127.255.255.255", 2147483647),
-            # Values large enough that they do not fit into a signed long,
-            # so they must be cast to a negative value.
-            ("128.0.0.0", -2147483648),
-            ("255.255.255.255", -1),
-        ):
-            with self.subTest(host_name=host_name, expected_host=expected_host):
-                os.environ["LSST_DDS_IP"] = host_name
-                async with salobj.Domain() as domain:
-                    self.assertEqual(domain.host, expected_host)
-                    self.assertEqual(domain.origin, os.getpid())
-
-        del os.environ["LSST_DDS_IP"]
-        async with salobj.Domain() as domain:
-            self.assertGreater(domain.host, 0)
+            self.assertEqual(domain.user_host, salobj.get_user_host())
+            self.assertEqual(domain.default_identity, domain.user_host)
+            self.assertEqual(domain.ackcmd_qos_set.profile_name, "AckcmdProfile")
+            self.assertEqual(domain.command_qos_set.profile_name, "CommandProfile")
+            self.assertEqual(domain.event_qos_set.profile_name, "EventProfile")
+            self.assertEqual(domain.telemetry_qos_set.profile_name, "TelemetryProfile")
+            self.assertTrue(domain.ackcmd_qos_set.volatile)
+            self.assertTrue(domain.command_qos_set.volatile)
+            self.assertFalse(domain.event_qos_set.volatile)
+            self.assertTrue(domain.telemetry_qos_set.volatile)
 
     def test_index_generator(self):
         with self.assertRaises(ValueError):

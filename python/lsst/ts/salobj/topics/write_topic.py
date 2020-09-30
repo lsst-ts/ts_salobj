@@ -28,13 +28,13 @@ import numpy as np
 from .base_topic import BaseTopic
 from .. import base
 
-
-# Maximum value for the ``private_seqNum`` field of each topic; 4 bytes signed
-# For command topics this field is the command ID and it should be unique
+# Maximum value for the ``private_seqNum`` field of each topic,
+# a 4 byte signed integer.
+# For command topics this field is the command ID, and it must be unique
 # for each command in order to avoid collisions (since there is only one
-# ackcmd topic that is shared by all commands).
+# ``ackcmd`` topic that is shared by all commands).
 # For other topics its use is unspecified but it may prove handy to
-# increment it for each data point (until it wraps around again).
+# increment it (with wraparound) for each data point.
 MAX_SEQ_NUM = (1 << 31) - 1
 
 
@@ -54,12 +54,12 @@ class WriteTopic(BaseTopic):
         SAL topic prefix: one of "command\_", "logevent\_" or ""
     min_seq_num : `int` or `None`
         Minimum value for the ``private_seqNum`` field.
-        If None then ``private_seqNum`` is not set; this is needed
+        If `None` then ``private_seqNum`` is not set; this is needed
         for the cmdack writer, which sets the field itself.
     max_seq_num : `int`
         Maximum value for ``private_seqNum``, inclusive.
-        Ignored if ``min_seq_num`` is None.
-    initial_seq_num : `int` (optional)
+        Ignored if ``min_seq_num`` is `None`.
+    initial_seq_num : `int`, optional
         Initial sequence number; if `None` use min_seq_num.
 
     Attributes
@@ -78,7 +78,9 @@ class WriteTopic(BaseTopic):
         max_seq_num=MAX_SEQ_NUM,
         initial_seq_num=None,
     ):
-        super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
+        super().__init__(
+            salinfo=salinfo, name=name, sal_prefix=sal_prefix,
+        )
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
@@ -88,12 +90,18 @@ class WriteTopic(BaseTopic):
             self._seq_num_generator = base.index_generator(
                 imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num
             )
-        qos = (
-            salinfo.domain.volatile_writer_qos
-            if self.volatile
-            else salinfo.domain.writer_qos
-        )
-        self._writer = salinfo.publisher.create_datawriter(self._topic, qos)
+        # Command topics use a different a partition name than
+        # all other topics, including ackcmd, and the partition name
+        # is part of the publisher and subscriber.
+        # This split allows us to create just one subscriber and one publisher
+        # for each Controller or Remote:
+        # `Controller` only needs a cmd_subscriber and data_publisher,
+        # `Remote` only needs a cmd_publisher and data_subscriber.
+        if sal_prefix == "command_":
+            publisher = salinfo.cmd_publisher
+        else:
+            publisher = salinfo.data_publisher
+        self._writer = publisher.create_datawriter(self._topic, self.qos_set.writer_qos)
         self._has_data = False
         self._data = self.DataType()
         self._has_priority = sal_prefix == "logevent_"
@@ -102,12 +110,7 @@ class WriteTopic(BaseTopic):
 
     @property
     def data(self):
-        """Get or set internally cached data.
-
-        Parameters
-        ----------
-        data : `DataType`
-            New data.
+        """Internally cached message.
 
         Raises
         ------
@@ -116,8 +119,8 @@ class WriteTopic(BaseTopic):
 
         Notes
         -----
-        You must not modify the returned data, nor assume that it will be
-        constant. If you need a copy then make it yourself.
+        Do not assume the data will be constant. You can make a copy
+        using ``copy.copy(data)``.
         """
         return self._data
 
@@ -133,16 +136,23 @@ class WriteTopic(BaseTopic):
         """Has `data` ever been set?"""
         return self._has_data
 
+    def basic_close(self):
+        """A synchronous and possibly less thorough version of `close`.
+
+        Intended for exit handlers and constructor error handlers.
+        """
+        if not self.isopen:
+            return
+        self.isopen = False
+        self._writer.close()
+
     async def close(self):
         """Shut down and release resources.
 
         Intended to be called by SalInfo.close(),
         since that tracks all topics.
         """
-        if not self.isopen:
-            return
-        self.isopen = False
-        self._writer.close()
+        self.basic_close()
 
     def put(self, data=None, priority=0):
         """Output this topic.
@@ -150,8 +160,8 @@ class WriteTopic(BaseTopic):
         Parameters
         ----------
         data : ``self.DataType`` or `None`
-            New data to replace ``self.data``, if any.
-        priority : `int` (optional)
+            New message data to replace ``self.data``, if any.
+        priority : `int`, optional
             Priority; used to set the priority field of events.
             Ignored for commands and telemetry.
 
@@ -167,8 +177,8 @@ class WriteTopic(BaseTopic):
             self.data.priority = priority
         self.data.private_sndStamp = base.current_tai()
         self.data.private_revCode = self.rev_code
-        self.data.private_host = self.salinfo.domain.host
         self.data.private_origin = self.salinfo.domain.origin
+        self.data.private_identity = self.salinfo.identity
         if self._seq_num_generator is not None:
             self.data.private_seqNum = next(self._seq_num_generator)
         # when index is 0 use the default of 0 and give senders a chance
@@ -193,7 +203,7 @@ class WriteTopic(BaseTopic):
             ) from e
 
     def set(self, **kwargs):
-        """Set one or more fields of ``self.data``.
+        """Set one or more fields of message data cache ``self.data``.
 
         Parameters
         ----------
@@ -209,7 +219,8 @@ class WriteTopic(BaseTopic):
         Returns
         -------
         did_change : `bool`
-            True if data was changed or if this was the first call to `set`.
+            True if ``self.data`` was changed, or if this was the first call
+            to `set`.
 
         Raises
         ------
@@ -220,7 +231,8 @@ class WriteTopic(BaseTopic):
 
         Notes
         -----
-        If one or more fields cannot be set, the data may be partially updated.
+        If one or more fields cannot be set, the message data may be
+        partially updated.
         """
         did_change = not self.has_data
         for field_name, value in kwargs.items():

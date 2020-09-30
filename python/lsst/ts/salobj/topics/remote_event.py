@@ -33,22 +33,15 @@ class RemoteEvent(read_topic.ReadTopic):
         SAL component information
     name : `str`
         Event topic name
-    max_history : `int` (optional)
-        Maximum number of historical items to read:
-
-        * 0 if none; strongly recommended for `RemoteCommand` & `AckCmdReader`
-        * 1 is recommended for events and telemetry
-    queue_len : `int`
+    max_history : `int`, optional
+        Maximum number of historical items to read. 1 is typical.
+    queue_len : `int`, optional
         Number of elements that can be queued for `get_oldest`.
-
-    Notes
-    -----
-    All functions that return data return from an internal cache.
-    This cached value is replaced by all read operations, so as long as
-    no other code modifies the data, the returned data will not change.
     """
 
-    def __init__(self, salinfo, name, max_history=1, queue_len=100):
+    def __init__(
+        self, salinfo, name, max_history=1, queue_len=read_topic.DEFAULT_QUEUE_LEN
+    ):
         super().__init__(
             salinfo=salinfo,
             name=name,

@@ -29,16 +29,41 @@ from .sal_info import SalInfo
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
 from .sal_log_handler import SalLogHandler
 
-# TODO DM-25126: Remove setAuthList once ts_salobj supports auth lists.
-# TODO DM-17157: Remove the non-setAuthList entries if and when
-# SALSubsystems.xml explicitly lists all generic topics used.
-OPTIONAL_COMMAND_NAMES = set(
-    ("abort", "enterControl", "setValue", "setSimulationMode", "setAuthList")
-)
+# Set of generic commands that need not have an associated do_ method.
+# TODO DM-17157: Remove this constant if and when ``SALSubsystems.xml``
+# explicitly lists all generic topics used by every SAL component.
+OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue", "setSimulationMode"))
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.
 SHUTDOWN_DELAY = 1
+
+
+def parse_as_prefix_and_set(items_str):
+    """Parse a string as an optional +/- prefix and a set of items.
+
+    Parameters
+    ----------
+    items_str : `str`
+        Data string formatted as an optional prefix of "+" or "-"
+        followed by a set of comma-separated items (each of which
+        must not contain a comma or space).
+        Whitespace is ignored after the optional prefix and after each comma.
+
+    Returns
+    -------
+    prefix_data : `List` [`str`, `set`]
+        A tuple of two items:
+        * The prefix: "+", "-", or "" (no prefix).
+        * The set of items. Each item is a `str` with no whitespace or comma.
+    """
+    prefix = ""
+    if items_str and items_str[0] in ("+", "-"):
+        prefix = items_str[0]
+        items_str = items_str[1:]
+    data_set = set([name.strip() for name in items_str.split(",")])
+    data_set -= set([""])
+    return prefix, data_set
 
 
 class Controller:
@@ -53,10 +78,10 @@ class Controller:
     ----------
     name : `str`
         Name of SAL component.
-    index : `int` or `None` (optional)
+    index : `int` or `None`, optional
         SAL component index, or 0 or None if the component is not indexed.
         A value is required if the component is indexed.
-    do_callbacks : `bool` (optional)
+    do_callbacks : `bool`, optional
         Set ``do_<name>`` methods as callbacks for commands?
         If True then there must be exactly one ``do_<name>`` method
         for each command.
@@ -147,6 +172,9 @@ class Controller:
         domain = Domain()
         try:
             self.salinfo = SalInfo(domain=domain, name=name, index=index)
+            new_identity = self.salinfo.name_index
+            self.salinfo.identity = new_identity
+            domain.default_identity = new_identity
             self.log = self.salinfo.log
             self.start_called = False
             # Task that is set done when the controller is closed
@@ -186,22 +214,33 @@ class Controller:
 
             self._sal_log_handler = SalLogHandler(controller=self)
             self.log.addHandler(self._sal_log_handler)
-            self.start_task = asyncio.ensure_future(self.start())
-            """This task is set done when the CSC is fully started.
 
-            If `start` fails then the task has an exception set
-            and the CSC is not usable.
-            """
+            # This task is set done when the CSC is fully started.
+            # If `start` fails then the task has an exception set
+            # and the CSC is not usable.
+            self.start_task = asyncio.create_task(self._protected_start())
 
         except Exception:
-            asyncio.ensure_future(domain.close())
+            # Note: Domain.basic_close closes all its SalInfo instances.
+            domain.basic_close()
+            raise
+
+    async def _protected_start(self):
+        """Call `start` and handle exceptions."""
+        if self.start_called:
+            raise RuntimeError("Start already called")
+        self.start_called = True
+        try:
+            await self.start()
+        except asyncio.CancelledError:
+            self.log.warning("start canceled")
+        except Exception as e:
+            self.log.exception("start failed")
+            await self.close(exception=e, cancel_start=False)
             raise
 
     async def start(self):
         """Finish construction."""
-        if self.start_called:
-            raise RuntimeError("Start already called")
-        self.start_called = True
 
         # Allow each remote constructor to begin running its start method.
         await asyncio.sleep(0)
@@ -217,12 +256,16 @@ class Controller:
         await asyncio.gather(*start_tasks)
         await self.salinfo.start()
         self.put_log_level()
+        self.evt_authList.set_put(
+            authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
+            nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
+        )
 
     @property
     def domain(self):
         return self.salinfo.domain
 
-    async def close(self, exception=None):
+    async def close(self, exception=None, cancel_start=True):
         """Shut down, clean up resources and set done_task done.
 
         May be called multiple times. The first call closes the Controller;
@@ -233,11 +276,14 @@ class Controller:
 
         Parameters
         ----------
-        exception : `Exception` (optional)
+        exception : `Exception`, optional
             The exception that caused stopping, if any, in which case
             the ``self.done_task`` exception is set to this value.
             Specify `None` for a normal exit, in which case
             the ``self.done_task`` result is set to `None`.
+        cancel_start : `bool`, optional
+            Cancel the start task? Leave this true unless calling
+            this from the start task.
 
         Notes
         -----
@@ -245,27 +291,35 @@ class Controller:
         all background tasks, pauses briefly to allow final SAL messages
         to be sent, then closes the dds domain.
         """
+        if cancel_start and not self.start_task.done():
+            self.start_task.cancel()
         if not self.isopen:
             # Closed or closing. Wait for done_task to be finished,
             # ignoring any exception. If you want to know about the exception
             # you can examine done_task yourself.
             try:
+                self.log.info("Already closing; waiting for done_task")
                 await self.done_task
             except Exception:
                 pass
             return
+
         self.isopen = False
         try:
             await self.close_tasks()
         except Exception:
-            self.log.exception("Controller.close_tasks failed")
+            self.log.exception("Controller.close_tasks failed; close continues")
         try:
             # Give remotes time to read final DDS messages before closing
             # the domain participant.
-            await asyncio.sleep(SHUTDOWN_DELAY)
             self.log.removeHandler(self._sal_log_handler)
-            self._sal_log_handler = None
+            await asyncio.sleep(SHUTDOWN_DELAY)
             await self.domain.close()
+        except asyncio.CancelledError:
+            self.domain.basic_close()
+        except Exception:
+            self.domain.basic_close()
+            self.log.exception("Controller.close failed near the end; close continues")
         finally:
             if not self.done_task.done():
                 if exception:
@@ -280,6 +334,56 @@ class Controller:
         and closing the dds domain.
         """
         pass
+
+    def do_setAuthList(self, data):
+        """Update the authorization list.
+
+        Parameters
+        ----------
+        data : ``cmd_setAuthList.DataType``
+            Authorization lists.
+
+        Notes
+        -----
+        Add items if the data string starts with "+", ignoring duplicates
+        (both with respect to the existing items and within the data string).
+        Remove items if the data string starts with "-", ignoring missing
+        items (items specified for removal that do not exist).
+        Ignore whitespace after each comma and after the +/- prefix.
+        """
+        users_prefix, users_set = parse_as_prefix_and_set(data.authorizedUsers)
+        # Remove "me" from users list.
+        users_set.discard(self.salinfo.domain.user_host)
+
+        cscs_prefix, cscs_set = parse_as_prefix_and_set(data.nonAuthorizedCSCs)
+        # Strip :0 suffix, if present, for consistency.
+        cscs_set = {csc[:-2] if csc.endswith(":0") else csc for csc in cscs_set}
+
+        if users_prefix == "+":
+            # + prefix: add users.
+            self.salinfo.authorized_users |= users_set
+        elif users_prefix == "-":
+            # - prefix: remove users.
+            self.salinfo.authorized_users -= users_set
+        else:
+            # No prefix: replace users.
+            self.salinfo.authorized_users = users_set
+
+        if cscs_prefix == "+":
+            # + prefix: add CSCs.
+            self.salinfo.non_authorized_cscs |= cscs_set
+        elif cscs_prefix == "-":
+            # - prefix: remove CSCs.
+            self.salinfo.non_authorized_cscs -= cscs_set
+        else:
+            # No prefix: replace CSCs.
+            self.salinfo.non_authorized_cscs = cscs_set
+
+        self.evt_authList.set_put(
+            authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
+            nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
+            force_output=True,
+        )
 
     def do_setLogLevel(self, data):
         """Set logging level.
@@ -338,17 +442,3 @@ class Controller:
 
     async def __aexit__(self, type, value, traceback):
         await self.close()
-
-    def __del__(self):
-        """Last-ditch effort to clean up critical resources.
-
-        Users should call `close` instead, because it does more
-        and because ``__del__`` is not reliably called.
-        """
-        handler = getattr(self, "_sal_log_handler", None)
-        log = getattr(self, "log", None)
-        if None not in (handler, log):
-            log.removeHandler(handler)
-        domain = getattr(self, "domain", None)
-        if domain is not None:
-            domain.close_dds()

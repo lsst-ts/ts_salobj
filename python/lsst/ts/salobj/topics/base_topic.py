@@ -58,8 +58,10 @@ class BaseTopic(abc.ABC):
         For example: "logevent_summaryState".
     log : `logging.Logger`
         A logger.
+    qos_set : `salobj.QosSet`
+        Quality of service set.
     volatile : `bool`
-        Is this topic volatile (does it want no historical data)?
+        Is this topic volatile (in which case it has no historical data)?
     attr_name : `str`
         Name of topic attribute in `Controller` and `Remote`.
         For example: "evt_summaryState".
@@ -78,12 +80,20 @@ class BaseTopic(abc.ABC):
             self.name = str(name)
             self.sal_name = sal_prefix + self.name
             self.log = salinfo.log.getChild(self.sal_name)
-            self.volatile = name == "ackcmd" or sal_prefix == "command_"
 
             attr_prefix = "ack_" if name == "ackcmd" else _ATTR_PREFIXES.get(sal_prefix)
             if attr_prefix is None:
                 raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
             self.attr_name = attr_prefix + name
+
+            if name == "ackcmd":
+                self.qos_set = salinfo.domain.ackcmd_qos_set
+            elif sal_prefix == "command_":
+                self.qos_set = salinfo.domain.command_qos_set
+            elif sal_prefix == "logevent_":
+                self.qos_set = salinfo.domain.event_qos_set
+            else:
+                self.qos_set = salinfo.domain.telemetry_qos_set
 
             revname = salinfo.revnames.get(self.sal_name)
             if revname is None:
@@ -91,18 +101,13 @@ class BaseTopic(abc.ABC):
                     f"Could not find {self.salinfo.name} topic {self.sal_name}"
                 )
             self.dds_name = revname.replace("::", "_")
-            self.rev_code = self.dds_name[-8:]
+            self.rev_code = self.dds_name.rsplit("_", 1)[1]
 
             self._type = ddsutil.get_dds_classes_from_idl(
                 salinfo.metadata.idl_path, revname
             )
-            qos = (
-                salinfo.domain.volatile_topic_qos
-                if self.volatile
-                else salinfo.domain.topic_qos
-            )
             self._topic = self._type.register_topic(
-                salinfo.domain.participant, self.dds_name, qos
+                salinfo.domain.participant, self.dds_name, self.qos_set.topic_qos
             )
 
         except Exception as e:
@@ -110,8 +115,43 @@ class BaseTopic(abc.ABC):
 
     @property
     def DataType(self):
-        """The class of data for this topic."""
+        """The type (class) for a message of this topic.
+
+        When you read or write a message for this topic you are reading
+        or writing an instance of `DataType`.
+
+        Notes
+        -----
+        The preferred way to write a message for a topic is:
+
+        * `RemoteCommand.set_start` to start a command.
+        * `CommandEvent.set_put` to write an event.
+        * `CommandTelemetry.set_put` to write a telemetry message.
+
+        However, it is also possible to use `DataType` to create a message,
+        then write, it as separate operations. For example,
+        assuming we have a `Remote` for SAL component "Test"::
+
+            # The preferred way to issue a command:
+            await = remote.cmd_wait.set_put(duration=2, timeout=5)
+
+            # But an alternative is to first create the command,
+            # then send it, as two separate operations:
+            message = remote.cmd_wait.DataType(duration=2)
+            await remote.cmd_wait.start(message, timeout=5)
+
+            # Or, even more verbosely:
+            message = remote.cmd_wait.DataType()
+            message.duration = 2
+            await remote.cmd_wait.start(message, timeout=5)
+        """
         return self._type.topic_data_class
+
+    @property
+    def volatile(self):
+        """Does this topic have volatile durability?
+        """
+        return self.qos_set.volatile
 
     @property
     def metadata(self):

@@ -47,7 +47,7 @@ index_gen = salobj.index_generator()
 
 class SALPYTestCase(asynctest.TestCase):
     def setUp(self):
-        salobj.set_random_lsst_dds_domain()
+        salobj.set_random_lsst_dds_partition_prefix()
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"
         self.index = next(index_gen)
 
@@ -59,51 +59,47 @@ class SALPYTestCase(asynctest.TestCase):
         await self.check_salobj_remote("minimal_salpy_controller.py")
 
     async def check_salobj_remote(self, exec_name):
-        print(f"Remote: start {exec_name} in a subprocess")
-        script_path = self.datadir / exec_name
-        process = await asyncio.create_subprocess_exec(
-            str(script_path), str(self.index), str(INITIAL_LOG_LEVEL)
-        )
+        # Create the remote before the subprocess
+        # to be sure the remote sees telemetry from the subprocess
+        # (telemetry is volatile, so has no historical data).
+        print(f"Remote: create salobj remote with index={self.index}")
+        t0 = time.monotonic()
+        async with salobj.Domain() as domain, salobj.Remote(
+            domain=domain, name="Test", index=self.index, evt_max_history=1,
+        ) as remote:
+            dt = time.monotonic() - t0
+            print(
+                f"Remote: creating topics and waiting for historical data took {dt:0.2f} seconds"
+            )
+            remote.salinfo.log.addHandler(logging.StreamHandler())
 
-        try:
-            print(f"Remote: create salobj remote with index={self.index}")
-            t0 = time.monotonic()
-            async with salobj.Domain() as domain, salobj.Remote(
-                domain=domain,
-                name="Test",
-                index=self.index,
-                evt_max_history=1,
-                tel_max_history=1,
-            ) as remote:
-                dt = time.monotonic() - t0
-                print(
-                    f"Remote: creating topics and waiting for historical data took {dt:0.2f} seconds"
-                )
-                remote.salinfo.log.addHandler(logging.StreamHandler())
+            print(f"Remote: start {exec_name} in a subprocess")
+            script_path = self.datadir / exec_name
+            process = await asyncio.create_subprocess_exec(
+                str(script_path), str(self.index), str(INITIAL_LOG_LEVEL)
+            )
 
-                print("Remote: wait for initial logLevel")
+            try:
+                print("Remote: wait for initial logLevel event")
                 data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                 print(f"Remote: read initial logLevel.level={data.level}")
                 self.assertEqual(data.level, INITIAL_LOG_LEVEL)
-                print("Remote: wait for initial scalars")
-                data = await remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
-                print(f"Remote: read initial scalars.int0={data.int0}")
-                self.assertEqual(data.int0, INITIAL_LOG_LEVEL)
 
                 for level in (10, 52, 0):
                     # remote.cmd_setLogLevel.put()
                     # print(f"Remote: put setLogLevel(level={level})")
-                    print(f"Remote: sending setLogLevel(level={level})")
-                    await remote.cmd_setLogLevel.set_start(
+                    print(f"Remote: send setLogLevel(level={level}) command")
+                    ackcmd = await remote.cmd_setLogLevel.set_start(
                         level=level, timeout=STD_TIMEOUT
                     )
-                    print("Remote: wait for logLevel")
+                    self.assertEqual(ackcmd.identity, remote.salinfo.identity)
+                    print("Remote: wait for logLevel event")
                     data = await remote.evt_logLevel.next(
                         flush=False, timeout=STD_TIMEOUT
                     )
                     print(f"Remote: read logLevel={data.level}")
                     self.assertEqual(data.level, level)
-                    print("Remote: wait for scalars")
+                    print("Remote: wait for scalars telemetry")
                     data = await remote.tel_scalars.next(
                         flush=False, timeout=STD_TIMEOUT
                     )
@@ -111,12 +107,12 @@ class SALPYTestCase(asynctest.TestCase):
                     self.assertEqual(data.int0, level)
                     await asyncio.sleep(0.1)
 
-            await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
-        finally:
-            print("Remote: done")
-            if process.returncode is None:
-                process.terminate()
-                warnings.warn("Killed a process that was not properly terminated")
+                await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
+            finally:
+                print("Remote: done")
+                if process.returncode is None:
+                    process.terminate()
+                    warnings.warn("Killed a process that was not properly terminated")
 
 
 if __name__ == "__main__":
