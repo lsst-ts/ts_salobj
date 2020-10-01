@@ -115,22 +115,33 @@ def assertRaisesAckTimeoutError(ack=None, error=None):
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
 
 
-def assert_black_formatted(dir):
-    """Assert that all Python files in a directory (at any depth)
-    are formatted with black.
+def assert_black_formatted(dirpath):
+    """Assert that all Python files in a directory, or any subdirectory
+    of that directory, are formatted with black.
 
-    Here is how to call this from a unit test:
+    To call this from a unit test (see ``tests/test_black.py``)::
 
-        assert_black_formatted(pathlib.Path(__file__).parents[1])
+        salobj.assert_black_formatted(pathlib.Path(__file__).parents[1])
+
+    Parameters
+    ----------
+    dirpath : `pathlib.Path` or `str`
+        Path to root directory; typically this will be the root
+        directory of a package, such as ts_salobj.
 
     Raises
     ------
     AssertionError
         If any files are not formatted with ``black``.
+
+    Notes
+    -----
+    For this test to exclude ``version.py``, list it in ``.gitignore``
+    as ``version.py``, rather than by the full path
+    (e.g. not `python/lsst/ts/salobj/version.py`).
+    This may be a bug in black 19.10b0.
     """
-    result = subprocess.run(
-        ["black", "--check", str(dir), "--exclude", "version.py"], capture_output=True
-    )
+    result = subprocess.run(["black", "--check", str(dirpath)], capture_output=True,)
     if result.returncode != 0:
         raise AssertionError(result.stderr)
 
