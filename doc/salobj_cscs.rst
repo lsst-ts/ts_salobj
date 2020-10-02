@@ -92,11 +92,30 @@ CSC Details
 Make your CSC a subclass of `ConfigurableCsc` if it can be configured via the ``start`` command, or `BaseCsc` if not.
 Most CSCs can be configured.
 
-* Specify class variable ``valid_simulation_modes`` as a list of valid simulation modes.
+* Specify the following **class** variables:
 
-    * If your CSC does not support simulation then set ``valid_simulation_modes = [0]``.
-      The value 0 is always used for normal operation.
-    * To implement nonzero simulation modes see :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`.
+    * ``valid_simulation_modes``: a list or tuple of valid simulation modes.
+
+        * If your CSC does not support simulation then set ``valid_simulation_modes = [0]``.
+          The value 0 is always used for normal operation.
+        * To implement nonzero simulation modes see :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`.
+
+    * ``version``: the version of your package, as a string.
+      Typically set to ``version = __version__``, where ``__version__`` has been imported as follows: ``from . import __version__``.
+      Note that this requires ``__init__.py`` to set ``__version__``  *before* importing the module defining the CSC.
+
+    * Here is an example::
+
+        from lsst.ts import salobj
+
+        from . import __version__
+
+        class ATDomeCsc(salobj.ConfigurableCsc):
+            """...(doc string)...
+            """
+
+            valid_simulation_modes = [0, 1]
+            version = __version__
 
 * Handling commands:
 
@@ -125,7 +144,7 @@ Most CSCs can be configured.
 
 * In your constructor call:
 
-    * ``self.evt_softwareVersions.set(version=...)``; that is ``set``, not ``set_put``, because `BaseCsc` will add more information and then output the event.
+    * ``self.evt_softwareVersions.set(cscVersion=...)``; that is ``set``, not ``set_put``, because `BaseCsc` will add more information and then output the event (in `BaseCsc.start`).
       If your CSC has individually versioned subsystems, then also set the ``subsystemVersions`` field, else leave it blank.
     * If your CSC outputs settings information in events other than ``settingsApplied`` then call:
       ``self.evt_settingsApplied.set(otherSettingsEvents=...)`` with a comma-separated list of the name of those events, without the ``logevent_`` prefix.
@@ -251,7 +270,7 @@ Unit Testing your CSC
   * ``self.remote``: a remote that talks to the CSC.
   * Any other objects you construct in ``basic_make_csc``.
 
-See ``tests/test_csc.py`` in this package (ts_salobj) for an example.
+See ``tests/test_csc_configuration.py`` in this package (ts_salobj) for an example.
 
 .. _lsst.ts.salobj-externally_commandable_csc:
 
@@ -303,8 +322,8 @@ constructor argument (0 is reserved for normal operation) and document what they
 It is quite common to support only one simulation mode, in which case the two allowed values are 0 and 1.
 However, you may support additional modes; you can even use a bit mask to supporting independently simulating different subsystems.
 
-Set class variable ``valid_simulation_modes`` to a list of all supported simulation modes, including 0 for normal operation.
-If your CSC has just one simulation mode::
+Set *class* variable ``valid_simulation_modes`` to a list of all supported simulation modes, including 0 for normal operation.
+If your CSC has just one simulation mode (the most common case)::
 
     valid_simulation_modes = (0, 1)
 
@@ -312,11 +331,12 @@ Then decide where to turn on your simulator; here are some common choices:
 
 * If your CSC communicates with a low-level controller and your simulator emulates that controller
   (which is strongly recommended), start the simulator where you connect to the low-level controller.
-  This is often the `configure` method for configurable CSCs.
+  This is often the ``configure`` method for configurable CSCs, or a custom ``connect`` method
+  that you write and that you call from ``configure``.
 
 * If your simulator should only run in certain states, then you may start and stop it in `handle_summary_state`.
 
-* If your simulator needs no configuration and is always running, then you can run it in `start`.
+* If your simulator needs no configuration and can always be running, it is simplest to start it in `start` and stop it in `close_tasks`.
 
 A deprecated way to handle simulation that you may see in older code was to not set class variable ``valid_simulation_modes``.
 This required overriding three methods: `BaseCsc.implement_simulation_mode`, `BaseCsc.add_arguments`, and `BaseCsc.add_kwargs_from_args`.

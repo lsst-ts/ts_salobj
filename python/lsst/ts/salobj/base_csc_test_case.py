@@ -120,6 +120,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         Adds a logging.StreamHandler if one is not alread present.
         """
         testutils.set_random_lsst_dds_partition_prefix()
+        self.remote = None
+        self.csc = None
         try:
             self.csc = self.basic_make_csc(
                 initial_state=initial_state,

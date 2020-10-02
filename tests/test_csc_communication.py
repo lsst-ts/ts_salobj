@@ -24,7 +24,9 @@ import contextlib
 import itertools
 import logging
 import pathlib
+import subprocess
 import unittest
+import warnings
 
 import asynctest
 import numpy as np
@@ -361,6 +363,34 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
         await self.check_bin_script(
             name="Test", index=index, exe_name="run_test_csc.py"
         )
+
+    async def test_bin_script_version(self):
+        """Test running the Test CSC from the bin script.
+
+        Note that the bin script calls class method ``amain``.
+        """
+        salobj.set_random_lsst_dds_partition_prefix()
+        index = self.next_index()
+        exec_path = pathlib.Path(__file__).parents[1] / "bin" / "run_test_csc.py"
+
+        process = await asyncio.create_subprocess_exec(
+            str(exec_path),
+            str(index),
+            "--version",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=STD_TIMEOUT
+            )
+            self.assertEqual(stdout.decode()[:-1], salobj.__version__)
+            await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
+            self.assertEqual(process.returncode, 0)
+        finally:
+            if process.returncode is None:
+                process.terminate()
+                warnings.warn("Killed a process that was not properly terminated")
 
     async def test_log_level(self):
         """Test that specifying a log level to make_csc works."""

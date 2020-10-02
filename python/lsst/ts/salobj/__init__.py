@@ -1,3 +1,8 @@
+try:
+    from .version import *
+except ImportError:
+    __version__ = "?"
+
 from .async_s3_bucket import *
 from .sal_enums import *
 from .base import *
@@ -20,11 +25,3 @@ from .base_csc_test_case import *
 from .base_config_test_case import *
 from .csc_commander import *
 from .testcsccommander import *
-
-# Backwards compatibility
-from . import testutils as test_utils
-
-try:
-    from .version import *
-except ImportError:
-    __version__ = "?"
