@@ -158,6 +158,7 @@ class BaseCsc(Controller):
             salVersion=format_version(self.salinfo.metadata.sal_version),
             xmlVersion=format_version(self.salinfo.metadata.xml_version),
             openSpliceVersion=dds_utils.get_dds_version(),
+            cscVersion=getattr(self, "version", None),
         )
 
     async def close_tasks(self):
@@ -228,11 +229,9 @@ class BaseCsc(Controller):
                 )
 
         try:
-            # Import __version__ this here because it is not available
-            # when base_csc is first imported.
-            from . import __version__
-
-            parser.add_argument("--version", action="version", version=__version__)
+            version = getattr(cls, "version", None)
+            if version is not None:
+                parser.add_argument("--version", action="version", version=version)
         except ImportError:
             warnings.warn(
                 "No --version command-line argument because __version__ is unavailable.",
