@@ -29,6 +29,7 @@ import numpy as np
 
 from .base_csc import State
 from .configurable_csc import ConfigurableCsc
+from . import __version__
 
 
 class TestCsc(ConfigurableCsc):
@@ -92,6 +93,7 @@ class TestCsc(ConfigurableCsc):
     """
 
     valid_simulation_modes = [0]
+    version = __version__
     __test__ = False  # stop pytest from warning that this is not a test
 
     def __init__(

@@ -64,6 +64,10 @@ class TestCscConstructorTestCase(asynctest.TestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_partition_prefix()
 
+    async def test_class_attributes(self):
+        self.assertEqual(list(salobj.TestCsc.valid_simulation_modes), [0])
+        self.assertEqual(salobj.TestCsc.version, salobj.__version__)
+
     async def test_initial_state(self):
         """Test all allowed initial_state values, both as enums and ints."""
         for initial_state in salobj.State:
