@@ -142,12 +142,13 @@ Most CSCs can be configured.
     * It is strongly discouraged to implement the ``setValue`` command or otherwise allow modifying configuration in any way other than the ``start`` command, because that makes it difficult to reproduce the current configuration and determine how it got that way.
       However, if your CSC does allow this, then you are responsible for ouputting the ``appliedSettingsMatchStart`` event with ``appliedSettingsMatchStartIsTrue=False`` when appropriate.
 
-* In your constructor call:
+* Set the following event data in your constructor, if necessary:
 
-    * ``self.evt_softwareVersions.set(cscVersion=...)``; that is ``set``, not ``set_put``, because `BaseCsc` will add more information and then output the event (in `BaseCsc.start`).
-      If your CSC has individually versioned subsystems, then also set the ``subsystemVersions`` field, else leave it blank.
-    * If your CSC outputs settings information in events other than ``settingsApplied`` then call:
-      ``self.evt_settingsApplied.set(otherSettingsEvents=...)`` with a comma-separated list of the name of those events, without the ``logevent_`` prefix.
+    * If your CSC has individually versioned subsystems, then call ``self.evt_softwareVersions.set(subsystemVersions=...)``.
+    * If your CSC outputs settings information in additional events beyond ``settingsApplied`` then call:
+      ``self.evt_settingsApplied.set(otherSettingsEvents=...)`` with a comma-separated list of the names of those events,
+      without the ``logevent_`` prefix.
+    * Note: for both of these events call ``set`` not ``set_put``, because the parent class adds more information and then outputs the event.
     
 * Override `BaseCsc.handle_summary_state`  to handle tasks such as:
 
