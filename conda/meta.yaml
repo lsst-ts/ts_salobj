@@ -36,6 +36,7 @@ test:
     - boto3
     - moto
     - ts-dds
+    - ts-ddsconfig
     - ts-idl
   source_files:
     - python

@@ -59,13 +59,16 @@ Used by `AsyncS3Bucket`:
 Other Configuration
 -------------------
 
-In addition to the environment variables described above, you will need the `ts_idl`_ package and, if you wish to build topic schemas, the `ts_sal`_ package.
+In addition to the environment variables described above, you will need the following Python packages:
 
-The `Vortex OpenSplice`_ DDS quality of service is specified by the file ``qos/DDS_DefaultQoS_All.xml`` in `ts_idl`_.
+* `ts_ddsconfig`_ for OpenSplice DDS configuration.
+* `ts_idl`_ for the IDL files that define SAL topic schemas, and associated enum modules.
+* `ts_sal`_ to build IDL files and to run ts_salobj unit tests.
 
 DDS topic schemas are defined by ``OMG IDL`` files, which are contained in the ``idl`` directory of the `ts_idl`_ package.
 You may generate new IDL files using the ``make_idl_files.py`` command-line script in the `ts_sal`_ package.
 
 .. _Vortex OpenSplice: https://istkb.adlinktech.com/article/vortex-opensplice-documentation/
-.. _ts_sal: https://github.com/lsst-ts/ts_sal
+.. _ts_ddsconfig: https://github.com/lsst-ts/ts_ddsconfig
 .. _ts_idl: https://github.com/lsst-ts/ts_idl
+.. _ts_sal: https://github.com/lsst-ts/ts_sal
