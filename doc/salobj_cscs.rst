@@ -92,15 +92,35 @@ CSC Details
 Make your CSC a subclass of `ConfigurableCsc` if it can be configured via the ``start`` command, or `BaseCsc` if not.
 Most CSCs can be configured.
 
-* Specify the following **class** variables:
+* Specify the following **class** variables, if appropriate:
 
-    * ``valid_simulation_modes``: a list or tuple of valid simulation modes.
+    * ``default_initial_state`` (`State`):  Default initial state.
+        The default value is `State.STANDBY`, which is appropriate for most CSCs.
+        Set to `State.OFFLINE` for externally commandable CSCs.
+    * ``enable_cmdline_state`` (bool):
+        Set `True` to allow your CSC to be started from the command line in a state other than ``default_initial_state``.
+        If `True`:
+
+        * `BaseCsc.amain` adds command-line arguments ``--state`` and, if your CSC is configurable, ``--settings``.
+        * If your CSC is configurable, then you *must* add constructor argument ``settings_to_apply`` to your CSC and pass it by name to ``super().__init__``.
+        * Note: the ``settings_to_apply`` constructor argument is recommended for *all* configurable CSCs;
+          even if ``enable_cmdline_state`` is `False`, the argument is still useful for unit tests.
+        The default is `False` because CSCs should start in ``default_initial_state`` unless you have a good reason to do otherwise.
+    * ``require_settings`` (bool): set True if and only if all of the following apply:
+
+      * Your CSC is configurable.
+      * Your CSC does not have a usable default configuration (this is rare).
+      * ``enable_cmdline_state`` is True.
+
+      `True` makes the ``--settings`` command-line argument required if ``--state`` is specified as ``disabled`` or ``enabled``.
+      The default is `False`.
+    * ``valid_simulation_modes`` (list of int): a list or tuple of valid simulation modes:
 
         * If your CSC does not support simulation then set ``valid_simulation_modes = [0]``.
           The value 0 is always used for normal operation.
         * To implement nonzero simulation modes see :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`.
 
-    * ``version``: the version of your package, as a string.
+    * ``version`` (str): the version of your package.
       Typically set to ``version = __version__``, where ``__version__`` has been imported as follows: ``from . import __version__``.
       Note that this requires ``__init__.py`` to set ``__version__``  *before* importing the module defining the CSC.
 
@@ -183,6 +203,10 @@ Most CSCs can be configured.
 
 * Override `BaseCsc.close_tasks` if you have background tasks to clean up when quitting.
   This is not strictly needed if you cancel your tasks in `BaseCsc.handle_summary_state`, but it allows you to close CSCs in the ENABLED or DISABLED state in unit tests without generating annoying warnings about pending tasks.
+
+* If you override `BaseCsc.start` (which runs once as the CSC starts up) be sure to call ``await super().start()`` at or very near the end of your override.
+  This is because `BaseCsc.start` may call state transition commands, which will trigger calls to `BaseCsc.handle_summary_state`;
+  thus your CSC should be as "started" as practical before calling ``await super().start()``.
 
 * Configurable CSCs (subclasses of `ConfigurableCsc`) must provide additional `Configurable CSC Details`_.
 
