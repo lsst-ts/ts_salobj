@@ -74,19 +74,16 @@ class TestCscConstructorTestCase(asynctest.TestCase):
             if initial_state == salobj.State.OFFLINE:
                 continue
             with self.subTest(initial_state=initial_state):
-                # Test initial_state as an enum.
-                index = next(index_gen)
-                async with salobj.TestCsc(
-                    index=index, initial_state=initial_state
-                ) as csc:
-                    self.assertEqual(csc.summary_state, initial_state)
+                await self.check_initial_state(initial_state)
+                await self.check_initial_state(int(initial_state))
 
-                # Test initial_state as an integer.
-                index = next(index_gen)
-                async with salobj.TestCsc(
-                    index=index, initial_state=int(initial_state)
-                ) as csc:
-                    self.assertEqual(csc.summary_state, initial_state)
+    async def check_initial_state(self, initial_state):
+        """Check that specifying the initial_state constructur argument
+        sets the initial reported state to match.
+        """
+        index = next(index_gen)
+        async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
+            self.assertEqual(csc.summary_state, initial_state)
 
     async def test_invalid_config_dir(self):
         """Test that invalid integer initial_state is rejected."""
