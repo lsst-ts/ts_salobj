@@ -47,8 +47,8 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
     async def test_set_summary_state_valid(self):
         """Test set_summary_state with valid states."""
         for initial_state, final_state in itertools.product(salobj.State, salobj.State):
-            if initial_state == salobj.State.OFFLINE:
-                # TestCsc cannot start in OFFLINE state.
+            if initial_state in (salobj.State.OFFLINE, salobj.State.FAULT):
+                # TestCsc cannot start in OFFLINE or FAULT state.
                 continue
             if final_state == salobj.State.FAULT:
                 # set_summary_state cannot transition to FAULT state.
@@ -61,8 +61,8 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
     async def test_set_summary_state_invalid_state(self):
         """Test set_summary_state with invalid states."""
         for initial_state in salobj.State:
-            if initial_state == salobj.State.OFFLINE:
-                # TestCsc cannot start in OFFLINE state.
+            if initial_state in (salobj.State.OFFLINE, salobj.State.FAULT):
+                # TestCsc cannot start in OFFLINE or FAULT state.
                 continue
             async with self.make_csc(
                 initial_state=initial_state, config_dir=TEST_CONFIG_DIR

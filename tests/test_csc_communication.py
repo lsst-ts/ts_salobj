@@ -354,15 +354,28 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
             await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
 
-    async def test_bin_script(self):
+    async def test_bin_script_run(self):
         """Test running the Test CSC from the bin script.
 
         Note that the bin script calls class method ``amain``.
         """
-        index = self.next_index()
-        await self.check_bin_script(
-            name="Test", index=index, exe_name="run_test_csc.py"
-        )
+        for initial_state, settings_to_apply in (
+            (None, None),
+            (salobj.State.STANDBY, None),
+            (salobj.State.DISABLED, "all_fields.yaml"),
+            (salobj.State.ENABLED, ""),
+        ):
+            index = self.next_index()
+            with self.subTest(
+                initial_state=initial_state, settings_to_apply=settings_to_apply
+            ):
+                await self.check_bin_script(
+                    name="Test",
+                    index=index,
+                    exe_name="run_test_csc.py",
+                    initial_state=initial_state,
+                    settings_to_apply=settings_to_apply,
+                )
 
     async def test_bin_script_version(self):
         """Test running the Test CSC from the bin script.
