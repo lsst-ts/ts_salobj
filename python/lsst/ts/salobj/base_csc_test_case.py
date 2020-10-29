@@ -33,10 +33,7 @@ from . import testutils
 from .domain import Domain
 from .remote import Remote
 
-# Timeout for fast operations (seconds)
-STD_TIMEOUT = 10
-# Timeout for slow operations, such as CSCs starting (seconds).
-LONG_TIMEOUT = 60
+STD_TIMEOUT = 60
 
 
 class BaseCscTestCase(metaclass=abc.ABCMeta):
@@ -86,7 +83,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         config_dir=None,
         simulation_mode=0,
         log_level=None,
-        timeout=LONG_TIMEOUT,
+        timeout=STD_TIMEOUT,
         **kwargs,
     ):
         """Create a CSC and remote and wait for them to start.
