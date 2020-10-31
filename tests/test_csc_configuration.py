@@ -296,7 +296,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 settingsToApply="all_fields.yaml", timeout=10
             )
             self.assertEqual(self.csc.summary_state, salobj.State.DISABLED)
-            self.assert_next_summary_state(salobj.State.DISABLED)
+            await self.assert_next_summary_state(salobj.State.DISABLED)
 
 
 if __name__ == "__main__":
