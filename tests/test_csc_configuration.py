@@ -283,13 +283,20 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             for name in ("all_bad_types", "bad_format", "one_bad_type", "extra_field"):
                 config_file = f"invalid_{name}.yaml"
                 with self.subTest(config_file=config_file):
-                    with self.assertRaises(salobj.AckError):
+                    with salobj.assertRaisesAckError(ack=salobj.SalRetCode.CMD_FAILED):
                         await self.remote.cmd_start.set_start(
                             settingsToApply=config_file, timeout=STD_TIMEOUT
                         )
                     data = self.remote.evt_summaryState.get()
                     self.assertEqual(self.csc.summary_state, salobj.State.STANDBY)
                     self.assertEqual(data.summaryState, salobj.State.STANDBY)
+
+            # Make sure the CSC can still be started.
+            await self.remote.cmd_start.set_start(
+                settingsToApply="all_fields.yaml", timeout=10
+            )
+            self.assertEqual(self.csc.summary_state, salobj.State.DISABLED)
+            self.assert_next_summary_state(salobj.State.DISABLED)
 
 
 if __name__ == "__main__":

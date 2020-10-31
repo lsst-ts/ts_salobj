@@ -94,12 +94,15 @@ class ControllerLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertGreater(msg.lineNumber, 0)
             self.assertEqual(msg.process, os.getpid())
 
-            warn_message = "test warn message"
+            # Test a warning with an unencodable character
+            encodable_message = "test warn message"
+            warn_message = encodable_message + "\u2013"
             self.csc.log.warning(warn_message)
             msg = await self.remote.evt_logMessage.next(
                 flush=False, timeout=STD_TIMEOUT
             )
-            self.assertEqual(msg.message, warn_message)
+            encodable_len = len(encodable_message)
+            self.assertEqual(msg.message[0:encodable_len], encodable_message)
             self.assertEqual(msg.level, logging.WARNING)
             self.assertEqual(msg.traceback, "")
 
