@@ -22,6 +22,7 @@
 __all__ = ["SalLogHandler"]
 
 import logging
+import sys
 
 
 class SalLogHandler(logging.Handler):
@@ -38,23 +39,27 @@ class SalLogHandler(logging.Handler):
     def __init__(self, controller):
         self.controller = controller
         super().__init__()
-        self.has_name = hasattr(self.controller.evt_logMessage.DataType(), "name")
 
     def emit(self, record):
-        self.format(record)
         try:
-            if self.has_name:
-                self.controller.evt_logMessage.set(name=record.name)
+            self.format(record)
+            if record.exc_text is not None:
+                traceback = record.exc_text.encode("utf-8", "replace")
+            else:
+                traceback = ""
             self.controller.evt_logMessage.set_put(
+                name=record.name,
                 level=record.levelno,
-                message=record.message,
-                traceback=record.exc_text or "",
+                message=record.message.encode("utf-8", "replace"),
+                traceback=traceback,
                 filePath=record.pathname,
                 functionName=record.funcName,
                 lineNumber=record.lineno,
                 process=record.process,
                 force_output=True,
             )
+        except Exception as e:
+            print(f"SalLogHandler.emit failed: {e}", file=sys.stderr)
         finally:
             # The Python formatter documentation suggests clearing ``exc_text``
             # after calling ``format`` to avoid problems with

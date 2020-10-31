@@ -21,6 +21,11 @@ pipeline {
         container_name = "salobj_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
         PYPI_CREDS = credentials("pypi")
     }
+    parameters {
+        string(defaultValue: 'default', description: 'The IDL Version', name: 'idl_version')
+        booleanParam(defaultValue: false, description: "Are we going on to building the CSC package after salobj?", name: 'buildCSCConda')
+        
+    }
     stages {
         stage("Pull Docker Image") {
             steps {
@@ -35,9 +40,13 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker run --name ${container_name} -di --rm --env TS_SALOBJ_VERSION=${salobj_version} \
-                        --env TS_CONFIG_OCS_DIR=/home/saluser/ts_config_ocs \
-                        -v ${WORKSPACE}:/home/saluser/source ${dockerImageName}
+                    echo ${dockerImageName}
+                    docker run --name ${container_name} -di --rm --env \
+                    TS_SALOBJ_VERSION=${salobj_version} \
+                    --env TS_CONFIG_OCS_DIR=/home/saluser/ts_config_ocs \
+                    --env TS_IDL_VERSION=${idl_version} \
+                    -v ${WORKSPACE}:/home/saluser/source \
+                    ${dockerImageName}
                     """
                 }
             }
@@ -95,6 +104,19 @@ pipeline {
                 }
             }
         }
+        stage("Trigger CSC Conda Broker Job") {
+                when { expression { return env.buildCSCConda.toBoolean() } }
+                steps {
+                    echo "Starting the CSC_Conda_broker/develop job; idl_version: " + idl_version
+                    build job: 'CSC_Conda_Broker', parameters: [\
+                    string(name: 'idl_version', value: idl_version ), \
+                    string(name: 'salobj_version', value: salobj_version ), \
+                    booleanParam(name: 'Bleed', value: false), \
+                    booleanParam(name: 'Daily', value: true), \
+                    booleanParam(name: 'Release', value: false), \
+                    string(name: 'Branch', value: 'develop')]
+                }
+            }
     }
     post {
         cleanup {
