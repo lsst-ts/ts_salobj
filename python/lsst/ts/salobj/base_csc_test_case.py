@@ -23,6 +23,7 @@ __all__ = ["BaseCscTestCase"]
 import abc
 import asyncio
 import contextlib
+import enum
 import logging
 import shutil
 
@@ -203,6 +204,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             read_value = getattr(data, field_name, None)
             if read_value is None:
                 self.fail(f"No such field {field_name} in topic {topic}")
+            if isinstance(expected_value, enum.IntEnum):
+                try:
+                    read_value = type(expected_value)(read_value)
+                except Exception:
+                    pass
             self.assertEqual(
                 read_value,
                 expected_value,
