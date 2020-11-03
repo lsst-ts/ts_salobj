@@ -117,7 +117,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         Notes
         -----
-        Adds a logging.StreamHandler if one is not alread present.
+        Adds a logging.StreamHandler if one is not already present.
         """
         testutils.set_random_lsst_dds_partition_prefix()
         self.remote = None

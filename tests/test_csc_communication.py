@@ -122,7 +122,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
         Notes
         -----
-        Adds a logging.StreamHandler if one is not alread present.
+        Adds a logging.StreamHandler if one is not already present.
         """
         domain = self.csc.domain
         original_default_identity = domain.default_identity
