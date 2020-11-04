@@ -421,23 +421,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertIsNone(self.remote.evt_arrays.get())
             self.assertIsNone(self.remote.tel_arrays.get())
 
-            # check that info level messages are enabled
-            await self.assert_next_sample(
-                topic=self.remote.evt_logLevel, level=logging.INFO
-            )
-
-            # purge any existing messages
-            self.remote.evt_logMessage.flush()
-
             # send the setArrays command with random data
             cmd_data_sent = self.csc.make_random_cmd_arrays()
             await self.remote.cmd_setArrays.start(cmd_data_sent, timeout=STD_TIMEOUT)
-
-            log_message = await self.remote.evt_logMessage.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
-            self.assertEqual(log_message.level, logging.INFO)
-            self.assertIn("setArrays", log_message.message)
 
             # see if new data was broadcast correctly
             evt_data = await self.remote.evt_arrays.next(
@@ -469,22 +455,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertIsNone(self.remote.evt_scalars.get())
             self.assertIsNone(self.remote.tel_scalars.get())
 
-            # check that info level messages are enabled
-            await self.assert_next_sample(
-                topic=self.remote.evt_logLevel, level=logging.INFO
-            )
-
-            # purge any existing messages
-            self.remote.evt_logMessage.flush()
-
             # send the setScalars command with random data
             cmd_data_sent = self.csc.make_random_cmd_scalars()
             await self.remote.cmd_setScalars.start(cmd_data_sent, timeout=STD_TIMEOUT)
-            log_message = await self.remote.evt_logMessage.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
-            self.assertEqual(log_message.level, logging.INFO)
-            self.assertIn("setScalars", log_message.message)
 
             # see if new data is being broadcast correctly
             evt_data = await self.remote.evt_scalars.next(
