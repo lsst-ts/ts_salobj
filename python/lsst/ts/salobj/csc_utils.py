@@ -19,17 +19,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["set_summary_state"]
+__all__ = [
+    "make_state_transition_dict",
+    "get_expected_summary_states",
+    "set_summary_state",
+]
 
 import asyncio
 
-from .base_csc import State
+from .sal_enums import State
 
 
-def _make_state_transition_dict():
+def make_state_transition_dict():
     """Make a dict of state transition commands and states
 
-    The keys are (beginning state, ending state)
+    The keys are (beginning state, ending state).
     The values are a list of tuples:
 
     * A state transition command
@@ -71,7 +75,17 @@ def _make_state_transition_dict():
     return state_transition_dict
 
 
-_STATE_TRANSITION_DICT = _make_state_transition_dict()
+_STATE_TRANSITION_DICT = make_state_transition_dict()
+
+
+def get_expected_summary_states(initial_state, final_state):
+    """Return all summary states expected when transitioning from
+    one state to another.
+    """
+    cmd_state_list = _STATE_TRANSITION_DICT[(initial_state, final_state)]
+    # cmd_state_list lists the state after each state transition
+    # command, but we want the initial state, as well.
+    return [initial_state] + [cmd_state[1] for cmd_state in cmd_state_list]
 
 
 async def set_summary_state(remote, state, settingsToApply="", timeout=30):

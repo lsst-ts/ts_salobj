@@ -62,6 +62,9 @@ class TestCsc(ConfigurableCsc):
 
         * `salobj.State.ENABLED` if you want the CSC immediately usable.
         * `salobj.State.STANDBY` if you want full emulation of a CSC.
+    settings_to_apply : `str`, optional
+        Settings to apply if ``initial_state`` is `State.DISABLED`
+        or `State.ENABLED`.
     simulation_mode : `int`, optional
         Simulation mode. The only allowed value is 0.
 
@@ -92,12 +95,18 @@ class TestCsc(ConfigurableCsc):
     * 1: the fault command was executed
     """
 
+    enable_cmdline_state = True
     valid_simulation_modes = [0]
     version = __version__
     __test__ = False  # stop pytest from warning that this is not a test
 
     def __init__(
-        self, index, config_dir=None, initial_state=State.STANDBY, simulation_mode=0,
+        self,
+        index,
+        config_dir=None,
+        initial_state=State.STANDBY,
+        settings_to_apply="",
+        simulation_mode=0,
     ):
         schema_path = (
             pathlib.Path(__file__).resolve().parents[4] / "schema" / "Test.yaml"
@@ -108,6 +117,7 @@ class TestCsc(ConfigurableCsc):
             config_dir=config_dir,
             index=index,
             initial_state=initial_state,
+            settings_to_apply=settings_to_apply,
             simulation_mode=simulation_mode,
         )
         self.cmd_wait.allow_multiple_callbacks = True

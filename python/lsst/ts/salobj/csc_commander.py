@@ -32,8 +32,7 @@ from . import remote
 from . import sal_enums
 from . import csc_utils
 
-# Timeout for fast operations (seconds)
-STD_TIMEOUT = 10
+STD_TIMEOUT = 60
 
 
 async def stream_as_generator(stream, encoding="utf-8"):
