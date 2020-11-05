@@ -26,6 +26,7 @@ import contextlib
 import enum
 import logging
 import shutil
+import subprocess
 
 from . import base
 from . import sal_enums
@@ -290,10 +291,12 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             domain=domain, name=name, index=index
         ) as self.remote:
             print("check_bin_script running:", " ".join(args))
-            process = await asyncio.create_subprocess_exec(*args)
+            process = await asyncio.create_subprocess_exec(
+                *args, stderr=subprocess.PIPE,
+            )
             try:
                 for state in expected_states:
-                    await self.assert_next_summary_state(state)
+                    await self.assert_next_summary_state(state, timeout=30)
                 if settings_to_apply is not None and settings_to_apply.endswith(
                     ".yaml"
                 ):
@@ -307,6 +310,13 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 if process.returncode is None:
                     process.terminate()
                     await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
+                else:
+                    print("Warning: suprocess has already quit.")
+                    try:
+                        data = await process.stderr.read()
+                        print("Subprocess stderr: ", data.decode())
+                    except Exception as e:
+                        print(f"Could not read subprocess stderr: {e}")
 
     async def check_standard_state_transitions(
         self,
