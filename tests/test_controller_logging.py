@@ -72,15 +72,18 @@ class ControllerLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             )
             self.assertEqual(logLevel.level, logging.INFO)
 
-            # purge any existing messages
             self.remote.evt_logMessage.flush()
 
+            # We may still get one or two startup log messages
+            # so read until we see the one we want.
             info_message = "test info message"
             self.csc.log.info(info_message)
-            msg = await self.remote.evt_logMessage.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
-            self.assertEqual(msg.message, info_message)
+            while True:
+                msg = await self.remote.evt_logMessage.next(
+                    flush=False, timeout=STD_TIMEOUT
+                )
+                if msg.message == info_message:
+                    break
             self.assertEqual(msg.level, logging.INFO)
             self.assertEqual(msg.traceback, "")
 
