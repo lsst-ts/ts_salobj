@@ -34,6 +34,7 @@ Changes:
   This makes errors easier to understand.
 * Improved `Controller` startup: commands will be ignored until the `Controller` has (at least mostly) started.
   This avoids mysterious errors from commanding a partially constructed SAL component.
+* Improved the output of `BaseCscTestCase` if the subprocess dies.
 
 How to update your Code. Except as noted, all changes are backwards compatible with ts_salobj 6.0:
 
