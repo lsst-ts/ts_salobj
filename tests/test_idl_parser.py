@@ -174,6 +174,7 @@ class IdlParserTestCase(unittest.TestCase):
             private_seqNum="long",
             private_identity="string",
             private_origin="long",
+            private_host="long",
             boolean0="boolean",
             byte0="octet",
             char0="string",
@@ -190,12 +191,6 @@ class IdlParserTestCase(unittest.TestCase):
             double0="double",
             priority="long",
         )
-
-        # TODO DM-25478: remove this code once we are using a modern enough
-        # ts_sal everywhere that we no longer have the private_host field
-        # in our SAL topics.
-        if "private_host" in metadata.topic_info["scalars"].field_info:
-            field_types["private_host"] = "long"
 
         # Check some details of arrays topics, including data type,
         # array length and string length.
