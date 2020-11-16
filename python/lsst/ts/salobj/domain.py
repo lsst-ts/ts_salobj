@@ -28,6 +28,7 @@ import warnings
 
 import dds
 
+from lsst.ts import ddsconfig
 from lsst.ts import idl
 from . import base
 
@@ -186,7 +187,7 @@ class Domain:
         self.origin = os.getpid()
         self.idl_dir = idl.get_idl_dir()
 
-        qos_path = idl.get_qos_path()
+        qos_path = ddsconfig.get_qos_path()
         self.ackcmd_qos_set = QosSet(qos_path=qos_path, profile_name="AckcmdProfile")
         self.command_qos_set = QosSet(qos_path=qos_path, profile_name="CommandProfile")
         self.event_qos_set = QosSet(qos_path=qos_path, profile_name="EventProfile")
