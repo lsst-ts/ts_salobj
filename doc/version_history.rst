@@ -36,6 +36,11 @@ Changes:
 * Improved `Controller` startup: commands will be ignored until the `Controller` has (at least mostly) started.
   This avoids mysterious errors from commanding a partially constructed SAL component.
 * Improved the output of `BaseCscTestCase` if the subprocess dies.
+* Uses ``pre-commit`` instead of a custom git pre-commit hook.
+  You may have to do the following to take advantage of it:
+
+    * Run `pre-commit install` once.
+    * If directed, run `git config --unset-all core.hooksPath` once.
 
 How to update your Code. Except as noted, all changes are backwards compatible with ts_salobj 6.0:
 
