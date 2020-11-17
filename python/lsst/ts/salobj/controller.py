@@ -179,26 +179,17 @@ class Controller:
             self.start_called = False
             # Task that is set done when the controller is closed
             self.done_task = asyncio.Future()
+            self._do_callbacks = do_callbacks
             self.isopen = True
-            command_names = self.salinfo.command_names
+
             if do_callbacks:
-                self._assert_do_methods_present(command_names)
-            for cmd_name in command_names:
+                # This must be called after the cmd_ attributes
+                # have been added.
+                self._assert_do_methods_present()
+
+            for cmd_name in self.salinfo.command_names:
                 cmd = ControllerCommand(self.salinfo, cmd_name)
                 setattr(self, cmd.attr_name, cmd)
-                if do_callbacks:
-                    cmd_attr_name = f"do_{cmd_name}"
-                    func = getattr(self, cmd_attr_name, None)
-                    if func:
-                        cmd.callback = getattr(self, cmd_attr_name)
-                    elif cmd_name not in OPTIONAL_COMMAND_NAMES:
-                        raise RuntimeError(f"Can't find method {cmd_attr_name}")
-                    else:
-
-                        def reject_command(data):
-                            raise base.ExpectedError("Not supported by this CSC")
-
-                        cmd.callback = reject_command
 
             for evt_name in self.salinfo.event_names:
                 evt = ControllerEvent(self.salinfo, evt_name)
@@ -255,6 +246,19 @@ class Controller:
             start_tasks.append(salinfo.start_task)
         await asyncio.gather(*start_tasks)
         await self.salinfo.start()
+
+        # Assign command callbacks; give up if this fails, since the CSC
+        # will be at least partly broken.
+        if self._do_callbacks:
+            try:
+                self._assign_cmd_callbacks()
+            except Exception:
+                self.log.exception(
+                    "Failed in start on _assign_cmd_callbacks; quitting."
+                )
+                await self.close()
+                return
+
         self.put_log_level()
         self.evt_authList.set_put(
             authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
@@ -401,16 +405,10 @@ class Controller:
         """
         self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(), force_output=True)
 
-    def _assert_do_methods_present(self, command_names):
-        """Assert that all needed do_<name> methods are present,
-        and no extra such methods are present.
-
-        Parameters
-        ----------
-        command_names : `list` of `str`
-            List of command names, e.g. as provided by
-            `salinfo.command_names`
+    def _assert_do_methods_present(self):
+        """Assert that all needed do_<name> methods are present.
         """
+        command_names = self.salinfo.command_names
         do_names = [name for name in dir(self) if name.startswith("do_")]
         supported_command_names = [name[3:] for name in do_names]
         if set(command_names) != set(supported_command_names):
@@ -435,6 +433,27 @@ class Controller:
                 return
             err_msg = " and ".join(err_msgs)
             raise TypeError(f"This class {err_msg}")
+
+    def _assign_cmd_callbacks(self):
+        """Assign each do_ method as a callback to the appropriate command.
+
+        Must not be called until the command attributes have been added.
+        """
+        command_names = self.salinfo.command_names
+        for cmd_name in command_names:
+            cmd = getattr(self, f"cmd_{cmd_name}")
+            do_method_name = f"do_{cmd_name}"
+            func = getattr(self, do_method_name, None)
+            if func is not None:
+                cmd.callback = func
+            elif cmd_name not in OPTIONAL_COMMAND_NAMES:
+                raise RuntimeError(f"Can't find method {do_method_name}")
+            else:
+
+                def reject_command(data):
+                    raise base.ExpectedError("Not supported by this CSC")
+
+                cmd.callback = reject_command
 
     async def __aenter__(self):
         await self.start_task

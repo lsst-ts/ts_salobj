@@ -71,22 +71,19 @@ class TestCscConstructorTestCase(asynctest.TestCase):
     async def test_initial_state(self):
         """Test all allowed initial_state values, both as enums and ints."""
         for initial_state in salobj.State:
-            if initial_state == salobj.State.OFFLINE:
+            if initial_state == salobj.State.FAULT:
                 continue
             with self.subTest(initial_state=initial_state):
-                # Test initial_state as an enum.
-                index = next(index_gen)
-                async with salobj.TestCsc(
-                    index=index, initial_state=initial_state
-                ) as csc:
-                    self.assertEqual(csc.summary_state, initial_state)
+                await self.check_initial_state(initial_state)
+                await self.check_initial_state(int(initial_state))
 
-                # Test initial_state as an integer.
-                index = next(index_gen)
-                async with salobj.TestCsc(
-                    index=index, initial_state=int(initial_state)
-                ) as csc:
-                    self.assertEqual(csc.summary_state, initial_state)
+    async def check_initial_state(self, initial_state):
+        """Check that specifying the initial_state constructur argument
+        sets the initial reported state to match.
+        """
+        index = next(index_gen)
+        async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
+            self.assertEqual(csc.summary_state, initial_state)
 
     async def test_invalid_config_dir(self):
         """Test that invalid integer initial_state is rejected."""
@@ -107,10 +104,33 @@ class TestCscConstructorTestCase(asynctest.TestCase):
 
     async def test_invalid_initial_state(self):
         """Test that invalid integer initial_state is rejected."""
-        for invalid_state in (min(salobj.State) - 1, max(salobj.State) + 1):
+        for invalid_state in (
+            salobj.State.FAULT,
+            min(salobj.State) - 1,
+            max(salobj.State) + 1,
+        ):
             with self.subTest(invalid_state=invalid_state):
                 with self.assertRaises(ValueError):
                     salobj.TestCsc(index=next(index_gen), initial_state=invalid_state)
+
+    async def test_late_callback_assignment(self):
+        """Test that command callbacks are not assigned until start
+        is called.
+        """
+        index = next(index_gen)
+        csc = salobj.TestCsc(index=index)
+        try:
+            cmd_topics = [
+                getattr(csc, f"cmd_{name}") for name in csc.salinfo.command_names
+            ]
+            for topic in cmd_topics:
+                self.assertIsNone(topic.callback)
+
+            await csc.start_task
+            for topic in cmd_topics:
+                self.assertIsNotNone(topic.callback)
+        finally:
+            await csc.close()
 
 
 if __name__ == "__main__":

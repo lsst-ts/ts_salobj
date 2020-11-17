@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
+import enum
 import os
 import pathlib
 import sys
@@ -40,10 +40,40 @@ TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 class NoIndexCsc(salobj.TestCsc):
     """A CSC whose constructor has no index argument."""
 
-    def __init__(self, arg1, arg2, config_dir=None):
-        super().__init__(index=next(index_gen), config_dir=config_dir)
+    def __init__(
+        self,
+        arg1,
+        arg2,
+        initial_state=salobj.State.STANDBY,
+        settings_to_apply="",
+        config_dir=None,
+    ):
+        super().__init__(
+            index=next(index_gen),
+            initial_state=initial_state,
+            settings_to_apply=settings_to_apply,
+            config_dir=config_dir,
+        )
         self.arg1 = arg1
         self.arg2 = arg2
+
+
+class TestCscSettingsRequired(salobj.TestCsc):
+    """A variant of TestCsc that has require_settings=True.
+    """
+
+    require_settings = True
+
+
+class TestCscSettingsRequiredNoCmdLineState(salobj.TestCsc):
+    """An invalid variant of TestCsc with require_settings=True
+    and enable_cmdline_state=True.
+
+    This should raise RuntimeError in make_from_cmd_line.
+    """
+
+    require_settings = True
+    enable_cmdline_state = False
 
 
 class CscMakeFromCmdLineTestCase(asynctest.TestCase):
@@ -65,16 +95,26 @@ class CscMakeFromCmdLineTestCase(asynctest.TestCase):
                 ) as csc:
                     self.assertEqual(csc.arg1, arg1)
                     self.assertEqual(csc.arg2, arg2)
-                    await csc.do_exitControl(data=None)
-                    await asyncio.wait_for(csc.done_task, timeout=5)
+                    await csc.close()
 
     async def test_specified_index(self):
         sys.argv = [sys.argv[0]]
         index = next(index_gen)
         async with salobj.TestCsc.make_from_cmd_line(index=index) as csc:
             self.assertEqual(csc.salinfo.index, index)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+            await csc.close()
+
+    async def test_enum_index(self):
+        class SalIndex(enum.IntEnum):
+            ONE = 1
+            TWO = 2
+
+        for item in SalIndex:
+            index = item.value
+            sys.argv = [sys.argv[0], str(index)]
+            async with salobj.TestCsc.make_from_cmd_line(index=SalIndex) as csc:
+                self.assertEqual(csc.salinfo.index, index)
+                await csc.close()
 
     async def test_index_from_argument_and_default_config_dir(self):
         index = next(index_gen)
@@ -88,8 +128,7 @@ class CscMakeFromCmdLineTestCase(asynctest.TestCase):
             desired_config_dir = pathlib.Path(desird_config_pkg_dir) / "Test/v1"
             self.assertEqual(csc.get_config_pkg(), desired_config_pkg_name)
             self.assertEqual(csc.config_dir, desired_config_dir)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+            await csc.close()
 
     async def test_config_from_argument(self):
         index = next(index_gen)
@@ -97,8 +136,66 @@ class CscMakeFromCmdLineTestCase(asynctest.TestCase):
         async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
             self.assertEqual(csc.salinfo.index, index)
             self.assertEqual(csc.config_dir, TEST_CONFIG_DIR)
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
+            await csc.close()
+
+    async def test_state_good(self):
+        """Test valid --state and --settings arguments."""
+        for state, settings in (
+            (salobj.State.OFFLINE, ""),
+            (salobj.State.STANDBY, ""),
+            (salobj.State.DISABLED, "all_fields.yaml"),
+            (salobj.State.ENABLED, ""),
+        ):
+            state_name = state.name.lower()
+            index = next(index_gen)
+            sys.argv = [
+                sys.argv[0],
+                str(index),
+                "--config",
+                str(TEST_CONFIG_DIR),
+                "--state",
+                state_name,
+                "--settings",
+                settings,
+            ]
+            async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
+                self.assertEqual(csc.salinfo.index, index)
+                self.assertEqual(csc.summary_state, state)
+                if state not in (salobj.State.DISABLED, salobj.State.ENABLED):
+                    # Configuration not applied.
+                    self.assertIsNone(csc.config)
+                elif settings == "all_fields.yaml":
+                    self.assertEqual(csc.config.string0, "an arbitrary string")
+                elif settings == "":
+                    self.assertEqual(csc.config.string0, "default value for string0")
+                else:
+                    self.fail("Unhandled case.")
+                await csc.close()
+
+    async def test_state_bad(self):
+        """Test invalid --state or --settings arguments."""
+        # The only allowed --state values are "standby", "disabled",
+        # and "enabled".
+        for bad_state_name in ("fault", "not_a_state"):
+            index = next(index_gen)
+            sys.argv = [sys.argv[0], str(index), "--state", bad_state_name]
+            with self.assertRaises(SystemExit):
+                salobj.TestCsc.make_from_cmd_line(index=True)
+
+        # Test that require_settings=True makes --settings required
+        # if state is "disabled" or "enabled".
+        for state_name in ("disabled", "enabled"):
+            index = next(index_gen)
+            sys.argv = [sys.argv[0], str(index), "--state", state_name]
+            with self.assertRaises(SystemExit):
+                TestCscSettingsRequired.make_from_cmd_line(index=True)
+
+        # Test that require_settings=True requires enable_cmdline_state=True.
+        # This is caught in the constructor, not the argument parser,
+        # in order to make sure the developer sees it.
+        index = next(index_gen)
+        with self.assertRaises(RuntimeError):
+            TestCscSettingsRequiredNoCmdLineState(index=True)
 
 
 if __name__ == "__main__":

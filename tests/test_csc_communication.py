@@ -122,7 +122,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
         Notes
         -----
-        Adds a logging.StreamHandler if one is not alread present.
+        Adds a logging.StreamHandler if one is not already present.
         """
         domain = self.csc.domain
         original_default_identity = domain.default_identity
@@ -354,15 +354,28 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
             await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
 
-    async def test_bin_script(self):
+    async def test_bin_script_run(self):
         """Test running the Test CSC from the bin script.
 
         Note that the bin script calls class method ``amain``.
         """
-        index = self.next_index()
-        await self.check_bin_script(
-            name="Test", index=index, exe_name="run_test_csc.py"
-        )
+        for initial_state, settings_to_apply in (
+            (None, None),
+            (salobj.State.STANDBY, None),
+            (salobj.State.DISABLED, "all_fields.yaml"),
+            (salobj.State.ENABLED, ""),
+        ):
+            index = self.next_index()
+            with self.subTest(
+                initial_state=initial_state, settings_to_apply=settings_to_apply
+            ):
+                await self.check_bin_script(
+                    name="Test",
+                    index=index,
+                    exe_name="run_test_csc.py",
+                    initial_state=initial_state,
+                    settings_to_apply=settings_to_apply,
+                )
 
     async def test_bin_script_version(self):
         """Test running the Test CSC from the bin script.
@@ -421,23 +434,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertIsNone(self.remote.evt_arrays.get())
             self.assertIsNone(self.remote.tel_arrays.get())
 
-            # check that info level messages are enabled
-            await self.assert_next_sample(
-                topic=self.remote.evt_logLevel, level=logging.INFO
-            )
-
-            # purge any existing messages
-            self.remote.evt_logMessage.flush()
-
             # send the setArrays command with random data
             cmd_data_sent = self.csc.make_random_cmd_arrays()
             await self.remote.cmd_setArrays.start(cmd_data_sent, timeout=STD_TIMEOUT)
-
-            log_message = await self.remote.evt_logMessage.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
-            self.assertEqual(log_message.level, logging.INFO)
-            self.assertIn("setArrays", log_message.message)
 
             # see if new data was broadcast correctly
             evt_data = await self.remote.evt_arrays.next(
@@ -469,22 +468,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             self.assertIsNone(self.remote.evt_scalars.get())
             self.assertIsNone(self.remote.tel_scalars.get())
 
-            # check that info level messages are enabled
-            await self.assert_next_sample(
-                topic=self.remote.evt_logLevel, level=logging.INFO
-            )
-
-            # purge any existing messages
-            self.remote.evt_logMessage.flush()
-
             # send the setScalars command with random data
             cmd_data_sent = self.csc.make_random_cmd_scalars()
             await self.remote.cmd_setScalars.start(cmd_data_sent, timeout=STD_TIMEOUT)
-            log_message = await self.remote.evt_logMessage.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
-            self.assertEqual(log_message.level, logging.INFO)
-            self.assertIn("setScalars", log_message.message)
 
             # see if new data is being broadcast correctly
             evt_data = await self.remote.evt_scalars.next(

@@ -23,6 +23,7 @@ __all__ = ["BaseCsc"]
 
 import argparse
 import asyncio
+import enum
 import sys
 import warnings
 
@@ -30,6 +31,7 @@ from . import base
 from . import dds_utils
 from .sal_enums import State
 from .controller import Controller
+from .csc_utils import make_state_transition_dict
 
 HEARTBEAT_INTERVAL = 1  # seconds
 
@@ -46,8 +48,15 @@ class BaseCsc(Controller):
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
     initial_state : `State` or `int`, optional
-        The initial state of the CSC. This is provided for unit testing,
-        as real CSCs should start up in `State.STANDBY`, the default.
+        Initial state for this CSC.
+        Typically `State.STANDBY` (or `State.OFFLINE` for an
+        externally commandable CSC) but can also be
+        `State.DISABLED`, or `State.ENABLED`,
+        in which case you may also want to specify
+        ``settings_to_apply`` for a configurable CSC.
+    settings_to_apply : `str`, optional
+        Settings to apply if ``initial_state`` is `State.DISABLED`
+        or `State.ENABLED`. Ignored if the CSC is not configurable.
     simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
 
@@ -61,9 +70,24 @@ class BaseCsc(Controller):
 
     Attributes
     ----------
+    default_initial_state : `State`
+        A *class* attribute.
+        Default initial state. Leave at `State.STANDBY` for most CSCs;
+        set to `State.OFFLINE` for externally commandable CSCs.
+    enable_cmdline_state : `State`
+        A *class* attribute.
+        If `True` then add ``--state`` and (if a subclass of `ConfigurableCsc`)
+        ``--settings`` command-line arguments.
+        The default is `False` because CSCs should start in
+        ``default_initial_state`` unless we have good reason to do otherwise.
+    require_settings : `bool`
+        A *class* attribute.
+        Controls whether the ``--settings`` command-line argument
+        is required if ``--state`` is specified.
+        Ignored unless ``enable_cmdline_state`` is True
+        and the CSC is a subclass of `ConfigurableCsc`.
     valid_simulation_modes : `list` [`int`] or `None`
-        This is a *class* attribute that, if not `None`
-        has the following effect:
+        A *class* attribute. If not `None` has the following effect:
 
         * ``simulation_mode`` will be checked in the constructor
         * `implement_simulation_mode` will be a no-op.
@@ -109,14 +133,33 @@ class BaseCsc(Controller):
     """
 
     # See Attributes in the doc string.
+    default_initial_state = State.STANDBY
+    enable_cmdline_state = False
+    require_settings = False
     valid_simulation_modes = None
 
     def __init__(
-        self, name, index=None, initial_state=State.STANDBY, simulation_mode=0,
+        self,
+        name,
+        index=None,
+        initial_state=State.STANDBY,
+        settings_to_apply="",
+        simulation_mode=0,
     ):
+        # Check for consistent require_settings and enable_cmdline_state.
+        # Do that here, instead of in make_from_cmd_line, to  make sure
+        # the developer sees the problem.
+        if self.require_settings and not self.enable_cmdline_state:
+            raise RuntimeError(
+                "Class variable require_settings=True "
+                "requires class variable enable_cmdline_state=True"
+            )
+
         # cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
         initial_state = State(initial_state)
+        if initial_state == State.FAULT:
+            raise ValueError("initial_state cannot be FAULT")
         if self.valid_simulation_modes is None:
             warnings.warn(
                 "valid_simulation_modes=None is deprecated", DeprecationWarning
@@ -127,9 +170,14 @@ class BaseCsc(Controller):
                     f"simulation_mode={simulation_mode} "
                     f"not in valid_simulation_modes={self.valid_simulation_modes}"
                 )
+
+        # Postpone assigning command callbacks until `start` is done (but call
+        # assert_do_methods_present to fail early if there is a problem).
         super().__init__(name=name, index=index, do_callbacks=True)
         self._requested_simulation_mode = int(simulation_mode)
-        self._summary_state = State(initial_state)
+        self._settings_to_apply = settings_to_apply
+        self._summary_state = State(self.default_initial_state)
+        self._initial_state = initial_state
         self._faulting = False
         self._heartbeat_task = base.make_done_future()
         # Interval between heartbeat events (sec)
@@ -148,8 +196,36 @@ class BaseCsc(Controller):
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         await self.set_simulation_mode(self._requested_simulation_mode)
 
+        # Handle initial state, then transition to the desired state.
+        # If this fails then log the exception and continue,
+        # in hopes that the CSC can still be used. For instance
+        # if the settings were invalid, the user can specify others.
         await self.handle_summary_state()
         self.report_summary_state()
+        command = None
+        if self._initial_state != self.default_initial_state:
+            state_transition_dict = make_state_transition_dict()
+            # List of commands to transition from
+            # current state to initial_state.
+            # Use the current state instead of default_initial_state
+            # because of Hexapod and Rotator, which do not know their
+            # current state until they connect to the low-level controller.
+            command_state_list = state_transition_dict[
+                (self.summary_state, self._initial_state)
+            ]
+            state_transition_commands = [item[0] for item in command_state_list]
+            try:
+                for command in state_transition_commands:
+                    method = getattr(self, f"do_{command}")
+                    data = getattr(self, f"cmd_{command}").DataType()
+                    if command == "start":
+                        data.settingsToApply = self._settings_to_apply
+                    self.log.info(f"Executing {command} command during startup")
+                    await method(data)
+            except Exception:
+                self.log.exception(
+                    f"Failed in start on state transition command {command}; continuing."
+                )
 
         def format_version(version):
             return "?" if version is None else version
@@ -171,11 +247,12 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        index : `int`, `True`, `False` or `None`
-            If the CSC is indexed: specify `True` make index a required
-            command line argument, or specify a non-zero `int` to use
-            that index.
-            If the CSC is not indexed: specify `None` or 0.
+        index : `int`, `enum.IntEnum`, `True`, `False` or `None`
+            If the CSC is indexed: specify `True` make ``index`` a required
+            command-line argument that accepts any index,
+            or an enum.IntEnum class to make ``index`` a required
+            command-line argument that only accepts the enum values.
+            If the CSC is not indexed specify `None` or 0.
         **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
 
@@ -192,11 +269,27 @@ class BaseCsc(Controller):
         parser = argparse.ArgumentParser(f"Run {cls.__name__}")
         if index is True:
             parser.add_argument("index", type=int, help="SAL index.")
+        elif isinstance(index, type) and issubclass(index, enum.IntEnum):
+            # The isinstance check just above prevents errors
+            # when index is an int or bool.
+            choices = [int(item.value) for item in index]
+            names_str = ", ".join(
+                f"{item.value}: {item.name.lower()}" for item in index
+            )
+            help_text = f"SAL index, one of: {names_str}"
+            parser.add_argument("index", type=int, help=help_text, choices=choices)
         parser.add_argument(
             "--loglevel",
             type=int,
             help="log level: error=40, warning=30, info=20, debug=10",
         )
+        if cls.enable_cmdline_state:
+            parser.add_argument(
+                "--state",
+                choices=["offline", "standby", "disabled", "enabled"],
+                dest="initial_state",
+                help="initial state",
+            )
         add_simulate_arg = (
             cls.valid_simulation_modes is not None
             and len(cls.valid_simulation_modes) > 1
@@ -240,7 +333,7 @@ class BaseCsc(Controller):
         cls.add_arguments(parser)
 
         args = parser.parse_args()
-        if index is True:
+        if hasattr(args, "index"):
             kwargs["index"] = args.index
         elif not index:
             pass
@@ -248,6 +341,19 @@ class BaseCsc(Controller):
             kwargs["index"] = int(index)
         if add_simulate_arg:
             kwargs["simulation_mode"] = args.simulate
+        state_arg = getattr(args, "initial_state", None)
+        if state_arg is not None:
+            initial_state_name = state_arg.upper()
+            initial_state = getattr(State, initial_state_name)
+            kwargs["initial_state"] = initial_state
+        if hasattr(args, "settings_to_apply"):
+            # A configurable CSC with constructor arg ``settings_to_apply``
+            if args.settings_to_apply is not None:
+                kwargs["settings_to_apply"] = args.settings_to_apply
+            elif cls.require_settings and args.initial_state in ("disabled", "enabled"):
+                parser.error(
+                    "You must specify --settings if you specify --state disabled or enabled"
+                )
         cls.add_kwargs_from_args(args=args, kwargs=kwargs)
 
         csc = cls(**kwargs)
@@ -261,11 +367,12 @@ class BaseCsc(Controller):
 
         Parameters
         ----------
-        index : `int`, `True`, `False` or `None`
-            If the CSC is indexed: specify `True` make index a required
-            command line argument, or specify a non-zero `int` to use
-            that index.
-            If the CSC is not indexed: specify `None` or 0.
+        index : `int`, `enum.IntEnum`, `True`, `False` or `None`
+            If the CSC is indexed: specify `True` make ``index`` a required
+            command-line argument that accepts any index,
+            or an enum.IntEnum class to make ``index`` a required
+            command-line argument that only accepts the enum values.
+            If the CSC is not indexed specify `None` or 0.
         **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
         """

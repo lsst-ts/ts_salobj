@@ -6,8 +6,6 @@ package:
 
 source:
   path: ../
-#  git_url: https://github.com/lsst-ts/ts_salobj
-#  git_rev: {{ TS_SALOBJ_VERSION }}
 
 build:
   script: python -m pip install --no-deps --ignore-installed .
@@ -22,19 +20,8 @@ build:
 
 test:
   requires:
-    - pytest
-    - asynctest
-    - pytest-asyncio
-    - pytest-flake8
-    - pytest-tornasync
-    - pytest-cov
-    - asynctest
-    - numpy
-    - astropy
-    - jsonschema
-    - pyyaml
-    - boto3
-    - moto
+    - ts-conda-build
+    - ts-ddsconfig
     - ts-dds
     - ts-idl
   source_files:
@@ -44,7 +31,6 @@ test:
     - schema
     - setup.cfg
     - .git
-    - .githooks
   commands:
     - pytest --ignore tests/test_salpy_to_either.py --ignore tests/test_salobj_to_either.py
 
@@ -68,4 +54,5 @@ requirements:
     - pyyaml
     - boto3
     - moto
+    - ts-ddsconfig
     - ts-dds

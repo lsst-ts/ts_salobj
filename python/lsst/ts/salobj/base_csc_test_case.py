@@ -23,19 +23,21 @@ __all__ = ["BaseCscTestCase"]
 import abc
 import asyncio
 import contextlib
+import enum
 import logging
 import shutil
+import subprocess
 
 from . import base
 from . import sal_enums
 from . import testutils
 from .domain import Domain
 from .remote import Remote
+from .csc_utils import get_expected_summary_states
 
-# Timeout for fast operations (seconds)
-STD_TIMEOUT = 10
-# Timeout for slow operations, such as CSCs starting (seconds).
-LONG_TIMEOUT = 60
+# Standard timeout (sec)
+# Long to avoid unnecessary timeouts on slow CI systems.
+STD_TIMEOUT = 60
 
 
 class BaseCscTestCase(metaclass=abc.ABCMeta):
@@ -85,12 +87,15 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         config_dir=None,
         simulation_mode=0,
         log_level=None,
-        timeout=LONG_TIMEOUT,
+        timeout=STD_TIMEOUT,
         **kwargs,
     ):
         """Create a CSC and remote and wait for them to start.
 
         The csc is accessed as ``self.csc`` and the remote as ``self.remote``.
+
+        Reads and checks all but the last ``summaryState`` event during
+        startup.
 
         Parameters
         ----------
@@ -114,10 +119,12 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Time limit for the CSC to start (seconds).
         **kwargs : `dict`
             Extra keyword arguments for `basic_make_csc`.
+            For a configurable CSC this may include ``settings_to_apply``,
+            especially if ``initial_state`` is DISABLED or ENABLED.
 
         Notes
         -----
-        Adds a logging.StreamHandler if one is not alread present.
+        Adds a logging.StreamHandler if one is not already present.
         """
         testutils.set_random_lsst_dds_partition_prefix()
         self.remote = None
@@ -143,6 +150,17 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 asyncio.gather(self.csc.start_task, self.remote.start_task),
                 timeout=timeout,
             )
+
+            if initial_state != self.csc.default_initial_state:
+                # Check all expected summary states expect the final state.
+                # That is omitted for backwards compatibility.
+                expected_states = get_expected_summary_states(
+                    initial_state=self.csc.default_initial_state,
+                    final_state=initial_state,
+                )[:-1]
+                for state in expected_states:
+                    await self.assert_next_summary_state(state)
+
             yield
         finally:
             if self.remote is not None:
@@ -203,6 +221,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             read_value = getattr(data, field_name, None)
             if read_value is None:
                 self.fail(f"No such field {field_name} in topic {topic}")
+            if isinstance(expected_value, enum.IntEnum):
+                try:
+                    read_value = type(expected_value)(read_value)
+                except Exception:
+                    pass
             self.assertEqual(
                 read_value,
                 expected_value,
@@ -215,7 +238,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         name,
         index,
         exe_name,
-        initial_state=sal_enums.State.STANDBY,
+        default_initial_state=sal_enums.State.STANDBY,
+        initial_state=None,
+        settings_to_apply=None,
         cmdline_args=(),
     ):
         """Test running the CSC command line script.
@@ -228,8 +253,16 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             SAL index of component.
         exe_name : `str`
             Name of executable, e.g. "run_rotator.py"
-        initial_state : `lsst.ts.salobj.State` or `int`, optional
-            The expected initial state of the CSC. Defaults to STANDBY.
+        default_initial_state : `lsst.ts.salobj.State`, optional
+            The default initial state of the CSC.
+            Ignored unless `initial_state` is None.
+        initial_state : `lsst.ts.salobj.State` or `int` or `None`, optional
+            The desired initial state of the CSC; used to specify
+            the ``--state`` command-argument.
+        settings_to_apply : `str` or `None`, optional
+            Value for the ``--settings`` command-line argument.
+            Only relevant if ``initial_state`` is one of
+            `salobj.State.DISABLED` or `salobj.State.ENABLED`.
         cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
         """
@@ -240,24 +273,50 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 f"Could not find bin script {exe_name}; did you setup or install this package?"
             )
 
-        if index in (None, 0):
-            process = await asyncio.create_subprocess_exec(exe_name, *cmdline_args)
+        args = [exe_name]
+        if index not in (None, 0):
+            args += [str(index)]
+        if initial_state is None:
+            expected_states = [default_initial_state]
         else:
-            process = await asyncio.create_subprocess_exec(
-                exe_name, str(index), *cmdline_args
+            args += ["--state", initial_state.name.lower()]
+            expected_states = get_expected_summary_states(
+                initial_state=default_initial_state, final_state=initial_state,
             )
-        try:
-            async with Domain() as domain, Remote(
-                domain=domain, name=name, index=index
-            ) as remote:
-                summaryState_data = await remote.evt_summaryState.next(
-                    flush=False, timeout=60
-                )
-                self.assertEqual(summaryState_data.summaryState, initial_state)
+        if settings_to_apply is not None:
+            args += ["--settings", settings_to_apply]
+        args += cmdline_args
 
-        finally:
-            process.terminate()
-            await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
+        async with Domain() as domain, Remote(
+            domain=domain, name=name, index=index
+        ) as self.remote:
+            print("check_bin_script running:", " ".join(args))
+            process = await asyncio.create_subprocess_exec(
+                *args, stderr=subprocess.PIPE,
+            )
+            try:
+                for state in expected_states:
+                    await self.assert_next_summary_state(state, timeout=30)
+                if settings_to_apply is not None and settings_to_apply.endswith(
+                    ".yaml"
+                ):
+                    # The string settings_to_apply is a file name, and so
+                    # should appear in evt_settingsApplied.settingsVersion
+                    data = await self.remote.evt_settingsApplied.next(
+                        flush=False, timeout=STD_TIMEOUT
+                    )
+                    self.assertTrue(data.settingsVersion.startswith(settings_to_apply))
+            finally:
+                if process.returncode is None:
+                    process.terminate()
+                    await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
+                else:
+                    print("Warning: suprocess has already quit.")
+                    try:
+                        data = await process.stderr.read()
+                        print("Subprocess stderr: ", data.decode())
+                    except Exception as e:
+                        print(f"Could not read subprocess stderr: {e}")
 
     async def check_standard_state_transitions(
         self,

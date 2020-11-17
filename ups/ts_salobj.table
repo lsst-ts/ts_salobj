@@ -1,5 +1,6 @@
 setupRequired(sconsUtils)
-setupRequired(ts_idl)  # IDL files and the quality of service file
+setupRequired(ts_ddsconfig)  # OpenSplice quality of service file
+setupRequired(ts_idl)  # IDL files and associated enums
 setupOptional(ts_sal)  # SALPY_Test library for unit tests
 setupOptional(ts_config_ocs)  # Test configuration files for unit tests
 setupOptional(verify)

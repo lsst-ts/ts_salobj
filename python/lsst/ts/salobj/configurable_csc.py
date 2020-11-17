@@ -60,6 +60,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     initial_state : `State` or `int`, optional
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
+    settings_to_apply : `str`, optional
+        Settings to apply if ``initial_state`` is `State.DISABLED`
+        or `State.ENABLED`.
     simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
 
@@ -123,9 +126,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         schema_path,
         config_dir=None,
         initial_state=State.STANDBY,
+        settings_to_apply="",
         simulation_mode=0,
     ):
-
         try:
             with open(schema_path, "r") as f:
                 schema = yaml.safe_load(f.read())
@@ -157,6 +160,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             name=name,
             index=index,
             initial_state=initial_state,
+            settings_to_apply=settings_to_apply,
             simulation_mode=simulation_mode,
         )
 
@@ -487,6 +491,19 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             "--configdir",
             help="directory containing configuration files for the start command.",
         )
+        if cls.enable_cmdline_state:
+            settings_help = "settings to apply if --state is disabled or enabled"
+            if cls.require_settings:
+                settings_help += "; required if --state is disabled or enabled"
+                settings_default = None
+            else:
+                settings_default = ""
+            parser.add_argument(
+                "--settings",
+                help=settings_help,
+                default=settings_default,
+                dest="settings_to_apply",
+            )
 
     @classmethod
     def add_kwargs_from_args(cls, args, kwargs):
