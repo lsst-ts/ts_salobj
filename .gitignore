@@ -10,3 +10,5 @@ tests/.tests
 tests/measurements/*.json
 version.py
 .vscode
+.eggs
+*.egg-info
