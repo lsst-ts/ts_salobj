@@ -197,8 +197,8 @@ class CscCommander:
     For an example with extra commands and special telemetry handling,
     see ``RotatorCommander`` in the ts_rotator package.
 
-    Unit Testing
-    ------------
+    **Unit Testing**
+
     To unit test a commander:
 
     * Set ``commander.testing = True``.

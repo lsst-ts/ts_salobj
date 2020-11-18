@@ -105,6 +105,7 @@ Most CSCs can be configured.
         * If your CSC is configurable, then you *must* add constructor argument ``settings_to_apply`` to your CSC and pass it by name to ``super().__init__``.
         * Note: the ``settings_to_apply`` constructor argument is recommended for *all* configurable CSCs;
           even if ``enable_cmdline_state`` is `False`, the argument is still useful for unit tests.
+
         The default is `False` because CSCs should start in ``default_initial_state`` unless you have a good reason to do otherwise.
     * ``require_settings`` (bool): set True if and only if all of the following apply:
 
