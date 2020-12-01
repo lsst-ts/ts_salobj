@@ -16,23 +16,29 @@ If setting these via `os.environ` please be sure to set these to string values, 
 
 Used by `Vortex OpenSplice`_, and thus indirectly by `Domain`:
 
-* ``ADLINK_LICENSE`` (optional) points to directory containing your `Vortex OpenSplice`_ license.
-  Required if using the licensed version of `Vortex OpenSplice`_.
-  Example: ``/opt/ADLINK/Vortex_v2/Device/VortexOpenSplice/6.10.3/HDE/x86_64.linux/etc``
+* ``ADLINK_LICENSE`` points to directory containing your `Vortex OpenSplice`_ license.
+  Required if using the licensed version of `Vortex OpenSplice`_; ignored otherwise.
+  Example value: ``/opt/ADLINK/Vortex_v2/Device/VortexOpenSplice/6.10.3/HDE/x86_64.linux/etc``
+* ``LSST_DDS_DOMAIN_ID`` (optional) is used to set the DDS domain: an integer.
+  ADLink recommands a value > 0 and < 230 for "maximum interoperability".
+  DDS participants in different domains cannot see each other at all,
+  and all telescope and site nodes use the default domain,
+  so you should rarely have any reason to set this.
+  If supported, it will be part of the OpenSplice configuration file pointed to ``OSPL_URI``.
 * ``OSPL_HOME`` (required) directory of the `Vortex OpenSplice`_ software.
   This directory should contain subdirectories ``bin``, ``include``, ``lib``, etc.
-  Example: ``/opt/OpenSpliceDDS/V6.9.0/HDE/x86_64.linux``. 
+  Example: ``/opt/OpenSpliceDDS/V6.9.0/HDE/x86_64.linux``.
 * ``OSPL_MASTER_PRIORITY`` (optional) is used to set the Master Priority in ts_sal 4.2 and later.
   Nodes with higher Master Priority are more eager to become master (the primary source of late joiner data).
   Ties are broken by systemId, a random number handed out when a node is created.
   Every time a new node takes over as master, the entire system is must be "aligned", which is expensive,
-  so it is best to assign the highest Master Priority to one of nodes that will be created early.
+  so it is best to assign the highest Master Priority to one or a few nodes that will be created early.
   Valid values are 0-255.
   0 is used for SAL Scripts, because they should never be master.
   256 means "use the legacy method for choosing the master"; do not use it.
   A default value is used if this environment variable is not specified,
   and that default is guaranteed to be >0 and <255.
-  Unlike the others in this section, ``OSPL_MASTER_PRIORITY`` is specific to Vera Rubin Observatory.
+  ``OSPL_MASTER_PRIORITY`` is specific to Vera Rubin Observatory.
   If supported (ts_sal 4.2 and later), it will be part of the OpenSplice configuration file pointed to ``OSPL_URI``.
   Constant ``lsst.ts.salobj.MASTER_PRIORITY_ENV_VAR`` is available to make this easier to set from Python.
 * ``OSPL_URI`` (required) points to the main DDS configuration file.
