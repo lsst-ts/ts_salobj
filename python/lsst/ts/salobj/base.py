@@ -110,7 +110,7 @@ class AckError(Exception):
     ----------
     msg : `str`
         Error message
-    ackcmd : ``AckType``
+    ackcmd : ``AckCmdType``
         Command acknowledgement.
     """
 
