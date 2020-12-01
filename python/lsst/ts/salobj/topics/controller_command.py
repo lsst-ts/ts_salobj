@@ -68,7 +68,7 @@ class ControllerCommand(read_topic.ReadTopic):
     * If the callback function returns `None` then send a final
       acknowledgement with ``ack=SalRetCode.CMD_COMPLETE``.
     * If the callback function returns an acknowledgement
-      (instance of `SalInfo.AckType`) instead of `None`, then send that
+      (instance of `SalInfo.AckCmdType`) instead of `None`, then send that
       as the final acknowledgement. This is very unusual, but might
       be useful if the callback wants to exit early and leave some
       background task or thread processing the rest of the command.
