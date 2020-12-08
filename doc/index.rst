@@ -21,6 +21,7 @@ Using lsst.ts.salobj
 
 .. toctree::
     configuration
+    installation
     salobj_cscs
     sal_scripts
     :maxdepth: 2
