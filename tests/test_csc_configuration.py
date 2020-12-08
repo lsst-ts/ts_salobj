@@ -39,12 +39,6 @@ TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "dat
 TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
-def expected_dds_str(version, maxlen):
-    """If a string is too long for a topic field, OpenSplice sends "".
-    """
-    return "" if len(version) > maxlen else version
-
-
 class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
     def setUp(self):
         # defaults hard-coded in <ts_salobj_root>/schema/Test.yaml
@@ -86,16 +80,6 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             appliedSettingsMatchStartIsTrue=True,
         )
 
-    def test_expected_dds_str(self):
-        astr = "hello"
-        for delta_len in (-2, -1, 0, 1, 2):
-            maxlen = len(astr) + delta_len
-            if delta_len < 0:
-                desired_str = ""
-            else:
-                desired_str = astr
-            self.assertEqual(expected_dds_str(astr, maxlen=maxlen), desired_str)
-
     async def test_no_config_specified(self):
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
@@ -129,19 +113,13 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
 
             # Test the softwareVersions event.
             # Assume the string length is the same for each field.
-            # TODO DM-27041: remove expected_dds_str once ts_xml 6.2 is in use;
-            # the field lengths will be long enough to not worry about it.
             metadata = self.csc.salinfo.metadata
-            topic_info = metadata.topic_info["logevent_softwareVersions"]
-            str_length = topic_info.field_info["xmlVersion"].str_length
             data = await self.assert_next_sample(
                 topic=self.remote.evt_softwareVersions,
-                xmlVersion=expected_dds_str(metadata.xml_version, maxlen=str_length),
-                salVersion=expected_dds_str(metadata.sal_version, maxlen=str_length),
-                openSpliceVersion=expected_dds_str(
-                    salobj.get_dds_version(), maxlen=str_length
-                ),
-                cscVersion=expected_dds_str(salobj.__version__, maxlen=str_length),
+                xmlVersion=metadata.xml_version,
+                salVersion=metadata.sal_version,
+                openSpliceVersion=salobj.get_dds_version(),
+                cscVersion=salobj.__version__,
             )
             await self.check_settings_events("")
 
