@@ -20,7 +20,8 @@ Used by `Vortex OpenSplice`_, and thus indirectly by `Domain`:
   Required if using the licensed version of `Vortex OpenSplice`_; ignored otherwise.
   Example value: ``/opt/ADLINK/Vortex_v2/Device/VortexOpenSplice/6.10.3/HDE/x86_64.linux/etc``
 * ``LSST_DDS_DOMAIN_ID`` (optional) is used to set the DDS domain: an integer.
-  ADLink recommands a value > 0 and < 230 for "maximum interoperability".
+  ADLink recommands the domain ID be in range 0 <= ID <= 230 for "maximum interoperability"
+  (based on case 00020758 asking about a possible error in their configuration guide, which recommended 0 < ID < 230).
   DDS participants in different domains cannot see each other at all,
   and all telescope and site nodes use the default domain,
   so you should rarely have any reason to set this.

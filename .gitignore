@@ -9,4 +9,6 @@ __pycache__
 tests/.tests
 tests/measurements/*.json
 version.py
+.eggs
+*.egg_info
 .vscode
