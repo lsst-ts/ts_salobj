@@ -6,23 +6,22 @@ properties(
             artifactNumToKeepStr: '',
             daysToKeepStr: '14',
             numToKeepStr: '10'
-        ) ),
-    disableConcurrentBuilds()
+        ) )
     ]
 )
 pipeline {
-    agent any
+    agent { label "CSC_Conda_Node" }
     options {
         disableConcurrentBuilds()
     }    
     environment {
-        salobj_version = sh(returnStdout: true, script: "git describe --tags --always --dirty").trim()
-        dockerImageName = "lsstts/conda_package_builder:latest"
         container_name = "salobj_${BUILD_ID}_${JENKINS_NODE_COOKIE}"
+        dockerImageName = "lsstts/conda_package_builder:latest"
         PYPI_CREDS = credentials("pypi")
+        salobj_version = "null"
     }
     parameters {
-        string(defaultValue: 'default', description: 'The IDL Version', name: 'idl_version')
+        string(name: 'idl_version', defaultValue: '\'\'', description: 'The version of the IDL Conda package.')
         booleanParam(defaultValue: false, description: "Are we going on to building the CSC package after salobj?", name: 'buildCSCConda')
         
     }
@@ -41,13 +40,22 @@ pipeline {
                 script {
                     sh """
                     echo ${dockerImageName}
-                    docker run --name ${container_name} -di --rm --env \
-                    TS_SALOBJ_VERSION=${salobj_version} \
+                    docker run --name ${container_name} -di --rm \
                     --env TS_CONFIG_OCS_DIR=/home/saluser/ts_config_ocs \
                     --env TS_IDL_VERSION=${idl_version} \
                     -v ${WORKSPACE}:/home/saluser/source \
                     ${dockerImageName}
                     """
+                }
+                script {
+                    salobj_version = sh (returnStdout: true, script: 
+                    """
+                    docker exec ${container_name} sh -c "
+                    cd ~/source/
+                    source ~/miniconda3/bin/activate > /dev/null && 
+                    conda install -q -y setuptools_scm > /dev/null && 
+                    python -c 'from setuptools_scm import get_version; print(get_version())'"
+                    """).trim()
                 }
             }
         }
