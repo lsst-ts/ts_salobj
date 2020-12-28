@@ -199,7 +199,7 @@ class Controller:
                 tel = ControllerTelemetry(self.salinfo, tel_name)
                 setattr(self, tel.attr_name, tel)
 
-            for required_name in ("logMessage", "logLevel"):
+            for required_name in ("logMessage", "logLevel", "authList"):
                 if not hasattr(self, f"evt_{required_name}"):
                     raise RuntimeError(f"{self!r} has no {required_name} event")
 
