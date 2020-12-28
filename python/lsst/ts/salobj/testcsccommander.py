@@ -50,7 +50,12 @@ class TestCscCommander(csc_commander.CscCommander):
         exclude=None,
         fields_to_ignore=("ignored", "value", "priority"),
     ):
-        super().__init__(name="Test", index=index, enable=enable)
+        super().__init__(
+            name="Test",
+            index=index,
+            enable=enable,
+            exclude_commands=("abort", "enterControl", "setValue"),
+        )
 
         def asbool(val):
             """Cast an int or string representation of an int to a boolean."""
@@ -76,10 +81,6 @@ class TestCscCommander(csc_commander.CscCommander):
         ] = f"""field1=val1,val2,... field2=val1,va2,... (up to {ARR_LEN} values each)
           field: {" ".join(self.array_field_types)}
           for example: boolean0=1,2 int0=3,-4,5,6,7 float0=-42.3"""
-
-        # Ignore unsupported generic commands.
-        for command_to_ignore in ("abort", "enterControl", "setValue"):
-            del self.command_dict[command_to_ignore]
 
     async def do_setArrays(self, args):
         kwargs = dict()
