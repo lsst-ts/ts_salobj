@@ -26,6 +26,7 @@ import asyncio
 import collections
 import functools
 import sys
+import warnings
 
 from . import domain
 from . import remote
@@ -100,15 +101,26 @@ class CscCommander:
         SAL component name of CSC.
     index : `int`, optional
         SAL index of CSC.
-    exclude : `List` [`str`] or `None`, optional
-        Names of telemetry or event topics to not print.
-        If `None` or empty then no topics are excluded.
-    fields_to_ignore : `List` [`str`], optional
-        SAL topic fields to ignore when specifying command parameters,
-        and when printing events and telemetry.
     enable : `bool`, optional
         Enable the CSC (when the commander starts up)?
         Note: `amain` always supplies this argument.
+    exclude : `List` [`str`] or `None`, optional
+        Names of telemetry or event topics to not print.
+        If `None` or empty then no topics are excluded.
+    exclude_commands : `List` [`str`], optional
+        Names of commands to ignore. Typically this should include:
+
+        * "abort" and "setValue", two generic commands that few CSCs implement.
+        * "enterControl" unless your CSC is "externally commandable",
+          meaning it can run in the OFFLINE state.
+
+        The default is to exclude nothing, for backwards compatibility.
+    fields_to_ignore : `List` [`str`], optional
+        SAL topic fields names to ignore when specifying command parameters,
+        and when printing events and telemetry.
+    telemetry_fields_to_not_compare : `List` [`str`], optional
+        Telemetry field names to ignore when checking if a telemetry topic has
+        changed enough to print the latest sample. These fields are printed.
 
     Attributes
     ----------
@@ -218,13 +230,18 @@ class CscCommander:
         index=0,
         enable=False,
         exclude=None,
+        exclude_commands=(),
         fields_to_ignore=("ignored", "value", "priority"),
+        telemetry_fields_to_not_compare=("timestamp",),
     ):
         self.domain = domain.Domain()
         self.remote = remote.Remote(
             domain=self.domain, name=name, index=index, exclude=exclude
         )
-        self.fields_to_ignore = set(fields_to_ignore)
+        self.fields_to_ignore = frozenset(fields_to_ignore)
+        self.telemetry_fields_to_not_compare = frozenset(
+            telemetry_fields_to_not_compare
+        )
         self.tasks = set()
         self.help_dict = dict()
         self.enable = enable
@@ -234,18 +251,18 @@ class CscCommander:
         for name in self.remote.salinfo.event_names:
             if name == "heartbeat":
                 continue
-            topic_name = f"evt_{name}"
-            topic = getattr(self.remote, topic_name)
-            callback = getattr(self, f"{topic_name}_callback", None)
+            topic_attr_name = f"evt_{name}"
+            topic = getattr(self.remote, topic_attr_name)
+            callback = getattr(self, f"{topic_attr_name}_callback", None)
             if callback is None:
                 callback = functools.partial(self.event_callback, name=name)
             setattr(topic, "callback", callback)
 
         for name in self.remote.salinfo.telemetry_names:
-            topic_name = f"tel_{name}"
-            setattr(self, f"previous_{topic_name}", None)
-            topic = getattr(self.remote, topic_name)
-            callback = getattr(self, f"{topic_name}_callback", None)
+            topic_attr_name = f"tel_{name}"
+            setattr(self, f"previous_{topic_attr_name}", None)
+            topic = getattr(self.remote, topic_attr_name)
+            callback = getattr(self, f"{topic_attr_name}_callback", None)
             if callback is None:
                 callback = functools.partial(self.telemetry_callback, name=name)
             setattr(topic, "callback", callback)
@@ -254,6 +271,7 @@ class CscCommander:
         self.command_dict = {
             name: getattr(self.remote, f"cmd_{name}")
             for name in self.remote.salinfo.command_names
+            if name not in frozenset(exclude_commands)
         }
 
     def print_help(self):
@@ -300,12 +318,17 @@ help  # print this help
         return f"{key}={value}"
 
     def format_data(self, data):
-        """Format an event or telemetry sample for printing.
+        """Format the public fields of an event or telemetry sample,
+        for printing.
         """
-        return ", ".join(
-            self.format_item(key, value)
-            for key, value in self.get_public_data(data).items()
-        )
+        return self.format_dict(self.get_public_data(data))
+
+    def format_dict(self, data):
+        """Format a dict for printing.
+
+        Unlike format_data, this requires a dict and formats *all* fields.
+        """
+        return ", ".join(self.format_item(key, value) for key, value in data.items())
 
     def field_is_public(self, name):
         """Return True if the specified field name is public,
@@ -320,7 +343,7 @@ help  # print this help
         return True
 
     def get_public_data(self, data):
-        """Return a dict of field_name: value for public fields.
+        """Get a dict of field_name: value for public fields of a DDS sample.
 
         Parameters
         ----------
@@ -333,14 +356,21 @@ help  # print this help
             if self.field_is_public(key)
         )
 
-    def get_rounded_public_fields(self, data, digits=4):
-        """Get the public fields for a sample, with float values rounded.
+    def get_rounded_public_data(self, data, digits=4):
+        """Get a dict of field_name: value for public fields of a DDS sample
+        with float values rounded.
         """
         return {
             key: round_any(value, digits=digits)
             for key, value in data.get_vars().items()
             if self.field_is_public(key)
         }
+
+    def get_rounded_public_fields(self, data, digits=4):
+        """Deprecated version of get_rounded_public_data.
+        """
+        warnings.warn("Use get_rounded_public_data instead", DeprecationWarning)
+        return self.get_rounded_public_data(data=data, digits=digits)
 
     def event_callback(self, data, name):
         """Generic callback for events.
@@ -366,12 +396,15 @@ help  # print this help
         of specific telemetry topics.
         """
         prev_value_name = f"previous_tel_{name}"
-        public_fields = self.get_rounded_public_fields(data)
-        if public_fields != getattr(self, prev_value_name):
-            setattr(self, prev_value_name, public_fields)
-            formatted_data = ", ".join(
-                f"{key}={value}" for key, value in public_fields.items()
-            )
+        public_dict = self.get_rounded_public_data(data)
+        trimmed_dict = {
+            name: value
+            for name, value in public_dict.items()
+            if name not in self.telemetry_fields_to_not_compare
+        }
+        if trimmed_dict != getattr(self, prev_value_name):
+            setattr(self, prev_value_name, trimmed_dict)
+            formatted_data = self.format_dict(public_dict)
             self.output(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
 
     def check_arguments(self, args, *names):
@@ -436,8 +469,8 @@ help  # print this help
             if field_names_str is None:
                 command_topic = self.command_dict[command_name]
                 sample = command_topic.DataType()
-                public_data = self.get_public_data(sample)
-                field_names_str = " ".join(public_data.keys())
+                public_dict = self.get_public_data(sample)
+                field_names_str = " ".join(public_dict.keys())
             help_strings.append(f"{command_name} {field_names_str}")
 
         other_command_names = sorted(
