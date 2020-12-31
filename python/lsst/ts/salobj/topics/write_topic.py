@@ -52,12 +52,14 @@ class WriteTopic(BaseTopic):
         Topic name, without a "command\_" or "logevent\_" prefix.
     sal_prefix : `str`
         SAL topic prefix: one of "command\_", "logevent\_" or ""
-    min_seq_num : `int` or `None`
-        Minimum value for the ``private_seqNum`` field.
+    min_seq_num : `int` or `None`, optional
+        Minimum value for the ``private_seqNum`` field. The default is 1.
         If `None` then ``private_seqNum`` is not set; this is needed
         for the cmdack writer, which sets the field itself.
-    max_seq_num : `int`
+    max_seq_num : `int`, optional
         Maximum value for ``private_seqNum``, inclusive.
+        The default is the maximum allowed positive value
+        (``private_seqNum`` is a 4-byte signed int).
         Ignored if ``min_seq_num`` is `None`.
     initial_seq_num : `int`, optional
         Initial sequence number; if `None` use min_seq_num.
