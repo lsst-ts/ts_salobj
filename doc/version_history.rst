@@ -21,6 +21,8 @@ Changes:
     * Add method ``format_dict``.
     * Renamed method ``get_rounded_public_fields`` to ``get_rounded_public_data``, for consistency.
       The old method remains, for backwards compatibility, but is deprecated.
+    * Round telemetry to 2 digits by default, instead of 4.
+      That should greatly reduce the need to write custom code for CSC commanders.
 * Improve `Controller` to fail in the constructor if the ``authList`` event is missing.
   The event was already required; this change simply reports the error earlier and more clearly.
 
