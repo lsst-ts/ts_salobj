@@ -75,7 +75,7 @@ async def stream_as_generator(stream, encoding="utf-8"):
         yield line
 
 
-def round_any(value, digits=4):
+def round_any(value, digits=2):
     """Round any value to the specified number of digits.
 
     This is a no-op for int and str values.
@@ -356,7 +356,7 @@ help  # print this help
             if self.field_is_public(key)
         )
 
-    def get_rounded_public_data(self, data, digits=4):
+    def get_rounded_public_data(self, data, digits=2):
         """Get a dict of field_name: value for public fields of a DDS sample
         with float values rounded.
         """
@@ -366,7 +366,7 @@ help  # print this help
             if self.field_is_public(key)
         }
 
-    def get_rounded_public_fields(self, data, digits=4):
+    def get_rounded_public_fields(self, data, digits=2):
         """Deprecated version of get_rounded_public_data.
         """
         warnings.warn("Use get_rounded_public_data instead", DeprecationWarning)
