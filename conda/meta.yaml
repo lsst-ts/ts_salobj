@@ -23,7 +23,7 @@ test:
     - ts-conda-build
     - ts-ddsconfig
     - ts-dds
-    - ts-idl {{ idl_version }}
+    - ts-idl={{ idl_version }}
   source_files:
     - python
     - bin
