@@ -102,16 +102,6 @@ class AsyncS3Bucket:
         self.mock = moto.mock_s3()
         self.mock.start()
 
-        # Set s3 authentication environment variables to bogus values
-        # to avoid any danger of writing to a real s3 server.
-        for env_var_name in (
-            "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY",
-            "AWS_SECURITY_TOKEN",
-            "AWS_SESSION_TOKEN",
-        ):
-            os.environ[env_var_name] = "testing"
-
     def stop_mock(self):
         """Stop the mock s3 service, if running. A no-op if not running.
         """
