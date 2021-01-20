@@ -26,6 +26,7 @@ __all__ = [
     "assert_black_formatted",
     "set_random_lsst_dds_domain",  # Deprecated
     "set_random_lsst_dds_partition_prefix",
+    "modify_environ",
 ]
 
 import contextlib
@@ -173,3 +174,44 @@ def set_random_lsst_dds_domain():
         "Use set_random_lsst_dds_partition_prefix instead", DeprecationWarning
     )
     set_random_lsst_dds_partition_prefix()
+
+
+@contextlib.contextmanager
+def modify_environ(**kwargs):
+    """Context manager to temporarily modify os.environ.
+
+    Parameters
+    ----------
+    kwargs : `dict` [`str`, `str` or `None`]
+        Environment variables to set or clear.
+        Each value must be one of:
+
+        * A string value to set the env variable.
+        * None to delete the env variable (if present).
+
+    Raises
+    ------
+    RuntimeError
+        If any value in kwargs is not of type `str`
+        or if a name appears in ``delete`` and kwargs.
+    """
+    bad_value_strs = [
+        f"{name}: {value!r}"
+        for name, value in kwargs.items()
+        if not isinstance(value, str) and value is not None
+    ]
+    if bad_value_strs:
+        raise RuntimeError(
+            "The following values are not of type str or None: "
+            + ", ".join(bad_value_strs)
+        )
+
+    original_values = os.environ.copy()
+    for name, value in kwargs.items():
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
+    yield
+    os.environ.clear()
+    os.environ.update(original_values)

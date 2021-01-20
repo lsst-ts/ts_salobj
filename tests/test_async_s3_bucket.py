@@ -23,6 +23,7 @@ import os
 
 import asynctest
 import astropy.time
+import moto
 
 from lsst.ts import salobj
 
@@ -221,3 +222,18 @@ class AsyncS3BucketClassmethodTest(asynctest.TestCase):
             "Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000suffixtext"
         )
         self.assertEqual(key, expected_key)
+
+    def test_env_var_secrets(self):
+        """Check that moto.mock ovewrites authorization env vars.
+        """
+        env_names = (
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+        )
+        env_dict = {name: f"arbitrary value for {name}" for name in env_names}
+        with salobj.modify_environ(**env_dict):
+            with moto.mock_s3():
+                for name, my_value in env_dict.items():
+                    self.assertNotEqual(os.environ[name], my_value)
+            for name, my_value in env_dict.items():
+                self.assertEqual(os.environ[name], my_value)
