@@ -100,9 +100,15 @@ class BaseScript(controller.Controller, abc.ABC):
         # Speed up script loading time and avoid expensive system alignments
         # by making sure scripts never become master.
         # This must be done before the `DomainParticipant` is created.
+        initial_master_prority = os.environ.get(base.MASTER_PRIORITY_ENV_VAR, None)
         os.environ[base.MASTER_PRIORITY_ENV_VAR] = "0"
-
-        super().__init__("Script", index, do_callbacks=True)
+        try:
+            super().__init__("Script", index, do_callbacks=True)
+        finally:
+            if initial_master_prority is None:
+                del os.environ[base.MASTER_PRIORITY_ENV_VAR]
+            else:
+                os.environ[base.MASTER_PRIORITY_ENV_VAR] = initial_master_prority
         schema = self.get_schema()
         if schema is None:
             self.config_validator = None

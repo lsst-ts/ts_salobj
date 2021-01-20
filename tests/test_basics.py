@@ -32,6 +32,7 @@ import asynctest
 import astropy.time
 from astropy.coordinates import Angle
 import astropy.units as u
+import numpy as np
 
 from lsst.ts import salobj
 import lsst.ts.salobj.base
@@ -229,6 +230,45 @@ class BasicsTestCase(asynctest.TestCase):
             names.add(name)
         # any duplicate names will reduce the size of names
         self.assertEqual(len(names), NumToTest)
+
+    def test_modify_environ(self):
+        rng = np.random.default_rng(seed=45)
+        original_environ = os.environ.copy()
+        n_to_delete = 3
+        self.assertGreater(len(original_environ), n_to_delete)
+        new_key0 = "_a_long_key_name_" + astropy.time.Time.now().isot
+        new_key1 = "_another_long_key_name_" + astropy.time.Time.now().isot
+        self.assertNotIn(new_key0, os.environ)
+        self.assertNotIn(new_key1, os.environ)
+        some_keys = rng.choice(list(original_environ.keys()), 3)
+        kwargs = {
+            some_keys[0]: None,
+            some_keys[1]: None,
+            some_keys[2]: "foo",
+            new_key0: "bar",
+            new_key1: None,
+        }
+        with salobj.modify_environ(**kwargs):
+            for name, value in kwargs.items():
+                if value is None:
+                    self.assertNotIn(name, os.environ)
+                else:
+                    self.assertEqual(os.environ[name], value)
+            for name, value in os.environ.items():
+                if name in kwargs:
+                    self.assertEqual(value, kwargs[name])
+                else:
+                    self.assertEqual(value, original_environ[name])
+        self.assertEqual(os.environ, original_environ)
+
+        # Values that are neither None nor a string should raise RuntimeError
+        for bad_value in (3, 1.23, True, False):
+            with self.assertRaises(RuntimeError):
+                bad_kwargs = kwargs.copy()
+                bad_kwargs[new_key1] = bad_value
+                with salobj.modify_environ(**bad_kwargs):
+                    pass
+            self.assertEqual(os.environ, original_environ)
 
     async def test_domain_attr(self):
         async with salobj.Domain() as domain:

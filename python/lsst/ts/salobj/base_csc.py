@@ -751,6 +751,11 @@ class BaseCsc(Controller):
             raise base.ExpectedError(f"{cmd_name} not allowed in state {curr_state!r}")
         try:
             await getattr(self, f"begin_{cmd_name}")(data)
+        except base.ExpectedError as e:
+            self.log.error(
+                f"beg_{cmd_name} failed; remaining in state {curr_state!r}: {e}"
+            )
+            raise
         except Exception:
             self.log.exception(
                 f"beg_{cmd_name} failed; remaining in state {curr_state!r}"
@@ -759,6 +764,11 @@ class BaseCsc(Controller):
         self._summary_state = new_state
         try:
             await getattr(self, f"end_{cmd_name}")(data)
+        except base.ExpectedError as e:
+            self.log.error(
+                f"beg_{cmd_name} failed; reverting to state {curr_state!r}: {e}"
+            )
+            raise
         except Exception:
             self._summary_state = curr_state
             self.log.exception(

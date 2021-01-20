@@ -161,12 +161,8 @@ class BaseScriptTestCase(asynctest.TestCase):
 
     async def test_non_configurable_script_empty_config(self):
         """Test configuring the script with no data. This should work.
-
-        Also test that creating the script sets the master priority
-        environment variable to "0".
         """
         async with NonConfigurableScript(index=self.index) as script:
-            self.assertEqual(os.environ[salobj.MASTER_PRIORITY_ENV_VAR], "0")
             data = script.cmd_configure.DataType()
             await script.do_configure(data)
             self.assertEqual(len(script.config.__dict__), 0)
@@ -180,6 +176,24 @@ class BaseScriptTestCase(asynctest.TestCase):
             with self.assertRaises(salobj.ExpectedError):
                 await script.do_configure(data)
             self.assertIsNone(script.config)
+
+    async def test_script_environ(self):
+        """Test that creating a script does not modify os.environ.
+
+        I would like to also test that a script has master priority 0
+        (which is done by temporarily setting env var
+        salobj.MASTER_PRIORITY_ENV_VAR to "0"),
+        but that information is not available.
+        """
+        for master_priority in ("21", None):
+            env_kwargs = {salobj.MASTER_PRIORITY_ENV_VAR: master_priority}
+            with salobj.modify_environ(**env_kwargs):
+                initial_environ = os.environ.copy()
+                async with NonConfigurableScript(index=self.index):
+                    self.assertEqual(os.environ, initial_environ)
+                # Test again when script is closed, just to be sure;
+                # closing a script should not modify the environment.
+                self.assertEqual(os.environ, initial_environ)
 
     async def test_setCheckpoints(self):
         async with salobj.TestScript(index=self.index) as script:
