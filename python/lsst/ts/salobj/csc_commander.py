@@ -389,14 +389,14 @@ help  # print this help
             f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state!r}"
         )
 
-    def telemetry_callback(self, data, name):
+    def telemetry_callback(self, data, name, digits=2):
         """Generic callback for telemetry.
 
         You may provide tel_<telemetry_name> methods to override printing
         of specific telemetry topics.
         """
         prev_value_name = f"previous_tel_{name}"
-        public_dict = self.get_rounded_public_data(data)
+        public_dict = self.get_rounded_public_data(data, digits=digits)
         trimmed_dict = {
             name: value
             for name, value in public_dict.items()

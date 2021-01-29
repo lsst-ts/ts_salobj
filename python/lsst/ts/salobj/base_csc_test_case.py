@@ -90,7 +90,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         timeout=STD_TIMEOUT,
         **kwargs,
     ):
-        """Create a CSC and remote and wait for them to start.
+        """Create a CSC and remote and wait for them to start,
+        after setting a random $LSST_DDS_PARTITION_PREFIX.
 
         The csc is accessed as ``self.csc`` and the remote as ``self.remote``.
 
@@ -115,9 +116,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Logging level, such as `logging.INFO`.
             If `None` then do not set the log level, leaving the default
             behavior of `SalInfo`: increase the log level to INFO.
-        timeout : `float`
+        timeout : `float`, optional
             Time limit for the CSC to start (seconds).
-        **kwargs : `dict`
+        **kwargs : `dict`, optional
             Extra keyword arguments for `basic_make_csc`.
             For a configurable CSC this may include ``settings_to_apply``,
             especially if ``initial_state`` is DISABLED or ENABLED.

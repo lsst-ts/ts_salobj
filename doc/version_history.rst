@@ -6,6 +6,15 @@
 Version History
 ###############
 
+v6.2.2
+======
+
+Changes:
+
+* `CscCommander`: add a digits argument to telemetry_callback method.
+* Documentation: document that configuration label names must be valid python identifiers,
+  and must not begin with ``_`` (underscore).
+
 v6.2.1
 ======
 
