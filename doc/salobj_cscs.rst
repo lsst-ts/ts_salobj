@@ -254,7 +254,11 @@ Configurable CSCs (subclasses of `ConfigurableCsc`) must provide the following s
     * Configuration files, if any.
       These are only required if your CSC's default configuration (as defined by the default values specfied in the schema) is not adequate for normal operation modes.
     * A file named ``_labels.yaml`` which contains a mapping of ``label: configuration file name`` for each recommended configuration file.
-      If you have no configuration files then leave ``_labels.yaml`` blank (except, preferably, a comment saying there are no configuration files), in order to avoid a warning log message when your CSC is constructed.
+      Label names must be valid Python identifiers and must not start with underscore;
+      labels that break this rule are ignored (with a logged warning).
+      If you have no configuration files then provide an empty ``_labels.yaml``
+      (empty except, preferably, for a comment saying there are no configuration files),
+      in order to avoid a warning log message when your CSC is constructed.
     * Add a new test method to the test case in ``tests/test_config_files.py``.
       If your CSC package requires packages that are not part of the ``lsstts/develop-env`` Docker container then use an environment variable to find your package; see ``ts_config_ocs/tests/test_config_files.py`` for a few examples.
     * Run the new unit test, to make sure it works.
