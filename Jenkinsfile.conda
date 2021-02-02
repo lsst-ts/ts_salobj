@@ -1,2 +1,2 @@
-@Library('JenkinsShared') _
+@Library('JenkinsShared@tickets/DM-28310') _
 SalobjPipeline(["ts_config_ocs"])
