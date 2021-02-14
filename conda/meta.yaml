@@ -8,6 +8,7 @@ source:
   path: ../
 
 build:
+  noarch: generic
   script: python -m pip install --no-deps --ignore-installed .
   script_env:
     - PATH
