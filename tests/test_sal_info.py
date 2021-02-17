@@ -305,19 +305,6 @@ class SalInfoTestCase(asynctest.TestCase):
             self.assertNotEqual(ackcmd.result, result)
             self.assertEqual(ackcmd.result, result[0 : salobj.MAX_RESULT_LEN])
 
-    async def test_no_commands(self):
-        """Test a SAL component with no commands.
-        """
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="LOVE")
-            self.assertEqual(salinfo.command_names, ())
-            with self.assertRaises(RuntimeError):
-                salinfo.AckCmdType
-            with self.assertRaises(RuntimeError):
-                salinfo.make_ackcmd(
-                    private_seqNum=1, ack=salobj.SalRetCode.CMD_COMPLETE, result="Done"
-                )
-
 
 if __name__ == "__main__":
     unittest.main()

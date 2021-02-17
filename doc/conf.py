@@ -3,11 +3,11 @@
 This configuration only affects single-package Sphinx documentation builds.
 """
 
-from documenteer.sphinxconfig.stackconf import build_package_configs
-import lsst.ts.salobj
+from documenteer.conf.pipelinespkg import *  # noqa
+import lsst.ts.salobj  # noqa
 
-
-_g = globals()
-_g.update(
-    build_package_configs(project_name="ts_salobj", version=lsst.ts.salobj.__version__)
-)
+project = "ts_salobj"
+html_theme_options["logotext"] = project  # noqa
+html_title = project
+html_short_title = project
+doxylink = {}  # Avoid warning: Could not find tag file _doxygen/doxygen.tag
