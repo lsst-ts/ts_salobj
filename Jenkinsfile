@@ -127,6 +127,7 @@ pipeline {
             sh "docker exec -u saluser \${container_name} sh -c \"" +
                 "source ~/.setup.sh && " +
                 "cd /home/saluser/repo/ && " +
+                "pip install ltd-conveyor && " +
                 "setup ts_salobj -t saluser && " +
                 "package-docs build\""
 
