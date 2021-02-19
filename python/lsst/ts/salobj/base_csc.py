@@ -95,6 +95,11 @@ class BaseCsc(Controller):
           The default value will be 0 if that is a valid simulation mode
           (and it certainly should be).
           Otherwise the default value will be the first entry.
+    simulation_help : `str`
+        A *class* attribute.
+        Help for the --simulate command, or None for the default help
+        (which is fine for the usual case of 0/1).
+        Ignored if simulation is not supported.
     heartbeat_interval : `float`
         Interval between heartbeat events, in seconds;
 
@@ -137,6 +142,7 @@ class BaseCsc(Controller):
     enable_cmdline_state = False
     require_settings = False
     valid_simulation_modes = None
+    simulation_help = None
 
     def __init__(
         self,
@@ -300,23 +306,34 @@ class BaseCsc(Controller):
             else:
                 default_simulation_mode = cls.valid_simulation_modes[0]
             if default_simulation_mode == 0 and len(cls.valid_simulation_modes) == 2:
-                # There are only two simulation modes, one of which is 0:
-                # make --simulate a flag that takes no value.
+                # There are only two simulation modes, one of which is 0.
+                # Make --simulate a flag that takes no value and stores
+                # the other value, if specified.
+                simulation_help = (
+                    "Run in simulation mode?"
+                    if cls.simulation_help is None
+                    else cls.simulation_help
+                )
                 nonzero_value = (set(cls.valid_simulation_modes) - set([0])).pop()
                 parser.add_argument(
                     "--simulate",
-                    help="Run in simulation mode?",
+                    help=simulation_help,
                     default=0,
                     action="store_const",
                     const=nonzero_value,
                 )
             else:
-                # There are more than 2 simulation modes or none of them is 0:
-                # make --simulate an argument that requires a value.
+                # There are more than 2 simulation modes or none of them is 0.
+                # Make --simulate an argument that requires a value.
+                simulation_help = (
+                    "Simulation mode"
+                    if cls.simulation_help is None
+                    else cls.simulation_help
+                )
                 parser.add_argument(
                     "--simulate",
                     type=int,
-                    help="Simulation mode",
+                    help=simulation_help,
                     default=default_simulation_mode,
                     choices=cls.valid_simulation_modes,
                 )
