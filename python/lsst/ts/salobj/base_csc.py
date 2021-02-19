@@ -166,6 +166,13 @@ class BaseCsc(Controller):
         initial_state = State(initial_state)
         if initial_state == State.FAULT:
             raise ValueError("initial_state cannot be FAULT")
+
+        # Postpone assigning command callbacks until `start` is done (but call
+        # assert_do_methods_present to fail early if there is a problem).
+        super().__init__(name=name, index=index, do_callbacks=True)
+
+        # Handle simulation_mode after constructing the base class,
+        # so that evt_simulationMode is available.
         if self.valid_simulation_modes is None:
             warnings.warn(
                 "valid_simulation_modes=None is deprecated", DeprecationWarning
@@ -176,10 +183,8 @@ class BaseCsc(Controller):
                     f"simulation_mode={simulation_mode} "
                     f"not in valid_simulation_modes={self.valid_simulation_modes}"
                 )
+        self.evt_simulationMode.set(mode=int(simulation_mode))
 
-        # Postpone assigning command callbacks until `start` is done (but call
-        # assert_do_methods_present to fail early if there is a problem).
-        super().__init__(name=name, index=index, do_callbacks=True)
         self._requested_simulation_mode = int(simulation_mode)
         self._settings_to_apply = settings_to_apply
         self._summary_state = State(self.default_initial_state)
