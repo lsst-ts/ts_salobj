@@ -132,6 +132,41 @@ class TestCscConstructorTestCase(asynctest.TestCase):
         finally:
             await csc.close()
 
+    async def test_missing_version(self):
+        class MissingVersionCsc(salobj.BaseCsc):
+            """A do-nothing CSC with no version class variable.
+            """
+
+            valid_simulation_modes = [0]
+
+            def __init__(self, index):
+                for attr_name in dir(salobj.TestCsc):
+                    if attr_name.startswith("do_"):
+                        setattr(self, attr_name, self.noop)
+                super().__init__(index=index, name="Test")
+
+            async def noop(self, *args, **kwargs):
+                pass
+
+        mv = None
+        try:
+            with self.assertWarns(DeprecationWarning):
+                mv = MissingVersionCsc(index=next(index_gen))
+        finally:
+            if mv is not None:
+                await mv.close()
+
+        # Adding the version attribute should eliminate the warning
+        MissingVersionCsc.version = "foo"
+        mv = None
+        try:
+            with self.assertRaises(AssertionError):
+                with self.assertWarns(DeprecationWarning):
+                    mv = MissingVersionCsc(index=next(index_gen))
+        finally:
+            if mv is not None:
+                await mv.close()
+
 
 if __name__ == "__main__":
     unittest.main()

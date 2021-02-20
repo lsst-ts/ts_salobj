@@ -185,6 +185,23 @@ class BaseCsc(Controller):
                 )
         self.evt_simulationMode.set(mode=int(simulation_mode))
 
+        if not hasattr(self, "version"):
+            warnings.warn(
+                "Please set class attribute `version`. It is needed to set "
+                "the `cscVersion` field of the `softwareVersions` event.",
+                DeprecationWarning,
+            )
+
+        def format_version(version):
+            return "?" if version is None else version
+
+        self.evt_softwareVersions.set(
+            salVersion=format_version(self.salinfo.metadata.sal_version),
+            xmlVersion=format_version(self.salinfo.metadata.xml_version),
+            openSpliceVersion=dds_utils.get_dds_version(),
+            cscVersion=getattr(self, "version", "?"),
+        )
+
         self._requested_simulation_mode = int(simulation_mode)
         self._settings_to_apply = settings_to_apply
         self._summary_state = State(self.default_initial_state)
@@ -238,15 +255,7 @@ class BaseCsc(Controller):
                     f"Failed in start on state transition command {command}; continuing."
                 )
 
-        def format_version(version):
-            return "?" if version is None else version
-
-        self.evt_softwareVersions.set_put(
-            salVersion=format_version(self.salinfo.metadata.sal_version),
-            xmlVersion=format_version(self.salinfo.metadata.xml_version),
-            openSpliceVersion=dds_utils.get_dds_version(),
-            cscVersion=getattr(self, "version", None),
-        )
+        self.evt_softwareVersions.put()
 
     async def close_tasks(self):
         """Shut down pending tasks. Called by `close`."""
