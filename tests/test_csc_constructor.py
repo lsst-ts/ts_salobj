@@ -85,6 +85,22 @@ class TestCscConstructorTestCase(asynctest.TestCase):
         async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
             self.assertEqual(csc.summary_state, initial_state)
 
+    async def test_deprecated_schema_path_arg(self):
+        with self.assertWarns(DeprecationWarning):
+            expected_schema = salobj.CONFIG_SCHEMA
+            schema_path = (
+                pathlib.Path(__file__).resolve().parents[1] / "schema" / "Test.yaml"
+            )
+            csc = salobj.TestCsc(index=next(index_gen), schema_path=schema_path)
+            await csc.close()
+            for key, value in expected_schema.items():
+                if key in ("$id", "description"):
+                    continue
+                self.assertEqual(
+                    csc.config_validator.final_validator.schema[key],
+                    expected_schema[key],
+                )
+
     async def test_invalid_config_dir(self):
         """Test that invalid integer initial_state is rejected."""
         with self.assertRaises(ValueError):

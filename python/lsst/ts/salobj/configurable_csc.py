@@ -26,6 +26,7 @@ import os
 import pathlib
 import subprocess
 import types
+import warnings
 
 import yaml
 
@@ -46,13 +47,17 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         Name of SAL component.
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
-    schema_path : `str` or `pathlib.Path`
-        Path to a schema file used to validate configuration files
+    schema_path : `str`, `pathlib.Path` or `None`, optional
+        Path to a schema file used to validate configuration files.
+        This is deprecated; new code should specify ``config_schema`` instead.
         The recommended path is ``<package_root>/"schema"/f"{name}.yaml"``
         for example:
 
             schema_path = pathlib.Path(__file__).resolve().parents[4] \
                 / "schema" / f"{name}.yaml"
+    config_schema : `dict` or None, optional
+        Configuration schema, as a dict in jsonschema format.
+        Exactly one of ``schema_path`` or ``config_schema`` must not be None.
     config_dir : `str`, optional
         Directory of configuration files, or None for the standard
         configuration directory (obtained from `_get_default_config_dir`).
@@ -70,6 +75,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     ------
     ValueError
         If ``config_dir`` is not a directory or ``initial_state`` is invalid.
+    ValueError
+        If ``schema_path`` and ``config_schema`` are both None,
+        or if neither is None.
     salobj.ExpectedError
         If ``simulation_mode`` is invalid.
         Note: you will only see this error if you await `start_task`.
@@ -123,17 +131,28 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         self,
         name,
         index,
-        schema_path,
+        schema_path=None,
+        config_schema=None,
         config_dir=None,
         initial_state=State.STANDBY,
         settings_to_apply="",
         simulation_mode=0,
     ):
         try:
-            with open(schema_path, "r") as f:
-                schema = yaml.safe_load(f.read())
-            self.config_validator = DefaultingValidator(schema=schema)
-            title = schema["title"]
+            if (schema_path is None) == (config_schema is None):
+                raise ValueError(
+                    "Exactly one of schema_path or config_schema must not be None"
+                )
+            if schema_path is not None:
+                warnings.warn(
+                    "The schema_path argument is deprecated. "
+                    "Please specify config_schema instead.",
+                    DeprecationWarning,
+                )
+                with open(schema_path, "r") as f:
+                    config_schema = yaml.safe_load(f.read())
+            self.config_validator = DefaultingValidator(schema=config_schema)
+            title = config_schema["title"]
             name_version = title.rsplit(" ", 1)
             if len(name_version) != 2 or not name_version[1].startswith("v"):
                 raise ValueError(f"Schema title {title!r} must end with ' v<version>'")
