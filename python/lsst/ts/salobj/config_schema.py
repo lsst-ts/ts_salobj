@@ -59,5 +59,6 @@ properties:
     default: null
 
 required: [string0, bool0, int0, float0, intarr0, multi_type]
-additionalProperties: false"""
+additionalProperties: false
+"""
 )

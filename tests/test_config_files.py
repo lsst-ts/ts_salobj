@@ -28,10 +28,7 @@ from lsst.ts import salobj
 
 class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
     def setUp(self):
-        csc_package_root = pathlib.Path(__file__).parents[1]
-        self.schema = self.get_schema(
-            csc_package_root=csc_package_root, sal_name="Test"
-        )
+        self.schema = salobj.CONFIG_SCHEMA
 
     def test_get_schema(self):
         csc_package_root = pathlib.Path(__file__).parents[1]
@@ -76,6 +73,13 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
             config_package_root=config_package_root, sal_name="Test", schema=self.schema
         )
         self.check_config_files(config_dir=config_dir, schema=self.schema)
+
+        # Test check_standard_config_files using module import and schema_name
+        self.check_standard_config_files(
+            module_name="lsst.ts.salobj",
+            schema_name="CONFIG_SCHEMA",
+            config_dir=config_dir,
+        )
 
         # Test check_standard_config_files using module import
         self.check_standard_config_files(

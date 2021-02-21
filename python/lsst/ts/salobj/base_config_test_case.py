@@ -238,9 +238,10 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
 
     def check_standard_config_files(
         self,
-        sal_name,
+        sal_name=None,
         module_name=None,
         package_name=None,
+        schema_name=None,
         schema_subpath=None,
         config_package_root=None,
         config_dir=None,
@@ -250,10 +251,17 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
 
         Assumptions:
 
-        * The module can be imported, else the test is skipped
-        * The module root is n+1 levels above the package
-          where n is the number of "." in ``module_name``.
-        * The schema is in ``module root / "schema" / f"{sal_name}.yaml"``
+        * The module can be imported, if ``module_name`` specified,
+          else environment variable ``f"{package_name.upper()}_DIR"`` exists.
+          If not, skip the test, because the package is not available.
+        * The schema is a module constant named ``schema_name``,
+          if provided, else the schema is a file found as follows:
+
+            * If ``module_name`` is provided,
+              the module root is n+1 levels above the package,
+              where n is the number of "." in ``module_name``
+            * The schema is in ``module root / "schema" / f"{sal_name}.yaml"``
+              unless you override this with ``schema_subpath``.
 
         Parameters
         ----------
@@ -266,47 +274,60 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         package_name : `str`, optional
             If ``module_name`` is None then specify this argument
             and get the CSC package root using environment variable
-            ``<PACKAGE_NAME>_DIR``.
+            ``f"{package_name.upper()}_DIR"``.
             This is useful for non-python packages or packages that
             need a special environment to be imported.
+        schema_name : `str` or None, optional
+            Name of schema constant in the module, typically "CONFIG_SCHEMA".
+            If None then look for a schema file instead of a schema constant.
         schema_subpath : `str` or `None`
             Schema path relative to csc_package_root.
-            If `None` then use ``f"schema/{sal_name}.yaml"``
+            If `None` then use ``f"schema/{sal_name}.yaml"``.
+            Ignored if ``schema_name`` is specified.
         config_package_root : `str` or `pathlib.Path` or `None`
             Root directory of configuration package.
             Within the unit test this will work:
 
                 config_package_root = pathlib.Path(__file__).parents[1]
 
-            Ignored if ``config_dir`` is specified.
+            Ignored if ``schema_name`` or ``config_dir`` is specified.
 
         config_dir : `str` or `pathlib.Path` or `None`
             Directory containing config files and ``_labels.yaml``.
             If `None` then a reasonable value is computed;
             this is primarily intended to support unit testing in ts_salobj.
         """
-        if module_name is None:
-            if package_name is None:
-                raise RuntimeError("Must specify module_name or package_name")
-            else:
-                env_var = package_name.upper() + "_DIR"
-                csc_package_root = os.environ.get(env_var)
-                if csc_package_root is None:
-                    raise unittest.SkipTest(
-                        f"Cannot find package {package_name}; "
-                        f"environment variable {env_var} not defined"
-                    )
-        else:
-            num_dots = len(module_name.split("."))
+        if module_name is not None and schema_name is not None:
             try:
-                csc_package_root = self.get_module_dir(module_name).parents[num_dots]
+                module = importlib.import_module(module_name)
             except ImportError:
                 raise unittest.SkipTest(f"Cannot import {module_name}")
-        schema = self.get_schema(
-            csc_package_root=csc_package_root,
-            sal_name=sal_name,
-            schema_subpath=schema_subpath,
-        )
+            schema = getattr(module, schema_name)
+        else:
+            if module_name is None:
+                if package_name is None:
+                    raise RuntimeError("Must specify module_name or package_name")
+                else:
+                    env_var = package_name.upper() + "_DIR"
+                    csc_package_root = os.environ.get(env_var)
+                    if csc_package_root is None:
+                        raise unittest.SkipTest(
+                            f"Cannot find package {package_name}; "
+                            f"environment variable {env_var} not defined"
+                        )
+            else:
+                num_dots = len(module_name.split("."))
+                try:
+                    csc_package_root = self.get_module_dir(module_name).parents[
+                        num_dots
+                    ]
+                except ImportError:
+                    raise unittest.SkipTest(f"Cannot import {module_name}")
+            schema = self.get_schema(
+                csc_package_root=csc_package_root,
+                sal_name=sal_name,
+                schema_subpath=schema_subpath,
+            )
         if config_dir is None:
             if config_package_root is None:
                 raise RuntimeError(
