@@ -1,6 +1,6 @@
 # This file is part of ts_salobj.
 #
-# Developed for the LSST Telescope and Site Systems.
+# Developed for the Rubin Observatory Telescope and Site System.
 # This product includes software developed by the LSST Project
 # (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -85,6 +85,22 @@ class TestCscConstructorTestCase(asynctest.TestCase):
         async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
             self.assertEqual(csc.summary_state, initial_state)
 
+    async def test_deprecated_schema_path_arg(self):
+        with self.assertWarns(DeprecationWarning):
+            expected_schema = salobj.CONFIG_SCHEMA
+            schema_path = (
+                pathlib.Path(__file__).resolve().parents[1] / "schema" / "Test.yaml"
+            )
+            csc = salobj.TestCsc(index=next(index_gen), schema_path=schema_path)
+            await csc.close()
+            for key, value in expected_schema.items():
+                if key in ("$id", "description"):
+                    continue
+                self.assertEqual(
+                    csc.config_validator.final_validator.schema[key],
+                    expected_schema[key],
+                )
+
     async def test_invalid_config_dir(self):
         """Test that invalid integer initial_state is rejected."""
         with self.assertRaises(ValueError):
@@ -131,6 +147,41 @@ class TestCscConstructorTestCase(asynctest.TestCase):
                 self.assertIsNotNone(topic.callback)
         finally:
             await csc.close()
+
+    async def test_missing_version(self):
+        class MissingVersionCsc(salobj.BaseCsc):
+            """A do-nothing CSC with no version class variable.
+            """
+
+            valid_simulation_modes = [0]
+
+            def __init__(self, index):
+                for attr_name in dir(salobj.TestCsc):
+                    if attr_name.startswith("do_"):
+                        setattr(self, attr_name, self.noop)
+                super().__init__(index=index, name="Test")
+
+            async def noop(self, *args, **kwargs):
+                pass
+
+        mv = None
+        try:
+            with self.assertWarns(DeprecationWarning):
+                mv = MissingVersionCsc(index=next(index_gen))
+        finally:
+            if mv is not None:
+                await mv.close()
+
+        # Adding the version attribute should eliminate the warning
+        MissingVersionCsc.version = "foo"
+        mv = None
+        try:
+            with self.assertRaises(AssertionError):
+                with self.assertWarns(DeprecationWarning):
+                    mv = MissingVersionCsc(index=next(index_gen))
+        finally:
+            if mv is not None:
+                await mv.close()
 
 
 if __name__ == "__main__":

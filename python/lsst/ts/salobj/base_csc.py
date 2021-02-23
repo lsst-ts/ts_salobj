@@ -1,6 +1,6 @@
 # This file is part of ts_salobj.
 #
-# Developed for the LSST Telescope and Site Systems.
+# Developed for the Rubin Observatory Telescope and Site System.
 # This product includes software developed by the LSST Project
 # (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -95,6 +95,11 @@ class BaseCsc(Controller):
           The default value will be 0 if that is a valid simulation mode
           (and it certainly should be).
           Otherwise the default value will be the first entry.
+    simulation_help : `str`
+        A *class* attribute.
+        Help for the --simulate command, or None for the default help
+        (which is fine for the usual case of 0/1).
+        Ignored if simulation is not supported.
     heartbeat_interval : `float`
         Interval between heartbeat events, in seconds;
 
@@ -137,6 +142,7 @@ class BaseCsc(Controller):
     enable_cmdline_state = False
     require_settings = False
     valid_simulation_modes = None
+    simulation_help = None
 
     def __init__(
         self,
@@ -160,6 +166,13 @@ class BaseCsc(Controller):
         initial_state = State(initial_state)
         if initial_state == State.FAULT:
             raise ValueError("initial_state cannot be FAULT")
+
+        # Postpone assigning command callbacks until `start` is done (but call
+        # assert_do_methods_present to fail early if there is a problem).
+        super().__init__(name=name, index=index, do_callbacks=True)
+
+        # Handle simulation_mode after constructing the base class,
+        # so that evt_simulationMode is available.
         if self.valid_simulation_modes is None:
             warnings.warn(
                 "valid_simulation_modes=None is deprecated", DeprecationWarning
@@ -170,10 +183,25 @@ class BaseCsc(Controller):
                     f"simulation_mode={simulation_mode} "
                     f"not in valid_simulation_modes={self.valid_simulation_modes}"
                 )
+        self.evt_simulationMode.set(mode=int(simulation_mode))
 
-        # Postpone assigning command callbacks until `start` is done (but call
-        # assert_do_methods_present to fail early if there is a problem).
-        super().__init__(name=name, index=index, do_callbacks=True)
+        if not hasattr(self, "version"):
+            warnings.warn(
+                "Please set class attribute `version`. It is needed to set "
+                "the `cscVersion` field of the `softwareVersions` event.",
+                DeprecationWarning,
+            )
+
+        def format_version(version):
+            return "?" if version is None else version
+
+        self.evt_softwareVersions.set(
+            salVersion=format_version(self.salinfo.metadata.sal_version),
+            xmlVersion=format_version(self.salinfo.metadata.xml_version),
+            openSpliceVersion=dds_utils.get_dds_version(),
+            cscVersion=getattr(self, "version", "?"),
+        )
+
         self._requested_simulation_mode = int(simulation_mode)
         self._settings_to_apply = settings_to_apply
         self._summary_state = State(self.default_initial_state)
@@ -227,15 +255,7 @@ class BaseCsc(Controller):
                     f"Failed in start on state transition command {command}; continuing."
                 )
 
-        def format_version(version):
-            return "?" if version is None else version
-
-        self.evt_softwareVersions.set_put(
-            salVersion=format_version(self.salinfo.metadata.sal_version),
-            xmlVersion=format_version(self.salinfo.metadata.xml_version),
-            openSpliceVersion=dds_utils.get_dds_version(),
-            cscVersion=getattr(self, "version", None),
-        )
+        self.evt_softwareVersions.put()
 
     async def close_tasks(self):
         """Shut down pending tasks. Called by `close`."""
@@ -300,23 +320,34 @@ class BaseCsc(Controller):
             else:
                 default_simulation_mode = cls.valid_simulation_modes[0]
             if default_simulation_mode == 0 and len(cls.valid_simulation_modes) == 2:
-                # There are only two simulation modes, one of which is 0:
-                # make --simulate a flag that takes no value.
+                # There are only two simulation modes, one of which is 0.
+                # Make --simulate a flag that takes no value and stores
+                # the other value, if specified.
+                simulation_help = (
+                    "Run in simulation mode?"
+                    if cls.simulation_help is None
+                    else cls.simulation_help
+                )
                 nonzero_value = (set(cls.valid_simulation_modes) - set([0])).pop()
                 parser.add_argument(
                     "--simulate",
-                    help="Run in simulation mode?",
+                    help=simulation_help,
                     default=0,
                     action="store_const",
                     const=nonzero_value,
                 )
             else:
-                # There are more than 2 simulation modes or none of them is 0:
-                # make --simulate an argument that requires a value.
+                # There are more than 2 simulation modes or none of them is 0.
+                # Make --simulate an argument that requires a value.
+                simulation_help = (
+                    "Simulation mode"
+                    if cls.simulation_help is None
+                    else cls.simulation_help
+                )
                 parser.add_argument(
                     "--simulate",
                     type=int,
-                    help="Simulation mode",
+                    help=simulation_help,
                     default=default_simulation_mode,
                     choices=cls.valid_simulation_modes,
                 )
