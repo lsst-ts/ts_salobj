@@ -186,7 +186,9 @@ class SalInfoTestCase(asynctest.TestCase):
             os.environ["LSST_DDS_PARTITION_PREFIX"] + "Extra text"
         )
         async with salobj.Domain() as domain:
-            with self.assertWarns(DeprecationWarning):
+            with self.assertWarnsRegex(
+                DeprecationWarning, "LSST_DDS_PARTITION_PREFIX instead of deprecated",
+            ):
                 salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
             self.assertEqual(
                 salinfo.partition_prefix, os.environ["LSST_DDS_PARTITION_PREFIX"]
@@ -196,7 +198,10 @@ class SalInfoTestCase(asynctest.TestCase):
         # if LSST_DDS_PARTITION_PREFIX is not defined.
         os.environ["LSST_DDS_DOMAIN"] = os.environ.pop("LSST_DDS_PARTITION_PREFIX")
         async with salobj.Domain() as domain:
-            with self.assertWarns(DeprecationWarning):
+            with self.assertWarnsRegex(
+                DeprecationWarning,
+                "LSST_DDS_PARTITION_PREFIX not defined; using deprecated fallback",
+            ):
                 salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
             self.assertEqual(salinfo.partition_prefix, os.environ["LSST_DDS_DOMAIN"])
 
@@ -246,7 +251,8 @@ class SalInfoTestCase(asynctest.TestCase):
             self.assertEqual(ackcmd.error, 0)
             self.assertEqual(ackcmd.result, "")
 
-            with self.assertWarns(DeprecationWarning):
+            warning_regex = "makeAckCmd is deprecated"
+            with self.assertWarnsRegex(DeprecationWarning, warning_regex):
                 ackcmd2 = salinfo.makeAckCmd(private_seqNum=seqNum, ack=ack)
             self.assertEqual(ackcmd.get_vars(), ackcmd2.get_vars())
 
@@ -269,7 +275,7 @@ class SalInfoTestCase(asynctest.TestCase):
                     self.assertEqual(ackcmd.error, error)
                     self.assertEqual(ackcmd.result, result)
 
-                    with self.assertWarns(DeprecationWarning):
+                    with self.assertWarnsRegex(DeprecationWarning, warning_regex):
                         ackcmd2 = salinfo.makeAckCmd(
                             private_seqNum=seqNum,
                             ack=ack,

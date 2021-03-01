@@ -203,7 +203,8 @@ class SimulationModeTestCase(asynctest.TestCase):
 
         for bad_simulation_mode in (1, 2):
             index = next(index_gen)
-            with self.assertWarns(DeprecationWarning):
+            warning_regex = "valid_simulation_modes=None is deprecated"
+            with self.assertWarnsRegex(DeprecationWarning, warning_regex):
                 csc = TestCscWithDeprecatedSimulation(
                     index=index, simulation_mode=bad_simulation_mode
                 )
@@ -212,7 +213,7 @@ class SimulationModeTestCase(asynctest.TestCase):
 
         # Test the one valid simulation mode
         index = next(index_gen)
-        with self.assertWarns(DeprecationWarning):
+        with self.assertWarnsRegex(DeprecationWarning, warning_regex):
             csc = TestCscWithDeprecatedSimulation(index=index, simulation_mode=0)
         try:
             await csc.start_task

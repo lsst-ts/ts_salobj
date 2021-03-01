@@ -86,7 +86,9 @@ class TestCscConstructorTestCase(asynctest.TestCase):
             self.assertEqual(csc.summary_state, initial_state)
 
     async def test_deprecated_schema_path_arg(self):
-        with self.assertWarns(DeprecationWarning):
+        with self.assertWarnsRegex(
+            DeprecationWarning, "schema_path argument is deprecated"
+        ):
             expected_schema = salobj.CONFIG_SCHEMA
             schema_path = (
                 pathlib.Path(__file__).resolve().parents[1] / "schema" / "Test.yaml"
@@ -165,19 +167,22 @@ class TestCscConstructorTestCase(asynctest.TestCase):
                 pass
 
         mv = None
+        # Expected fragment of warning message.
+        message_regex = r"set class attribute .*version"
         try:
-            with self.assertWarns(DeprecationWarning):
+            with self.assertWarnsRegex(DeprecationWarning, message_regex):
                 mv = MissingVersionCsc(index=next(index_gen))
         finally:
             if mv is not None:
                 await mv.close()
 
         # Adding the version attribute should eliminate the warning
+        # in question.
         MissingVersionCsc.version = "foo"
         mv = None
         try:
             with self.assertRaises(AssertionError):
-                with self.assertWarns(DeprecationWarning):
+                with self.assertWarnsRegex(DeprecationWarning, message_regex):
                     mv = MissingVersionCsc(index=next(index_gen))
         finally:
             if mv is not None:

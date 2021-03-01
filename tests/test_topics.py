@@ -593,13 +593,18 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 self.assertEqual(read_topic.nqueued, num_commands)
 
                 # get with flush=False should warn and not flush the queue
-                with self.assertWarns(DeprecationWarning):
+                with self.assertWarnsRegex(
+                    DeprecationWarning,
+                    "Specifying a value for the flush argument is deprecated",
+                ):
                     data = read_topic.get(flush=False)
                 self.assertEqual(read_topic.nqueued, num_commands)
                 self.csc.assert_scalars_equal(cmd_data_list[-1], data)
 
                 # get with flush=True should warn and flush the queue
-                with self.assertWarns(DeprecationWarning):
+                with self.assertWarnsRegex(
+                    DeprecationWarning, "flush=True is deprecated"
+                ):
                     data = read_topic.get(flush=True)
                 self.assertEqual(read_topic.nqueued, 0)
                 self.csc.assert_scalars_equal(cmd_data_list[-1], data)
@@ -1214,7 +1219,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 dds_history_depth + 1,
                 dds_durability_history_depth + 1,
             ):
-                with self.assertWarns(UserWarning):
+                with self.assertWarnsRegex(
+                    UserWarning, "max_history=.* > history depth"
+                ):
                     salobj.topics.ReadTopic(
                         salinfo=salinfo,
                         name="scalars",
