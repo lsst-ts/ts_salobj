@@ -214,7 +214,9 @@ class BasicsTestCase(asynctest.TestCase):
         alias for set_random_lsst_dds_partition_prefix.
         """
         old_prefix = os.environ["LSST_DDS_PARTITION_PREFIX"]
-        with self.assertWarns(DeprecationWarning):
+        with self.assertWarnsRegex(
+            DeprecationWarning, "Use set_random_lsst_dds_partition_prefix"
+        ):
             salobj.set_random_lsst_dds_domain()
         new_prefix = os.environ["LSST_DDS_PARTITION_PREFIX"]
         self.assertNotEqual(old_prefix, new_prefix)

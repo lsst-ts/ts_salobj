@@ -11,11 +11,11 @@ v6.3.0
 
 Deprecations:
 
-* Deprecated `BaseCsc.set_simulation_mode`. Note that `BaseCsc.implement_simulation_mode`,
+* Deprecate `BaseCsc.set_simulation_mode`. Note that `BaseCsc.implement_simulation_mode`,
   and allowing ``valid_simulation_modes = None`` have both been deprecated for some time.
   Please move all simulation mode handling to the constructor (if synchronous) or `BaseCsc.start` (if not).
-* Deprecated omitting the ``version`` class attribute of CSCs.
-* Deprecated `ConfigurableCsc` constructor argument ``schema_path``; please specify ``config_schema`` instead.
+* Deprecate omitting the ``version`` class attribute of CSCs.
+* Deprecate `ConfigurableCsc` constructor argument ``schema_path``; please specify ``config_schema`` instead.
 
 Changes:
 
@@ -34,6 +34,8 @@ Changes:
   which simplifies packaging and distribution.
 * `BaseConfigTestCase`: added argument ``schema_name`` to ``check_standard_config_files``
   and made ``sal_name`` optional.
+* Update test for warnings to include testing for the correct message.
+  This makes sure the correct warning is seen (or not seen).
 
 Requirements:
 
