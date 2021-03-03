@@ -103,8 +103,8 @@ Most CSCs can be configured.
 
         * `BaseCsc.amain` adds command-line arguments ``--state`` and, if your CSC is configurable, ``--settings``.
         * If your CSC is configurable, then you *must* add constructor argument ``settings_to_apply`` to your CSC and pass it by name to ``super().__init__``.
-        * Note: the ``settings_to_apply`` constructor argument is recommended for *all* configurable CSCs;
-          even if ``enable_cmdline_state`` is `False`, the argument is still useful for unit tests.
+        * Note: we recommend the ``settings_to_apply`` constructor argument for *all* configurable CSCs,
+          because it is useful for unit tests, even if ``enable_cmdline_state`` is `False`.
 
         The default is `False` because CSCs should start in ``default_initial_state`` unless you have a good reason to do otherwise.
     * ``require_settings`` (bool): set True if and only if all of the following apply:
@@ -120,10 +120,17 @@ Most CSCs can be configured.
         * If your CSC does not support simulation then set ``valid_simulation_modes = [0]``.
           The value 0 is always used for normal operation.
         * To implement nonzero simulation modes see :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`.
+    * ``simulation_help`` (str): help for the ``--simulate`` command-line argument.
+      Please provide this if your CSC has more than 2 valid values for simulation_mode
+      (e.g. more than 0 for normal operation and 1 for simulation).
+      If there are two valid values, the default help will probably suffice.
+      If there is only one valid value then there will be no ``--simulate`` command-line argument
+      and ``simulation_help`` will be ignored.
 
     * ``version`` (str): the version of your package.
-      Typically set to ``version = __version__``, where ``__version__`` has been imported as follows: ``from . import __version__``.
-      Note that this requires ``__init__.py`` to set ``__version__``  *before* importing the module defining the CSC.
+      Failure to provide this will produce a deprecation warning for now, and will someday be an error.
+      Typically set to ``version = __version__``, where ``__version__`` has been imported as follows: ``from . import __version__``;
+      this only works if ``__init__.py`` sets ``__version__``  *before* importing the module defining the CSC.
 
     * Here is an example::
 
@@ -241,7 +248,7 @@ Configurable CSC Details
 
 Configurable CSCs (subclasses of `ConfigurableCsc`) must provide the following support, in addition to the standard `CSC Details`_:
 
-* A ``schema`` that defines the configuration and, if practical, provides a default value for each parameter.
+* A ``schema`` in jsonschema format that defines the configuration and, if practical, provides a default value for each parameter.
   If all values have sensible defaults then your CSC can be configured without specifying a configuration file as part of the ``start`` command.
 * A ``configure`` method that accepts configuration as a struct-like object (a `types.SimpleNamespace`).
 * A ``get_config_pkg`` classmethod that returns ``ts_config_...``, the package that contains configuration files for your CSC.

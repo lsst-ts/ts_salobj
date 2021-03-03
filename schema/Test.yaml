@@ -2,7 +2,10 @@ $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_salobj/tree/schema/Test.yaml
 # title must end with one or more spaces followed by the schema version, which must begin with "v"
 title: Test v1
-description: Configuration for the TestCsc
+description: >-
+  Configuration schema for TestCsc.
+  Deprecated: this will go away when we drop support for
+  the schema_path constructor argument of ConfigurableCsc.
 type: object
 properties:
   string0:

@@ -1,6 +1,6 @@
 # This file is part of ts_salobj.
 #
-# Developed for the LSST Telescope and Site Systems.
+# Developed for the Rubin Observatory Telescope and Site System.
 # This product includes software developed by the LSST Project
 # (https://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -22,7 +22,6 @@
 __all__ = ["TestCsc"]
 
 import asyncio
-import pathlib
 import string
 
 import numpy as np
@@ -30,6 +29,7 @@ import numpy as np
 from .base_csc import State
 from .configurable_csc import ConfigurableCsc
 from . import __version__
+from .config_schema import CONFIG_SCHEMA
 
 
 class TestCsc(ConfigurableCsc):
@@ -67,6 +67,14 @@ class TestCsc(ConfigurableCsc):
         or `State.ENABLED`.
     simulation_mode : `int`, optional
         Simulation mode. The only allowed value is 0.
+    schema_path : `str`, `pathlib.Path` or `None`, optional
+        Path to a schema file used to validate configuration files.
+        This is only for testing the deprecated ``schema_path``
+        `ConfigurableCsc` constructor argument;
+        real CSCs should _not_ provide this argument.
+        If not None then `ConfigurableCsc` is called with this,
+        instead of the ``config_schema`` argument.
+
 
     Raises
     ------
@@ -107,18 +115,21 @@ class TestCsc(ConfigurableCsc):
         initial_state=State.STANDBY,
         settings_to_apply="",
         simulation_mode=0,
+        schema_path=None,
     ):
-        schema_path = (
-            pathlib.Path(__file__).resolve().parents[4] / "schema" / "Test.yaml"
-        )
+        if schema_path is not None:
+            config_kwargs = dict(schema_path=schema_path)
+        else:
+            config_kwargs = dict(config_schema=CONFIG_SCHEMA)
+        print("config_kwargs=", config_kwargs)
         super().__init__(
             "Test",
-            schema_path=schema_path,
             config_dir=config_dir,
             index=index,
             initial_state=initial_state,
             settings_to_apply=settings_to_apply,
             simulation_mode=simulation_mode,
+            **config_kwargs,
         )
         self.cmd_wait.allow_multiple_callbacks = True
         self.config = None
