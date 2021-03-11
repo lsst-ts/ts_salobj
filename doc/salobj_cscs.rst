@@ -222,7 +222,14 @@ Most CSCs can be configured.
 
     * Your subclass should construct a `Remote` for any
       remote SAL component it wishes to listen to or command.
-      For example: ``self.electrometer1 = salobj.Remote(SALPY_Electrometer, index=1)``.
+      Be sure to wait for it to be started before trying to use it.
+      For example::
+
+        # in your constructor:
+        self.electrometer1 = salobj.Remote(name="Electrometer", index=1)
+
+        # in your start method:
+        await self.electrometer1.start_task
 
 * Summary state and error code:
 
