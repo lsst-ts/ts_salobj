@@ -21,7 +21,6 @@
 
 import unittest
 
-import asynctest
 import numpy as np
 
 from lsst.ts import salobj
@@ -32,9 +31,12 @@ np.random.seed(47)
 class BasicCscCommander(salobj.TestCscCommander):
     """A version of `TestCscCommander` that adds a custom "echo" command.
 
-    Use `TestCscCommander` instead of `CscCommander` in order to
-    test a custom version of a supported command ("setArrays")
-    and hiding unsupported generic commands.
+    This class adds a custom command ("echo") that is not supported by
+    the Test CSC. This includes help for the command.
+
+    Inherit from `TestCscCommander` instead of `CscCommander` in order to
+    test a custom override of a command supported by the Test CSC
+    ("setArrays") and to test hiding unsupported generic commands.
     """
 
     def __init__(self, **kwargs):
@@ -46,17 +48,11 @@ class BasicCscCommander(salobj.TestCscCommander):
         self.output(" ".join(args))
 
 
-class CscCommanderTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
-    def setUp(self):
-        self.commander = None
-
-    async def tearDown(self):
-        if self.commander is not None:
-            await self.commander.close()
-
+class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode):
         index = self.next_index()
         self.commander = BasicCscCommander(index=index)
+        self.addAsyncCleanup(self.commander.close)
         self.commander.testing = True
 
         return salobj.TestCsc(
@@ -71,11 +67,12 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             await self.commander.start()
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
-            # Test some standard CSC commands
+            # Test a command that will fail because the CSC is not enabled
             with salobj.assertRaisesAckError(ack=salobj.SalRetCode.CMD_FAILED):
                 await self.commander.run_command(
                     f"wait {salobj.SalRetCode.CMD_COMPLETE} 5"
                 )
+            # Test some standard CSC commands
             await self.commander.run_command("start")
             await self.assert_next_summary_state(salobj.State.DISABLED)
             await self.commander.run_command("enable")
@@ -86,7 +83,9 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 f"wait {salobj.SalRetCode.CMD_COMPLETE} {wait_time}"
             )
             dt = salobj.current_tai() - t0
-            self.assertGreaterEqual(dt, wait_time)
+            # The margin of 0.2 compensates for the clock in Docker on macOS
+            # not being strictly monotonic.
+            self.assertGreaterEqual(dt, wait_time - 0.2)
             self.commander.output_queue.clear()
 
             # Test the help command
@@ -98,7 +97,7 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
             for hidden_command in ("abort", "enterControl", "setValue"):
                 self.assertNotIn(hidden_command, help_str)
 
-            # Test the special setArrays command
+            # Test TestCscCommander's custom setArrays command handler
             # Too many values
             with self.assertRaises(RuntimeError):
                 await self.commander.run_command("setArrays int0=1,2,3,4,5,6")
@@ -113,7 +112,7 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
                 )
                 self.assertEqual(topic.data.int0, [-2, 33, 42, 0, 0])
 
-            # Test the extra "echo" command
+            # Test BasicCscCommander's "echo" command
             self.commander.output_queue.clear()
             argstr = "1   2.3   arbitrary   text"
             await self.commander.run_command(f"echo {argstr}")

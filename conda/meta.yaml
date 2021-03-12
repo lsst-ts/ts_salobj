@@ -42,7 +42,6 @@ requirements:
     - setuptools_scm
     - setuptools
     - pytest-runner
-    - asynctest
     - pytest-asyncio
     - pytest-flake8
   run:

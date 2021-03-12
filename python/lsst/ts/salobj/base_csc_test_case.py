@@ -45,7 +45,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     Subclasses must:
 
-    * Inherit both from this and `unittest.TestCase`.
+    * Inherit both from this and `unittest.IsolatedAsyncioTestCase`.
     * Override `basic_make_csc` to return a CSC.
 
     Also we suggest:

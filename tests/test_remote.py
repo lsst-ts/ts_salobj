@@ -23,7 +23,6 @@ import asyncio
 import os
 import unittest
 
-import asynctest
 import numpy as np
 
 from lsst.ts import salobj
@@ -40,7 +39,7 @@ np.random.seed(47)
 index_gen = salobj.index_generator()
 
 
-class RemoteTestCase(asynctest.TestCase):
+class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_constructor_include_exclude(self):
         """Test the include and exclude arguments for salobj.Remote."""
 
