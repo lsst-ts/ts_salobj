@@ -45,7 +45,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     Subclasses must:
 
-    * Inherit both from this and `asynctest.TestCase`.
+    * Inherit both from this and `unittest.TestCase`.
     * Override `basic_make_csc` to return a CSC.
 
     Also we suggest:
@@ -243,6 +243,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         initial_state=None,
         settings_to_apply=None,
         cmdline_args=(),
+        timeout=STD_TIMEOUT,
     ):
         """Test running the CSC command line script.
 
@@ -266,6 +267,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             `salobj.State.DISABLED` or `salobj.State.ENABLED`.
         cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
+        timeout : `float`, optional
+            Time limit for the CSC to start and output
+            the summaryState event.
         """
         testutils.set_random_lsst_dds_partition_prefix()
         exe_path = shutil.which(exe_name)
@@ -297,7 +301,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             )
             try:
                 for state in expected_states:
-                    await self.assert_next_summary_state(state, timeout=30)
+                    await self.assert_next_summary_state(state, timeout=timeout)
                 if settings_to_apply is not None and settings_to_apply.endswith(
                     ".yaml"
                 ):
