@@ -153,9 +153,8 @@ class _CommandInfo:
         ----------
         timeout : `float`, optional
             Time limit, in seconds. If None then use ``DEFAULT_TIMEOUT``.
-            This time limit is for the entire command if ``wait_done``
-            is true, else it is for the first acknowledgement
-            after the initial ``CMD_ACK``.
+            This time limit is for the command to finish, if ``wait_done``
+            is true, else it is for the next command acknowledgement.
             If the command is acknowledged with ``CMD_INPROGRESS`` then the
             timeout is extended by the timeout value in the acknowledgement.
             Thus a slow command will not need a long timeout, so long as
@@ -272,24 +271,29 @@ class RemoteCommand(write_topic.WriteTopic):
             salinfo._ackcmd_reader.callback = salinfo._ackcmd_callback
 
     async def next_ackcmd(self, ackcmd, timeout=DEFAULT_TIMEOUT, wait_done=True):
-        """Wait for the next acknowledement for the command
+        """Wait for the next acknowledgement for the command.
 
         Parameters
         ----------
         ackcmd : `SalInfo.AckCmdType`
-            The command acknowledgement returned by
-            the previous wait (e.g. from `start`).
+            Command acknowledgement returned by the previous call to
+            `set_start`, `start` or `next_ackcmd`.
         timeout : `float`, optional
             Time limit, in seconds. If None then use ``DEFAULT_TIMEOUT``.
-            This time limit is for the entire command if wait_done
-            is true, else it is for the first acknowledgement
-            after the initial "CMD_ACK".
+            This time limit is for the entire command if ``wait_done``
+            is true, else it is for the next command acknowledgement.
+            If ``wait_done`` is true and the command is acknowledged with
+            ``CMD_INPROGRESS`` then the timeout is extended by
+            the timeout value in the acknowledgement.
+            Thus a slow command will not need a long timeout, so long as
+            the command issues a ``CMD_INPROGRESS`` acknowledgement
+            with a reasonable ``timeout`` value.
         wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
-            If False then wait until the next command acknowledgement;
-            if that acknowledgement is not final (the ack code is not in
-            ``done_ack_codes``), then you will almost certainly want to
-            await `next_ackcmd` again.
+            If False then wait only for the next command acknowledgement
+            If that acknowledgement is not final
+            (the ack code is not in ``self.done_ack_codes``),
+            then you will almost certainly want to await `next_ackcmd` again.
 
         Returns
         -------
@@ -355,19 +359,19 @@ class RemoteCommand(write_topic.WriteTopic):
         timeout : `float`, optional
             Time limit, in seconds. If None then use ``DEFAULT_TIMEOUT``.
             This time limit is for the entire command if ``wait_done``
-            is true, else it is for the first acknowledgement
-            after the initial ``CMD_ACK``.
-            If the command is acknowledged with ``CMD_INPROGRESS`` then the
-            timeout is extended by the timeout value in the acknowledgement.
+            is true, else it is for the first command acknowledgement.
+            If ``wait_done`` is true and the command is acknowledged with
+            ``CMD_INPROGRESS`` then the timeout is extended by
+            the timeout value in the acknowledgement.
             Thus a slow command will not need a long timeout, so long as
             the command issues a ``CMD_INPROGRESS`` acknowledgement
             with a reasonable ``timeout`` value.
         wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
-            If False then wait for the first acknowledgement after the
-            initial "CMD_ACK"; if that acknowledgement is not final
-            (the ack code is not in done_ack_codes), then you will almost
-            certainly want to await `next_ackcmd`.
+            If False then wait only for the first command acknowledgement
+            (typically ``CMD_ACK``). If that acknowledgement is not final
+            (the ack code is not in ``self.done_ack_codes``),
+            then you will almost certainly want to await `next_ackcmd`.
         **kwargs : `dict` [`str`, ``any``]
             The remaining keyword arguments are
             field name = new value for that field.
@@ -400,19 +404,19 @@ class RemoteCommand(write_topic.WriteTopic):
         timeout : `float`, optional
             Time limit, in seconds. If None then use ``DEFAULT_TIMEOUT``.
             This time limit is for the entire command if ``wait_done``
-            is true, else it is for the first acknowledgement
-            after the initial ``CMD_ACK``.
-            If the command is acknowledged with ``CMD_INPROGRESS`` then the
-            timeout is extended by the timeout value in the acknowledgement.
+            is true, else it is for the first acknowledgement.
+            If ``wait_done`` is true and the command is acknowledged with
+            ``CMD_INPROGRESS`` then the timeout is extended by
+            the timeout value in the acknowledgement.
             Thus a slow command will not need a long timeout, so long as
             the command issues a ``CMD_INPROGRESS`` acknowledgement
             with a reasonable ``timeout`` value.
         wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
-            If False then wait for the first acknowledgement after the
-            initial "CMD_ACK"; if that acknowledgement is not final
-            (the ack code is not in done_ack_codes), then you will almost
-            certainly want to await `next_ackcmd`.
+            If False then wait only for the first command acknowledgement
+            (typically ``CMD_ACK``). If that acknowledgement is not final
+            (the ack code is not in ``self.done_ack_codes``),
+            then you will almost certainly want to await `next_ackcmd`.
 
         Returns
         -------

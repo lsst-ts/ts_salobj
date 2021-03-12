@@ -594,11 +594,18 @@ help  # print this help
 
         Parameters
         ----------
-        index : `int`, `True`, `False` or `None`
-            If the CSC is indexed: specify `True` make index a required
-            command line argument, or specify a non-zero `int` to use
-            that index.
-            If the CSC is not indexed: specify `None` or 0.
+        index : `int`, `enum.IntEnum`, `True`, or `None`
+            If the CSC is indexed, do one of the following:
+
+            * Specify `True` to make ``index`` a required
+              command-line argument that accepts any nonzero index.
+            * Specify an `enum.IntEnum` *class* to make ``index`` a required
+              command-line argument that only accepts the enum values.
+            * Specify a non-zero integer to use that index.
+              This is rare; if the CSC is indexed then the user
+              should usually be allowed to specify the index.
+
+            If the CSC is not indexed, specify `None` or 0.
         **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
         """
@@ -667,11 +674,18 @@ help  # print this help
 
         Parameters
         ----------
-        index : `int`, `True`, `False` or `None`
-            If the SAL component is indexed: specify `True` to make index
-            a required command line argument,
-            or specify a non-zero `int` to use that index.
-            If the SAL component is not indexed: specify `None` or 0.
+        index : `int`, `enum.IntEnum`, `True`, or `None`
+            If the CSC is indexed, do one of the following:
+
+            * Specify `True` to make ``index`` a required
+              command-line argument that accepts any nonzero index.
+            * Specify an `enum.IntEnum` *class* to make ``index`` a required
+              command-line argument that only accepts the enum values.
+            * Specify a non-zero integer to use that index.
+              This is rare; if the CSC is indexed then the user
+              should usually be allowed to specify the index.
+
+            If the CSC is not indexed, specify `None` or 0.
         **kwargs : `dict`, optional
             Additional keyword arguments for your class's constructor.
 
