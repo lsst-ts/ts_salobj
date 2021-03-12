@@ -533,9 +533,6 @@ class SalInfo:
         )
         return self.make_ackcmd(*args, **kwargs)
 
-    def __repr__(self):
-        return f"SalInfo({self.name}, {self.index})"
-
     def parse_metadata(self):
         """Parse the IDL metadata to generate some attributes.
 
@@ -583,6 +580,14 @@ class SalInfo:
             return
         self.isopen = False
         self._guardcond.trigger()
+        self._read_loop_task.cancel()
+        try:
+            self._detach_read_conditions()
+        except Exception as e:
+            print(
+                f"{self}.basic_close: failed to detach one or more conditions "
+                f"from the wait set; continuing: {e!r}"
+            )
         for reader in self._reader_dict.values():
             reader.basic_close()
         for writer in self._writer_list:
@@ -603,6 +608,13 @@ class SalInfo:
             # Give the read loop time to exit.
             await asyncio.sleep(0.01)
             self._read_loop_task.cancel()
+            try:
+                self._detach_read_conditions()
+            except Exception as e:
+                print(
+                    f"{self}.close: failed to detach one or more conditions "
+                    f"from the wait set; continuing: {e!r}"
+                )
             for reader in self._reader_dict.values():
                 await reader.close()
             for writer in self._writer_list:
@@ -732,6 +744,17 @@ class SalInfo:
             self.start_task.set_exception(e)
             raise
 
+    def _detach_read_conditions(self):
+        """Try to detach all read conditions from the wait set.
+
+        ADLink suggests doing this at shutdown to work around a bug
+        in their software that produces spurious error messages
+        in the ospl log.
+        """
+        self._waitset.detach(self._guardcond)
+        for read_cond in self._reader_dict:
+            self._waitset.detach(read_cond)
+
     async def _read_loop(self, loop):
         """Read and process data.
 
@@ -839,3 +862,6 @@ class SalInfo:
 
     async def __aexit__(self, type, value, traceback):
         await self.close()
+
+    def __repr__(self):
+        return f"SalInfo({self.name}, {self.index})"
