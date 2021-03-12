@@ -11,7 +11,14 @@ v6.3.1
 
 Changes:
 
-* `topics.RemoteCommand`: fix an error in and improve the documentation
+* `BaseCscTestCase`: add ``timeout`` argument to ``check_bin_script``.
+* Stop using the abandoned ``asynctest`` library.
+* Update test function `modify_environ` to use `unittest.mock.patch` and use it in all tests
+  that modify os.environ (except we still don't reset env var ``LSST_DDS_PARTITION_PREFIX``
+  after calling `set_random_lsst_dds_partition_prefix`, which is a potential issue).
+* `SalInfo`: when closing remove read conditions from the contained dds WaitSet.
+  ADLink suggested doing this (in my case 00020504) to avoid spurious error messages at shutdown.
+* `topics.RemoteCommand`: fix a documentation error and improve the documentation
   for the ``wait_done`` argument to the ``start``, ``set_start``, and ``next_ackcmd`` methods.
 * `BaseCsc` and `CscCommander`: improve the documentation
   for the ``index`` argument to the ``amain`` and ``make_from_cmd_line`` class methods.
