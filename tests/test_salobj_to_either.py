@@ -26,8 +26,6 @@ import time
 import unittest
 import warnings
 
-import asynctest
-
 from lsst.ts import salobj
 
 try:
@@ -45,7 +43,7 @@ SAL__CMD_COMPLETE = 303
 index_gen = salobj.index_generator()
 
 
-class SALPYTestCase(asynctest.TestCase):
+class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_partition_prefix()
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"

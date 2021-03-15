@@ -23,7 +23,6 @@ import os
 import pathlib
 import unittest
 
-import asynctest
 import numpy as np
 import yaml
 
@@ -39,7 +38,7 @@ TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "dat
 TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
-class ConfigurationTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
+class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         # defaults hard-coded in <ts_salobj_root>/schema/Test.yaml
         self.default_dict = dict(

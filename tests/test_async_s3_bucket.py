@@ -20,15 +20,15 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import io
 import os
+import unittest
 
-import asynctest
 import astropy.time
 import moto
 
 from lsst.ts import salobj
 
 
-class AsyncS3BucketTest(asynctest.TestCase):
+class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.bucket_name = "async_bucket_test"
         self.file_data = b"Data for the test case"
@@ -43,23 +43,27 @@ class AsyncS3BucketTest(asynctest.TestCase):
         self.assertEqual(self.bucket.name, self.bucket_name)
 
     async def test_blank_s3_endpoint_url(self):
-        os.environ["S3_ENDPOINT_URL"] = ""
-        bucket = salobj.AsyncS3Bucket(self.bucket_name)
-        self.assertIn("amazon", bucket.service_resource.meta.client.meta.endpoint_url)
+        with salobj.modify_environ(S3_ENDPOINT_URL=""):
+            bucket = salobj.AsyncS3Bucket(self.bucket_name)
+            self.assertIn(
+                "amazon", bucket.service_resource.meta.client.meta.endpoint_url
+            )
 
     async def test_no_s3_endpoint_url(self):
         # Clear "S3_ENDPOINT_URL" if it exists.
-        os.environ.pop("S3_ENDPOINT_URL", default=None)
-        bucket = salobj.AsyncS3Bucket(self.bucket_name)
-        self.assertIn("amazon", bucket.service_resource.meta.client.meta.endpoint_url)
+        with salobj.modify_environ(S3_ENDPOINT_URL=None):
+            bucket = salobj.AsyncS3Bucket(self.bucket_name)
+            self.assertIn(
+                "amazon", bucket.service_resource.meta.client.meta.endpoint_url
+            )
 
     async def test_specified_s3_endpoint_url(self):
         endpoint_url = "http://foo.bar.edu:9000"
-        os.environ["S3_ENDPOINT_URL"] = endpoint_url
-        bucket = salobj.AsyncS3Bucket(self.bucket_name)
-        self.assertEqual(
-            bucket.service_resource.meta.client.meta.endpoint_url, endpoint_url
-        )
+        with salobj.modify_environ(S3_ENDPOINT_URL=endpoint_url):
+            bucket = salobj.AsyncS3Bucket(self.bucket_name)
+            self.assertEqual(
+                bucket.service_resource.meta.client.meta.endpoint_url, endpoint_url
+            )
 
     async def test_file_transfer(self):
         await self.bucket.upload(fileobj=self.fileobj, key=self.key)
@@ -108,7 +112,7 @@ class AsyncS3BucketTest(asynctest.TestCase):
         self.assertEqual(sum(downloaded_nbytes), len(self.file_data))
 
 
-class AsyncS3BucketClassmethodTest(asynctest.TestCase):
+class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
     async def test_make_bucket_name_good(self):
         s3instance = "5TEST"
         expected_name = "rubinobs-lfa-5test"

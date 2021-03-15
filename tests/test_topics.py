@@ -24,7 +24,6 @@ import random
 import time
 import unittest
 
-import asynctest
 import numpy as np
 
 from lsst.ts import salobj
@@ -40,7 +39,7 @@ NODATA_TIMEOUT = 0.1
 np.random.seed(47)
 
 
-class TopicsTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
+class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode):
         return salobj.TestCsc(
             self.next_index(),

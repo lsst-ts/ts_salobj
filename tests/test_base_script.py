@@ -26,7 +26,6 @@ import subprocess
 import unittest
 import warnings
 
-import asynctest
 import yaml
 
 from lsst.ts import salobj
@@ -65,7 +64,7 @@ class NonConfigurableScript(salobj.BaseScript):
         self.set_metadata_called = True
 
 
-class BaseScriptTestCase(asynctest.TestCase):
+class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
     """Test `BaseScript` using simple subclasses `TestScript` and
     `NonConfigurableScript`.
     """
@@ -186,8 +185,9 @@ class BaseScriptTestCase(asynctest.TestCase):
         but that information is not available.
         """
         for master_priority in ("21", None):
-            env_kwargs = {salobj.MASTER_PRIORITY_ENV_VAR: master_priority}
-            with salobj.modify_environ(**env_kwargs):
+            with salobj.modify_environ(
+                **{salobj.MASTER_PRIORITY_ENV_VAR: master_priority}
+            ):
                 initial_environ = os.environ.copy()
                 async with NonConfigurableScript(index=self.index):
                     self.assertEqual(os.environ, initial_environ)

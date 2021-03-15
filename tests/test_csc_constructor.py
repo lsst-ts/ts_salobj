@@ -22,7 +22,6 @@
 import pathlib
 import unittest
 
-import asynctest
 import numpy as np
 
 from lsst.ts import salobj
@@ -54,7 +53,7 @@ class WrongConfigPkgCsc(salobj.TestCsc):
         return "ts_salobj"
 
 
-class TestCscConstructorTestCase(asynctest.TestCase):
+class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
     """Test the TestCsc constructor.
 
     Note: all of these tests must run async because the constructor

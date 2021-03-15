@@ -28,7 +28,6 @@ import subprocess
 import unittest
 import warnings
 
-import asynctest
 import numpy as np
 
 from lsst.ts import salobj
@@ -98,7 +97,7 @@ class FailInReportFaultCsc(salobj.TestCsc):
             super().report_summary_state()
 
 
-class CommunicateTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
+class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode):
         return salobj.TestCsc(
             self.next_index(),
