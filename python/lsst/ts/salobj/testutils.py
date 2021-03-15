@@ -35,7 +35,7 @@ import random
 import socket
 import subprocess
 import time
-import unittest
+import unittest.mock
 import warnings
 
 import astropy.coordinates
