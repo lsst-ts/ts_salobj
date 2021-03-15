@@ -25,7 +25,6 @@ import pathlib
 import sys
 import unittest
 
-import asynctest
 import numpy as np
 
 from lsst.ts import salobj
@@ -76,7 +75,7 @@ class TestCscSettingsRequiredNoCmdLineState(salobj.TestCsc):
     enable_cmdline_state = False
 
 
-class CscMakeFromCmdLineTestCase(asynctest.TestCase):
+class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_partition_prefix()
         self.original_argv = sys.argv[:]

@@ -21,7 +21,6 @@
 
 import unittest
 
-import asynctest
 import numpy as np
 
 from lsst.ts import salobj
@@ -52,7 +51,7 @@ class ControllerWithDoMethods(salobj.Controller):
         pass
 
 
-class ControllerConstructorTestCase(asynctest.TestCase):
+class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_partition_prefix()
 

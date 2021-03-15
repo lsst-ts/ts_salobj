@@ -23,7 +23,6 @@ import asyncio
 import sys
 import unittest
 
-import asynctest
 import numpy as np
 
 from lsst.ts import salobj
@@ -33,7 +32,7 @@ np.random.seed(47)
 index_gen = salobj.index_generator()
 
 
-class SimulationModeTestCase(asynctest.TestCase):
+class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
     """Test simulation mode handling, including the --simulate
     command-line argument.
     """

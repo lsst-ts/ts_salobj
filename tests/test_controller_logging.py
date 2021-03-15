@@ -25,7 +25,6 @@ import os
 import pathlib
 import unittest
 
-import asynctest
 import numpy as np
 
 from lsst.ts import salobj
@@ -54,7 +53,9 @@ class FailedCallbackCsc(salobj.TestCsc):
         raise RuntimeError(self.exc_msg)
 
 
-class ControllerLoggingTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
+class ControllerLoggingTestCase(
+    salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase
+):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode):
         return FailedCallbackCsc(
             initial_state=initial_state,

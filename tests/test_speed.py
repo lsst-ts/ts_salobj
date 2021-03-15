@@ -25,7 +25,6 @@ import pathlib
 import time
 import unittest
 
-import asynctest
 import ddsutil
 import astropy.units as u
 
@@ -43,7 +42,7 @@ STD_TIMEOUT = 60
 index_gen = salobj.index_generator()
 
 
-class SpeedTestCase(asynctest.TestCase):
+class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
     """Measure the speed of salobj.
 
     These are not actually unit tests, but running them as tests

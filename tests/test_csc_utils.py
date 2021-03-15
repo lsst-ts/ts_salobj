@@ -23,8 +23,6 @@ import itertools
 import pathlib
 import unittest
 
-import asynctest
-
 from lsst.ts import salobj
 
 # Long enough to perform any reasonable operation
@@ -35,7 +33,7 @@ index_gen = salobj.index_generator()
 TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data" / "config"
 
 
-class SetSummaryStateTestCSe(salobj.BaseCscTestCase, asynctest.TestCase):
+class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(self, initial_state, config_dir, simulation_mode):
         return salobj.TestCsc(
             self.next_index(),

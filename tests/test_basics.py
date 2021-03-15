@@ -27,8 +27,6 @@ import socket
 import time
 import unittest
 
-import asynctest
-
 import astropy.time
 from astropy.coordinates import Angle
 import astropy.units as u
@@ -54,7 +52,7 @@ def alternate_tai_from_utc_unix(utc_unix):
     return ap_time.tai.mjd * salobj.SECONDS_PER_DAY - salobj.MJD_MINUS_UNIX_SECONDS
 
 
-class BasicsTestCase(asynctest.TestCase):
+class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         salobj.set_random_lsst_dds_partition_prefix()
 

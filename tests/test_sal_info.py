@@ -24,8 +24,6 @@ import logging
 import os
 import unittest
 
-import asynctest
-
 from lsst.ts import salobj
 
 # Long enough to perform any reasonable operation
@@ -35,20 +33,9 @@ STD_TIMEOUT = 60
 index_gen = salobj.index_generator()
 
 
-class SalInfoTestCase(asynctest.TestCase):
+class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        self.initial_env_vars = {
-            name: os.environ.get(name)
-            for name in ("LSST_DDS_PARTITION_PREFIX", "LSST_DDS_DOMAIN")
-        }
         salobj.set_random_lsst_dds_partition_prefix()
-
-    def tearDown(self):
-        for name, value in self.initial_env_vars.items():
-            if value is None:
-                os.environ.pop(name, None)
-            else:
-                os.environ[name] = value
 
     async def test_salinfo_constructor(self):
         with self.assertRaises(TypeError):
@@ -180,40 +167,45 @@ class SalInfoTestCase(asynctest.TestCase):
             )
 
     async def test_lsst_dds_domain_fallback(self):
+        # Pick a value for LSST_DDS_DOMAIN that does not match
+        # LSST_DDS_PARTITION_PREFIX.
+        new_lsst_dds_domain = os.environ["LSST_DDS_PARTITION_PREFIX"] + "Extra text"
+
         # Test that LSST_DDS_DOMAIN is ignored, with a warning,
         # if both that and LSST_DDS_PARTITION_PREFIX are defined.
-        os.environ["LSST_DDS_DOMAIN"] = (
-            os.environ["LSST_DDS_PARTITION_PREFIX"] + "Extra text"
-        )
-        async with salobj.Domain() as domain:
-            with self.assertWarnsRegex(
-                DeprecationWarning, "LSST_DDS_PARTITION_PREFIX instead of deprecated",
-            ):
-                salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
-            self.assertEqual(
-                salinfo.partition_prefix, os.environ["LSST_DDS_PARTITION_PREFIX"]
-            )
+        with salobj.modify_environ(LSST_DDS_DOMAIN=new_lsst_dds_domain):
+            async with salobj.Domain() as domain:
+                with self.assertWarnsRegex(
+                    DeprecationWarning,
+                    "LSST_DDS_PARTITION_PREFIX instead of deprecated",
+                ):
+                    salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+                self.assertEqual(
+                    salinfo.partition_prefix, os.environ["LSST_DDS_PARTITION_PREFIX"]
+                )
 
         # Test that LSST_DDS_DOMAIN is used, with a warning,
         # if LSST_DDS_PARTITION_PREFIX is not defined.
-        os.environ["LSST_DDS_DOMAIN"] = os.environ.pop("LSST_DDS_PARTITION_PREFIX")
-        async with salobj.Domain() as domain:
-            with self.assertWarnsRegex(
-                DeprecationWarning,
-                "LSST_DDS_PARTITION_PREFIX not defined; using deprecated fallback",
-            ):
-                salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
-            self.assertEqual(salinfo.partition_prefix, os.environ["LSST_DDS_DOMAIN"])
+        with salobj.modify_environ(
+            LSST_DDS_PARTITION_PREFIX=None, LSST_DDS_DOMAIN=new_lsst_dds_domain
+        ):
+            async with salobj.Domain() as domain:
+                with self.assertWarnsRegex(
+                    DeprecationWarning,
+                    "LSST_DDS_PARTITION_PREFIX not defined; using deprecated fallback",
+                ):
+                    salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+                self.assertEqual(salinfo.partition_prefix, new_lsst_dds_domain)
 
     async def test_lsst_dds_domain_required(self):
-        # Delete the main environment variable and the fallback,
-        # if they are defined.
-        os.environ.pop("LSST_DDS_PARTITION_PREFIX", None)
-        os.environ.pop("LSST_DDS_DOMAIN", None)
-
-        async with salobj.Domain() as domain:
-            with self.assertRaises(RuntimeError):
-                salobj.SalInfo(domain=domain, name="Test", index=1)
+        # Delete LSST_DDS_PARTITION_PREFIX and (if defined) LSST_DDS_DOMAIN.
+        # This should raise an error.
+        with salobj.modify_environ(
+            LSST_DDS_PARTITION_PREFIX=None, LSST_DDS_DOMAIN=None
+        ):
+            async with salobj.Domain() as domain:
+                with self.assertRaises(RuntimeError):
+                    salobj.SalInfo(domain=domain, name="Test", index=1)
 
     async def test_log_level(self):
         """Test that log level is decreased (verbosity increased) to INFO."""
