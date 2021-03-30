@@ -108,7 +108,8 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
     @contextlib.asynccontextmanager
     async def make_remote(
-        self, identity,
+        self,
+        identity,
     ):
         """Create a remote to talk to self.csc with a specified identity.
 
@@ -128,7 +129,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         try:
             domain.default_identity = identity
             remote = salobj.Remote(
-                domain=domain, name=self.csc.salinfo.name, index=self.csc.salinfo.index,
+                domain=domain,
+                name=self.csc.salinfo.name,
+                index=self.csc.salinfo.index,
             )
         finally:
             domain.default_identity = original_default_identity
@@ -149,7 +152,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             # TODO DM-26605 remove this line as no longer needed:
             self.csc.authorize = True
             await self.assert_next_sample(
-                self.remote.evt_authList, authorizedUsers="", nonAuthorizedCSCs="",
+                self.remote.evt_authList,
+                authorizedUsers="",
+                nonAuthorizedCSCs="",
             )
 
             domain = self.csc.salinfo.domain
@@ -255,11 +260,12 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                         )
 
     async def test_set_auth_list_prefix(self):
-        """Test the setAuthList command with a +/- prefix
-        """
+        """Test the setAuthList command with a +/- prefix"""
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             await self.assert_next_sample(
-                self.remote.evt_authList, authorizedUsers="", nonAuthorizedCSCs="",
+                self.remote.evt_authList,
+                authorizedUsers="",
+                nonAuthorizedCSCs="",
             )
 
             all_csc_names = ["Test:5", "ATDome:0", "ATDome"]
@@ -616,8 +622,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                         )
 
     async def test_make_csc_timeout(self):
-        """Test that setting the timeout argument to make_csc works.
-        """
+        """Test that setting the timeout argument to make_csc works."""
         with self.assertRaises(asyncio.TimeoutError):
             # Use such a short timeout that make_csc times out
             async with self.make_csc(initial_state=salobj.State.STANDBY, timeout=0):

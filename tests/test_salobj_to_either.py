@@ -63,7 +63,10 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
         print(f"Remote: create salobj remote with index={self.index}")
         t0 = time.monotonic()
         async with salobj.Domain() as domain, salobj.Remote(
-            domain=domain, name="Test", index=self.index, evt_max_history=1,
+            domain=domain,
+            name="Test",
+            index=self.index,
+            evt_max_history=1,
         ) as remote:
             dt = time.monotonic() - t0
             print(

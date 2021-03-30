@@ -159,8 +159,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(schema)
 
     async def test_non_configurable_script_empty_config(self):
-        """Test configuring the script with no data. This should work.
-        """
+        """Test configuring the script with no data. This should work."""
         async with NonConfigurableScript(index=self.index) as script:
             data = script.cmd_configure.DataType()
             await script.do_configure(data)
@@ -548,8 +547,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(remote.start_task.done())
 
     async def test_script_process(self):
-        """Test running a script as a subprocess.
-        """
+        """Test running a script as a subprocess."""
         script_path = os.path.join(self.datadir, "script1")
 
         for fail in (None, "fail_run", "fail_cleanup"):
@@ -557,7 +555,10 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 async with salobj.Domain() as domain:
                     index = next(index_gen)
                     remote = salobj.Remote(
-                        domain=domain, name="Script", index=index, evt_max_history=0,
+                        domain=domain,
+                        name="Script",
+                        index=index,
+                        evt_max_history=0,
                     )
                     await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
 
@@ -625,8 +626,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                             )
 
     async def test_script_schema_process(self):
-        """Test running a script with --schema as a subprocess.
-        """
+        """Test running a script with --schema as a subprocess."""
         script_path = os.path.join(self.datadir, "script1")
         index = 1  # index is ignored
         process = await asyncio.create_subprocess_exec(

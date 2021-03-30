@@ -401,13 +401,11 @@ class Controller:
         self.put_log_level()
 
     def put_log_level(self):
-        """Output the logLevel event.
-        """
+        """Output the logLevel event."""
         self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(), force_output=True)
 
     def _assert_do_methods_present(self):
-        """Assert that all needed do_<name> methods are present.
-        """
+        """Assert that all needed do_<name> methods are present."""
         command_names = self.salinfo.command_names
         do_names = [name for name in dir(self) if name.startswith("do_")]
         supported_command_names = [name[3:] for name in do_names]

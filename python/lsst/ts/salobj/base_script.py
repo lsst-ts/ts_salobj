@@ -243,8 +243,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
     @property
     def group_id(self):
-        """Get the group ID (a `str`), or "" if not set.
-        """
+        """Get the group ID (a `str`), or "" if not set."""
         return self.evt_state.data.groupId
 
     @property
@@ -264,8 +263,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
     @property
     def state_name(self):
-        """Get the name of the current `state`.state.
-        """
+        """Get the name of the current `state`.state."""
         try:
             return ScriptState(self.state.state).name
         except ValueError:
@@ -695,8 +693,7 @@ class BaseScript(controller.Controller, abc.ABC):
         self.evt_checkpoints.set_put(pause=pause, stop=stop, force_output=True)
 
     async def _heartbeat_loop(self):
-        """Output heartbeat at regular intervals.
-        """
+        """Output heartbeat at regular intervals."""
         while True:
             try:
                 await asyncio.sleep(HEARTBEAT_INTERVAL)
@@ -707,8 +704,7 @@ class BaseScript(controller.Controller, abc.ABC):
                 self.log.exception("Heartbeat output failed")
 
     async def _exit(self):
-        """Call cleanup (if the script was run) and exit the script.
-        """
+        """Call cleanup (if the script was run) and exit the script."""
         if self._is_exiting:
             return
         self._is_exiting = True

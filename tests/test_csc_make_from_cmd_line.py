@@ -58,8 +58,7 @@ class NoIndexCsc(salobj.TestCsc):
 
 
 class TestCscSettingsRequired(salobj.TestCsc):
-    """A variant of TestCsc that has require_settings=True.
-    """
+    """A variant of TestCsc that has require_settings=True."""
 
     require_settings = True
 

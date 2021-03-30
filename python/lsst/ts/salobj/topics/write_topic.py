@@ -81,7 +81,9 @@ class WriteTopic(BaseTopic):
         initial_seq_num=None,
     ):
         super().__init__(
-            salinfo=salinfo, name=name, sal_prefix=sal_prefix,
+            salinfo=salinfo,
+            name=name,
+            sal_prefix=sal_prefix,
         )
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests

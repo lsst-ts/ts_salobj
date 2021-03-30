@@ -68,7 +68,9 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
         """
         # settingsVersion.settingsApplied should start with
         # the config file name followed by a colon
-        data = await self.assert_next_sample(topic=self.remote.evt_settingsApplied,)
+        data = await self.assert_next_sample(
+            topic=self.remote.evt_settingsApplied,
+        )
         desired_prefix = config_file + ":"
         self.assertEqual(data.settingsVersion[: len(desired_prefix)], desired_prefix)
 
