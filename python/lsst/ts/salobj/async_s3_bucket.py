@@ -97,14 +97,12 @@ class AsyncS3Bucket:
         self.bucket = self.service_resource.Bucket(name)
 
     def _start_mock(self, name):
-        """Start a mock S3 server with the specified bucket.
-        """
+        """Start a mock S3 server with the specified bucket."""
         self.mock = moto.mock_s3()
         self.mock.start()
 
     def stop_mock(self):
-        """Stop the mock s3 service, if running. A no-op if not running.
-        """
+        """Stop the mock s3 service, if running. A no-op if not running."""
         if self.mock is not None:
             self.mock.stop()
             self.mock = None

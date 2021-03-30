@@ -55,8 +55,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
         )
 
     def make_csc_class(self, modes):
-        """Make a subclass of TestCsc with specified valid simulation modes
-        """
+        """Make a subclass of TestCsc with specified valid simulation modes"""
 
         class TestCscWithSimulation(salobj.TestCsc):
             valid_simulation_modes = modes

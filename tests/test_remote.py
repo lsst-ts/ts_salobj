@@ -196,16 +196,14 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(evt.volatile)
 
     async def test_default_max_history(self):
-        """Test default evt_max_history ctor argument.
-        """
+        """Test default evt_max_history ctor argument."""
         index = next(index_gen)
         async with salobj.Domain() as domain:
             remote = salobj.Remote(domain=domain, name="Test", index=index)
             self.assert_max_history(remote)
 
     async def test_evt_max_history(self):
-        """Test non-default evt_max_history Remote constructor argument.
-        """
+        """Test non-default evt_max_history Remote constructor argument."""
         evt_max_history = 0
         index = next(index_gen)
         async with salobj.Domain() as domain:

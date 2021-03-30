@@ -35,7 +35,7 @@ import random
 import socket
 import subprocess
 import time
-import unittest
+import unittest.mock
 import warnings
 
 import astropy.coordinates
@@ -143,7 +143,10 @@ def assert_black_formatted(dirpath):
     (e.g. not `python/lsst/ts/salobj/version.py`).
     This may be a bug in black 19.10b0.
     """
-    result = subprocess.run(["black", "--check", str(dirpath)], capture_output=True,)
+    result = subprocess.run(
+        ["black", "--check", str(dirpath)],
+        capture_output=True,
+    )
     if result.returncode != 0:
         raise AssertionError(result.stderr)
 

@@ -547,7 +547,8 @@ class ReadTopic(BaseTopic):
         else:
             if flush:
                 warnings.warn(
-                    "flush=True is deprecated for ReadTopic.get", DeprecationWarning,
+                    "flush=True is deprecated for ReadTopic.get",
+                    DeprecationWarning,
                 )
             else:
                 warnings.warn(
@@ -660,8 +661,7 @@ class ReadTopic(BaseTopic):
                 await result
 
     def _cancel_callbacks(self):
-        """Cancel the callback loop and all existing callback tasks.
-        """
+        """Cancel the callback loop and all existing callback tasks."""
         self._callback_loop_task.cancel()
         while self._callback_tasks:
             task = self._callback_tasks.pop()

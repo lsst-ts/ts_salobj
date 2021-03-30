@@ -51,8 +51,7 @@ class MinimalSalobjController(salobj.Controller):
 
     @classmethod
     def make_from_cmd_line(cls):
-        """Make an instance from the command line.
-        """
+        """Make an instance from the command line."""
         parser = argparse.ArgumentParser("Run a minimal Salobj Test controller")
         parser.add_argument("index", type=int, help="Script SAL Component index")
         parser.add_argument("initial_log_level", type=int, help="Initial log level")
@@ -63,8 +62,7 @@ class MinimalSalobjController(salobj.Controller):
 
     @classmethod
     async def amain(cls):
-        """Make and run a controller.
-        """
+        """Make and run a controller."""
         controller = cls.make_from_cmd_line()
         await controller.done_task
 

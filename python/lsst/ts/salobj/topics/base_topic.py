@@ -149,14 +149,12 @@ class BaseTopic(abc.ABC):
 
     @property
     def volatile(self):
-        """Does this topic have volatile durability?
-        """
+        """Does this topic have volatile durability?"""
         return self.qos_set.volatile
 
     @property
     def metadata(self):
-        """Get topic metadata as a `TopicMetadata`, if available, else `None`.
-        """
+        """Get topic metadata as a `TopicMetadata`, if available,else None."""
         return self.salinfo.metadata.topic_info.get(self.sal_name)
 
     def __repr__(self):

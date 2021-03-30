@@ -337,8 +337,7 @@ def name_to_name_index(name):
 
 
 def current_tai_from_utc():
-    """Return the current TAI in unix seconds, using `tai_from_utc`.
-    """
+    """Return the current TAI in unix seconds, using `tai_from_utc`."""
     return tai_from_utc_unix(time.time())
 
 
@@ -543,8 +542,7 @@ def _get_current_tai_function():
         clock_tai = getattr(time, "CLOCK_TAI", 11)
 
         def system_tai():
-            """Return current TAI in unix seconds, using clock_gettime.
-            """
+            """Return current TAI in unix seconds, using clock_gettime."""
             return time.clock_gettime(clock_tai)
 
         # Call current_tai_from_utc once before using the returned value,

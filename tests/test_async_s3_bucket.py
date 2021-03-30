@@ -85,8 +85,7 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(reported_size, len(self.file_data))
 
     async def test_callbacks(self):
-        """Test callback functions with file transfers.
-        """
+        """Test callback functions with file transfers."""
         uploaded_nbytes = []
         downloaded_nbytes = []
 
@@ -126,7 +125,8 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
         s3category = "Other3"
         expected_name = "rubinobs-other3-5test"
         name = salobj.AsyncS3Bucket.make_bucket_name(
-            s3instance=s3instance, s3category=s3category,
+            s3instance=s3instance,
+            s3category=s3category,
         )
         self.assertEqual(name, expected_name)
 
@@ -228,8 +228,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(key, expected_key)
 
     def test_env_var_secrets(self):
-        """Check that moto.mock ovewrites authorization env vars.
-        """
+        """Check that moto.mock ovewrites authorization env vars."""
         env_names = (
             "AWS_ACCESS_KEY_ID",
             "AWS_SECRET_ACCESS_KEY",

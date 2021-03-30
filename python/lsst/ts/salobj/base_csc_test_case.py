@@ -286,7 +286,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         else:
             args += ["--state", initial_state.name.lower()]
             expected_states = get_expected_summary_states(
-                initial_state=default_initial_state, final_state=initial_state,
+                initial_state=default_initial_state,
+                final_state=initial_state,
             )
         if settings_to_apply is not None:
             args += ["--settings", settings_to_apply]
@@ -297,7 +298,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         ) as self.remote:
             print("check_bin_script running:", " ".join(args))
             process = await asyncio.create_subprocess_exec(
-                *args, stderr=subprocess.PIPE,
+                *args,
+                stderr=subprocess.PIPE,
             )
             try:
                 for state in expected_states:

@@ -34,8 +34,7 @@ TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
 class InvalidPkgNameCsc(salobj.TestCsc):
-    """A CSC whose get_pkg_name classmethod returns a nonexistent package.
-    """
+    """A CSC whose get_pkg_name classmethod returns a nonexistent package."""
 
     @staticmethod
     def get_config_pkg():
@@ -44,8 +43,7 @@ class InvalidPkgNameCsc(salobj.TestCsc):
 
 
 class WrongConfigPkgCsc(salobj.TestCsc):
-    """A CSC whose get_pkg_name classmethod returns the wrong package.
-    """
+    """A CSC whose get_pkg_name classmethod returns the wrong package."""
 
     @staticmethod
     def get_config_pkg():
@@ -151,8 +149,7 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_missing_version(self):
         class MissingVersionCsc(salobj.BaseCsc):
-            """A do-nothing CSC with no version class variable.
-            """
+            """A do-nothing CSC with no version class variable."""
 
             valid_simulation_modes = [0]
 

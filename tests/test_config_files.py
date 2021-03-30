@@ -109,8 +109,7 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
             )
 
     def test_local_configs(self):
-        """Test the various local config directories.
-        """
+        """Test the various local config directories."""
         data_root = pathlib.Path(__file__).parent / "data"
 
         self.check_config_files(

@@ -57,8 +57,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         salobj.set_random_lsst_dds_partition_prefix()
 
     async def test_assert_raises_ack_error(self):
-        """Test the assertRaisesAckError function.
-        """
+        """Test the assertRaisesAckError function."""
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain, "Test", index=1)
             private_seqNum = 5
@@ -367,8 +366,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(tai, tai7, delta=1e-6)
 
     def test_leap_second_table(self):
-        """Check that the leap second table is set and an update is scheduled.
-        """
+        """Check that the leap second table is set and an update scheduled."""
         self.assertIsNotNone(lsst.ts.salobj.base._LEAP_SECOND_TABLE)
         update_timer = lsst.ts.salobj.base._LEAP_SECOND_TABLE_UPDATE_TIMER
         self.assertTrue(update_timer.is_alive())
@@ -386,8 +384,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(update_timer.interval, current_duration)
 
     def test_tai_from_utc(self):
-        """Test tai_from_utc.
-        """
+        """Test tai_from_utc."""
         # Check tai_from_utc at leap second transition just before 2017-01-01
         # when leap seconds went from 36 to 37.
         utc0_ap = astropy.time.Time("2017-01-01", scale="utc", format="iso")
