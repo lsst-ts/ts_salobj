@@ -275,8 +275,7 @@ class CscCommander:
         }
 
     def print_help(self):
-        """Print help.
-        """
+        """Print help."""
         command_help = "\n".join(self.get_commands_help())
         self.output(
             f"""Send commands to the {self.remote.salinfo.name} CSC and print events and telemetry.
@@ -289,8 +288,7 @@ help  # print this help
         )
 
     async def close(self):
-        """Close the commander, prior to quitting.
-        """
+        """Close the commander, prior to quitting."""
         while self.tasks:
             task = self.tasks.pop()
             task.cancel()
@@ -311,8 +309,7 @@ help  # print this help
         print(str)
 
     def format_item(self, key, value):
-        """Format one event or telemetry field for printing.
-        """
+        """Format one event or telemetry field for printing."""
         if isinstance(value, float):
             return f"{key}={value:0.4f}"
         return f"{key}={value}"
@@ -367,8 +364,7 @@ help  # print this help
         }
 
     def get_rounded_public_fields(self, data, digits=2):
-        """Deprecated version of get_rounded_public_data.
-        """
+        """Deprecated version of get_rounded_public_data."""
         warnings.warn("Use get_rounded_public_data instead", DeprecationWarning)
         return self.get_rounded_public_data(data=data, digits=digits)
 
@@ -446,8 +442,7 @@ help  # print this help
         return dict(cast(name, arg) for name, arg in zip(names, args))
 
     async def do_start(self, args):
-        """Allow the start command to have no arguments.
-        """
+        """Allow the start command to have no arguments."""
         assert len(args) in (0, 1)
         if args:
             settingsToApply = args[0]
@@ -567,8 +562,7 @@ help  # print this help
             self.tasks.remove(task)
 
     async def start(self):
-        """Start asynchonous processes.
-        """
+        """Start asynchonous processes."""
         self.output(f"Waiting for {self.remote.salinfo.name_index} to start.")
         await self.remote.start_task
         if self.enable:

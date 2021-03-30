@@ -747,8 +747,7 @@ class BaseCsc(Controller):
 
     @property
     def summary_state(self):
-        """Get the summary state as a `State` enum.
-        """
+        """Get the summary state as a `State` enum."""
         return self._summary_state
 
     async def handle_summary_state(self):
@@ -822,8 +821,7 @@ class BaseCsc(Controller):
         self.report_summary_state()
 
     async def _heartbeat_loop(self):
-        """Output heartbeat at regular intervals.
-        """
+        """Output heartbeat at regular intervals."""
         while True:
             try:
                 await asyncio.sleep(self.heartbeat_interval)

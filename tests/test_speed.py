@@ -137,8 +137,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 process.kill()
 
     async def test_class_creation_speed(self):
-        """Test the speed of creating topic classes on the fly.
-        """
+        """Test the speed of creating topic classes on the fly."""
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain, "Test", index=self.index)
             topic_names = (
@@ -211,7 +210,8 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             if verify is not None:
                 self.insert_measurement(
                     verify.Measurement(
-                        "salobj.ReadTest_arrays", arrays_read_speed * u.ct / u.second,
+                        "salobj.ReadTest_arrays",
+                        arrays_read_speed * u.ct / u.second,
                     )
                 )
 

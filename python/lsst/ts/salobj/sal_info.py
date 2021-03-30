@@ -453,8 +453,7 @@ class SalInfo:
 
     @property
     def started(self):
-        """Return True if successfully started, False otherwise.
-        """
+        """Return True if successfully started, False otherwise."""
         return (
             self.start_task.done()
             and not self.start_task.cancelled()

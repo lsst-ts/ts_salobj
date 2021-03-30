@@ -198,8 +198,7 @@ class _CommandInfo:
             )
 
     async def _basic_next_ackcmd(self, timeout):
-        """Basic implementation of next_ackcmd.
-        """
+        """Basic implementation of next_ackcmd."""
         t0 = time.monotonic()
         elapsed_time = 0
         while True:

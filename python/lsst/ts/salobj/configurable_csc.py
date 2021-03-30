@@ -444,8 +444,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def get_config_pkg():
-        """Get the name of the configuration package, e.g. "ts_config_ocs".
-        """
+        """Get the name of the configuration package, e.g. "ts_config_ocs"."""
         raise NotImplementedError()
 
     def _get_default_config_dir(self, name):
