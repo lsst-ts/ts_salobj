@@ -27,7 +27,6 @@ import asyncio
 import os
 import re
 import sys
-import time
 import types
 
 import yaml
@@ -97,18 +96,6 @@ class BaseScript(controller.Controller, abc.ABC):
         if index == 0:
             raise ValueError("index must be nonzero")
 
-        # Speed up script loading time and avoid expensive system alignments
-        # by making sure scripts never become master.
-        # This must be done before the `DomainParticipant` is created.
-        initial_master_prority = os.environ.get(base.MASTER_PRIORITY_ENV_VAR, None)
-        os.environ[base.MASTER_PRIORITY_ENV_VAR] = "0"
-        try:
-            super().__init__("Script", index, do_callbacks=True)
-        finally:
-            if initial_master_prority is None:
-                del os.environ[base.MASTER_PRIORITY_ENV_VAR]
-            else:
-                os.environ[base.MASTER_PRIORITY_ENV_VAR] = initial_master_prority
         schema = self.get_schema()
         if schema is None:
             self.config_validator = None
@@ -123,13 +110,30 @@ class BaseScript(controller.Controller, abc.ABC):
         # when the task is done.
         self.done_task = asyncio.Future()
         self._is_exiting = False
-        self.evt_description.set(classname=type(self).__name__, description=str(descr))
-        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         # Delay (sec) to allow sending the final state and acknowleding
         # the command before exiting.
         self.final_state_delay = 0.3
 
+        # A dict of state: timestamp (TAI seconds).
         self.timestamps = dict()
+
+        self._heartbeat_task = asyncio.Future()
+
+        # Speed up script loading time and avoid expensive system alignments
+        # by making sure scripts never become master.
+        # The env var must be set while the `DomainParticipant` is created.
+        initial_master_prority = os.environ.get(base.MASTER_PRIORITY_ENV_VAR, None)
+        os.environ[base.MASTER_PRIORITY_ENV_VAR] = "0"
+        try:
+            super().__init__("Script", index, do_callbacks=True)
+        finally:
+            if initial_master_prority is None:
+                del os.environ[base.MASTER_PRIORITY_ENV_VAR]
+            else:
+                os.environ[base.MASTER_PRIORITY_ENV_VAR] = initial_master_prority
+
+        self.evt_description.set(classname=type(self).__name__, description=str(descr))
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
     async def start(self):
         remote_names = set()
@@ -296,7 +300,7 @@ class BaseScript(controller.Controller, abc.ABC):
         """
         if state is not None:
             state = ScriptState(state)
-            self.timestamps[state] = time.time()
+            self.timestamps[state] = base.current_tai()
         if keep_old_reason and reason is not None:
             sepstr = "; " if self.evt_state.data.reason else ""
             reason = self.evt_state.data.reason + sepstr + reason
@@ -734,4 +738,4 @@ class BaseScript(controller.Controller, abc.ABC):
                 ScriptState.FAILED, reason=f"failed in _exit: {e}", keep_old_reason=True
             )
             await asyncio.sleep(self.final_state_delay)
-            asyncio.create_task(self.close(e))
+            asyncio.create_task(self.close(exception=e))
