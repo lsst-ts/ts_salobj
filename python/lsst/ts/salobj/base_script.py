@@ -84,9 +84,6 @@ class BaseScript(controller.Controller, abc.ABC):
         A logger.
     done_task : `asyncio.Task`
         A task that is done when the script has fully executed.
-    final_state_delay : `float`
-        Final delay (in seconds) before exiting.
-        Must be long enough to allow final events to be output.
     timestamps : `dict` [``lsst.ts.idl.enums.ScriptState``, `float`]
         Dict of script state: TAI unix timestamp.
         Used to set timestamp data in the ``script`` event.
@@ -106,9 +103,6 @@ class BaseScript(controller.Controller, abc.ABC):
         # Value incremented by `next_supplemented_group_id`
         # and cleared by do_setGroupId.
         self._sub_group_id = 0
-        # A task that is set to None (or an exception if cleanup fails)
-        # when the task is done.
-        self.done_task = asyncio.Future()
         self._is_exiting = False
         # Delay (sec) to allow sending the final state and acknowleding
         # the command before exiting.
@@ -729,7 +723,6 @@ class BaseScript(controller.Controller, abc.ABC):
 
             self.log.info(f"Setting final state to {final_state!r}")
             self.set_state(final_state, reason=reason, keep_old_reason=True)
-            await asyncio.sleep(self.final_state_delay)
             asyncio.create_task(self.close())
         except Exception as e:
             if not isinstance(e, base.ExpectedError):
@@ -737,5 +730,4 @@ class BaseScript(controller.Controller, abc.ABC):
             self.set_state(
                 ScriptState.FAILED, reason=f"failed in _exit: {e}", keep_old_reason=True
             )
-            await asyncio.sleep(self.final_state_delay)
             asyncio.create_task(self.close(exception=e))
