@@ -14,6 +14,7 @@ Changes:
 * Improve handling of errors in the constructor in `SalInfo`, `Controller`, `BaseCsc` and `BaseScript`:
   Make sure the close methods will not access missing attributes.
 * `BaseCsc`: check the simulation mode before calling the parent class's constructor, to avoid needlessly constructing a `Domain`.
+* `BaseCsc`: remove internal variable ``_requested_summary_state``.
 
 Requirements:
 
