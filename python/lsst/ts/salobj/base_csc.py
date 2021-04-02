@@ -185,7 +185,6 @@ class BaseCsc(Controller):
                     f"not in valid_simulation_modes={self.valid_simulation_modes}"
                 )
 
-        self._requested_simulation_mode = int(simulation_mode)
         self._settings_to_apply = settings_to_apply
         self._summary_state = State(self.default_initial_state)
         self._initial_state = initial_state
@@ -229,7 +228,7 @@ class BaseCsc(Controller):
         await super().start()
         self._heartbeat_task.cancel()  # Paranoia
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-        await self.set_simulation_mode(self._requested_simulation_mode)
+        await self.set_simulation_mode(self.simulation_mode)
 
         # Handle initial state, then transition to the desired state.
         # If this fails then log the exception and continue,
