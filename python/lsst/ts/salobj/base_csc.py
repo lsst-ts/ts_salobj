@@ -86,8 +86,16 @@ class BaseCsc(Controller):
         is required if ``--state`` is specified.
         Ignored unless ``enable_cmdline_state`` is True
         and the CSC is a subclass of `ConfigurableCsc`.
+    simulation_help : `str`
+        A *class* attribute.
+        Help for the --simulate command, or None for the default help
+        (which is fine for the usual case of 0/1).
+        Ignored if simulation is not supported.
     valid_simulation_modes : `list` [`int`] or `None`
-        A *class* attribute. If not `None` has the following effect:
+        A *class* attribute. A value of `None` is deprecated
+        (though it is the default, for backwards compatibility;
+        once `None` is prohibited there will be no default).
+        If not `None` has the following effect:
 
         * ``simulation_mode`` will be checked in the constructor
         * `implement_simulation_mode` will be a no-op.
@@ -95,11 +103,10 @@ class BaseCsc(Controller):
           The default value will be 0 if that is a valid simulation mode
           (and it certainly should be).
           Otherwise the default value will be the first entry.
-    simulation_help : `str`
-        A *class* attribute.
-        Help for the --simulate command, or None for the default help
-        (which is fine for the usual case of 0/1).
-        Ignored if simulation is not supported.
+    version : `str`
+        A *class* attribute. Used to set the ``cscVersion`` attribute of the
+        ``softwareVersions`` event. You should almost always set this to
+        your package's ``__version__`` attribute.
     heartbeat_interval : `float`
         Interval between heartbeat events, in seconds;
 
