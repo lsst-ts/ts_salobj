@@ -240,7 +240,7 @@ class SalInfo:
     def __init__(self, domain, name, index=0):
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
-        self.isopen = True
+        self.isopen = False
         self.domain = domain
         self.name = name
         self.index = 0 if index is None else int(index)
@@ -336,6 +336,7 @@ class SalInfo:
 
         # Make sure the background thread terminates.
         atexit.register(self.basic_close)
+        self.isopen = True
 
     def _ackcmd_callback(self, data):
         if not self._running_cmds:
