@@ -45,10 +45,10 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
         # If 0 is present and there are two values then --simulate is a flag,
         # otherwise --simulate requires a value
         self.valid_simulation_modes_list = (
-            # (0, 1),
-            # (1, 0),
-            # (0, 3),
-            # (3, 0),
+            (0, 1),
+            (1, 0),
+            (0, 3),
+            (3, 0),
             (1, 2),
             (0, 1, 4),
             (4, 1, 0),

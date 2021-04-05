@@ -86,8 +86,16 @@ class BaseCsc(Controller):
         is required if ``--state`` is specified.
         Ignored unless ``enable_cmdline_state`` is True
         and the CSC is a subclass of `ConfigurableCsc`.
+    simulation_help : `str`
+        A *class* attribute.
+        Help for the --simulate command, or None for the default help
+        (which is fine for the usual case of 0/1).
+        Ignored if simulation is not supported.
     valid_simulation_modes : `list` [`int`] or `None`
-        A *class* attribute. If not `None` has the following effect:
+        A *class* attribute. A value of `None` is deprecated
+        (though it is the default, for backwards compatibility;
+        once `None` is prohibited there will be no default).
+        If not `None` has the following effect:
 
         * ``simulation_mode`` will be checked in the constructor
         * `implement_simulation_mode` will be a no-op.
@@ -95,11 +103,10 @@ class BaseCsc(Controller):
           The default value will be 0 if that is a valid simulation mode
           (and it certainly should be).
           Otherwise the default value will be the first entry.
-    simulation_help : `str`
-        A *class* attribute.
-        Help for the --simulate command, or None for the default help
-        (which is fine for the usual case of 0/1).
-        Ignored if simulation is not supported.
+    version : `str`
+        A *class* attribute. Used to set the ``cscVersion`` attribute of the
+        ``softwareVersions`` event. You should almost always set this to
+        your package's ``__version__`` attribute.
     heartbeat_interval : `float`
         Interval between heartbeat events, in seconds;
 
@@ -167,12 +174,6 @@ class BaseCsc(Controller):
         if initial_state == State.FAULT:
             raise ValueError("initial_state cannot be FAULT")
 
-        # Postpone assigning command callbacks until `start` is done (but call
-        # assert_do_methods_present to fail early if there is a problem).
-        super().__init__(name=name, index=index, do_callbacks=True)
-
-        # Handle simulation_mode after constructing the base class,
-        # so that evt_simulationMode is available.
         if self.valid_simulation_modes is None:
             warnings.warn(
                 "valid_simulation_modes=None is deprecated", DeprecationWarning
@@ -183,7 +184,14 @@ class BaseCsc(Controller):
                     f"simulation_mode={simulation_mode} "
                     f"not in valid_simulation_modes={self.valid_simulation_modes}"
                 )
-        self.evt_simulationMode.set(mode=int(simulation_mode))
+
+        self._settings_to_apply = settings_to_apply
+        self._summary_state = State(self.default_initial_state)
+        self._initial_state = initial_state
+        self._faulting = False
+        self._heartbeat_task = base.make_done_future()
+        # Interval between heartbeat events (sec)
+        self.heartbeat_interval = HEARTBEAT_INTERVAL
 
         if not hasattr(self, "version"):
             warnings.warn(
@@ -191,6 +199,13 @@ class BaseCsc(Controller):
                 "the `cscVersion` field of the `softwareVersions` event.",
                 DeprecationWarning,
             )
+
+        # Postpone assigning command callbacks until `start` is done (but call
+        # assert_do_methods_present to fail early if there is a problem).
+        super().__init__(name=name, index=index, do_callbacks=True)
+
+        # Set evt_simulationMode, now that it is available.
+        self.evt_simulationMode.set(mode=int(simulation_mode))
 
         def format_version(version):
             return "?" if version is None else version
@@ -201,15 +216,6 @@ class BaseCsc(Controller):
             openSpliceVersion=dds_utils.get_dds_version(),
             cscVersion=getattr(self, "version", "?"),
         )
-
-        self._requested_simulation_mode = int(simulation_mode)
-        self._settings_to_apply = settings_to_apply
-        self._summary_state = State(self.default_initial_state)
-        self._initial_state = initial_state
-        self._faulting = False
-        self._heartbeat_task = base.make_done_future()
-        # Interval between heartbeat events (sec)
-        self.heartbeat_interval = HEARTBEAT_INTERVAL
 
     async def start(self):
         """Finish constructing the CSC.
@@ -222,7 +228,7 @@ class BaseCsc(Controller):
         await super().start()
         self._heartbeat_task.cancel()  # Paranoia
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-        await self.set_simulation_mode(self._requested_simulation_mode)
+        await self.set_simulation_mode(self.simulation_mode)
 
         # Handle initial state, then transition to the desired state.
         # If this fails then log the exception and continue,

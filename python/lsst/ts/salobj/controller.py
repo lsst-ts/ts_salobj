@@ -169,6 +169,18 @@ class Controller:
     """
 
     def __init__(self, name, index=None, *, do_callbacks=False):
+        # Task that is set done when controller is started.
+        # Initialize to None to detect "not fully constructed"
+        # in close methods.
+        self.start_task = None
+
+        self.isopen = False
+
+        self.start_called = False
+        # Task that is set done when the controller is closed
+        self.done_task = asyncio.Future()
+        self._do_callbacks = do_callbacks
+
         domain = Domain()
         try:
             self.salinfo = SalInfo(domain=domain, name=name, index=index)
@@ -176,11 +188,6 @@ class Controller:
             self.salinfo.identity = new_identity
             domain.default_identity = new_identity
             self.log = self.salinfo.log
-            self.start_called = False
-            # Task that is set done when the controller is closed
-            self.done_task = asyncio.Future()
-            self._do_callbacks = do_callbacks
-            self.isopen = True
 
             if do_callbacks:
                 # This must be called after the cmd_ attributes
@@ -215,6 +222,7 @@ class Controller:
             # Note: Domain.basic_close closes all its SalInfo instances.
             domain.basic_close()
             raise
+        self.isopen = True
 
     async def _protected_start(self):
         """Call `start` and handle exceptions."""
@@ -295,10 +303,17 @@ class Controller:
         all background tasks, pauses briefly to allow final SAL messages
         to be sent, then closes the dds domain.
         """
+        if self.start_task is None:
+            # Not fully constructed; nothing to do.
+            return
+
         if cancel_start and not self.start_task.done():
             self.start_task.cancel()
+
         if not self.isopen:
-            # Closed or closing. Wait for done_task to be finished,
+            # Closed or closing (we know this instance is fully constructed
+            # because we checked that start_task is not None).
+            # Wait for done_task to be finished,
             # ignoring any exception. If you want to know about the exception
             # you can examine done_task yourself.
             try:
