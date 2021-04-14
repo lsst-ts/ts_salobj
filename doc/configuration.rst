@@ -11,39 +11,24 @@ Configuring ts_salobj
 Environment Variables
 ---------------------
 
-Environment variables used by ts_salobj for configuration.
-If setting these via `os.environ` please be sure to set these to string values, even if they are parsed as integers or floats.
+ts_salobj uses the following environment variables to configure OpenSplice:
 
-Used by `Vortex OpenSplice`_, and thus indirectly by `Domain`:
+Used by `Domain` (indirectly):
 
 * ``ADLINK_LICENSE`` points to directory containing your `Vortex OpenSplice`_ license.
   Required if using the licensed version of `Vortex OpenSplice`_; ignored otherwise.
   Example value: ``/opt/ADLINK/Vortex_v2/Device/VortexOpenSplice/6.10.3/HDE/x86_64.linux/etc``
 * ``LSST_DDS_DOMAIN_ID`` (optional) is used to set the DDS domain: an integer.
-  ADLink recommands the domain ID be in range 0 <= ID <= 230 for "maximum interoperability"
-  (based on case 00020758 asking about a possible error in their configuration guide, which recommended 0 < ID < 230).
-  DDS participants in different domains cannot see each other at all,
-  and all telescope and site nodes use the default domain,
-  so you should rarely have any reason to set this.
-  If supported, it will be part of the OpenSplice configuration file pointed to ``OSPL_URI``.
+  See `ts_ddsconfig environment variables`_ for details.
 * ``OSPL_HOME`` (required) directory of the `Vortex OpenSplice`_ software.
   This directory should contain subdirectories ``bin``, ``include``, ``lib``, etc.
   Example: ``/opt/OpenSpliceDDS/V6.9.0/HDE/x86_64.linux``.
 * ``OSPL_MASTER_PRIORITY`` (optional) is used to set the Master Priority in ts_sal 4.2 and later.
-  Nodes with higher Master Priority are more eager to become master (the primary source of late joiner data).
-  Ties are broken by systemId, a random number handed out when a node is created.
-  Every time a new node takes over as master, the entire system is must be "aligned", which is expensive,
-  so it is best to assign the highest Master Priority to one or a few nodes that will be created early.
-  Valid values are 0-255.
-  0 is used for SAL Scripts, because they should never be master.
-  256 means "use the legacy method for choosing the master"; do not use it.
-  A default value is used if this environment variable is not specified,
-  and that default is guaranteed to be >0 and <255.
-  ``OSPL_MASTER_PRIORITY`` is specific to Vera Rubin Observatory.
-  If supported (ts_sal 4.2 and later), it will be part of the OpenSplice configuration file pointed to ``OSPL_URI``.
+  Described in `ts_ddsconfig environment variables`_.
+  Temporarily set to 0 by `BaseScript` while constructing its `Domain` to prevent SAL scripts from becoming master.
   Constant ``lsst.ts.salobj.MASTER_PRIORITY_ENV_VAR`` is available to make this easier to set from Python.
 * ``OSPL_URI`` (required) points to the main DDS configuration file.
-  Example: ``file:///home/saluser/tsrepos/ts_opensplice/OpenSpliceDDS/v6.9/HDE/x86_64.linux/etc/config/ospl.xml``
+  Our configuration files are in `ts_ddsconfig`_.
 
 Used by `SalInfo`:
 
@@ -53,6 +38,7 @@ Used by `SalInfo`:
 * ``LSST_DDS_DOMAIN`` (deprecated): a deprecated alias for ``LSST_DDS_PARTITION_PREFIX`` that is used if ``LSST_DDS_PARTITION_PREFIX`` is not defined.
 * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec) for waiting for historical (late-joiner) data.
   If, and only if, you are running DDS without a durability service then set this negative to avoid waiting for historical data.
+  (This variable is not described in the ts_ddsconfig user guide because it is not used to configure OpenSplice.)
 
 Used by `AsyncS3Bucket`:
 
@@ -60,6 +46,9 @@ Used by `AsyncS3Bucket`:
   You must specify a value in order to use an S3 service that is not part of Amazon Web Services (AWS).
   Eventually we hope that ``endpoint_url`` can be defined in ``~/.aws/config``.
   Once that is supported you can leave this environment variable unset, and we can deprecate it.
+
+There are many more environment variables that configure OpenSplice;
+see `ts_ddsconfig environment variables`_ for details.
 
 .. _lsst.ts.salobj-configuration_other:
 
@@ -77,5 +66,6 @@ You may generate new IDL files using the ``make_idl_files.py`` command-line scri
 
 .. _Vortex OpenSplice: https://istkb.adlinktech.com/article/vortex-opensplice-documentation/
 .. _ts_ddsconfig: https://github.com/lsst-ts/ts_ddsconfig
+.. _ts_ddsconfig environment variables: https://ts-ddsconfig.lsst.io/#environment-variables-in-ospl-configuration-files
 .. _ts_idl: https://github.com/lsst-ts/ts_idl
 .. _ts_sal: https://github.com/lsst-ts/ts_sal
