@@ -12,7 +12,6 @@ v6.3.5
 Changes:
 
 * Rewrite the configuration documentation to reduce duplication with the documentation for ts_ddsconfig.
-* Add "noarch" to ``Jenkinsfile.conda``.
 
 Requirements:
 
