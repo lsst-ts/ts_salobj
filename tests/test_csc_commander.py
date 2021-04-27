@@ -112,6 +112,36 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
                 )
                 self.assertEqual(topic.data.int0, [-2, 33, 42, 0, 0])
 
+            # Test bool argument handling. Set all other fields to 0
+            # and ignore them.
+            scalar_fields = [
+                field
+                for field in self.csc.cmd_setScalars.DataType().get_vars().keys()
+                if not field.startswith("private_") and field != "TestID"
+            ]
+            bool_index = scalar_fields.index("boolean0")
+            n_scalar_fields = len(scalar_fields)
+            for good_bool_arg, value in (
+                ("0", False),
+                ("f", False),
+                ("F", False),
+                ("FaLsE", False),
+                ("1", True),
+                ("t", True),
+                ("T", True),
+                ("tRuE", True),
+            ):
+                args = ["0"] * n_scalar_fields
+                args[bool_index] = good_bool_arg
+                await self.commander.run_command("setScalars " + " ".join(args))
+                self.assertEqual(self.csc.evt_scalars.data.boolean0, value)
+
+            for bad_bool_arg in ("2", "fail", "falsely"):
+                args = ["0"] * n_scalar_fields
+                args[bool_index] = bad_bool_arg
+                with self.assertRaises(ValueError):
+                    await self.commander.run_command("setScalars " + " ".join(args))
+
             # Test BasicCscCommander's "echo" command
             self.commander.output_queue.clear()
             argstr = "1   2.3   arbitrary   text"
