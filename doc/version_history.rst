@@ -11,6 +11,8 @@ v6.3.5
 
 Changes:
 
+* `CscCommander`: handle bool command arguments correctly.
+  Allow any of 0, 1, f, t, false, true (case blind).
 * Rewrite the configuration documentation to reduce duplication with the documentation for ts_ddsconfig.
 
 Requirements:
