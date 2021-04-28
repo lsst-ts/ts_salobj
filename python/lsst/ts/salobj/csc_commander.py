@@ -33,7 +33,16 @@ from . import remote
 from . import sal_enums
 from . import csc_utils
 
-STD_TIMEOUT = 60
+# A dict of valid values for bool command arguments.
+# The argument should be converted to lowercase before using.
+BOOL_DICT = {
+    "0": False,
+    "f": False,
+    "false": False,
+    "1": True,
+    "t": True,
+    "true": True,
+}
 
 
 async def stream_as_generator(stream, encoding="utf-8"):
@@ -449,7 +458,7 @@ help  # print this help
         else:
             settingsToApply = ""
         await self.remote.cmd_start.set_start(
-            settingsToApply=settingsToApply, timeout=STD_TIMEOUT
+            settingsToApply=settingsToApply,
         )
 
     def get_commands_help(self):
@@ -502,12 +511,22 @@ help  # print this help
         sample = command.DataType()
         kwargs = self.get_public_data(sample)
         if len(kwargs) != len(args):
-            raise RuntimeError(
+            raise ValueError(
                 f"Command {command_name} requires "
                 f"{len(kwargs)} arguments; got {len(args)}"
             )
         for (name, default_value), str_value in zip(kwargs.items(), args):
-            kwargs[name] = type(default_value)(str_value)
+            try:
+                if type(default_value) is bool:
+                    kwargs[name] = BOOL_DICT[str_value.lower()]
+                else:
+                    kwargs[name] = type(default_value)(str_value)
+            except Exception:
+                raise ValueError(
+                    f"Could not parse value {str_value!r} "
+                    f"as type {type(default_value).__name__} "
+                    f"for argument {name}"
+                )
         await command.set_start(**kwargs)
 
     async def run_command(self, cmd):
