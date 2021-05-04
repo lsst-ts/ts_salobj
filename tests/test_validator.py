@@ -30,13 +30,7 @@ from lsst.ts import salobj
 
 class ValidatorTestCase(unittest.TestCase):
     def setUp(self):
-        schemapath = (
-            pathlib.Path(__file__).resolve().parents[1] / "schema" / "Test.yaml"
-        )
-        with open(schemapath, "r") as f:
-            rawschema = f.read()
-        self.schema = yaml.safe_load(rawschema)
-        self.validator = salobj.DefaultingValidator(schema=self.schema)
+        self.validator = salobj.DefaultingValidator(schema=salobj.CONFIG_SCHEMA)
 
     def test_no_config_specified(self):
         data_dict = {}

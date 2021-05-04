@@ -491,6 +491,9 @@ class BaseScript(controller.Controller, abc.ABC):
             else:
                 if data.config:
                     user_config_dict = yaml.safe_load(data.config)
+                    # Delete metadata, if present
+                    if user_config_dict:
+                        user_config_dict.pop("metadata", None)
                 else:
                     user_config_dict = {}
                 full_config_dict = self.config_validator.validate(user_config_dict)

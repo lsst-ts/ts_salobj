@@ -193,6 +193,9 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
                 config_yaml = f.read()
             try:
                 config_dict = yaml.safe_load(config_yaml)
+                # Delete metadata, if present
+                if config_dict:
+                    config_dict.pop("metadata", None)
                 config_validator.validate(config_dict)
             except jsonschema.exceptions.ValidationError as e:
                 print(f"config file {config_file} failed validation: {e}")
