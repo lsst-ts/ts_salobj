@@ -405,6 +405,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                 )
 
             user_config_dict = yaml.safe_load(config_yaml)
+            # Delete metadata, if present
+            if user_config_dict:
+                user_config_dict.pop("metadata", None)
         else:
             user_config_dict = {}
             config_file_name = ""
