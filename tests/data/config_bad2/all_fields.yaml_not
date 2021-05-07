@@ -1,3 +1,6 @@
+metadata:
+  arbitrary_key: arbitrary metadata to ignore
+  another_key: more arbitrary metadata to ignore
 string0: an arbitrary string
 bool0: false
 int0: -47
