@@ -633,9 +633,6 @@ help  # print this help
 
                 # Execute the new command
                 line = line.strip()
-                # Strip trailing comment, if any.
-                if "#" in line:
-                    line = line.split("#", maxsplit=1)[0].strip()
                 if not line:
                     continue
                 if line == "exit":
