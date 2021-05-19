@@ -25,6 +25,7 @@ import argparse
 import asyncio
 import collections
 import functools
+import shlex
 import sys
 import warnings
 
@@ -538,7 +539,7 @@ help  # print this help
             Command string (command name and arguments).
             Note: does not handle the "exit" command.
         """
-        tokens = cmd.split()
+        tokens = shlex.split(cmd)
         command_name = tokens[0]
         args = tokens[1:]
         command_method = getattr(self, f"do_{command_name}", None)
@@ -633,9 +634,6 @@ help  # print this help
 
                 # Execute the new command
                 line = line.strip()
-                # Strip trailing comment, if any.
-                if "#" in line:
-                    line = line.split("#", maxsplit=1)[0].strip()
                 if not line:
                     continue
                 if line == "exit":
