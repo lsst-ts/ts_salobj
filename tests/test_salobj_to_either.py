@@ -62,58 +62,66 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
         # (telemetry is volatile, so has no historical data).
         print(f"Remote: create salobj remote with index={self.index}")
         t0 = time.monotonic()
-        async with salobj.Domain() as domain, salobj.Remote(
-            domain=domain,
-            name="Test",
-            index=self.index,
-            evt_max_history=1,
-        ) as remote:
-            dt = time.monotonic() - t0
-            print(
-                f"Remote: creating topics and waiting for historical data took {dt:0.2f} seconds"
-            )
-            remote.salinfo.log.addHandler(logging.StreamHandler())
+        async with salobj.Domain() as domain:
+            # ts_sal requires a CSC identity
+            # (or explicitly issuing the setAuthList command)
+            domain.default_identity = f"Test:{self.index}"
+            async with salobj.Remote(
+                domain=domain,
+                name="Test",
+                index=self.index,
+                evt_max_history=1,
+            ) as remote:
+                dt = time.monotonic() - t0
+                print(
+                    f"Remote: creating topics and waiting for historical data took {dt:0.2f} seconds"
+                )
+                remote.salinfo.log.addHandler(logging.StreamHandler())
 
-            print(f"Remote: start {exec_name} in a subprocess")
-            script_path = self.datadir / exec_name
-            process = await asyncio.create_subprocess_exec(
-                str(script_path), str(self.index), str(INITIAL_LOG_LEVEL)
-            )
+                print(f"Remote: start {exec_name} in a subprocess")
+                script_path = self.datadir / exec_name
+                process = await asyncio.create_subprocess_exec(
+                    str(script_path), str(self.index), str(INITIAL_LOG_LEVEL)
+                )
 
-            try:
-                print("Remote: wait for initial logLevel event")
-                data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
-                print(f"Remote: read initial logLevel.level={data.level}")
-                self.assertEqual(data.level, INITIAL_LOG_LEVEL)
-
-                for level in (10, 52, 0):
-                    # remote.cmd_setLogLevel.put()
-                    # print(f"Remote: put setLogLevel(level={level})")
-                    print(f"Remote: send setLogLevel(level={level}) command")
-                    ackcmd = await remote.cmd_setLogLevel.set_start(
-                        level=level, timeout=STD_TIMEOUT
-                    )
-                    self.assertEqual(ackcmd.identity, remote.salinfo.identity)
-                    print("Remote: wait for logLevel event")
+                try:
+                    print("Remote: wait for initial logLevel event")
                     data = await remote.evt_logLevel.next(
                         flush=False, timeout=STD_TIMEOUT
                     )
-                    print(f"Remote: read logLevel={data.level}")
-                    self.assertEqual(data.level, level)
-                    print("Remote: wait for scalars telemetry")
-                    data = await remote.tel_scalars.next(
-                        flush=False, timeout=STD_TIMEOUT
-                    )
-                    print(f"Remote: read scalars.int0={data.int0}")
-                    self.assertEqual(data.int0, level)
-                    await asyncio.sleep(0.1)
+                    print(f"Remote: read initial logLevel.level={data.level}")
+                    self.assertEqual(data.level, INITIAL_LOG_LEVEL)
 
-                await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
-            finally:
-                print("Remote: done")
-                if process.returncode is None:
-                    process.terminate()
-                    warnings.warn("Killed a process that was not properly terminated")
+                    for level in (10, 52, 0):
+                        # remote.cmd_setLogLevel.put()
+                        # print(f"Remote: put setLogLevel(level={level})")
+                        print(f"Remote: send setLogLevel(level={level}) command")
+                        ackcmd = await remote.cmd_setLogLevel.set_start(
+                            level=level, timeout=STD_TIMEOUT
+                        )
+                        self.assertEqual(ackcmd.identity, remote.salinfo.identity)
+                        print("Remote: wait for logLevel event")
+                        data = await remote.evt_logLevel.next(
+                            flush=False, timeout=STD_TIMEOUT
+                        )
+                        print(f"Remote: read logLevel={data.level}")
+                        self.assertEqual(data.level, level)
+                        print("Remote: wait for scalars telemetry")
+                        data = await remote.tel_scalars.next(
+                            flush=False, timeout=STD_TIMEOUT
+                        )
+                        print(f"Remote: read scalars.int0={data.int0}")
+                        self.assertEqual(data.int0, level)
+                        await asyncio.sleep(0.1)
+
+                    await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
+                finally:
+                    print("Remote: done")
+                    if process.returncode is None:
+                        process.terminate()
+                        warnings.warn(
+                            "Killed a process that was not properly terminated"
+                        )
 
 
 if __name__ == "__main__":
