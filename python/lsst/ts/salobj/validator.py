@@ -36,6 +36,30 @@ class DefaultingValidator:
 
     Notes
     -----
+    Default values are handled at most 2 levels deep in an object hierarchy.
+    For deeper hierarchies, set the default at a higher level.
+    For example::
+
+        type: object
+        properties:
+          number1:
+            type: number
+            default: 1
+          subdict1:
+            type: object
+            properties:
+              number2:
+                type: number
+                default: 2
+              subdict2:
+                type: object
+                properties:
+                  number3:
+                    type: number
+                    # default is ignored this deep; set it at a higher level
+                default:
+                  number3: 3
+
     This class is not a ``jsonschema.IValidator`` but it contains two
     validators:
 
