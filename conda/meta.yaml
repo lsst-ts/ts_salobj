@@ -48,8 +48,8 @@ requirements:
     - python
     - setuptools
     - setuptools_scm
-    - numpy
-    - astropy
+    - numpy =1.20
+    - astropy =4.1
     - jsonschema
     - pyyaml
     - boto3
