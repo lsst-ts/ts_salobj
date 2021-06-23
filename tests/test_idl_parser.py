@@ -174,7 +174,6 @@ class IdlParserTestCase(unittest.TestCase):
             private_seqNum="long",
             private_identity="string",
             private_origin="long",
-            private_host="long",
             boolean0="boolean",
             byte0="octet",
             char0="string",
@@ -192,6 +191,11 @@ class IdlParserTestCase(unittest.TestCase):
             priority="long",
         )
 
+        # The private_host field is deprecated but may still exist
+        topic_metadata = metadata.topic_info["scalars"]
+        if "private_host" in topic_metadata.field_info:
+            field_types["private_host"] = "long"
+
         # Check some details of arrays topics, including data type,
         # array length and string length.
         for topic_name in ("arrays", "logevent_arrays", "command_setArrays"):
@@ -199,10 +203,9 @@ class IdlParserTestCase(unittest.TestCase):
                 topic_metadata = metadata.topic_info[topic_name]
                 expected_field_names = set(field_types.keys())
                 expected_field_names.remove("string0")  # only in scalars
+                expected_field_names.remove("char0")  # only in scalars
                 if not topic_name.startswith("logevent_"):
                     expected_field_names.remove("priority")
-                # There is no char0 field in arrays
-                expected_field_names.remove("char0")
                 self.assertEqual(
                     set(topic_metadata.field_info.keys()), expected_field_names
                 )
