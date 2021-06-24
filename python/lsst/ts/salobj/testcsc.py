@@ -273,7 +273,8 @@ class TestCsc(ConfigurableCsc):
         for field in reversed(self.arrays_fields):
             field_arr1 = getattr(arrays1, field)
             field_arr2 = getattr(arrays2, field)
-            if not np.array_equal(field_arr1, field_arr2):
+            is_float = field in ("float0", "double0")
+            if not np.array_equal(field_arr1, field_arr2, equal_nan=is_float):
                 raise AssertionError(
                     f"arrays1.{field} = {field_arr1} != {field_arr2} = arrays2.{field}"
                 )
@@ -289,7 +290,8 @@ class TestCsc(ConfigurableCsc):
         for field in reversed(self.scalars_fields):
             field_val1 = getattr(scalars1, field)
             field_val2 = getattr(scalars2, field)
-            if field_val1 != field_val2:
+            is_float = field in ("float0", "double0")
+            if not np.array_equal(field_val1, field_val2, equal_nan=is_float):
                 raise AssertionError(
                     f"scalars1.{field} = {field_val1} != {field_val2} = scalars2.{field}"
                 )
