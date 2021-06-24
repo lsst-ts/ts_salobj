@@ -109,6 +109,18 @@ class WriteTopic(BaseTopic):
         self._has_data = False
         self._data = self.DataType()
         self._has_priority = sal_prefix == "logevent_"
+        # Record which field names are float, double or array of either,
+        # to make it easy to compare float fields with nan equal.
+        self._float_field_names = set()
+        for name, value in self._data.get_vars().items():
+            if isinstance(value, list):
+                # In our DDS schemas arrays are fixed length
+                # and must contain at least one element.
+                elt = value[0]
+            else:
+                elt = value
+            if isinstance(elt, float):
+                self._float_field_names.add(name)
 
         salinfo.add_writer(self)
 
@@ -249,7 +261,10 @@ class WriteTopic(BaseTopic):
                 if not did_change:
                     # array_equal works for sequences of all kinds,
                     # as well as strings and scalars
-                    did_change |= not np.array_equal(old_value, value)
+                    is_float = field_name in self._float_field_names
+                    did_change |= not np.array_equal(
+                        old_value, value, equal_nan=is_float
+                    )
                 setattr(self.data, field_name, value)
             except Exception as e:
                 raise ValueError(

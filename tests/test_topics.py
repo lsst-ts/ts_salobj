@@ -20,6 +20,9 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import copy
+import itertools
+import math
 import random
 import time
 import unittest
@@ -326,171 +329,18 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
 
-    async def test_controller_telemetry_set_set_put(self):
-        """Test ControllerTelemetry.set_put."""
+    async def test_controller_set_and_set_put(self):
+        """Test set and set_put methods of ControllerTelemetry
+        and ControllerEvent.
+        """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
-            # until set_put is called nothing has been sent
-            self.assertFalse(self.csc.tel_scalars.has_data)
-            self.assertFalse(self.remote.tel_scalars.has_data)
-            self.assertIsNone(self.remote.tel_scalars.get())
-
-            # put random telemetry data using set and set_put
-            tel_data1 = self.csc.make_random_tel_scalars()
-            dict_data1 = self.csc.as_dict(tel_data1, self.csc.scalars_fields)
-            self.csc.tel_scalars.set(**dict_data1)
-            self.csc.tel_scalars.put()
-            self.assertTrue(self.csc.tel_scalars.has_data)
-            self.csc.assert_scalars_equal(tel_data1, self.csc.tel_scalars.data)
-            data = await self.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
-            self.csc.assert_scalars_equal(data, tel_data1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
-
-            # set_put the same data again; the telemetry should be sent
-            self.csc.tel_scalars.set_put(**dict_data1)
-            self.assertTrue(self.csc.tel_scalars.has_data)
-            self.csc.assert_scalars_equal(tel_data1, self.csc.tel_scalars.data)
-            data = await self.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
-            self.csc.assert_scalars_equal(data, tel_data1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
-
-            # use None for values to set_put; same telemetry should be sent
-            none_dict = dict((key, None) for key in dict_data1)
-            self.csc.tel_scalars.set_put(**none_dict)
-            self.assertTrue(self.csc.tel_scalars.has_data)
-            self.csc.assert_scalars_equal(tel_data1, self.csc.tel_scalars.data)
-            data = await self.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
-            self.csc.assert_scalars_equal(data, tel_data1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
-
-            # try an invalid key
-            with self.assertRaises(AttributeError):
-                self.csc.tel_scalars.set_put(no_such_attribute=None)
-
-            # try an invalid value
-            with self.assertRaises(ValueError):
-                self.csc.evt_scalars.set_put(int0="not an int")
-            with self.assertRaises(ValueError):
-                self.csc.evt_scalars.set_put(int0="not an int", force_output=True)
-
-            nint0 = len(self.csc.evt_arrays.data.int0)
-
-            # set an array to an array of the correct length
-            good_int0 = np.arange(nint0, dtype=int)
-            did_put = self.csc.tel_arrays.set_put(int0=good_int0)
-            self.assertTrue(did_put)
-            self.assertEqual(list(self.csc.tel_arrays.data.int0), list(good_int0))
-
-            # try an array that is too short
-            bad_int0 = np.arange(nint0 - 1, dtype=int)
-            with self.assertRaises(ValueError):
-                self.csc.tel_arrays.set_put(int0=bad_int0)
-
-            # try an array that is too long
-            # this raised an exception for SALPY but dds ignores
-            # the extra elements
-            # bad_int0 = np.arange(nint0+1, dtype=int)
-            # with self.assertRaises(ValueError):
-            #     self.csc.tel_arrays.set_put(int0=bad_int0)
-
-    async def test_controller_event_set_set_put(self):
-        """Test ControllerEvent.set_put."""
-        async with self.make_csc(initial_state=salobj.State.ENABLED):
-            # until set_put is called nothing has been sent
-            self.assertFalse(self.csc.tel_scalars.has_data)
-            self.assertFalse(self.remote.tel_scalars.has_data)
-            self.assertIsNone(self.remote.tel_scalars.get())
-
-            # set_put random event data
-            evt_data1 = self.csc.make_random_evt_scalars()
-            dict_data1 = self.csc.as_dict(evt_data1, self.csc.scalars_fields)
-            did_put = self.csc.evt_scalars.set_put(**dict_data1)
-            self.assertTrue(self.csc.evt_scalars.has_data)
-            self.assertTrue(did_put)
-            self.csc.assert_scalars_equal(evt_data1, self.csc.evt_scalars.data)
-            data = await self.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
-            self.csc.assert_scalars_equal(data, evt_data1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
-
-            # set_put with None values; the event should *not* be sent
-            none_dict = dict((key, None) for key in dict_data1)
-            did_put = self.csc.evt_scalars.set_put(**none_dict)
-            self.assertFalse(did_put)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
-
-            # set_put with None values and force_output=True
-            none_dict = dict((key, None) for key in dict_data1)
-            did_put = self.csc.evt_scalars.set_put(**none_dict, force_output=True)
-            self.assertTrue(did_put)
-            self.csc.assert_scalars_equal(evt_data1, self.csc.evt_scalars.data)
-            data = await self.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
-            self.csc.assert_scalars_equal(data, evt_data1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
-
-            # set_put the same data again; the event should *not* be sent
-            did_put = self.csc.evt_scalars.set_put(**dict_data1)
-            self.assertFalse(did_put)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
-
-            # set_put the same data again with force_output=True
-            did_put = self.csc.evt_scalars.set_put(**dict_data1, force_output=True)
-            self.assertTrue(did_put)
-            self.csc.assert_scalars_equal(evt_data1, self.csc.evt_scalars.data)
-            data = await self.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
-            self.csc.assert_scalars_equal(data, evt_data1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
-
-            # change one field of the data and set_put again
-            dict_data1["int0"] = dict_data1["int0"] + 1
-            did_put = self.csc.evt_scalars.set_put(**dict_data1)
-            self.assertTrue(did_put)
-            with self.assertRaises(AssertionError):
-                self.csc.assert_scalars_equal(evt_data1, self.csc.evt_scalars.data)
-            evt_data1.int0 += 1
-            self.csc.assert_scalars_equal(evt_data1, self.csc.evt_scalars.data)
-            data = await self.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
-            self.csc.assert_scalars_equal(data, evt_data1)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
-
-            # try an invalid key
-            with self.assertRaises(AttributeError):
-                self.csc.evt_scalars.set_put(no_such_attribute=None)
-            with self.assertRaises(AttributeError):
-                self.csc.evt_scalars.set_put(no_such_attribute=None, force_output=True)
-
-            # try an invalid value
-            with self.assertRaises(ValueError):
-                self.csc.evt_scalars.set_put(int0="not an int")
-            with self.assertRaises(ValueError):
-                self.csc.evt_scalars.set_put(int0="not an int", force_output=True)
-
-            nint0 = len(self.csc.evt_arrays.data.int0)
-
-            # set an array to an array of the correct length
-            good_int0 = np.arange(nint0, dtype=int)
-            did_put = self.csc.evt_arrays.set_put(int0=good_int0)
-            self.assertTrue(did_put)
-            self.assertEqual(list(self.csc.evt_arrays.data.int0), list(good_int0))
-
-            # try an array that is too short
-            bad_int0 = np.arange(nint0 - 1, dtype=int)
-            with self.assertRaises(ValueError):
-                self.csc.evt_arrays.set_put(int0=bad_int0)
-
-            # try an array that is too long
-            # this raised an exception for SALPY but dds ignores
-            # the extra elements
-            # bad_int0 = np.arange(nint0+1, dtype=int)
-            # with self.assertRaises(ValueError):
-            #     self.csc.evt_arrays.set_put(int0=bad_int0)
+            for do_telemetry, do_arrays in itertools.product(
+                (False, True), (False, True)
+            ):
+                with self.subTest(do_telmetry=do_telemetry, do_arrrays=do_arrays):
+                    await self.check_controller_set_and_set_put(
+                        do_telemetry=do_telemetry, do_arrays=do_arrays
+                    )
 
     async def set_scalars(self, num_commands, assert_none=True):
         """Send the setScalars command repeatedly and return what was sent.
@@ -977,6 +827,130 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         self.csc.cmd_wait.callback = callback
         with salobj.assertRaisesAckError(ack=ack, result_contains=result_contains):
             await self.remote.cmd_wait.start(timeout=STD_TIMEOUT)
+
+    async def check_controller_set_and_set_put(
+        self, do_telemetry=False, do_arrays=False
+    ):
+        """Check set and set_put methods for `ControllerTelemetry`
+        or `ControllerEvent`.
+        """
+        do_event = not do_telemetry
+        if do_arrays:
+            assert_data_equal = self.csc.assert_arrays_equal
+            field_names = self.csc.arrays_fields
+            if do_telemetry:
+                make_random_data = self.csc.make_random_tel_arrays
+                read_topic = self.remote.tel_arrays
+                write_topic = self.csc.tel_arrays
+            else:
+                make_random_data = self.csc.make_random_evt_arrays
+                read_topic = self.remote.evt_arrays
+                write_topic = self.csc.evt_arrays
+        else:
+            assert_data_equal = self.csc.assert_scalars_equal
+            field_names = self.csc.scalars_fields
+            if do_telemetry:
+                make_random_data = self.csc.make_random_tel_scalars
+                read_topic = self.remote.tel_scalars
+                write_topic = self.csc.tel_scalars
+            else:
+                make_random_data = self.csc.make_random_evt_scalars
+                read_topic = self.remote.evt_scalars
+                write_topic = self.csc.evt_scalars
+
+        self.assertFalse(write_topic.has_data)
+        self.assertFalse(read_topic.has_data)
+        self.assertIsNone(read_topic.get())
+
+        # put random telemetry data using set and set_put
+        input_data = make_random_data()
+        input_dict = self.csc.as_dict(input_data, field_names)
+        write_topic.set(**input_dict)
+        write_topic.put()
+        self.assertTrue(write_topic.has_data)
+        assert_data_equal(input_data, write_topic.data)
+        data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
+        assert_data_equal(data, input_data)
+        with self.assertRaises(asyncio.TimeoutError):
+            await read_topic.next(flush=False, timeout=NODATA_TIMEOUT)
+
+        # set_put the same data again
+        did_change = write_topic.set_put(**input_dict)
+        self.assertFalse(did_change)
+        self.assertTrue(write_topic.has_data)
+        assert_data_equal(input_data, write_topic.data)
+        if do_telemetry:
+            # If telemetry, the data is sent
+            data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
+            assert_data_equal(data, input_data)
+
+        # Use None for values to set_put; this just checks
+        # that the fields exist without changing them
+        none_dict = dict((key, None) for key in input_dict)
+        did_change = write_topic.set_put(**none_dict)
+        self.assertFalse(did_change)
+        self.assertTrue(write_topic.has_data)
+        assert_data_equal(input_data, write_topic.data)
+        if do_telemetry:
+            data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
+            assert_data_equal(data, input_data)
+
+        # Check that setting a NaN field to NaN again is not a change
+        for field_name in ("float0", "double0"):
+            original_value = copy.copy(getattr(input_data, field_name))
+            if do_arrays:
+                nan_value = copy.copy(original_value)
+                self.assertGreaterEqual(len(nan_value), 4)
+                nan_value[1] = math.nan
+                nan_value[3] = math.nan
+            else:
+                nan_value = math.nan
+            nan_kwarg = {field_name: nan_value}
+            original_kwarg = {field_name: original_value}
+            try:
+                for i in range(2):
+                    setattr(input_data, field_name, nan_value)
+                    did_change = write_topic.set_put(**nan_kwarg)
+                    if i == 0:
+                        self.assertTrue(did_change)
+                    else:
+                        self.assertFalse(did_change)
+                    self.assertTrue(write_topic.has_data)
+                    assert_data_equal(input_data, write_topic.data)
+                    if do_telemetry or did_change:
+                        data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
+                        assert_data_equal(data, input_data)
+            finally:
+                setattr(input_data, field_name, original_value)
+                did_change = write_topic.set(**original_kwarg)
+                self.assertTrue(did_change)
+
+        # try an invalid key
+        with self.assertRaises(AttributeError):
+            write_topic.set_put(no_such_attribute=None)
+
+        # try an invalid value
+        if do_arrays:
+            bad_int0_value = ["not an int"] * len(input_data.int0)
+        else:
+            bad_int0_value = "not an int"
+        with self.assertRaises(ValueError):
+            write_topic.set_put(int0=bad_int0_value)
+        if do_event:
+            # force_output is only available for events
+            with self.assertRaises(ValueError):
+                write_topic.set_put(int0=bad_int0_value, force_output=True)
+
+        if do_arrays:
+            # Try an array that is too short
+            # (note: arrays that are too long are silently truncated)
+            short_int0_value = np.arange(len(input_data.int0) - 1, dtype=int)
+            with self.assertRaises(ValueError):
+                write_topic.set_put(int0=short_int0_value)
+
+        # Make sure no additional samples were written
+        with self.assertRaises(asyncio.TimeoutError):
+            await read_topic.next(flush=False, timeout=NODATA_TIMEOUT)
 
     async def test_multiple_commands(self):
         """Test that we can have multiple instances of the same command
