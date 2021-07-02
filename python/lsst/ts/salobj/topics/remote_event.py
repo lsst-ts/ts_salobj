@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -21,7 +23,12 @@
 
 __all__ = ["RemoteEvent"]
 
+import typing
+
 from . import read_topic
+
+if typing.TYPE_CHECKING:
+    from ..sal_info import SalInfo
 
 
 class RemoteEvent(read_topic.ReadTopic):
@@ -40,8 +47,12 @@ class RemoteEvent(read_topic.ReadTopic):
     """
 
     def __init__(
-        self, salinfo, name, max_history=1, queue_len=read_topic.DEFAULT_QUEUE_LEN
-    ):
+        self,
+        salinfo: SalInfo,
+        name: str,
+        max_history: int = 1,
+        queue_len: int = read_topic.DEFAULT_QUEUE_LEN,
+    ) -> None:
         super().__init__(
             salinfo=salinfo,
             name=name,

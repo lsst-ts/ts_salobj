@@ -21,6 +21,8 @@
 
 __all__ = ["TestCscCommander"]
 
+import typing
+
 import numpy as np
 
 from . import csc_commander
@@ -34,22 +36,24 @@ class TestCscCommander(csc_commander.CscCommander):
 
     Parameters
     ----------
-    name : `str`
-        SAL component name of CSC.
     index : `int`, optional
         SAL index of CSC.
     enable : `bool`, optional
         Enable the CSC (when the commander starts up)?
         Note: `amain` always supplies this argument.
+    exclude : ``iterable`` of `str`, optional
+        Names of topics (telemetry or events) to not support.
+        Topic names must not have a ``tel_`` or ``evt_`` prefix.
+        If `None` or empty then no topics are excluded.
     """
 
     def __init__(
         self,
-        index,
-        enable=False,
-        exclude=None,
-        fields_to_ignore=("ignored", "value", "priority"),
-    ):
+        index: typing.Optional[int],
+        enable: bool = False,
+        exclude: typing.Optional[typing.Sequence[str]] = None,
+        fields_to_ignore: typing.Sequence[str] = ("ignored", "value", "priority"),
+    ) -> None:
         super().__init__(
             name="Test",
             index=index,
@@ -57,9 +61,12 @@ class TestCscCommander(csc_commander.CscCommander):
             exclude_commands=("abort", "enterControl", "setValue"),
         )
 
-        def asbool(val):
-            """Cast an int or string representation of an int to a boolean."""
-            return bool(int(val))
+        def asbool(val: str) -> bool:
+            """Cast an string representation of an boolean to a boolean.
+
+            Supported values include 0, f, false, 1, t, true
+            """
+            return csc_commander.BOOL_DICT[val.lower()]
 
         self.array_field_types = dict(
             boolean0=asbool,
@@ -82,7 +89,7 @@ class TestCscCommander(csc_commander.CscCommander):
           field: {" ".join(self.array_field_types)}
           for example: boolean0=1,2 int0=3,-4,5,6,7 float0=-42.3"""
 
-    async def do_setArrays(self, args):
+    async def do_setArrays(self, args: typing.Sequence[str]) -> None:
         kwargs = dict()
         for field_val in args:
             field, valstr = field_val.split("=")
@@ -96,6 +103,6 @@ class TestCscCommander(csc_commander.CscCommander):
                 )
             elif len(vals) < ARR_LEN:
                 n_to_append = ARR_LEN - len(vals)
-                vals += [field_type(0)] * n_to_append
+                vals += [field_type("0")] * n_to_append
             kwargs[field] = vals
-        await self.remote.cmd_setArrays.set_start(**kwargs)
+        await self.remote.cmd_setArrays.set_start(**kwargs)  # type: ignore

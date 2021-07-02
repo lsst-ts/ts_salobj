@@ -26,7 +26,7 @@ from lsst.ts import salobj
 
 
 class BlackTestCase(unittest.TestCase):
-    def test_black_formatted(self):
+    def test_black_formatted(self) -> None:
         salobj.assert_black_formatted(pathlib.Path(__file__).parents[1])
 
 

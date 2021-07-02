@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -22,8 +24,15 @@
 __all__ = ["BaseTopic"]
 
 import abc
+import typing
 
 import ddsutil
+
+from .. import type_hints
+from ..idl_metadata import TopicMetadata
+
+if typing.TYPE_CHECKING:
+    from ..sal_info import SalInfo
 
 # dict of sal_prefix: attr_prefix: the prefix used for
 # Controller and Remote topic attributes.
@@ -74,7 +83,7 @@ class BaseTopic(abc.ABC):
         For example: "Test_logevent_summaryState_90255bf1".
     """
 
-    def __init__(self, *, salinfo, name, sal_prefix):
+    def __init__(self, *, salinfo: SalInfo, name: str, sal_prefix: str) -> None:
         try:
             self.salinfo = salinfo
             self.name = str(name)
@@ -114,7 +123,7 @@ class BaseTopic(abc.ABC):
             raise RuntimeError(f"Failed to create topic {salinfo.name}.{name}") from e
 
     @property
-    def DataType(self):
+    def DataType(self) -> typing.Type[type_hints.BaseDdsDataType]:
         """The type (class) for a message of this topic.
 
         When you read or write a message for this topic you are reading
@@ -148,14 +157,14 @@ class BaseTopic(abc.ABC):
         return self._type.topic_data_class
 
     @property
-    def volatile(self):
+    def volatile(self) -> bool:
         """Does this topic have volatile durability?"""
         return self.qos_set.volatile
 
     @property
-    def metadata(self):
+    def metadata(self) -> typing.Optional[TopicMetadata]:
         """Get topic metadata as a `TopicMetadata`, if available,else None."""
         return self.salinfo.metadata.topic_info.get(self.sal_name)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.salinfo.name}, {self.salinfo.index}, {self.name})"

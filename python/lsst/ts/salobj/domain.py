@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -23,6 +25,8 @@ __all__ = ["Domain"]
 
 import asyncio
 import os
+import pathlib
+import typing
 import weakref
 import warnings
 
@@ -31,6 +35,11 @@ import dds
 from lsst.ts import ddsconfig
 from lsst.ts import idl
 from . import base
+from . import type_hints
+
+# Avoid circular imports by only importing SalInfo when type checking
+if typing.TYPE_CHECKING:
+    from .sal_info import SalInfo
 
 MAX_RANDOM_HOST = (1 << 31) - 1
 
@@ -68,15 +77,17 @@ class QosSet:
       so there is no point making 3 of them.
     """
 
-    def __init__(self, qos_path, profile_name):
+    def __init__(self, qos_path: type_hints.PathType, profile_name: str) -> None:
         self.profile_name = profile_name
-        self.qos_provider = dds.QosProvider(qos_path.as_uri(), profile_name)
+        self.qos_provider = dds.QosProvider(
+            pathlib.Path(qos_path).as_uri(), profile_name
+        )
         self.topic_qos = self.qos_provider.get_topic_qos()
         self.reader_qos = self.qos_provider.get_reader_qos()
         self.writer_qos = self.qos_provider.get_writer_qos()
 
     @property
-    def volatile(self):
+    def volatile(self) -> bool:
         """Does this category of topics have volatile durability?
 
         Volatile topics provide no late-joiner data.
@@ -182,7 +193,7 @@ class Domain:
         self.done_task = asyncio.Future()
 
         # Set of SalInfo.
-        self._salinfo_set = weakref.WeakSet()
+        self._salinfo_set: typing.Set[SalInfo] = weakref.WeakSet()
 
         self.origin = os.getpid()
         self.idl_dir = idl.get_idl_dir()
@@ -200,10 +211,10 @@ class Domain:
         self.participant = dds.DomainParticipant(qos=participant_qos)
 
     @property
-    def salinfo_set(self):
+    def salinfo_set(self) -> typing.Set[SalInfo]:
         return self._salinfo_set
 
-    def add_salinfo(self, salinfo):
+    def add_salinfo(self, salinfo: SalInfo) -> None:
         """Add the specified salinfo to the internal registry.
 
         Parameters
@@ -220,7 +231,7 @@ class Domain:
             raise RuntimeError(f"salinfo {salinfo} already added")
         self._salinfo_set.add(salinfo)
 
-    def make_publisher(self, partition_names):
+    def make_publisher(self, partition_names: typing.Sequence[str]) -> dds.Publisher:
         """Make a dds publisher.
 
         Parameters
@@ -237,7 +248,7 @@ class Domain:
 
         return self.participant.create_publisher(publisher_qos)
 
-    def make_subscriber(self, partition_names):
+    def make_subscriber(self, partition_names: typing.Sequence[str]) -> dds.Subscriber:
         """Make a dds subscriber.
 
         Parameters
@@ -254,7 +265,7 @@ class Domain:
 
         return self.participant.create_subscriber(subscriber_qos)
 
-    def remove_salinfo(self, salinfo):
+    def remove_salinfo(self, salinfo: SalInfo) -> bool:
         """Remove the specified salinfo from the internal registry.
 
         Parameters
@@ -273,7 +284,7 @@ class Domain:
         except KeyError:
             return False
 
-    def basic_close(self):
+    def basic_close(self) -> None:
         """A synchronous and less thorough version of `close`.
 
         Intended for exit handlers and constructor error handlers.
@@ -285,7 +296,7 @@ class Domain:
         finally:
             self.participant.close()
 
-    async def close(self):
+    async def close(self) -> None:
         """Close all registered `SalInfo` and the dds domain participant.
 
         May be called multiple times. The first call closes the Domain;

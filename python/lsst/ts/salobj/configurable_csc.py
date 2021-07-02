@@ -22,15 +22,18 @@
 __all__ = ["ConfigurableCsc"]
 
 import abc
+import argparse
 import os
 import pathlib
 import subprocess
 import types
+import typing
 import warnings
 
 import yaml
 
 from . import base
+from . import type_hints
 from .base_csc import BaseCsc, State
 from .validator import DefaultingValidator
 
@@ -129,15 +132,15 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
     def __init__(
         self,
-        name,
-        index,
-        schema_path=None,
-        config_schema=None,
-        config_dir=None,
-        initial_state=State.STANDBY,
-        settings_to_apply="",
-        simulation_mode=0,
-    ):
+        name: str,
+        index: typing.Optional[int],
+        schema_path: typing.Union[str, pathlib.Path, None] = None,
+        config_schema: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        config_dir: typing.Union[str, pathlib.Path, None] = None,
+        initial_state: State = State.STANDBY,
+        settings_to_apply: str = "",
+        simulation_mode: int = 0,
+    ) -> None:
         try:
             if (schema_path is None) == (config_schema is None):
                 raise ValueError(
@@ -151,6 +154,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                 )
                 with open(schema_path, "r") as f:
                     config_schema = yaml.safe_load(f.read())
+            assert config_schema is not None  # Make mypy happy
             self.config_validator = DefaultingValidator(schema=config_schema)
             title = config_schema["title"]
             name_version = title.rsplit(" ", 1)
@@ -184,7 +188,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         )
 
     @property
-    def config_dir(self):
+    def config_dir(self) -> pathlib.Path:
         """Get or set the configuration directory.
 
         Parameters
@@ -205,7 +209,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         return self._config_dir
 
     @config_dir.setter
-    def config_dir(self, config_dir):
+    def config_dir(self, config_dir) -> None:
         config_dir = pathlib.Path(config_dir).resolve()
         if not config_dir.is_dir():
             raise ValueError(
@@ -213,7 +217,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
         self._config_dir = config_dir
 
-    def read_config_dir(self):
+    def read_config_dir(self) -> None:
         """Set ``self.config_label_dict`` and output ``evt_settingVersions``.
 
         Set ``self.config_label_dict`` from ``self.config_dir/_labels.yaml``.
@@ -241,13 +245,13 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
         settings_version = self._get_settings_version()
 
-        self.evt_settingVersions.set_put(
+        self.evt_settingVersions.set_put(  # type: ignore
             recommendedSettingsLabels=",".join(labels),
             recommendedSettingsVersion=settings_version,
             settingsUrl=f"{self.config_dir.as_uri()}",
         )
 
-    async def start(self):
+    async def start(self) -> None:
         """Finish constructing the CSC.
 
         * If ``initial_summary_state`` is `State.DISABLED` or `State.ENABLED`
@@ -263,7 +267,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             await self.configure(config=default_config)
         await super().start()
 
-    def _get_settings_version(self):
+    def _get_settings_version(self) -> str:
         """Get data for evt_settingVersions.recommendedSettingsVersion.
 
         If config_dir is a git repository (as it should be)
@@ -280,7 +284,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             return ""
         return git_info.decode(errors="replace").strip()
 
-    def _make_config_label_dict(self):
+    def _make_config_label_dict(self) -> typing.Dict[str, str]:
         """Parse ``self.config_dir/_labels.yaml`` and return the dict.
 
         where the path is relative to ``self.config_dir`` directory.
@@ -338,7 +342,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
         return output_dict
 
-    def report_summary_state(self):
+    def report_summary_state(self) -> None:
         super().report_summary_state()
         if self.summary_state == State.STANDBY:
             try:
@@ -346,7 +350,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             except Exception as e:
                 self.log.exception(e)
 
-    async def begin_start(self, data):
+    async def begin_start(self, data: type_hints.BaseDdsDataType) -> None:
         """Begin do_start; configure the CSC before changing state.
 
         Parameters
@@ -367,7 +371,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         self.read_config_dir()
 
         # Read the configuration
-        config_name = data.settingsToApply
+        config_name = data.settingsToApply  # type: ignore
         config_file_path = ""
         if config_name:
             name_version = config_name.split(":")
@@ -379,7 +383,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                         f"config_file_path={config_file_path}; "
                         f"githash={githash}; config_dir={self.config_dir}"
                     )
-                    config_yaml = subprocess.check_output(
+                    config_yaml: typing.Union[str, bytes] = subprocess.check_output(
                         args=["git", "show", f"{githash}:./{config_file_name}"],
                         stderr=subprocess.STDOUT,
                         cwd=self.config_dir,
@@ -389,7 +393,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                         f"Could not read config {config_name}: {e.output}"
                     )
             elif len(name_version) == 1:
-                githash = self.evt_settingVersions.data.recommendedSettingsVersion
+                githash = (
+                    self.evt_settingVersions.data.recommendedSettingsVersion  # type: ignore
+                )
                 config_file_name = self.config_label_dict.get(config_name, config_name)
                 config_file_path = self.config_dir / config_file_name
                 try:
@@ -411,7 +417,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         else:
             user_config_dict = {}
             config_file_name = ""
-            githash = self.evt_settingVersions.data.recommendedSettingsVersion
+            githash = (
+                self.evt_settingVersions.data.recommendedSettingsVersion  # type: ignore
+            )
         try:
             full_config_dict = self.config_validator.validate(user_config_dict)
         except Exception as e:
@@ -420,15 +428,15 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
         config = types.SimpleNamespace(**full_config_dict)
         await self.configure(config)
-        self.evt_settingsApplied.set_put(
+        self.evt_settingsApplied.set_put(  # type: ignore
             settingsVersion=f"{config_file_name}:{githash}"
         )
-        self.evt_appliedSettingsMatchStart.set_put(
+        self.evt_appliedSettingsMatchStart.set_put(  # type: ignore
             appliedSettingsMatchStartIsTrue=True, force_output=True
         )
 
     @abc.abstractmethod
-    async def configure(self, config):
+    async def configure(self, config: typing.Any) -> None:
         """Configure the CSC.
 
         Parameters
@@ -446,11 +454,11 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def get_config_pkg():
+    def get_config_pkg() -> str:
         """Get the name of the configuration package, e.g. "ts_config_ocs"."""
         raise NotImplementedError()
 
-    def _get_default_config_dir(self, name):
+    def _get_default_config_dir(self, name: str) -> pathlib.Path:
         """Compute the default package directory for configuration files.
 
         Parameters
@@ -486,7 +494,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         config_pkg = self.get_config_pkg()
         config_env_var_name = f"{config_pkg.upper()}_DIR"
         try:
-            config_pkg_dir = os.environ[config_env_var_name]
+            config_pkg_dir: type_hints.PathType = os.environ[config_env_var_name]
         except KeyError:
             raise RuntimeError(
                 f"Environment variable {config_env_var_name} not defined"
@@ -507,7 +515,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         return config_dir
 
     @classmethod
-    def add_arguments(cls, parser):
+    def add_arguments(cls, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "--configdir",
             help="directory containing configuration files for the start command.",
@@ -527,5 +535,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
 
     @classmethod
-    def add_kwargs_from_args(cls, args, kwargs):
+    def add_kwargs_from_args(
+        cls, args: argparse.Namespace, kwargs: typing.Dict[str, typing.Any]
+    ) -> None:
         kwargs["config_dir"] = args.configdir

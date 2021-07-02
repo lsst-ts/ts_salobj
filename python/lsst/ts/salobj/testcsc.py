@@ -23,12 +23,14 @@ __all__ = ["TestCsc"]
 
 import asyncio
 import string
+import typing
 
 import numpy as np
 
+from . import type_hints
+from . import __version__
 from .base_csc import State
 from .configurable_csc import ConfigurableCsc
-from . import __version__
 from .config_schema import CONFIG_SCHEMA
 
 
@@ -110,51 +112,31 @@ class TestCsc(ConfigurableCsc):
 
     def __init__(
         self,
-        index,
-        config_dir=None,
-        initial_state=State.STANDBY,
-        settings_to_apply="",
-        simulation_mode=0,
-        schema_path=None,
+        index: int,
+        config_dir: typing.Optional[type_hints.PathType] = None,
+        initial_state: State = State.STANDBY,
+        settings_to_apply: str = "",
+        simulation_mode: int = 0,
+        schema_path: typing.Optional[type_hints.PathType] = None,
     ):
         if schema_path is not None:
-            config_kwargs = dict(schema_path=schema_path)
+            config_kwargs: typing.Dict[str, typing.Any] = dict(schema_path=schema_path)
         else:
             config_kwargs = dict(config_schema=CONFIG_SCHEMA)
         print("config_kwargs=", config_kwargs)
         super().__init__(
-            "Test",
-            config_dir=config_dir,
+            name="Test",
             index=index,
+            config_dir=config_dir,
             initial_state=initial_state,
             settings_to_apply=settings_to_apply,
             simulation_mode=simulation_mode,
             **config_kwargs,
         )
-        self.cmd_wait.allow_multiple_callbacks = True
+        self.cmd_wait.allow_multiple_callbacks = True  # type: ignore
         self.config = None
 
-    def do_setArrays(self, data):
-        """Execute the setArrays command."""
-        self.assert_enabled()
-        self.log.info("executing setArrays")
-        data_dict = self.as_dict(data, self.arrays_fields)
-        self.evt_arrays.set(**data_dict)
-        self.tel_arrays.set(**data_dict)
-        self.evt_arrays.put()
-        self.tel_arrays.put()
-
-    def do_setScalars(self, data):
-        """Execute the setScalars command."""
-        self.assert_enabled()
-        self.log.info("executing setScalars")
-        data_dict = self.as_dict(data, self.scalars_fields)
-        self.evt_scalars.set(**data_dict)
-        self.tel_scalars.set(**data_dict)
-        self.evt_scalars.put()
-        self.tel_scalars.put()
-
-    def as_dict(self, data, fields):
+    def as_dict(self, data: typing.Any, fields: typing.Sequence[str]):
         """Return the specified fields from a data struct as a dict.
 
         Parameters
@@ -169,7 +151,27 @@ class TestCsc(ConfigurableCsc):
             ret[field] = getattr(data, field)
         return ret
 
-    def do_fault(self, data):
+    def do_setArrays(self, data: type_hints.BaseDdsDataType) -> None:
+        """Execute the setArrays command."""
+        self.assert_enabled()
+        self.log.info("executing setArrays")
+        data_dict = self.as_dict(data, self.arrays_fields)
+        self.evt_arrays.set(**data_dict)  # type: ignore
+        self.tel_arrays.set(**data_dict)  # type: ignore
+        self.evt_arrays.put()  # type: ignore
+        self.tel_arrays.put()  # type: ignore
+
+    def do_setScalars(self, data: type_hints.BaseDdsDataType) -> None:
+        """Execute the setScalars command."""
+        self.assert_enabled()
+        self.log.info("executing setScalars")
+        data_dict = self.as_dict(data, self.scalars_fields)
+        self.evt_scalars.set(**data_dict)  # type: ignore
+        self.tel_scalars.set(**data_dict)  # type: ignore
+        self.evt_scalars.put()  # type: ignore
+        self.tel_scalars.put()  # type: ignore
+
+    def do_fault(self, data: type_hints.BaseDdsDataType) -> None:
         """Execute the fault command.
 
         Change the summary state to State.FAULT
@@ -177,7 +179,7 @@ class TestCsc(ConfigurableCsc):
         self.log.warning("executing the fault command")
         self.fault(code=1, report="executing the fault command")
 
-    async def do_wait(self, data):
+    async def do_wait(self, data: type_hints.BaseDdsDataType) -> None:
         """Execute the wait command by waiting for the specified duration.
 
         If duration is negative then wait for abs(duration) but do not
@@ -185,9 +187,10 @@ class TestCsc(ConfigurableCsc):
         testing command timeout.
         """
         self.assert_enabled()
-        if data.duration >= 0:
-            self.cmd_wait.ack_in_progress(data, timeout=data.duration)
-        await asyncio.sleep(abs(data.duration))
+        duration: float = data.duration  # type: ignore
+        if duration >= 0:
+            self.cmd_wait.ack_in_progress(data, timeout=duration)  # type: ignore
+        await asyncio.sleep(abs(duration))
 
     @property
     def field_type(self):

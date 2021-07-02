@@ -22,6 +22,7 @@
 __all__ = ["Remote"]
 
 import asyncio
+import typing
 import warnings
 
 from .topics import RemoteEvent, RemoteTelemetry, RemoteCommand
@@ -58,6 +59,7 @@ class Remote:
         If `None` then all are included except those in `exclude`.
     exclude : ``iterable`` of `str`, optional
         Names of topics (telemetry or events) to not support.
+        Topic names must not have a ``tel_`` or ``evt_`` prefix.
         If `None` or empty then no topics are excluded.
     evt_max_history : `int`, optional
         Maximum number of historical items to read for events.
@@ -131,17 +133,17 @@ class Remote:
 
     def __init__(
         self,
-        domain,
-        name,
-        index=None,
+        domain: Domain,
+        name: str,
+        index: typing.Optional[int] = None,
         *,
-        readonly=False,
-        include=None,
-        exclude=None,
-        evt_max_history=1,
-        tel_max_history=None,
-        start=True,
-    ):
+        readonly: bool = False,
+        include: typing.Optional[typing.Sequence[str]] = None,
+        exclude: typing.Optional[typing.Sequence[str]] = None,
+        evt_max_history: int = 1,
+        tel_max_history: typing.Optional[int] = None,
+        start: bool = True,
+    ) -> None:
         self.start_called = False
 
         if include is not None and exclude is not None:
@@ -192,13 +194,13 @@ class Remote:
             self.salinfo.basic_close()
             raise
 
-    async def start(self):
+    async def start(self) -> None:
         if self.start_called:
             raise RuntimeError("Start can only be called once")
         self.start_called = True
         await self.salinfo.start()
 
-    async def close(self):
+    async def close(self) -> None:
         """Shut down and clean up resources.
 
         Close the contained `SalInfo`, but not the `Domain`,

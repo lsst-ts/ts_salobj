@@ -20,11 +20,12 @@
 
 __all__ = ["CONFIG_SCHEMA"]
 
+import typing
 import yaml
 
 
 # Config schema for TestCSC
-CONFIG_SCHEMA = yaml.safe_load(
+CONFIG_SCHEMA: typing.Dict[str, typing.Any] = yaml.safe_load(
     """
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_salobj/blob/master/python/lsst/ts/salobj/config_schema.py

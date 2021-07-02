@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -24,15 +26,18 @@ __all__ = ["stream_as_generator", "CscCommander"]
 import argparse
 import asyncio
 import collections
+import enum
 import functools
 import shlex
 import sys
+import typing
 import warnings
 
 from . import domain
 from . import remote
 from . import sal_enums
 from . import csc_utils
+from . import type_hints
 
 # A dict of valid values for bool command arguments.
 # The argument should be converted to lowercase before using.
@@ -85,7 +90,10 @@ async def stream_as_generator(stream, encoding="utf-8"):
         yield line
 
 
-def round_any(value, digits=2):
+def round_any(
+    value: typing.Any,
+    digits: int = 2,
+) -> typing.Any:
     """Round any value to the specified number of digits.
 
     This is a no-op for int and str values.
@@ -236,14 +244,14 @@ class CscCommander:
 
     def __init__(
         self,
-        name,
-        index=0,
-        enable=False,
-        exclude=None,
-        exclude_commands=(),
-        fields_to_ignore=("ignored", "value", "priority"),
-        telemetry_fields_to_not_compare=("timestamp",),
-    ):
+        name: str,
+        index: typing.Optional[int] = 0,
+        enable: bool = False,
+        exclude: typing.Optional[typing.Sequence[str]] = None,
+        exclude_commands: typing.Sequence[str] = (),
+        fields_to_ignore: typing.Sequence[str] = ("ignored", "value", "priority"),
+        telemetry_fields_to_not_compare: typing.Sequence[str] = ("timestamp",),
+    ) -> None:
         self.domain = domain.Domain()
         self.remote = remote.Remote(
             domain=self.domain, name=name, index=index, exclude=exclude
@@ -252,11 +260,11 @@ class CscCommander:
         self.telemetry_fields_to_not_compare = frozenset(
             telemetry_fields_to_not_compare
         )
-        self.tasks = set()
-        self.help_dict = dict()
+        self.tasks: typing.Set[asyncio.Future] = set()
+        self.help_dict: typing.Dict[str, str] = dict()
         self.enable = enable
         self.testing = False
-        self.output_queue = collections.deque()
+        self.output_queue: typing.Deque[str] = collections.deque()
 
         for name in self.remote.salinfo.event_names:
             if name == "heartbeat":
@@ -284,7 +292,7 @@ class CscCommander:
             if name not in frozenset(exclude_commands)
         }
 
-    def print_help(self):
+    def print_help(self) -> None:
         """Print help."""
         command_help = "\n".join(self.get_commands_help())
         self.output(
@@ -297,7 +305,7 @@ help  # print this help
 """
         )
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the commander, prior to quitting."""
         while self.tasks:
             task = self.tasks.pop()
@@ -305,8 +313,8 @@ help  # print this help
         await self.remote.close()
         await self.domain.close()
 
-    def output(self, str):
-        """Print a string to output, appending a final newline.
+    def output(self, msg) -> None:
+        """Print a message to output, appending a final newline.
 
         Please call this instead of print to support unit tests.
 
@@ -315,29 +323,29 @@ help  # print this help
         Use this mode for unit testing a CSC commander.
         """
         if self.testing:
-            self.output_queue.append(str)
-        print(str)
+            self.output_queue.append(msg)
+        print(msg)
 
-    def format_item(self, key, value):
+    def format_item(self, key: str, value: typing.Any) -> str:
         """Format one event or telemetry field for printing."""
         if isinstance(value, float):
             return f"{key}={value:0.4f}"
         return f"{key}={value}"
 
-    def format_data(self, data):
+    def format_data(self, data: typing.Any) -> str:
         """Format the public fields of an event or telemetry sample,
         for printing.
         """
         return self.format_dict(self.get_public_data(data))
 
-    def format_dict(self, data):
+    def format_dict(self, data: typing.Any) -> str:
         """Format a dict for printing.
 
         Unlike format_data, this requires a dict and formats *all* fields.
         """
         return ", ".join(self.format_item(key, value) for key, value in data.items())
 
-    def field_is_public(self, name):
+    def field_is_public(self, name: str) -> bool:
         """Return True if the specified field name is public,
         False otherwise.
         """
@@ -349,7 +357,7 @@ help  # print this help
             return False
         return True
 
-    def get_public_data(self, data):
+    def get_public_data(self, data: typing.Any) -> typing.Dict[str, typing.Any]:
         """Get a dict of field_name: value for public fields of a DDS sample.
 
         Parameters
@@ -363,7 +371,7 @@ help  # print this help
             if self.field_is_public(key)
         )
 
-    def get_rounded_public_data(self, data, digits=2):
+    def get_rounded_public_data(self, data: typing.Any, digits: int = 2) -> typing.Any:
         """Get a dict of field_name: value for public fields of a DDS sample
         with float values rounded.
         """
@@ -373,12 +381,14 @@ help  # print this help
             if self.field_is_public(key)
         }
 
-    def get_rounded_public_fields(self, data, digits=2):
+    def get_rounded_public_fields(
+        self, data: typing.Any, digits: int = 2
+    ) -> typing.Any:
         """Deprecated version of get_rounded_public_data."""
         warnings.warn("Use get_rounded_public_data instead", DeprecationWarning)
         return self.get_rounded_public_data(data=data, digits=digits)
 
-    def event_callback(self, data, name):
+    def event_callback(self, data: typing.Any, name: str) -> None:
         """Generic callback for events.
 
         You may provide evt_<event_name> methods to override printing
@@ -386,16 +396,17 @@ help  # print this help
         """
         self.output(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
 
-    def evt_summaryState_callback(self, data):
+    def evt_summaryState_callback(self, data: type_hints.BaseDdsDataType) -> None:
+        state_int: int = data.summaryState  # type: ignore
         try:
-            state = sal_enums.State(data.summaryState)
+            state_repr: str = repr(sal_enums.State(state_int))
         except Exception:
-            state = f"{data.summaryState} (not a known state!)"
+            state_repr = f"{state_int} (not a known state!)"
         self.output(
-            f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state!r}"
+            f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state_repr}"
         )
 
-    def telemetry_callback(self, data, name, digits=2):
+    def telemetry_callback(self, data: typing.Any, name: str, digits: int = 2) -> None:
         """Generic callback for telemetry.
 
         You may provide tel_<telemetry_name> methods to override printing
@@ -413,8 +424,14 @@ help  # print this help
             formatted_data = self.format_dict(public_dict)
             self.output(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
 
-    def check_arguments(self, args, *names):
-        """Check that the required arguments are provided,
+    def check_arguments(
+        self,
+        args: typing.Sequence[str],
+        *names: typing.Union[
+            str, typing.Tuple[str, typing.Callable[[str], typing.Any]]
+        ],
+    ) -> typing.Dict[str, typing.Any]:
+        """Check that the required arguments are provided.
         and return them as a keyword argument dict with cast values.
 
         Parameters
@@ -426,7 +443,8 @@ help  # print this help
 
             * An argument name, in which case the argument is cast to a float
             * A tuple of (name, cast function), in which case the argument
-                is cast using the cast function.
+              is cast using the cast function. The cast function takes
+              one str argument and returns the cast value.
         """
         required_num_args = len(names)
         if len(args) != required_num_args:
@@ -434,11 +452,38 @@ help  # print this help
                 raise RuntimeError("no arguments allowed")
             else:
                 raise RuntimeError(
-                    f"{required_num_args} arguments required:  "
-                    f"{names}; {len(args)} provided."
+                    f"{required_num_args} arguments required: {names}; "
+                    f"{len(args)} arguments provided: {args}."
                 )
 
-        def cast(name, arg):
+        def cast(
+            arg: str,
+            name: typing.Union[
+                str, typing.Tuple[str, typing.Callable[[str], typing.Any]]
+            ],
+        ) -> typing.Tuple[str, typing.Any]:
+            """Cast one argument to the required type.
+
+            Parameters
+            ----------
+            arg : `str`
+                Argument value.
+            name : `str` or (str, cast_func)
+                Argument name and optional cast function; either:
+
+                * An argument name, in which case ``arg`` is cast to a float
+                * A tuple of (name, cast function), in which case ``arg``
+                  is cast using the cast function. The cast function takes
+                  one str argument and returns the cast value.
+
+            Returns
+            -------
+            name_value : tuple
+                A tuple of two values:
+
+                * argument name (str)
+                * cast value
+            """
             if isinstance(name, tuple):
                 if len(name) != 2:
                     raise RuntimeError(
@@ -449,20 +494,20 @@ help  # print this help
             else:
                 return (name, float(arg))
 
-        return dict(cast(name, arg) for name, arg in zip(names, args))
+        return dict(cast(arg=arg, name=name) for name, arg in zip(names, args))
 
-    async def do_start(self, args):
+    async def do_start(self, args: typing.Sequence[str]) -> None:
         """Allow the start command to have no arguments."""
         assert len(args) in (0, 1)
         if args:
             settingsToApply = args[0]
         else:
             settingsToApply = ""
-        await self.remote.cmd_start.set_start(
+        await self.remote.cmd_start.set_start(  # type: ignore
             settingsToApply=settingsToApply,
         )
 
-    def get_commands_help(self):
+    def get_commands_help(self) -> typing.List[str]:
         """Get help for each command, as a list of strings.
 
         End with "Other Commands:" and any commands
@@ -490,7 +535,9 @@ help  # print this help
         ]
         return help_strings
 
-    async def run_command_topic(self, command_name, args):
+    async def run_command_topic(
+        self, command_name: str, args: typing.Sequence[str]
+    ) -> None:
         """Run a command that has an associated salobj RemoteCommand topic.
 
         Parameters
@@ -530,7 +577,7 @@ help  # print this help
                 )
         await command.set_start(**kwargs)
 
-    async def run_command(self, cmd):
+    async def run_command(self, cmd: str) -> None:
         """Run the specified command string and wait for it to finish.
 
         Parameters
@@ -557,7 +604,7 @@ help  # print this help
             return
         await coro
 
-    async def _run_command_and_output(self, cmd):
+    async def _run_command_and_output(self, cmd: str) -> None:
         """Execute a command and wait for it to finish. Output the result.
 
         A wrapper around `run_command` that adds a task to self.tasks
@@ -581,7 +628,7 @@ help  # print this help
         finally:
             self.tasks.remove(task)
 
-    async def start(self):
+    async def start(self) -> None:
         """Start asynchonous processes."""
         self.output(f"Waiting for {self.remote.salinfo.name_index} to start.")
         await self.remote.start_task
@@ -589,18 +636,20 @@ help  # print this help
             self.output(f"Enabling {self.remote.salinfo.name_index}")
             # Temporarily remove the ``evt_summaryState`` callback
             # so the `set_summary_state` function can read the topic.
-            summary_state_callback = self.remote.evt_summaryState.callback
+            summary_state_callback = self.remote.evt_summaryState.callback  # type: ignore
             try:
-                self.remote.evt_summaryState.callback = None
+                self.remote.evt_summaryState.callback = None  # type: ignore
                 await csc_utils.set_summary_state(self.remote, sal_enums.State.ENABLED)
             finally:
-                summary_state = self.remote.evt_summaryState.get()
+                summary_state = self.remote.evt_summaryState.get()  # type: ignore
                 if summary_state is not None:
                     summary_state_callback(summary_state)
-                self.remote.evt_summaryState.callback = summary_state_callback
+                self.remote.evt_summaryState.callback = summary_state_callback  # type: ignore
 
     @classmethod
-    async def amain(cls, *, index, **kwargs):
+    async def amain(
+        cls, *, index: typing.Union[int, enum.IntEnum, bool, None], **kwargs: typing.Any
+    ) -> None:
         """Construct the commander and run it.
 
         Parse the command line to construct the commander,
@@ -644,7 +693,7 @@ help  # print this help
             await self.close()
 
     @classmethod
-    def add_arguments(cls, parser):
+    def add_arguments(cls, parser: argparse.ArgumentParser) -> None:
         """Add arguments to the parser created by `make_from_cmd_line`.
 
         Parameters
@@ -660,7 +709,9 @@ help  # print this help
         pass
 
     @classmethod
-    def add_kwargs_from_args(cls, args, kwargs):
+    def add_kwargs_from_args(
+        cls, args: argparse.Namespace, kwargs: typing.Dict[str, typing.Any]
+    ) -> None:
         """Add constructor keyword arguments based on parsed arguments.
 
         Parameters
@@ -680,7 +731,9 @@ help  # print this help
         pass
 
     @classmethod
-    def make_from_cmd_line(cls, index, **kwargs):
+    def make_from_cmd_line(
+        cls, index: typing.Union[int, enum.IntEnum, bool, None], **kwargs: typing.Any
+    ) -> CscCommander:
         """Construct a SAL-related class from command line arguments.
 
         Parameters
