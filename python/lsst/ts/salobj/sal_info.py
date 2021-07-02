@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["FieldMetadata", "TopicMetadata", "SalInfo", "MAX_RESULT_LEN"]
+__all__ = ["SalInfo", "MAX_RESULT_LEN"]
 
 import asyncio
 import atexit
@@ -55,77 +55,6 @@ MAX_HISTORY_READ = 10000
 # Default time to wait for historical data (sec);
 # override by setting env var $LSST_DDS_HISTORYSYNC.
 DEFAULT_LSST_DDS_HISTORYSYNC = 60
-
-
-class FieldMetadata:
-    """Information about a field.
-
-    Parameters
-    ----------
-    name : `str`
-        Field name.
-    description : `str` or `None`
-        Description; `None` if not specified.
-    units : `str` or `None`
-        Units; `None` if not specified.
-    type_name : `str`
-        Data type name from the IDL file, e.g.
-        "string<8>", "float", "double".
-        This may not match the Python data type of the field.
-        For instance dds maps most integer types to `int`,
-        and both "float" and "double" to `double`.
-    array_length : `int`
-        Number of elements if an array; None if not an array.
-    str_length : `int`
-        Maximum allowed string length; None if unspecified (no limit)
-        or not a string.
-    """
-
-    def __init__(self, name, description, units, type_name, array_length, str_length):
-        self.name = name
-        self.description = description
-        self.units = units
-        self.type_name = type_name
-        self.array_length = array_length
-        self.str_length = str_length
-
-    def __repr__(self):
-        return (
-            f"FieldMetadata(name={repr(self.name)}, "
-            f"description={repr(self.description)}, "
-            f"units={repr(self.units)}, "
-            f"type_name={repr(self.type_name)},"
-            f"array_length={self.array_length}"
-            f"str_length={self.str_length})"
-        )
-
-    def __str__(self):
-        return f"description={repr(self.description)}, units={repr(self.units)}"
-
-
-class TopicMetadata:
-    """Metadata about a topic.
-
-    Parameters
-    ----------
-    sal_name : `str`
-        SAL topic name, e.g. `logevent_summaryState`.
-    description : `str` or `None`
-        Topic description, or `None` if unknown.
-
-    Attributes
-    ----------
-    field_info : `dict` [`str`, `FieldMetadata`]
-        Dict of field name: field metadata.
-    """
-
-    def __init__(self, sal_name, description):
-        self.sal_name = sal_name
-        self.description = description
-        self.field_info = dict()
-
-    def __repr__(self):
-        return f"TopicMetadata(sal_name={repr(self.sal_name)}, description={self.description})"
 
 
 class SalInfo:
