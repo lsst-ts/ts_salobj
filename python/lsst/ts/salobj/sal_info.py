@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["FieldMetadata", "TopicMetadata", "SalInfo", "MAX_RESULT_LEN"]
+__all__ = ["SalInfo", "MAX_RESULT_LEN"]
 
 import asyncio
 import atexit
@@ -27,6 +27,7 @@ import concurrent
 import logging
 import os
 import time
+import typing
 import warnings
 
 import dds
@@ -34,6 +35,9 @@ import ddsutil
 
 from . import base
 from . import idl_metadata
+from . import sal_enums
+from . import topics
+from . import type_hints
 from .domain import Domain
 
 # Maximum length of the ``result`` field in an ``ackcmd`` topic.
@@ -55,77 +59,6 @@ MAX_HISTORY_READ = 10000
 # Default time to wait for historical data (sec);
 # override by setting env var $LSST_DDS_HISTORYSYNC.
 DEFAULT_LSST_DDS_HISTORYSYNC = 60
-
-
-class FieldMetadata:
-    """Information about a field.
-
-    Parameters
-    ----------
-    name : `str`
-        Field name.
-    description : `str` or `None`
-        Description; `None` if not specified.
-    units : `str` or `None`
-        Units; `None` if not specified.
-    type_name : `str`
-        Data type name from the IDL file, e.g.
-        "string<8>", "float", "double".
-        This may not match the Python data type of the field.
-        For instance dds maps most integer types to `int`,
-        and both "float" and "double" to `double`.
-    array_length : `int`
-        Number of elements if an array; None if not an array.
-    str_length : `int`
-        Maximum allowed string length; None if unspecified (no limit)
-        or not a string.
-    """
-
-    def __init__(self, name, description, units, type_name, array_length, str_length):
-        self.name = name
-        self.description = description
-        self.units = units
-        self.type_name = type_name
-        self.array_length = array_length
-        self.str_length = str_length
-
-    def __repr__(self):
-        return (
-            f"FieldMetadata(name={repr(self.name)}, "
-            f"description={repr(self.description)}, "
-            f"units={repr(self.units)}, "
-            f"type_name={repr(self.type_name)},"
-            f"array_length={self.array_length}"
-            f"str_length={self.str_length})"
-        )
-
-    def __str__(self):
-        return f"description={repr(self.description)}, units={repr(self.units)}"
-
-
-class TopicMetadata:
-    """Metadata about a topic.
-
-    Parameters
-    ----------
-    sal_name : `str`
-        SAL topic name, e.g. `logevent_summaryState`.
-    description : `str` or `None`
-        Topic description, or `None` if unknown.
-
-    Attributes
-    ----------
-    field_info : `dict` [`str`, `FieldMetadata`]
-        Dict of field name: field metadata.
-    """
-
-    def __init__(self, sal_name, description):
-        self.sal_name = sal_name
-        self.description = description
-        self.field_info = dict()
-
-    def __repr__(self):
-        return f"TopicMetadata(sal_name={repr(self.sal_name)}, description={self.description})"
 
 
 class SalInfo:
@@ -237,7 +170,9 @@ class SalInfo:
     events, telemetry, and the ``ackcmd`` topic.
     """
 
-    def __init__(self, domain, name, index=0):
+    def __init__(
+        self, domain: Domain, name: str, index: typing.Optional[int] = 0
+    ) -> None:
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
         self.isopen = False
@@ -250,7 +185,7 @@ class SalInfo:
         # Dict of SAL topic name: wait_for_historical_data succeeded
         # for each topic for which wait_for_historical_data was called.
         # This is primarily intended for unit tests.
-        self.wait_history_isok = dict()
+        self.wait_history_isok: typing.Dict[str, bool] = dict()
 
         partition_prefix = os.environ.get("LSST_DDS_PARTITION_PREFIX")
         if partition_prefix is None:
@@ -273,15 +208,15 @@ class SalInfo:
             )
         self.partition_prefix = partition_prefix
 
-        self.start_task = asyncio.Future()
-        self.done_task = asyncio.Future()
+        self.start_task: asyncio.Future = asyncio.Future()
+        self.done_task: asyncio.Future = asyncio.Future()
 
         self.log = logging.getLogger(self.name)
         if self.log.getEffectiveLevel() > MAX_LOG_LEVEL:
             self.log.setLevel(MAX_LOG_LEVEL)
 
-        self.authorized_users = set()
-        self.non_authorized_cscs = set()
+        self.authorized_users: typing.Set[str] = set()
+        self.non_authorized_cscs: typing.Set[str] = set()
 
         # Publishers and subscribers.
         # Create at need to avoid unnecessary instances.
@@ -293,18 +228,21 @@ class SalInfo:
         self._data_subscriber = None
 
         # dict of private_seqNum: salobj.topics.CommandInfo
-        self._running_cmds = dict()
-        # dict of dds.ReadCondition: salobj ReadTopic
-        self._reader_dict = dict()
-        # list of salobj WriteTopic
-        self._writer_list = list()
+        self._running_cmds: typing.Dict[int, topics.CommandInfo] = dict()
+        # dict of dds.ReadCondition: salobj topics.ReadTopic
+        # This is needed because read conditions don't store the associated
+        # data reader. When a wait on a dds.WaitSet returns a read condition
+        # we use this dict to figure out which topic to read.
+        self._reader_dict: typing.Dict[dds.ReadCondition, topics.ReadTopic] = dict()
+        # list of salobj topics.WriteTopic
+        self._writer_list: typing.List[topics.WriteTopic] = list()
         # the first RemoteCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdReader
         # and set its callback to self._ackcmd_callback
-        self._ackcmd_reader = None
+        self._ackcmd_reader: typing.Optional[topics.AckCmdReader] = None
         # the first ControllerCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdWriter
-        self._ackcmd_writer = None
+        self._ackcmd_writer: typing.Optional[topics.AckCmdWriter] = None
         # wait_timeout is a failsafe for shutdown; normally all you have to do
         # is call `close` to trigger the guard condition and stop the wait
         self._wait_timeout = dds.DDSDuration(sec=10)
@@ -328,7 +266,7 @@ class SalInfo:
             ackcmd_revname = self.revnames.get("ackcmd")
             if ackcmd_revname is None:
                 raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
-            self._ackcmd_type = ddsutil.get_dds_classes_from_idl(
+            self._ackcmd_type: type_hints.AckCmdDataType = ddsutil.get_dds_classes_from_idl(  # type: ignore
                 idl_path, ackcmd_revname
             )
 
@@ -338,7 +276,7 @@ class SalInfo:
         atexit.register(self.basic_close)
         self.isopen = True
 
-    def _ackcmd_callback(self, data):
+    def _ackcmd_callback(self, data: type_hints.AckCmdDataType) -> None:
         if not self._running_cmds:
             return
         # Note: ReadTopic's reader filters out ackcmd samples
@@ -355,7 +293,7 @@ class SalInfo:
             del self._running_cmds[data.private_seqNum]
 
     @property
-    def AckCmdType(self):
+    def AckCmdType(self) -> typing.Type[type_hints.AckCmdDataType]:
         """The class of command acknowledgement.
 
         It includes these fields, as well as the usual other
@@ -379,20 +317,20 @@ class SalInfo:
         """
         if len(self.command_names) == 0:
             raise RuntimeError("This component has no commands, so no ackcmd topic")
-        return self._ackcmd_type.topic_data_class
+        return self._ackcmd_type.topic_data_class  # type: ignore
 
     @property
-    def cmd_partition_name(self):
+    def cmd_partition_name(self) -> str:
         """Partition name for command topics."""
         return f"{self.partition_prefix}.{self.name}.cmd"
 
     @property
-    def data_partition_name(self):
+    def data_partition_name(self) -> str:
         """Partition name for non-command topics."""
         return f"{self.partition_prefix}.{self.name}.data"
 
     @property
-    def cmd_publisher(self):
+    def cmd_publisher(self) -> dds.Publisher:
         """Publisher for command topics, but not ackcmd.
 
         This has a different partition name than a data_publisher.
@@ -403,7 +341,7 @@ class SalInfo:
         return self._cmd_publisher
 
     @property
-    def cmd_subscriber(self):
+    def cmd_subscriber(self) -> dds.Subscriber:
         """Subscriber for command topics, but not ackcmd.
 
         This has a different partition name than a data_subscriber.
@@ -416,7 +354,7 @@ class SalInfo:
         return self._cmd_subscriber
 
     @property
-    def data_publisher(self):
+    def data_publisher(self) -> dds.Publisher:
         """Publisher for ackcmd, events and telemetry topics.
 
         This has a different partition name than a cmd_publisher.
@@ -429,7 +367,7 @@ class SalInfo:
         return self._data_publisher
 
     @property
-    def data_subscriber(self):
+    def data_subscriber(self) -> dds.Subscriber:
         """Subscriber for ackcmd, events and telemetry topics.
 
         This has a different partition name than a cmd_subscriber.
@@ -442,7 +380,7 @@ class SalInfo:
         return self._data_subscriber
 
     @property
-    def name_index(self):
+    def name_index(self) -> str:
         """Get name[:index].
 
         The suffix is only present if the component is indexed.
@@ -453,7 +391,7 @@ class SalInfo:
             return self.name
 
     @property
-    def started(self):
+    def started(self) -> bool:
         """Return True if successfully started, False otherwise."""
         return (
             self.start_task.done()
@@ -461,7 +399,7 @@ class SalInfo:
             and self.start_task.exception() is None
         )
 
-    def assert_started(self):
+    def assert_started(self) -> None:
         """Raise RuntimeError if not successfully started.
 
         Notes
@@ -473,8 +411,14 @@ class SalInfo:
             raise RuntimeError("Not started")
 
     def make_ackcmd(
-        self, private_seqNum, ack, error=0, result="", timeout=0, truncate_result=False
-    ):
+        self,
+        private_seqNum: int,
+        ack: sal_enums.SalRetCode,
+        error: int = 0,
+        result: str = "",
+        timeout: float = 0,
+        truncate_result: bool = False,
+    ) -> type_hints.AckCmdDataType:
         """Make an AckCmdType object from keyword arguments.
 
         Parameters

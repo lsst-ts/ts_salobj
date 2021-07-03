@@ -27,10 +27,10 @@ from lsst.ts import salobj
 
 
 class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.schema = salobj.CONFIG_SCHEMA
 
-    def test_get_schema(self):
+    def test_get_schema(self) -> None:
         csc_package_root = pathlib.Path(__file__).parents[1]
         schema = self.get_schema(csc_package_root=csc_package_root, sal_name="Test")
         self.assertIsInstance(schema, dict)
@@ -58,7 +58,7 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
             # Must specify sal_name or schema_subpath
             self.get_schema(csc_package_root=csc_package_root)
 
-    def test_get_module_dir(self):
+    def test_get_module_dir(self) -> None:
         module_dir = self.get_module_dir("lsst.ts.salobj")
         self.assertTrue(str(module_dir).endswith("lsst/ts/salobj"))
 
@@ -66,7 +66,7 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
             self.get_module_dir("lsst.lsst.lsst.no_such_module")
 
     @unittest.skipIf("TS_CONFIG_OCS_DIR" not in os.environ, "ts_config_ocs not found")
-    def test_standard_configs(self):
+    def test_standard_configs(self) -> None:
         """Test the config files in ts_config_ocs/Test/..."""
         config_package_root = os.environ["TS_CONFIG_OCS_DIR"]
         config_dir = self.get_config_dir(
@@ -108,7 +108,7 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
                 schema_subpath="schema/no_such_file.yaml",
             )
 
-    def test_local_configs(self):
+    def test_local_configs(self) -> None:
         """Test the various local config directories."""
         data_root = pathlib.Path(__file__).parent / "data"
 

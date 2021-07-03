@@ -54,6 +54,7 @@ import socket
 import subprocess
 import threading
 import time
+import typing
 
 import astropy.time
 import astropy.utils.iers
@@ -63,6 +64,7 @@ import astropy.units as u
 from . import sal_enums
 
 LOCAL_HOST = "127.0.0.1"
+
 
 # Name of the environment variable that specifies the Master Priority.
 # See the `Domain` doc string for details.
@@ -82,16 +84,20 @@ MJD_MINUS_UNIX_SECONDS = (
 _NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-][a-zA-Z0-9_-]*)(:(?P<index>\d+))?$")
 
 # OpenSplice version; None until get_opensplice_version is first called.
-_OPENSPLICE_VERSION = None
+_OPENSPLICE_VERSION: typing.Optional[str] = None
 
 # A list of (utc_unix_seconds, TAI-UTC seconds);
 # automatically updated by `_update_leap_second_table`.
-_UTC_LEAP_SECOND_TABLE = None
+_UTC_LEAP_SECOND_TABLE: typing.Optional[
+    typing.Sequence[typing.Tuple[float, float]]
+] = None
 # A list of (tai_unix_seconds, TAI-UTC seconds);
 # automatically updated by `_update_leap_second_table`.
-_TAI_LEAP_SECOND_TABLE = None
+_TAI_LEAP_SECOND_TABLE: typing.Optional[
+    typing.Sequence[typing.Tuple[float, float]]
+] = None
 # A threading timer that schedules automatic update of the leap second table.
-_LEAP_SECOND_TABLE_UPDATE_TIMER = None
+_LEAP_SECOND_TABLE_UPDATE_TIMER: typing.Optional[threading.Timer] = None
 # When to update the leap second table, in days before expiration.
 _LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS = 10
 
@@ -99,7 +105,7 @@ _MIDDLE_WRAP_ANGLE = astropy.coordinates.Angle(180, u.deg)
 _POSITIVE_WRAP_ANGLE = astropy.coordinates.Angle(360, u.deg)
 
 
-def _ackcmd_str(ackcmd):
+def _ackcmd_str(ackcmd: typing.Any) -> str:
     """Format an Ack as a string"""
     return (
         f"(ackcmd private_seqNum={ackcmd.private_seqNum}, "
@@ -118,15 +124,15 @@ class AckError(Exception):
         Command acknowledgement.
     """
 
-    def __init__(self, msg, ackcmd):
+    def __init__(self, msg: str, ackcmd: typing.Any) -> None:
         super().__init__(msg)
         self.ackcmd = ackcmd
         """Command acknowledgement."""
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"msg={self.args[0]!r}, ackcmd={_ackcmd_str(self.ackcmd)}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self!s})"
 
 
@@ -150,7 +156,10 @@ class ExpectedError(Exception):
     pass
 
 
-def angle_diff(angle1, angle2):
+def angle_diff(
+    angle1: typing.Union[astropy.coordinates.Angle, float],
+    angle2: typing.Union[astropy.coordinates.Angle, float],
+) -> astropy.coordinates.Angle:
     """Return angle1 - angle2 wrapped into the range [-180, 180) deg.
 
     Parameters
@@ -171,7 +180,9 @@ def angle_diff(angle1, angle2):
     )
 
 
-def angle_wrap_center(angle):
+def angle_wrap_center(
+    angle: typing.Union[astropy.coordinates.Angle, float]
+) -> astropy.coordinates.Angle:
     """Return an angle wrapped into the range [-180, 180) deg.
 
     Parameters
@@ -187,7 +198,9 @@ def angle_wrap_center(angle):
     return astropy.coordinates.Angle(angle, u.deg).wrap_at(_MIDDLE_WRAP_ANGLE)
 
 
-def angle_wrap_nonnegative(angle):
+def angle_wrap_nonnegative(
+    angle: typing.Union[astropy.coordinates.Angle, float]
+) -> astropy.coordinates.Angle:
     """Return an angle wrapped into the range [0, 360) deg.
 
     Parameters
@@ -203,7 +216,7 @@ def angle_wrap_nonnegative(angle):
     return astropy.coordinates.Angle(angle, u.deg).wrap_at(_POSITIVE_WRAP_ANGLE)
 
 
-def astropy_time_from_tai_unix(tai_unix):
+def astropy_time_from_tai_unix(tai_unix: float) -> astropy.time.Time:
     """Get astropy time from TAI in unix seconds.
 
     Parameters
@@ -216,7 +229,7 @@ def astropy_time_from_tai_unix(tai_unix):
     return astropy.time.Time(tai_mjd, scale="tai", format="mjd")
 
 
-def get_opensplice_version():
+def get_opensplice_version() -> str:
     """Get the version of OpenSplice as a string.
 
     The form of the version string is:
@@ -250,7 +263,7 @@ def get_opensplice_version():
     return _OPENSPLICE_VERSION
 
 
-def get_user_host():
+def get_user_host() -> str:
     """Get the username and host as user@host
 
     host is the fully qualified domain name.
@@ -258,7 +271,9 @@ def get_user_host():
     return f"{getpass.getuser()}@{socket.getfqdn()}"
 
 
-def index_generator(imin=1, imax=MAX_SAL_INDEX, i0=None):
+def index_generator(
+    imin: int = 1, imax: int = MAX_SAL_INDEX, i0: typing.Optional[int] = None
+) -> typing.Generator[int, None, None]:
     """Sequential index generator.
 
     Returns values i0, i0+1, i0+2, ..., max, min, min+1, ...
@@ -299,13 +314,13 @@ def index_generator(imin=1, imax=MAX_SAL_INDEX, i0=None):
     return index_impl()
 
 
-def make_done_future():
-    future = asyncio.Future()
+def make_done_future() -> asyncio.Future:
+    future: asyncio.Future = asyncio.Future()
     future.set_result(None)
     return future
 
 
-def name_to_name_index(name):
+def name_to_name_index(name: str) -> typing.Tuple[str, int]:
     """Parse a SAL component name of the form name[:index].
 
     Parameters
@@ -313,6 +328,12 @@ def name_to_name_index(name):
     name : `str`
         Component name of the form ``name`` or ``name:index``.
         The default index is 0.
+
+    Returns
+    -------
+    name_int : `tuple`
+        A tuple containing the component name (str) and index (int).
+        The index is 0 if the input did not specify.
 
     Raises
     ------
@@ -335,17 +356,20 @@ def name_to_name_index(name):
     if not match:
         raise ValueError(f"name {name!r} is not of the form 'name' or 'name:index'")
     name = match["name"]
-    index = match["index"]
-    index = 0 if index is None else int(index)
+    index_str = match["index"]
+    index = 0 if index_str is None else int(index_str)
     return (name, index)
 
 
-def current_tai_from_utc():
+def current_tai_from_utc() -> float:
     """Return the current TAI in unix seconds, using `tai_from_utc`."""
     return tai_from_utc_unix(time.time())
 
 
-def tai_from_utc(utc, format="unix"):
+def tai_from_utc(
+    utc: typing.Union[float, str, astropy.time.Time],
+    format: typing.Optional[str] = "unix",
+) -> float:
     """Return TAI in unix seconds, given UTC or any `astropy.time.Time`.
 
     Smear UTC time out evenly on the day before a leap second,
@@ -426,7 +450,7 @@ def tai_from_utc(utc, format="unix"):
     return tai_from_utc_unix(utc_unix)
 
 
-def tai_from_utc_unix(utc_unix):
+def tai_from_utc_unix(utc_unix: float) -> float:
     """Return TAI in unix seconds, given UTC in unix seconds.
 
     Smear UTC time out evenly on the day before a leap second,
@@ -455,6 +479,8 @@ def tai_from_utc_unix(utc_unix):
     # global table is being replaced by `_update_leap_second_table`.
     global _UTC_LEAP_SECOND_TABLE
     utc_leap_second_table = _UTC_LEAP_SECOND_TABLE
+    if utc_leap_second_table is None:
+        raise RuntimeError("No leap second table")
     if utc_unix > utc_leap_second_table[-1][0] - SECONDS_PER_DAY:
         raise ValueError(
             f"{utc_unix} > {utc_leap_second_table[-1][0] - SECONDS_PER_DAY} = "
@@ -480,7 +506,7 @@ def tai_from_utc_unix(utc_unix):
     return utc_unix + tai_minus_utc
 
 
-def utc_from_tai_unix(tai_unix):
+def utc_from_tai_unix(tai_unix: float) -> float:
     """Return UTC in unix seconds, given TAI in unix seconds.
 
     The difference is always an integer. Thus this is not the inverse
@@ -508,6 +534,8 @@ def utc_from_tai_unix(tai_unix):
     # global table is being replaced by `_update_leap_second_table`.
     global _TAI_LEAP_SECOND_TABLE
     tai_leap_second_table = _TAI_LEAP_SECOND_TABLE
+    if tai_leap_second_table is None:
+        raise RuntimeError("No leap second table")
     if tai_unix > tai_leap_second_table[-1][0]:
         raise ValueError(
             f"{tai_unix} > {tai_leap_second_table[-1][0]} = "
@@ -526,7 +554,7 @@ def utc_from_tai_unix(tai_unix):
 _log = logging.getLogger("lsst.ts.salobj.base")
 
 
-def _update_leap_second_table():
+def _update_leap_second_table() -> None:
     """Update the leap second table.
 
     Notes
@@ -584,7 +612,7 @@ def _update_leap_second_table():
 _update_leap_second_table()
 
 
-def _get_current_tai_function():
+def _get_current_tai_function() -> typing.Callable[[], float]:
     """Return a function returns the current TAI in unix seconds
     (and which takes no arguments).
 

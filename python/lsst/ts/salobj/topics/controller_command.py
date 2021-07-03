@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -23,18 +25,23 @@ __all__ = ["AckCmdWriter", "ControllerCommand"]
 
 import asyncio
 import inspect
+import typing
 import warnings
 
 from .. import sal_enums
 from .. import base
+from .. import type_hints
 from . import read_topic
 from . import write_topic
+
+if typing.TYPE_CHECKING:
+    from ..sal_info import SalInfo
 
 
 class AckCmdWriter(write_topic.WriteTopic):
     """Command Acknowledgement writer."""
 
-    def __init__(self, salinfo):
+    def __init__(self, salinfo: SalInfo) -> None:
         super().__init__(
             salinfo=salinfo, name="ackcmd", sal_prefix="", min_seq_num=None
         )
@@ -83,7 +90,9 @@ class ControllerCommand(read_topic.ReadTopic):
       then do the same as `ExpectedError` and also log a traceback.
     """
 
-    def __init__(self, salinfo, name, queue_len=read_topic.DEFAULT_QUEUE_LEN):
+    def __init__(
+        self, salinfo: SalInfo, name: str, queue_len: int = read_topic.DEFAULT_QUEUE_LEN
+    ) -> None:
         super().__init__(
             salinfo=salinfo,
             name=name,
@@ -100,7 +109,9 @@ class ControllerCommand(read_topic.ReadTopic):
         if salinfo._ackcmd_writer is None:
             self.salinfo._ackcmd_writer = AckCmdWriter(salinfo=salinfo)
 
-    def ack(self, data, ackcmd):
+    def ack(
+        self, data: type_hints.BaseDdsDataType, ackcmd: type_hints.AckCmdDataType
+    ) -> None:
         """Acknowledge a command by writing a new state.
 
         Parameters
@@ -110,7 +121,9 @@ class ControllerCommand(read_topic.ReadTopic):
         ackcmd : `salobj.AckCmdType`
             Command acknowledgement data.
         """
-        self.salinfo._ackcmd_writer.set(
+        # mypy thinks salinfo._ackcmd_writer can be None, but it can't.
+        # Testing is expensive, so hide the warnings.
+        self.salinfo._ackcmd_writer.set(  # type: ignore
             private_seqNum=data.private_seqNum,
             origin=data.private_origin,
             identity=data.private_identity,
@@ -120,9 +133,9 @@ class ControllerCommand(read_topic.ReadTopic):
             result=ackcmd.result,
             timeout=ackcmd.timeout,
         )
-        self.salinfo._ackcmd_writer.put()
+        self.salinfo._ackcmd_writer.put()  # type: ignore
 
-    def ackInProgress(self, data, result=""):
+    def ackInProgress(self, data: type_hints.BaseDdsDataType, result: str = "") -> None:
         """Deprecated version of ack_in_progress."""
         # TODO DM-26518: remove this method
         warnings.warn(
@@ -131,7 +144,9 @@ class ControllerCommand(read_topic.ReadTopic):
         )
         self.ack_in_progress(data=data, result=result, timeout=0)
 
-    def ack_in_progress(self, data, *, timeout, result=""):
+    def ack_in_progress(
+        self, data: type_hints.BaseDdsDataType, timeout: float, result: str = ""
+    ) -> None:
         """Ackowledge this command as "in progress".
 
         Parameters
@@ -151,7 +166,9 @@ class ControllerCommand(read_topic.ReadTopic):
         )
         self.ack(data, ackcmd)
 
-    async def next(self, *, timeout=None):
+    async def next(  # type: ignore[override]  # noqa
+        self, *, timeout: typing.Optional[float] = None
+    ) -> type_hints.BaseDdsDataType:
         """Wait for data, returning old data if found.
 
         Unlike `RemoteEvent.next` and `RemoteTelemetry.next`,
@@ -180,7 +197,7 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         return await super().next(flush=False, timeout=timeout)
 
-    def _queue_one_item(self, data):
+    def _queue_one_item(self, data: type_hints.BaseDdsDataType) -> None:
         """Convert the value to an ``ackcmd`` and queue it."""
         if data.private_seqNum <= 0:
             raise ValueError(f"private_seqNum={data.private_seqNum} must be positive")
@@ -190,7 +207,7 @@ class ControllerCommand(read_topic.ReadTopic):
         self.ack(data, ack)
         super()._queue_one_item(data)
 
-    async def _run_callback(self, data):
+    async def _run_callback(self, data: type_hints.BaseDdsDataType) -> None:
         """Run the callback function, acknowledge the command,
         and start another wait.
 
@@ -230,11 +247,11 @@ class ControllerCommand(read_topic.ReadTopic):
                 self.log.exception("Error checking identity")
 
         try:
-            result = self._callback(data)
+            result = self._callback(data)  # type: ignore
             if inspect.isawaitable(result):
-                ack = await result
+                ack = await result  # type: ignore
             else:
-                ack = result
+                ack = result  # type: ignore
             if ack is None:
                 ack = self.salinfo.make_ackcmd(
                     private_seqNum=data.private_seqNum,

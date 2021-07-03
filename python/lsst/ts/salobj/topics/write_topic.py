@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -22,11 +24,16 @@
 __all__ = ["MAX_SEQ_NUM", "WriteTopic"]
 
 import struct
+import typing
 
 import numpy as np
 
-from .base_topic import BaseTopic
+from .. import type_hints
 from .. import base
+from .base_topic import BaseTopic
+
+if typing.TYPE_CHECKING:
+    from ..sal_info import SalInfo
 
 # Maximum value for the ``private_seqNum`` field of each topic,
 # a 4 byte signed integer.
@@ -73,13 +80,13 @@ class WriteTopic(BaseTopic):
     def __init__(
         self,
         *,
-        salinfo,
-        name,
-        sal_prefix,
-        min_seq_num=1,
-        max_seq_num=MAX_SEQ_NUM,
-        initial_seq_num=None,
-    ):
+        salinfo: SalInfo,
+        name: str,
+        sal_prefix: str,
+        min_seq_num: typing.Optional[int] = 1,
+        max_seq_num: int = MAX_SEQ_NUM,
+        initial_seq_num: typing.Optional[int] = None,
+    ) -> None:
         super().__init__(
             salinfo=salinfo,
             name=name,
@@ -89,7 +96,9 @@ class WriteTopic(BaseTopic):
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
         if min_seq_num is None:
-            self._seq_num_generator = None
+            self._seq_num_generator: typing.Optional[
+                typing.Generator[int, None, None]
+            ] = None
         else:
             self._seq_num_generator = base.index_generator(
                 imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num
@@ -108,7 +117,6 @@ class WriteTopic(BaseTopic):
         self._writer = publisher.create_datawriter(self._topic, self.qos_set.writer_qos)
         self._has_data = False
         self._data = self.DataType()
-        self._has_priority = sal_prefix == "logevent_"
         # Record which field names are float, double or array of either,
         # to make it easy to compare float fields with nan equal.
         self._float_field_names = set()
@@ -125,7 +133,7 @@ class WriteTopic(BaseTopic):
         salinfo.add_writer(self)
 
     @property
-    def data(self):
+    def data(self) -> type_hints.BaseDdsDataType:
         """Internally cached message.
 
         Raises
@@ -141,18 +149,18 @@ class WriteTopic(BaseTopic):
         return self._data
 
     @data.setter
-    def data(self, data):
+    def data(self, data: type_hints.BaseDdsDataType) -> None:
         if not isinstance(data, self.DataType):
             raise TypeError(f"data={data!r} must be an instance of {self.DataType}")
         self._data = data
         self._has_data = True
 
     @property
-    def has_data(self):
+    def has_data(self) -> bool:
         """Has `data` ever been set?"""
         return self._has_data
 
-    def basic_close(self):
+    def basic_close(self) -> None:
         """A synchronous and possibly less thorough version of `close`.
 
         Intended for exit handlers and constructor error handlers.
@@ -162,7 +170,7 @@ class WriteTopic(BaseTopic):
         self.isopen = False
         self._writer.close()
 
-    async def close(self):
+    async def close(self) -> None:
         """Shut down and release resources.
 
         Intended to be called by SalInfo.close(),
@@ -170,16 +178,16 @@ class WriteTopic(BaseTopic):
         """
         self.basic_close()
 
-    def put(self, data=None, priority=0):
+    def put(
+        self,
+        data: typing.Optional[type_hints.BaseDdsDataType] = None,
+    ) -> None:
         """Output this topic.
 
         Parameters
         ----------
         data : ``self.DataType`` or `None`
             New message data to replace ``self.data``, if any.
-        priority : `int`, optional
-            Priority; used to set the priority field of events.
-            Ignored for commands and telemetry.
 
         Raises
         ------
@@ -189,8 +197,6 @@ class WriteTopic(BaseTopic):
         if data is not None:
             self.data = data
 
-        if self._has_priority:
-            self.data.priority = priority
         self.data.private_sndStamp = base.current_tai()
         self.data.private_revCode = self.rev_code
         self.data.private_origin = self.salinfo.domain.origin
@@ -218,7 +224,7 @@ class WriteTopic(BaseTopic):
                 f"probably one or more array fields is too short"
             ) from e
 
-    def set(self, **kwargs):
+    def set(self, **kwargs: typing.Any) -> bool:
         """Set one or more fields of message data cache ``self.data``.
 
         Parameters
@@ -263,7 +269,9 @@ class WriteTopic(BaseTopic):
                     # as well as strings and scalars
                     is_float = field_name in self._float_field_names
                     did_change |= not np.array_equal(
-                        old_value, value, equal_nan=is_float
+                        old_value,
+                        value,
+                        equal_nan=is_float,  # type: ignore
                     )
                 setattr(self.data, field_name, value)
             except Exception as e:

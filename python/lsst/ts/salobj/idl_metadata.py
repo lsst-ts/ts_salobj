@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -22,6 +24,9 @@
 __all__ = ["IdlMetadata", "TopicMetadata", "FieldMetadata", "parse_idl"]
 
 import re
+import typing
+
+from . import type_hints
 
 
 class IdlMetadata:
@@ -31,7 +36,7 @@ class IdlMetadata:
     ----------
     name : `str`
         SAL component name, e.g. "ATPtg".
-    idl_path : `pathlib.Path`
+    idl_path : `str` or `pathlib.Path`
         Path to IDL file.
     sal_version : `str` or `None`
         Version of ts_sal used to generate the IDL file,
@@ -43,14 +48,21 @@ class IdlMetadata:
         Dict of SAL topic name: topic metadata.
     """
 
-    def __init__(self, name, idl_path, sal_version, xml_version, topic_info):
+    def __init__(
+        self,
+        name: str,
+        idl_path: type_hints.PathType,
+        sal_version: typing.Optional[str],
+        xml_version: typing.Optional[str],
+        topic_info: typing.Dict[str, TopicMetadata],
+    ) -> None:
         self.name = name
         self.idl_path = idl_path
         self.sal_version = sal_version
         self.xml_version = xml_version
         self.topic_info = topic_info
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"IdlMetadata(idl_path={self.idl_path}, "
             f"sal_version={repr(self.sal_version)}, "
@@ -76,13 +88,15 @@ class TopicMetadata:
         Dict of field name: field metadata.
     """
 
-    def __init__(self, sal_name, version_hash, description):
+    def __init__(
+        self, sal_name: str, version_hash: str, description: typing.Optional[str]
+    ) -> None:
         self.sal_name = sal_name
         self.version_hash = version_hash
         self.description = description
-        self.field_info = dict()
+        self.field_info: typing.Dict[str, FieldMetadata] = dict()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"TopicMetadata(sal_name={repr(self.sal_name)}, description={self.description})"
 
 
@@ -110,7 +124,15 @@ class FieldMetadata:
         or not a string.
     """
 
-    def __init__(self, name, description, units, type_name, array_length, str_length):
+    def __init__(
+        self,
+        name: str,
+        description: typing.Optional[str],
+        units: typing.Optional[str],
+        type_name: str,
+        array_length: typing.Optional[int],
+        str_length: typing.Optional[int],
+    ):
         self.name = name
         self.description = description
         self.units = units
@@ -118,7 +140,7 @@ class FieldMetadata:
         self.array_length = array_length
         self.str_length = str_length
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"FieldMetadata(name={repr(self.name)}, "
             f"description={repr(self.description)}, "
@@ -128,18 +150,18 @@ class FieldMetadata:
             f"str_length={self.str_length})"
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"description={repr(self.description)}, units={repr(self.units)}"
 
 
-def parse_idl(name, idl_path):
+def parse_idl(name: str, idl_path: type_hints.PathType) -> IdlMetadata:
     """Parse the SAL-generated IDL file.
 
     Parameters
     ----------
     name : str`
         SAL component name, e.g. "ATPtg".
-    idl_path : `str`, `bytes`, or `pathlib.Path`
+    idl_path : `str` or `pathlib.Path`
         Path to IDL file
 
     Returns

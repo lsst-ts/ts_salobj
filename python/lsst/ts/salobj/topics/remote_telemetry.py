@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -21,9 +23,13 @@
 
 __all__ = ["RemoteTelemetry"]
 
+import typing
 import warnings
 
 from . import read_topic
+
+if typing.TYPE_CHECKING:
+    from ..sal_info import SalInfo
 
 
 class RemoteTelemetry(read_topic.ReadTopic):
@@ -43,8 +49,12 @@ class RemoteTelemetry(read_topic.ReadTopic):
     """
 
     def __init__(
-        self, salinfo, name, max_history=None, queue_len=read_topic.DEFAULT_QUEUE_LEN
-    ):
+        self,
+        salinfo: SalInfo,
+        name: str,
+        max_history: typing.Optional[int] = None,
+        queue_len: int = read_topic.DEFAULT_QUEUE_LEN,
+    ) -> None:
         # TODO DM-26474: remove the max_history argument and this code block.
         if max_history is not None:
             if max_history == 0:

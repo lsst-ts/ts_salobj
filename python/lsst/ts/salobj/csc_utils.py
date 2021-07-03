@@ -26,8 +26,10 @@ __all__ = [
 ]
 
 import asyncio
+import typing
 
 from .sal_enums import State
+from .remote import Remote
 
 
 def make_state_transition_dict():
@@ -78,7 +80,9 @@ def make_state_transition_dict():
 _STATE_TRANSITION_DICT = make_state_transition_dict()
 
 
-def get_expected_summary_states(initial_state, final_state):
+def get_expected_summary_states(
+    initial_state: State, final_state: State
+) -> typing.List[State]:
     """Return all summary states expected when transitioning from
     one state to another.
     """
@@ -88,7 +92,12 @@ def get_expected_summary_states(initial_state, final_state):
     return [initial_state] + [cmd_state[1] for cmd_state in cmd_state_list]
 
 
-async def set_summary_state(remote, state, settingsToApply="", timeout=30):
+async def set_summary_state(
+    remote: Remote,
+    state: State,
+    settingsToApply: typing.Optional[str] = "",
+    timeout: float = 30,
+) -> typing.List[State]:
     """Put a CSC into the specified summary state.
 
     Parameters
@@ -126,7 +135,7 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
 
     # get current summary state
     try:
-        state_data = await remote.evt_summaryState.aget(timeout=timeout)
+        state_data = await remote.evt_summaryState.aget(timeout=timeout)  # type: ignore
     except asyncio.TimeoutError:
         raise RuntimeError(f"Cannot get summaryState from {remote.salinfo.name}")
     current_state = State(state_data.summaryState)
@@ -138,9 +147,9 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
 
     command_state_list = _STATE_TRANSITION_DICT[(current_state, state)]
 
-    old_settings_to_apply = remote.cmd_start.data.settingsToApply
+    old_settings_to_apply = remote.cmd_start.data.settingsToApply  # type: ignore
     try:
-        remote.cmd_start.data.settingsToApply = settingsToApply
+        remote.cmd_start.data.settingsToApply = settingsToApply  # type: ignore
 
         for command, state in command_state_list:
             cmd = getattr(remote, f"cmd_{command}")
@@ -152,5 +161,5 @@ async def set_summary_state(remote, state, settingsToApply="", timeout=30):
                 ) from e
             states.append(state)
     finally:
-        remote.cmd_start.data.settingsToApply = old_settings_to_apply
+        remote.cmd_start.data.settingsToApply = old_settings_to_apply  # type: ignore
     return states

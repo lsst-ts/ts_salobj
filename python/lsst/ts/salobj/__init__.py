@@ -5,6 +5,7 @@ except ImportError:
 
 from .async_s3_bucket import *
 from .sal_enums import *
+from .type_hints import *
 from .base import *
 from .dds_utils import *
 from .idl_metadata import *
