@@ -22,12 +22,14 @@
 __all__ = ["Controller", "OPTIONAL_COMMAND_NAMES"]
 
 import asyncio
+import typing
 
 from . import base
+from . import type_hints
 from .domain import Domain
 from .sal_info import SalInfo
-from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
 from .sal_log_handler import SalLogHandler
+from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
 
 # Set of generic commands that need not have an associated do_ method.
 # TODO DM-17157: Remove this constant if and when ``SALSubsystems.xml``
@@ -39,7 +41,7 @@ OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue", "setSimulatio
 SHUTDOWN_DELAY = 1
 
 
-def parse_as_prefix_and_set(items_str):
+def parse_as_prefix_and_set(items_str: str) -> typing.Tuple[str, typing.Set[str]]:
     """Parse a string as an optional +/- prefix and a set of items.
 
     Parameters
@@ -168,17 +170,18 @@ class Controller:
     * logMessage event
     """
 
-    def __init__(self, name, index=None, *, do_callbacks=False):
-        # Task that is set done when controller is started.
-        # Initialize to None to detect "not fully constructed"
-        # in close methods.
-        self.start_task = None
-
+    def __init__(
+        self,
+        name: str,
+        index: typing.Optional[int] = None,
+        *,
+        do_callbacks: bool = False,
+    ) -> None:
         self.isopen = False
 
         self.start_called = False
         # Task that is set done when the controller is closed
-        self.done_task = asyncio.Future()
+        self.done_task: asyncio.Future = asyncio.Future()
         self._do_callbacks = do_callbacks
 
         domain = Domain()
@@ -224,7 +227,7 @@ class Controller:
             raise
         self.isopen = True
 
-    async def _protected_start(self):
+    async def _protected_start(self) -> None:
         """Call `start` and handle exceptions."""
         if self.start_called:
             raise RuntimeError("Start already called")
@@ -238,7 +241,7 @@ class Controller:
             await self.close(exception=e, cancel_start=False)
             raise
 
-    async def start(self):
+    async def start(self) -> None:
         """Finish construction."""
 
         # Allow each remote constructor to begin running its start method.
@@ -268,16 +271,18 @@ class Controller:
                 return
 
         self.put_log_level()
-        self.evt_authList.set_put(
+        self.evt_authList.set_put(  # type: ignore
             authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
             nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
         )
 
     @property
-    def domain(self):
+    def domain(self) -> Domain:
         return self.salinfo.domain
 
-    async def close(self, exception=None, cancel_start=True):
+    async def close(
+        self, exception: typing.Optional[Exception] = None, cancel_start: bool = True
+    ) -> None:
         """Shut down, clean up resources and set done_task done.
 
         May be called multiple times. The first call closes the Controller;
@@ -303,7 +308,7 @@ class Controller:
         all background tasks, pauses briefly to allow final SAL messages
         to be sent, then closes the dds domain.
         """
-        if self.start_task is None:
+        if not hasattr(self, "start_task"):
             # Not fully constructed; nothing to do.
             return
 
@@ -312,7 +317,7 @@ class Controller:
 
         if not self.isopen:
             # Closed or closing (we know this instance is fully constructed
-            # because we checked that start_task is not None).
+            # because we checked that start_task is exists).
             # Wait for done_task to be finished,
             # ignoring any exception. If you want to know about the exception
             # you can examine done_task yourself.
@@ -346,7 +351,7 @@ class Controller:
                 else:
                     self.done_task.set_result(None)
 
-    async def close_tasks(self):
+    async def close_tasks(self) -> None:
         """Shut down pending tasks. Called by `close`.
 
         Perform all cleanup other than disabling logging to SAL
@@ -354,7 +359,7 @@ class Controller:
         """
         pass
 
-    def do_setAuthList(self, data):
+    def do_setAuthList(self, data: type_hints.BaseDdsDataType) -> None:
         """Update the authorization list.
 
         Parameters
@@ -370,11 +375,15 @@ class Controller:
         items (items specified for removal that do not exist).
         Ignore whitespace after each comma and after the +/- prefix.
         """
-        users_prefix, users_set = parse_as_prefix_and_set(data.authorizedUsers)
+        users_prefix, users_set = parse_as_prefix_and_set(
+            data.authorizedUsers,  # type: ignore
+        )
         # Remove "me" from users list.
         users_set.discard(self.salinfo.domain.user_host)
 
-        cscs_prefix, cscs_set = parse_as_prefix_and_set(data.nonAuthorizedCSCs)
+        cscs_prefix, cscs_set = parse_as_prefix_and_set(
+            data.nonAuthorizedCSCs,  # type: ignore
+        )
         # Strip :0 suffix, if present, for consistency.
         cscs_set = {csc[:-2] if csc.endswith(":0") else csc for csc in cscs_set}
 
@@ -398,13 +407,13 @@ class Controller:
             # No prefix: replace CSCs.
             self.salinfo.non_authorized_cscs = cscs_set
 
-        self.evt_authList.set_put(
+        self.evt_authList.set_put(  # type: ignore
             authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
             nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
             force_output=True,
         )
 
-    def do_setLogLevel(self, data):
+    def do_setLogLevel(self, data: type_hints.BaseDdsDataType) -> None:
         """Set logging level.
 
         Parameters
@@ -412,14 +421,14 @@ class Controller:
         data : ``cmd_setLogLevel.DataType``
             Logging level.
         """
-        self.log.setLevel(data.level)
+        self.log.setLevel(data.level)  # type: ignore
         self.put_log_level()
 
-    def put_log_level(self):
+    def put_log_level(self) -> None:
         """Output the logLevel event."""
-        self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(), force_output=True)
+        self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(), force_output=True)  # type: ignore
 
-    def _assert_do_methods_present(self):
+    def _assert_do_methods_present(self) -> None:
         """Assert that all needed do_<name> methods are present."""
         command_names = self.salinfo.command_names
         do_names = [name for name in dir(self) if name.startswith("do_")]
@@ -447,7 +456,7 @@ class Controller:
             err_msg = " and ".join(err_msgs)
             raise TypeError(f"This class {err_msg}")
 
-    def _assign_cmd_callbacks(self):
+    def _assign_cmd_callbacks(self) -> None:
         """Assign each do_ method as a callback to the appropriate command.
 
         Must not be called until the command attributes have been added.

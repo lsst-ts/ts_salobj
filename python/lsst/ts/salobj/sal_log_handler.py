@@ -36,15 +36,15 @@ class SalLogHandler(logging.Handler):
         ``evt_logEvent``.
     """
 
-    def __init__(self, controller):
+    def __init__(self, controller) -> None:
         self.controller = controller
         super().__init__()
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         try:
             self.format(record)
             if record.exc_text is not None:
-                traceback = record.exc_text.encode("utf-8", "replace")
+                traceback = str(record.exc_text.encode("utf-8", "replace"))
             else:
                 traceback = ""
             self.controller.evt_logMessage.set_put(

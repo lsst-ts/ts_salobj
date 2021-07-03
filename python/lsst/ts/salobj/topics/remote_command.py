@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -19,18 +21,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["AckCmdReader", "RemoteCommand"]
+__all__ = ["AckCmdReader", "CommandInfo", "RemoteCommand"]
 
 import asyncio
 import collections
 import logging
 import random
+import typing
 import time
 
 from .. import base
 from .. import sal_enums
+from .. import type_hints
 from . import read_topic
 from . import write_topic
+from . import remote_command
+
+if typing.TYPE_CHECKING:
+    from ..sal_info import SalInfo
 
 DEFAULT_TIMEOUT = 60 * 60  # default timeout, in seconds
 
@@ -51,7 +59,9 @@ class AckCmdReader(read_topic.ReadTopic):
     SAL component.
     """
 
-    def __init__(self, salinfo, queue_len=read_topic.DEFAULT_QUEUE_LEN):
+    def __init__(
+        self, salinfo: SalInfo, queue_len: int = read_topic.DEFAULT_QUEUE_LEN
+    ) -> None:
         super().__init__(
             salinfo=salinfo,
             name="ackcmd",
@@ -61,7 +71,7 @@ class AckCmdReader(read_topic.ReadTopic):
         )
 
 
-class _CommandInfo:
+class CommandInfo:
     """Struct to hold information about a command.
 
     Parameters
@@ -75,12 +85,17 @@ class _CommandInfo:
         If false then wait for the next ack instead.
     """
 
-    def __init__(self, remote_command, seq_num, wait_done):
+    def __init__(
+        self,
+        remote_command: remote_command.RemoteCommand,
+        seq_num: int,
+        wait_done: bool,
+    ) -> None:
         self.remote_command = remote_command
         self.seq_num = int(seq_num)
         self.wait_done = bool(wait_done)
 
-        self._wait_task = asyncio.Future()
+        self._wait_task: asyncio.Future = asyncio.Future()
         self._next_ack_event = asyncio.Event()
 
         self.done_ack_codes = frozenset(
@@ -114,15 +129,17 @@ class _CommandInfo:
 
         # we should see at most 3 acks, but leave room for one more,
         # just in case
-        self._ack_queue = collections.deque(maxlen=4)
-        self._last_ackcmd = None
+        self._ack_queue: typing.Deque[type_hints.AckCmdDataType] = collections.deque(
+            maxlen=4
+        )
+        self._last_ackcmd: typing.Optional[type_hints.AckCmdDataType] = None
 
-    def abort(self, result=""):
+    def abort(self, result: str = "") -> None:
         """Report command as aborted. Ignored if already done."""
         if not self._wait_task.done():
             self._wait_task.cancel()
 
-    def add_ackcmd(self, ackcmd):
+    def add_ackcmd(self, ackcmd: type_hints.AckCmdDataType) -> bool:
         """Add a command acknowledgement to the queue.
 
         Parameters
@@ -141,7 +158,9 @@ class _CommandInfo:
         self._next_ack_event.set()
         return isdone
 
-    async def next_ackcmd(self, timeout=DEFAULT_TIMEOUT):
+    async def next_ackcmd(
+        self, timeout: float = DEFAULT_TIMEOUT
+    ) -> type_hints.AckCmdDataType:
         """Get next command acknowledgement of interest.
 
         If ``wait_done`` true then return the final command acknowledgement,
@@ -197,10 +216,10 @@ class _CommandInfo:
                 msg="Timed out waiting for command acknowledgement", ackcmd=last_ackcmd
             )
 
-    async def _basic_next_ackcmd(self, timeout):
+    async def _basic_next_ackcmd(self, timeout: float) -> type_hints.AckCmdDataType:
         """Basic implementation of next_ackcmd."""
         t0 = time.monotonic()
-        elapsed_time = 0
+        elapsed_time: float = 0
         while True:
             ackcmd = await asyncio.wait_for(
                 self._get_next_ackcmd(), timeout=timeout - elapsed_time
@@ -211,7 +230,7 @@ class _CommandInfo:
                 timeout += ackcmd.timeout
             elapsed_time = time.monotonic() - t0
 
-    async def _get_next_ackcmd(self):
+    async def _get_next_ackcmd(self) -> type_hints.AckCmdDataType:
         """Get the next cmdack sample.
 
         Returns
@@ -230,9 +249,9 @@ class _CommandInfo:
             await self._next_ack_event.wait()
             self._next_ack_event.clear()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
-            f"_CommandInfo(remote_command={self.remote_command}, seq_num={self.seq_num}, "
+            f"CommandInfo(remote_command={self.remote_command}, seq_num={self.seq_num}, "
             f"wait_done={self.wait_done})"
         )
 
@@ -248,7 +267,7 @@ class RemoteCommand(write_topic.WriteTopic):
         Command name
     """
 
-    def __init__(self, salinfo, name):
+    def __init__(self, salinfo: SalInfo, name: str) -> None:
         num_commands = len(salinfo.command_names)
         seq_num_increment = write_topic.MAX_SEQ_NUM // num_commands
         name_ind = salinfo.command_names.index(name)
@@ -267,9 +286,14 @@ class RemoteCommand(write_topic.WriteTopic):
         # dict of seq_num: CommandInfo
         if salinfo._ackcmd_reader is None:
             salinfo._ackcmd_reader = AckCmdReader(salinfo)
-            salinfo._ackcmd_reader.callback = salinfo._ackcmd_callback
+            salinfo._ackcmd_reader.callback = salinfo._ackcmd_callback  # type: ignore
 
-    async def next_ackcmd(self, ackcmd, timeout=DEFAULT_TIMEOUT, wait_done=True):
+    async def next_ackcmd(
+        self,
+        ackcmd: type_hints.AckCmdDataType,
+        timeout: float = DEFAULT_TIMEOUT,
+        wait_done: bool = True,
+    ) -> type_hints.AckCmdDataType:
         """Wait for the next acknowledgement for the command.
 
         Parameters
@@ -315,7 +339,7 @@ class RemoteCommand(write_topic.WriteTopic):
         cmd_info.wait_done = wait_done
         return await cmd_info.next_ackcmd(timeout=timeout)
 
-    def set(self, **kwargs):
+    def set(self, **kwargs: typing.Any) -> bool:
         """Create a new ``self.data`` and set one or more fields.
 
         Parameters
@@ -347,9 +371,14 @@ class RemoteCommand(write_topic.WriteTopic):
         If one or more fields cannot be set, the data may be partially updated.
         """
         self.data = self.DataType()
-        super().set(**kwargs)
+        return super().set(**kwargs)
 
-    async def set_start(self, timeout=DEFAULT_TIMEOUT, wait_done=True, **kwargs):
+    async def set_start(
+        self,
+        timeout: float = DEFAULT_TIMEOUT,
+        wait_done: bool = True,
+        **kwargs: typing.Any,
+    ) -> type_hints.AckCmdDataType:
         """Create a new ``self.data``, set zero or more fields,
         and start the command.
 
@@ -393,7 +422,12 @@ class RemoteCommand(write_topic.WriteTopic):
         self.set(**kwargs)
         return await self.start(timeout=timeout, wait_done=wait_done)
 
-    async def start(self, data=None, timeout=DEFAULT_TIMEOUT, wait_done=True):
+    async def start(
+        self,
+        data: type_hints.BaseDdsDataType = None,
+        timeout: float = DEFAULT_TIMEOUT,
+        wait_done: bool = True,
+    ) -> type_hints.AckCmdDataType:
         """Start a command.
 
         Parameters
@@ -442,7 +476,7 @@ class RemoteCommand(write_topic.WriteTopic):
             raise RuntimeError(
                 f"{self.name} bug: a command with seq_num={seq_num} is already running"
             )
-        cmd_info = _CommandInfo(
+        cmd_info = CommandInfo(
             remote_command=self, seq_num=seq_num, wait_done=wait_done
         )
         self.salinfo._running_cmds[seq_num] = cmd_info

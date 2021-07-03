@@ -35,7 +35,7 @@ import numpy as np
 from lsst.ts import salobj
 
 
-def alternate_tai_from_utc_unix(utc_unix):
+def alternate_tai_from_utc_unix(utc_unix: float) -> float:
     """Compute TAI in unix seconds given UTC in unix seconds.
 
     Parameters
@@ -52,10 +52,10 @@ def alternate_tai_from_utc_unix(utc_unix):
 
 
 class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
 
-    async def test_assert_raises_ack_error(self):
+    async def test_assert_raises_ack_error(self) -> None:
         """Test the assertRaisesAckError function."""
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain, "Test", index=1)
@@ -127,7 +127,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                     ),
                 )
 
-    async def test_ack_error_repr(self):
+    async def test_ack_error_repr(self) -> None:
         """Test AckError.__str__ and AckError.__repr__"""
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain, "Test", index=1)
@@ -150,7 +150,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             for item in ("AckError", msg, private_seqNum, ack, error, result):
                 self.assertIn(str(item), repr_err)
 
-    def test_astropy_time_from_tai_unix(self):
+    def test_astropy_time_from_tai_unix(self) -> None:
         # Check the function at a leap second transition,
         # since that is likely to cause problems
         unix_time0 = datetime.datetime.fromisoformat("2017-01-01").timestamp()
@@ -164,16 +164,16 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                 tai_unix_round_trip1 = salobj.tai_from_utc(astropy_time1)
                 self.assertAlmostEqual(tai_unix, tai_unix_round_trip1, delta=1e-6)
 
-    async def test_get_opensplice_version(self):
+    async def test_get_opensplice_version(self) -> None:
         ospl_version = salobj.get_opensplice_version()
         self.assertRegex(ospl_version, r"^\d+\.\d+\.\d+")
 
-    async def test_get_user_host(self):
+    async def test_get_user_host(self) -> None:
         expected_user_host = getpass.getuser() + "@" + socket.getfqdn()
         user_host = salobj.get_user_host()
         self.assertEqual(expected_user_host, user_host)
 
-    async def test_long_ack_result(self):
+    async def test_long_ack_result(self) -> None:
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain, "Test", index=1)
             ack = salobj.SalRetCode.CMD_FAILED
@@ -205,7 +205,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(ackcmd.ack, ack)
             self.assertEqual(ackcmd.error, error)
 
-    def test_set_random_lsst_dds_domain(self):
+    def test_set_random_lsst_dds_domain(self) -> None:
         """Test that set_random_lsst_dds_domain is a deprecated
         alias for set_random_lsst_dds_partition_prefix.
         """
@@ -217,7 +217,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         new_prefix = os.environ["LSST_DDS_PARTITION_PREFIX"]
         self.assertNotEqual(old_prefix, new_prefix)
 
-    def test_set_random_lsst_dds_partition_prefix(self):
+    def test_set_random_lsst_dds_partition_prefix(self) -> None:
         random.seed(42)
         NumToTest = 1000
         names = set()
@@ -229,7 +229,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         # any duplicate names will reduce the size of names
         self.assertEqual(len(names), NumToTest)
 
-    def test_modify_environ(self):
+    def test_modify_environ(self) -> None:
         rng = np.random.default_rng(seed=45)
         original_environ = os.environ.copy()
         n_to_delete = 3
@@ -263,12 +263,12 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         for bad_value in (3, 1.23, True, False):
             with self.assertRaises(RuntimeError):
                 bad_kwargs = kwargs.copy()
-                bad_kwargs[new_key1] = bad_value
+                bad_kwargs[new_key1] = bad_value  # type: ignore
                 with salobj.modify_environ(**bad_kwargs):
                     pass
             self.assertEqual(os.environ, original_environ)
 
-    async def test_domain_attr(self):
+    async def test_domain_attr(self) -> None:
         async with salobj.Domain() as domain:
             self.assertEqual(domain.origin, os.getpid())
 
@@ -283,7 +283,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(domain.event_qos_set.volatile)
             self.assertTrue(domain.telemetry_qos_set.volatile)
 
-    def test_index_generator(self):
+    def test_index_generator(self) -> None:
         with self.assertRaises(ValueError):
             salobj.index_generator(1, 1)  # imin >= imax
         with self.assertRaises(ValueError):
@@ -308,7 +308,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         values = [next(gen) for i in range(len(expected_values))]
         self.assertEqual(values, expected_values)
 
-    def test_name_to_name_index(self):
+    def test_name_to_name_index(self) -> None:
         for name, expected_result in (
             ("Script", ("Script", 0)),
             ("Script:0", ("Script", 0)),
@@ -364,7 +364,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         tai7 = salobj.tai_from_utc(utc_ap)
         self.assertAlmostEqual(tai, tai7, delta=1e-6)
 
-    def test_leap_second_table(self):
+    def test_leap_second_table(self) -> None:
         """Check that the leap second table is set and an update scheduled."""
         self.assertIsNotNone(salobj.base._UTC_LEAP_SECOND_TABLE)
         update_timer = salobj.base._LEAP_SECOND_TABLE_UPDATE_TIMER
@@ -379,7 +379,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         )
         self.assertGreater(update_timer.interval, current_duration)
 
-    def test_tai_from_utc(self):
+    def test_tai_from_utc(self) -> None:
         """Test tai_from_utc."""
         # Check tai_from_utc near leap second transition at UTC = 2017-01-01
         # when leap seconds went from 36 to 37.
@@ -425,7 +425,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             salobj.tai_from_utc(last_usable_utc_unix + 0.001)
 
-    def test_utc_from_tai_unix(self):
+    def test_utc_from_tai_unix(self) -> None:
         # Check utc_from_tai_unix near leap second transition at
         # UTC = 2017-01-01 when leap seconds went from 36 to 37.
         utc0 = astropy.time.Time("2017-01-01", scale="utc", format="iso").unix
@@ -468,7 +468,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             salobj.utc_from_tai_unix(last_tai_unix + 0.001)
 
-    def test_current_tai(self):
+    def test_current_tai(self) -> None:
         utc0 = time.time()
         tai0 = salobj.tai_from_utc(utc0)
         # salobj.base.current_tai_from_utc uses tai_from_utc,
@@ -491,7 +491,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIs(type(tai1), float)
         self.assertIs(type(tai2), float)
 
-    def test_angle_diff(self):
+    def test_angle_diff(self) -> None:
         for angle1, angle2, expected_diff in (
             (5.15, 0, 5.15),
             (5.21, 359.20, 6.01),
@@ -511,7 +511,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                 diff = salobj.angle_diff(Angle(angle1, u.deg), Angle(angle2, u.deg))
                 self.assertAlmostEqual(diff.deg, expected_diff)
 
-    def test_angle_wrap_center(self):
+    def test_angle_wrap_center(self) -> None:
         for base_angle, expected_result in (
             (-180.001, 179.999),
             (-180, -180),
@@ -531,7 +531,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                     result = salobj.angle_wrap_center(Angle(angle, u.deg))
                     self.assertAlmostEqual(result.deg, expected_result)
 
-    def test_angle_wrap_nonnegative(self):
+    def test_angle_wrap_nonnegative(self) -> None:
         for base_angle, expected_result in (
             (-0.001, 359.999),
             (0, 0),
@@ -551,7 +551,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                     result = salobj.angle_wrap_nonnegative(Angle(angle, u.deg))
                     self.assertAlmostEqual(result.deg, expected_result)
 
-    def test_assertAnglesAlmostEqual(self):
+    def test_assertAnglesAlmostEqual(self) -> None:
         for angle1, angle2 in ((5.15, 5.14), (-0.20, 359.81), (270, -90.1)):
             epsilon = Angle(1e-15, u.deg)
             with self.subTest(angle1=angle1, angle2=angle2):

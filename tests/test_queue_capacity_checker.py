@@ -27,10 +27,10 @@ from lsst.ts import salobj
 
 
 class QueueCapacityCheckerTestCase(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.log = logging.getLogger()
 
-    def test_constructor(self):
+    def test_constructor(self) -> None:
         for queue_len, expected_warn_thresholds in (
             (10, (5, 9, 10)),
             (19, (5, 17, 19)),
@@ -50,7 +50,7 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
                         descr="test", log=self.log, queue_len=invalid_len
                     )
 
-    def test_check_nitems(self):
+    def test_check_nitems(self) -> None:
         """Test the check_nitems method, going from all possible
         initial states to all possible final states.
         """
@@ -122,7 +122,9 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
                             expected_reset_threshold = None
                         self.assertEqual(qlc.reset_threshold, expected_reset_threshold)
 
-    def make_checker(self, queue_len, warn_index):
+    def make_checker(
+        self, queue_len: int, warn_index: int
+    ) -> salobj.topics.read_topic.QueueCapacityChecker:
         """Make a QueueCapacityChecker with specified warn_threshold.
 
         Parameters
@@ -133,8 +135,6 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
             Initial warn_threshold is ``warn_thresholds[warn_index]``,
             or `None` if ``warn_index == len(warn_thresholds)``.
             then the initial warn_threshold is `None`
-
-
         """
         qlc = salobj.topics.read_topic.QueueCapacityChecker(
             descr="test", log=self.log, queue_len=queue_len
@@ -161,7 +161,9 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
             self.assertEqual(qlc.reset_threshold, expected_reset_threshold)
         return qlc
 
-    def check_nochange_values(self, queue_len_checker):
+    def check_nochange_values(
+        self, queue_len_checker: salobj.topics.read_topic.QueueCapacityChecker
+    ) -> None:
         """Check that calling `check_nitems` does nothing for the full range
         of values that should not change anything.
         """

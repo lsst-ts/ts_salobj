@@ -21,6 +21,7 @@
 
 import pathlib
 import unittest
+import typing
 
 import yaml
 import jsonschema
@@ -29,11 +30,11 @@ from lsst.ts import salobj
 
 
 class ValidatorTestCase(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.validator = salobj.DefaultingValidator(schema=salobj.CONFIG_SCHEMA)
 
-    def test_no_config_specified(self):
-        data_dict = {}
+    def test_no_config_specified(self) -> None:
+        data_dict: typing.Dict[str, typing.Any] = {}
         result = self.validator.validate(data_dict)
         # the defaults are hard-coded in schema/Test.yaml
         expected_result = dict(
@@ -50,9 +51,9 @@ class ValidatorTestCase(unittest.TestCase):
         result = self.validator.validate(None)
         self.assertEqual(result, expected_result)
 
-    def test_all_fields(self):
+    def test_all_fields(self) -> None:
         """Test a config with all fields set to a non-default value."""
-        data_dict = dict(
+        data_dict: typing.Dict[str, typing.Any] = dict(
             string0="an arbitrary string",
             bool0=False,
             int0=-47,
@@ -66,7 +67,7 @@ class ValidatorTestCase(unittest.TestCase):
         # all values were provided so none should be altered
         self.assertEqual(data_dict, original_data)
 
-    def test_some_fields(self):
+    def test_some_fields(self) -> None:
         """Test a config with some fields set to a non-default value."""
         default_values = dict(
             string0="default value for string0",
@@ -87,11 +88,11 @@ class ValidatorTestCase(unittest.TestCase):
         for name, value in non_default_values.items():
             expected_values = default_values.copy()
             expected_values[name] = value
-            one_item_data_dict = {name: value}
+            one_item_data_dict: typing.Dict[str, typing.Any] = {name: value}
         result = self.validator.validate(one_item_data_dict)
         self.assertEqual(result, expected_values)
 
-    def test_invalid_data(self):
+    def test_invalid_data(self) -> None:
         good_data = dict(
             string0="an arbitrary string",
             bool0=False,
@@ -128,10 +129,10 @@ class ValidatorTestCase(unittest.TestCase):
 
 
 class DefaultingTestCase(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.schemadir = pathlib.Path(__file__).resolve().parents[0] / "data"
 
-    def test_contained_object(self):
+    def test_contained_object(self) -> None:
         schemapath = self.schemadir / "contained_object_schema.yaml"
         with open(schemapath, "r") as f:
             rawschema = f.read()

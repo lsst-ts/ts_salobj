@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -25,18 +27,31 @@ import asyncio
 import bisect
 import collections
 import inspect
+import logging
+import typing
 import warnings
 
 import dds
 
-from .base_topic import BaseTopic
 from .. import base
+from .. import type_hints
+from .base_topic import BaseTopic
+
+if typing.TYPE_CHECKING:
+    from ..sal_info import SalInfo
 
 # Default value for the ``queue_len`` constructor argument.
 DEFAULT_QUEUE_LEN = 100
 
 # Minimum value for the ``queue_len`` constructor argument.
 MIN_QUEUE_LEN = 10
+
+
+_BasicReturnType = typing.Optional[type_hints.AckCmdDataType]
+CallbackType = typing.Callable[
+    [type_hints.BaseDdsDataType],
+    typing.Union[_BasicReturnType, typing.Awaitable[_BasicReturnType]],
+]
 
 
 class QueueCapacityChecker:
@@ -97,7 +112,7 @@ class QueueCapacityChecker:
     produces an error because data is likely to have been lost.
     """
 
-    def __init__(self, descr, log, queue_len):
+    def __init__(self, descr: str, log: logging.Logger, queue_len: int) -> None:
         if queue_len < MIN_QUEUE_LEN:
             raise ValueError(
                 f"queue_len {queue_len} must be >= MIN_QUEUE_LEN={MIN_QUEUE_LEN}"
@@ -116,10 +131,10 @@ class QueueCapacityChecker:
         self._reset_thresholds = tuple(
             warn_thresh // 2 for warn_thresh in self.warn_thresholds
         )
-        self.warn_threshold = self.warn_thresholds[0]
-        self.reset_threshold = None
+        self.warn_threshold: typing.Optional[int] = self.warn_thresholds[0]
+        self.reset_threshold: typing.Optional[int] = None
 
-    def check_nitems(self, nitems):
+    def check_nitems(self, nitems: int) -> bool:
         """Check the number of items in the queue and log a message
         if appropriate.
 
@@ -253,13 +268,13 @@ class ReadTopic(BaseTopic):
     def __init__(
         self,
         *,
-        salinfo,
-        name,
-        sal_prefix,
-        max_history,
-        queue_len=DEFAULT_QUEUE_LEN,
-        filter_ackcmd=True,
-    ):
+        salinfo: SalInfo,
+        name: str,
+        sal_prefix: str,
+        max_history: int,
+        queue_len: int = DEFAULT_QUEUE_LEN,
+        filter_ackcmd: bool = True,
+    ) -> None:
         super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
         self.isopen = True
         self._allow_multiple_callbacks = False
@@ -286,16 +301,18 @@ class ReadTopic(BaseTopic):
                 UserWarning,
             )
         self._max_history = int(max_history)
-        self._data_queue = collections.deque(maxlen=queue_len)
-        self._current_data = None
+        self._data_queue: typing.Deque[type_hints.BaseDdsDataType] = collections.deque(
+            maxlen=queue_len
+        )
+        self._current_data: typing.Optional[type_hints.BaseDdsDataType] = None
         # Task that `next` waits on.
         # Its result is set to the oldest message on the queue.
         # We do this instead of having `next` itself pop the oldest message
         # because it allows multiple callers of `next` to all get the same
         # message, and it avoids a potential race condition with `flush`.
         self._next_task = base.make_done_future()
-        self._callback = None
-        self._callback_tasks = set()
+        self._callback: typing.Optional[CallbackType] = None
+        self._callback_tasks: typing.Set[asyncio.Task] = set()
         self._callback_loop_task = base.make_done_future()
         self.dds_queue_length_checker = QueueCapacityChecker(
             descr=f"{name} DDS read queue",
@@ -343,7 +360,7 @@ class ReadTopic(BaseTopic):
         salinfo.add_reader(self)
 
     @property
-    def allow_multiple_callbacks(self):
+    def allow_multiple_callbacks(self) -> bool:
         """Can callbacks can run simultaneously?
 
         Notes
@@ -357,11 +374,13 @@ class ReadTopic(BaseTopic):
         return self._allow_multiple_callbacks
 
     @allow_multiple_callbacks.setter
-    def allow_multiple_callbacks(self, allow):
+    def allow_multiple_callbacks(self, allow: bool) -> None:
         self._allow_multiple_callbacks = bool(allow)
 
     @property
-    def callback(self):
+    def callback(
+        self,
+    ) -> typing.Optional[CallbackType]:
         """Callback function, or None if there is not one.
 
         The callback function is called when a new message is received;
@@ -390,7 +409,7 @@ class ReadTopic(BaseTopic):
         return self._callback
 
     @callback.setter
-    def callback(self, func):
+    def callback(self, func: typing.Optional[CallbackType]) -> None:
         self._cancel_callbacks()
 
         if func is None:
@@ -406,12 +425,12 @@ class ReadTopic(BaseTopic):
         self._callback_loop_task = asyncio.create_task(self._callback_loop())
 
     @property
-    def has_callback(self):
+    def has_callback(self) -> bool:
         """Return True if there is a callback function."""
         return self._callback is not None
 
     @property
-    def has_data(self):
+    def has_data(self) -> bool:
         """Has any data ever been seen for this topic?
 
         Raises
@@ -423,15 +442,15 @@ class ReadTopic(BaseTopic):
         return self._current_data is not None
 
     @property
-    def nqueued(self):
+    def nqueued(self) -> int:
         """Return the number of messages in the Python queue."""
         return len(self._data_queue)
 
     @property
-    def max_history(self):
+    def max_history(self) -> int:
         return self._max_history
 
-    def basic_close(self):
+    def basic_close(self) -> None:
         """A synchronous and possibly less thorough version of `close`.
 
         Intended for exit handlers and constructor error handlers.
@@ -449,7 +468,7 @@ class ReadTopic(BaseTopic):
         self._reader.close()
         self._data_queue.clear()
 
-    async def close(self):
+    async def close(self) -> None:
         """Shut down and release resources.
 
         Intended to be called by SalInfo.close(),
@@ -457,7 +476,9 @@ class ReadTopic(BaseTopic):
         """
         self.basic_close()
 
-    async def aget(self, timeout=None):
+    async def aget(
+        self, timeout: typing.Optional[float] = None
+    ) -> type_hints.BaseDdsDataType:
         """Get the most recent message, or wait for data if no data has
         ever been seen (`has_data` False).
 
@@ -493,9 +514,10 @@ class ReadTopic(BaseTopic):
             if self._next_task.done():
                 self._next_task = asyncio.Future()
             await asyncio.wait_for(self._next_task, timeout=timeout)
+        assert self._current_data is not None  # make mypy happy
         return self._current_data
 
-    def flush(self):
+    def flush(self) -> None:
         """Flush the queue used by `get_oldest` and `next`.
 
         This makes `get_oldest` return `None` and `next` wait,
@@ -511,7 +533,9 @@ class ReadTopic(BaseTopic):
             raise RuntimeError("Not allowed because there is a callback function")
         self._data_queue.clear()
 
-    def get(self, flush=None):
+    def get(
+        self, flush: typing.Optional[bool] = None
+    ) -> typing.Optional[type_hints.BaseDdsDataType]:
         """Get the most recent message, or `None` if no data has ever been seen
         (`has_data` False).
 
@@ -561,7 +585,7 @@ class ReadTopic(BaseTopic):
             self.flush()
         return self._current_data
 
-    def get_oldest(self):
+    def get_oldest(self) -> typing.Optional[type_hints.BaseDdsDataType]:
         """Pop and return the oldest message from the queue, or `None` if the
         queue is empty.
 
@@ -592,7 +616,9 @@ class ReadTopic(BaseTopic):
             return self._data_queue.popleft()
         return None
 
-    async def next(self, *, flush, timeout=None):
+    async def next(
+        self, *, flush: bool, timeout: typing.Optional[float] = None
+    ) -> type_hints.BaseDdsDataType:
         """Pop and return the oldest message from the queue, waiting for data
         if the queue is empty.
 
@@ -633,7 +659,9 @@ class ReadTopic(BaseTopic):
             self.flush()
         return await self._next(timeout=timeout)
 
-    async def _next(self, *, timeout=None):
+    async def _next(
+        self, *, timeout: typing.Optional[float] = None
+    ) -> type_hints.BaseDdsDataType:
         """Implement next.
 
         Unlike `next`, this can be called while using a callback function.
@@ -645,7 +673,7 @@ class ReadTopic(BaseTopic):
             self._next_task = asyncio.Future()
         return await asyncio.wait_for(self._next_task, timeout=timeout)
 
-    async def _callback_loop(self):
+    async def _callback_loop(self) -> None:
         while True:
             if not self.has_callback:
                 return
@@ -660,25 +688,31 @@ class ReadTopic(BaseTopic):
             else:
                 await result
 
-    def _cancel_callbacks(self):
+    def _cancel_callbacks(self) -> None:
         """Cancel the callback loop and all existing callback tasks."""
         self._callback_loop_task.cancel()
         while self._callback_tasks:
             task = self._callback_tasks.pop()
             task.cancel()
 
-    async def _run_callback(self, data):
+    async def _run_callback(self, data: type_hints.BaseDdsDataType) -> None:
         try:
-            result = self._callback(data)
+            # mypy gets upset because self._callback may be None
+            # but it's too expensive to check that
+            result = self._callback(data)  # type: ignore
             if inspect.isawaitable(result):
-                await result
+                await result  # type: ignore
         except asyncio.CancelledError:
             raise
         except Exception as e:
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
-    def _queue_data(self, data_list, loop):
+    def _queue_data(
+        self,
+        data_list: typing.Sequence[type_hints.BaseDdsDataType],
+        loop: asyncio.AbstractEventLoop,
+    ) -> None:
         """Queue multiple one or more messages.
 
         Parameters
@@ -706,7 +740,7 @@ class ReadTopic(BaseTopic):
             # Reading messages in the main thread.
             self._report_next()
 
-    def _queue_one_item(self, data):
+    def _queue_one_item(self, data: type_hints.BaseDdsDataType) -> None:
         """Add a single message to the Python queue.
 
         Subclasses may override this to modify the message before queuing.
@@ -714,7 +748,7 @@ class ReadTopic(BaseTopic):
         """
         self._data_queue.append(data)
 
-    def _report_next(self):
+    def _report_next(self) -> None:
         """Set self._next_task to the oldest message on the queue.
 
         A no-op if self._next_task is done or the queue is empty.

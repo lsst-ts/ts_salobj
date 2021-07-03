@@ -36,15 +36,22 @@ import socket
 import subprocess
 import time
 import unittest.mock
+import typing
 import warnings
 
 import astropy.coordinates
 import astropy.units as u
 
+from . import type_hints
 from .base import AckError, AckTimeoutError, angle_diff
 
 
-def assertAnglesAlmostEqual(angle1, angle2, max_diff=1e-5):
+AngleOrDegType = typing.Union[astropy.coordinates.Angle, float]
+
+
+def assertAnglesAlmostEqual(
+    angle1: AngleOrDegType, angle2: AngleOrDegType, max_diff: AngleOrDegType = 1e-5
+):
     """Raise AssertionError if angle1 and angle2 are too different,
     ignoring wrap.
 
@@ -68,7 +75,11 @@ def assertAnglesAlmostEqual(angle1, angle2, max_diff=1e-5):
 
 
 @contextlib.contextmanager
-def assertRaisesAckError(ack=None, error=None, result_contains=None):
+def assertRaisesAckError(
+    ack: typing.Optional[int] = None,
+    error: typing.Optional[int] = None,
+    result_contains: typing.Optional[str] = None,
+) -> typing.Generator[None, None, None]:
     """Assert that code raises a salobj.AckError
 
     Parameters
@@ -96,7 +107,9 @@ def assertRaisesAckError(ack=None, error=None, result_contains=None):
 
 
 @contextlib.contextmanager
-def assertRaisesAckTimeoutError(ack=None, error=None):
+def assertRaisesAckTimeoutError(
+    ack: typing.Optional[int] = None, error: typing.Optional[int] = None
+) -> typing.Generator[None, None, None]:
     """Assert that code raises a salobj.AckTimeoutError
 
     Parameters
@@ -117,7 +130,7 @@ def assertRaisesAckTimeoutError(ack=None, error=None):
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
 
 
-def assert_black_formatted(dirpath):
+def assert_black_formatted(dirpath: type_hints.PathType) -> None:
     """Assert that all Python files in a directory, or any subdirectory
     of that directory, are formatted with black.
 
@@ -151,7 +164,7 @@ def assert_black_formatted(dirpath):
         raise AssertionError(result.stderr)
 
 
-def set_random_lsst_dds_partition_prefix():
+def set_random_lsst_dds_partition_prefix() -> None:
     """Set a random value for environment variable LSST_DDS_PARTITION_PREFIX
 
     Call this for each unit test method that uses SAL message passing,
@@ -172,7 +185,7 @@ def set_random_lsst_dds_partition_prefix():
     ] = f"Test-{hostname}-{curr_time}-{random_int}"
 
 
-def set_random_lsst_dds_domain():
+def set_random_lsst_dds_domain() -> None:
     """Deprecated version of `set_random_lsst_dds_partition_prefix`."""
     warnings.warn(
         "Use set_random_lsst_dds_partition_prefix instead", DeprecationWarning
@@ -181,7 +194,7 @@ def set_random_lsst_dds_domain():
 
 
 @contextlib.contextmanager
-def modify_environ(**kwargs):
+def modify_environ(**kwargs: typing.Any) -> typing.Generator[None, None, None]:
     """Context manager to temporarily patch os.environ.
 
     This calls `unittest.mock.patch` and is only intended for unit tests.

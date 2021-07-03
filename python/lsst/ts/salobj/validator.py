@@ -21,6 +21,8 @@
 
 __all__ = ["DefaultingValidator"]
 
+import typing
+
 import jsonschema
 
 
@@ -69,13 +71,23 @@ class DefaultingValidator:
       the data being validated.
     """
 
-    def __init__(self, schema, ValidatorClass=jsonschema.Draft7Validator):
+    def __init__(
+        self,
+        schema: typing.Dict[str, typing.Any],
+        # jsonschema 3.2 has no public base class for validators
+        ValidatorClass=jsonschema.Draft7Validator,
+    ) -> None:
         ValidatorClass.check_schema(schema)
         self.final_validator = ValidatorClass(schema=schema)
 
         validate_properties = ValidatorClass.VALIDATORS["properties"]
 
-        def set_defaults(validator, properties, instance, schema):
+        def set_defaults(
+            validator: jsonschema.Draft7Validator,
+            properties: typing.Dict[str, typing.Any],
+            instance: typing.Dict[str, typing.Any],
+            schema: typing.Dict[str, typing.Any],
+        ) -> typing.Generator[typing.Any, None, None]:
             """Wrap a jsonschema Validator so that it sets default values.
 
             Parameters
@@ -139,7 +151,9 @@ class DefaultingValidator:
         WrappedValidator.check_schema(schema)
         self.defaults_validator = WrappedValidator(schema=schema)
 
-    def validate(self, data_dict):
+    def validate(
+        self, data_dict: typing.Optional[typing.Dict[str, typing.Any]]
+    ) -> typing.Dict[str, typing.Any]:
         """Validate data.
 
         Set missing values based on defaults in the schema,

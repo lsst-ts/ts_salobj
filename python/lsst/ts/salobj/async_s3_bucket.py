@@ -25,12 +25,14 @@ import asyncio
 import io
 import os
 import re
+import typing
 
 import astropy.time
 import astropy.units as u
 import boto3
 import botocore
 import moto
+import moto.core.models
 
 
 class AsyncS3Bucket:
@@ -77,8 +79,15 @@ class AsyncS3Bucket:
     is described in `CAP 452 <https://jira.lsstcorp.org/browse/CAP-452>`_
     """
 
-    def __init__(self, name, *, create=False, profile=None, domock=False):
-        self.mock = None
+    def __init__(
+        self,
+        name: str,
+        *,
+        create: bool = False,
+        profile: typing.Optional[str] = None,
+        domock: bool = False,
+    ) -> None:
+        self.mock: typing.Optional[moto.core.models.BotocoreEventMockAWS] = None
         self.profile = profile
         if domock:
             self._start_mock(name)
@@ -96,31 +105,24 @@ class AsyncS3Bucket:
 
         self.bucket = self.service_resource.Bucket(name)
 
-    def _start_mock(self, name):
+    def _start_mock(self, name: str) -> None:
         """Start a mock S3 server with the specified bucket."""
         self.mock = moto.mock_s3()
+        print(f"mock type={type(self.mock)}")
         self.mock.start()
 
-    def stop_mock(self):
+    def stop_mock(self) -> None:
         """Stop the mock s3 service, if running. A no-op if not running."""
         if self.mock is not None:
             self.mock.stop()
             self.mock = None
 
     @staticmethod
-    def make_bucket_name(s3instance, s3category="LFA"):
+    def make_bucket_name(s3instance: str, s3category: str = "LFA") -> str:
         """Make an S3 bucket name.
 
         Parameters
         ----------
-        salname : `str`
-            SAL component name, e.g. ATPtg.
-        salindexname : `str` or `None`
-            For an indexed SAL component: a name associated with the SAL index,
-            or just the index itself if there is no name.
-            Specify `None` for a non-indexed SAL component.
-            For example: "MT" for Main Telescope, "AT" for auxiliary telescope,
-            or "ATBlue" for the AT Blue Fiber Spectrograph.
         s3instance : `str`
             S3 server instance. Typically "Summit", "Tucson" or "NCSA".
         s3category : `str`, optional
@@ -165,7 +167,14 @@ class AsyncS3Bucket:
         return bucket_name
 
     @staticmethod
-    def make_key(salname, salindexname, generator, date, other=None, suffix=".dat"):
+    def make_key(
+        salname: str,
+        salindexname: typing.Union[str, int, None],
+        generator: str,
+        date: astropy.time.Time,
+        other: typing.Optional[str] = None,
+        suffix: str = ".dat",
+    ) -> str:
         """Make a key for an item of data.
 
         Parameters
@@ -229,7 +238,12 @@ class AsyncS3Bucket:
             other = taidate.isot
         return f"{fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{fullsalname}_{generator}_{other}{suffix}"
 
-    async def upload(self, fileobj, key, callback=None):
+    async def upload(
+        self,
+        fileobj: typing.BinaryIO,
+        key: str,
+        callback: typing.Optional[typing.Callable[[int], None]] = None,
+    ) -> None:
         """Upload a file-like object to the bucket.
 
         Parameters
@@ -258,7 +272,9 @@ class AsyncS3Bucket:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._sync_upload, fileobj, key, callback)
 
-    async def download(self, key, callback=None):
+    async def download(
+        self, key: str, callback: typing.Optional[typing.Callable[[int], None]] = None
+    ) -> io.BytesIO:
         """Download a file-like object from the bucket.
 
         Parameters
@@ -289,7 +305,7 @@ class AsyncS3Bucket:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._sync_download, key, callback)
 
-    async def exists(self, key):
+    async def exists(self, key: str) -> bool:
         """Check if a specified file exists in the bucket.
 
         Parameters
@@ -307,7 +323,7 @@ class AsyncS3Bucket:
             raise
         return True
 
-    async def size(self, key):
+    async def size(self, key: str) -> int:
         """Get the size in bytes of a given file in the bucket.
 
         Parameters
@@ -318,17 +334,24 @@ class AsyncS3Bucket:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._sync_size, key)
 
-    def _sync_upload(self, fileobj, key, callback):
+    def _sync_upload(
+        self,
+        fileobj: typing.BinaryIO,
+        key: str,
+        callback: typing.Optional[typing.Callable[[int], None]],
+    ) -> None:
         self.bucket.upload_fileobj(Fileobj=fileobj, Key=key, Callback=callback)
 
-    def _sync_download(self, key, callback):
+    def _sync_download(
+        self, key: str, callback: typing.Optional[typing.Callable[[int], None]]
+    ) -> io.BytesIO:
         fileobj = io.BytesIO()
         self.bucket.download_fileobj(Key=key, Fileobj=fileobj, Callback=callback)
         # Rewind the fileobj so read returns the data.
         fileobj.seek(0)
         return fileobj
 
-    def _sync_size(self, key):
+    def _sync_size(self, key: str) -> int:
         return self.bucket.meta.client.head_object(Bucket=self.name, Key=key)[
             "ContentLength"
         ]

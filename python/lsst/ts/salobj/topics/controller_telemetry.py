@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -21,7 +23,12 @@
 
 __all__ = ["ControllerTelemetry"]
 
+import typing
+
 from . import write_topic
+
+if typing.TYPE_CHECKING:
+    from ..sal_info import SalInfo
 
 
 class ControllerTelemetry(write_topic.WriteTopic):
@@ -35,25 +42,10 @@ class ControllerTelemetry(write_topic.WriteTopic):
         Command name
     """
 
-    def __init__(self, salinfo, name):
+    def __init__(self, salinfo: SalInfo, name: str) -> None:
         super().__init__(salinfo=salinfo, name=name, sal_prefix="")
 
-    def put(self, data=None):
-        """Output this topic.
-
-        Parameters
-        ----------
-        data : ``self.DataType``, optional
-            New message data to replace ``self.data``, if any.
-
-        Raises
-        ------
-        TypeError
-            If ``data`` is not None and not an instance of `DataType`.
-        """
-        super().put(data=data)
-
-    def set_put(self, **kwargs):
+    def set_put(self, **kwargs: typing.Any) -> bool:
         """Set zero or more fields of ``self.data`` and put the result.
 
         Parameters

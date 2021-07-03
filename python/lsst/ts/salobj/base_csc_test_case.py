@@ -25,14 +25,19 @@ import asyncio
 import contextlib
 import enum
 import logging
+import pathlib
 import shutil
 import subprocess
+import typing
 
 from . import base
+from . import base_csc
 from . import sal_enums
 from . import testutils
+from . import type_hints
 from .domain import Domain
 from .remote import Remote
+from .topics.read_topic import ReadTopic
 from .csc_utils import get_expected_summary_states
 
 # Standard timeout (sec)
@@ -59,14 +64,20 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     _index_iter = base.index_generator()
 
     @abc.abstractmethod
-    def basic_make_csc(self, initial_state, config_dir, simulation_mode, **kwargs):
+    def basic_make_csc(
+        self,
+        initial_state: typing.Union[sal_enums.State, int],
+        config_dir: typing.Union[str, pathlib.Path, None],
+        simulation_mode: int,
+        **kwargs: typing.Any,
+    ) -> base_csc.BaseCsc:
         """Make and return a CSC.
 
         Parameters
         ----------
         initial_state : `lsst.ts.salobj.State` or `int`
             The initial state of the CSC.
-        config_dir : `str`
+        config_dir : `str` or `pathlib.Path` or `None`
             Directory of configuration files, or None for the standard
             configuration directory (obtained from
             `ConfigureCsc._get_default_config_dir`).
@@ -77,19 +88,20 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError()
 
-    def next_index(self):
+    def next_index(self) -> int:
+        """Get the next SAL index."""
         return next(self._index_iter)
 
     @contextlib.asynccontextmanager
     async def make_csc(
         self,
-        initial_state=sal_enums.State.STANDBY,
-        config_dir=None,
-        simulation_mode=0,
-        log_level=None,
-        timeout=STD_TIMEOUT,
-        **kwargs,
-    ):
+        initial_state: sal_enums.State = sal_enums.State.STANDBY,
+        config_dir: typing.Union[str, pathlib.Path, None] = None,
+        simulation_mode: int = 0,
+        log_level: typing.Optional[int] = None,
+        timeout: float = STD_TIMEOUT,
+        **kwargs: typing.Any,
+    ) -> typing.AsyncGenerator[None, None]:
         """Create a CSC and remote and wait for them to start,
         after setting a random $LSST_DDS_PARTITION_PREFIX.
 
@@ -128,8 +140,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         Adds a logging.StreamHandler if one is not already present.
         """
         testutils.set_random_lsst_dds_partition_prefix()
-        self.remote = None
-        self.csc = None
+        items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
         try:
             self.csc = self.basic_make_csc(
                 initial_state=initial_state,
@@ -137,6 +148,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 simulation_mode=simulation_mode,
                 **kwargs,
             )
+            items_to_close.append(self.csc)
             if len(self.csc.log.handlers) < 2:
                 self.csc.log.addHandler(logging.StreamHandler())
             self.remote = Remote(
@@ -144,6 +156,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 name=self.csc.salinfo.name,
                 index=self.csc.salinfo.index,
             )
+            items_to_close.append(self.remote)
             if log_level is not None:
                 self.csc.log.setLevel(log_level)
 
@@ -164,14 +177,16 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
             yield
         finally:
-            if self.remote is not None:
-                await self.remote.close()
-            if self.csc is not None:
-                await self.csc.close()
+            for item in items_to_close:
+                await item.close()
 
     async def assert_next_summary_state(
-        self, state, flush=False, timeout=STD_TIMEOUT, remote=None
-    ):
+        self,
+        state: sal_enums.State,
+        flush: bool = False,
+        timeout: float = STD_TIMEOUT,
+        remote: typing.Optional[Remote] = None,
+    ) -> None:
         """Wait for and check the next ``summaryState`` event.
 
         Parameters
@@ -188,15 +203,19 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         if remote is None:
             remote = self.remote
         await self.assert_next_sample(
-            topic=remote.evt_summaryState,
+            topic=remote.evt_summaryState,  # type: ignore
             flush=flush,
             timeout=timeout,
             summaryState=state,
         )
 
     async def assert_next_sample(
-        self, topic, flush=False, timeout=STD_TIMEOUT, **kwargs
-    ):
+        self,
+        topic: ReadTopic,
+        flush: bool = False,
+        timeout: float = STD_TIMEOUT,
+        **kwargs: typing.Any,
+    ) -> type_hints.BaseDdsDataType:
         """Wait for the next data sample for the specified topic,
         check specified fields for equality, and return the data.
 
@@ -221,30 +240,28 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         for field_name, expected_value in kwargs.items():
             read_value = getattr(data, field_name, None)
             if read_value is None:
-                self.fail(f"No such field {field_name} in topic {topic}")
+                raise AssertionError(f"No such field {field_name} in topic {topic}")
             if isinstance(expected_value, enum.IntEnum):
                 try:
                     read_value = type(expected_value)(read_value)
                 except Exception:
                     pass
-            self.assertEqual(
-                read_value,
-                expected_value,
-                msg=f"Failed on field {field_name}: read {read_value!r} != expected {expected_value!r}",
-            )
+            assert (
+                read_value == expected_value
+            ), f"Failed on field {field_name}: read {read_value!r} != expected {expected_value!r}"
         return data
 
     async def check_bin_script(
         self,
-        name,
-        index,
-        exe_name,
-        default_initial_state=sal_enums.State.STANDBY,
-        initial_state=None,
-        settings_to_apply=None,
-        cmdline_args=(),
-        timeout=STD_TIMEOUT,
-    ):
+        name: str,
+        index: int,
+        exe_name: str,
+        default_initial_state: sal_enums.State = sal_enums.State.STANDBY,
+        initial_state: typing.Optional[sal_enums.State] = None,
+        settings_to_apply: typing.Optional[str] = None,
+        cmdline_args: typing.Sequence[str] = (),
+        timeout: float = STD_TIMEOUT,
+    ) -> None:
         """Test running the CSC command line script.
 
         Parameters
@@ -274,7 +291,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         testutils.set_random_lsst_dds_partition_prefix()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
-            self.fail(
+            raise AssertionError(
                 f"Could not find bin script {exe_name}; did you setup or install this package?"
             )
 
@@ -309,10 +326,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 ):
                     # The string settings_to_apply is a file name, and so
                     # should appear in evt_settingsApplied.settingsVersion
-                    data = await self.remote.evt_settingsApplied.next(
+                    data = await self.remote.evt_settingsApplied.next(  # type: ignore
                         flush=False, timeout=STD_TIMEOUT
                     )
-                    self.assertTrue(data.settingsVersion.startswith(settings_to_apply))
+                    assert data.settingsVersion.startswith(settings_to_apply)
             finally:
                 if process.returncode is None:
                     process.terminate()
@@ -320,6 +337,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 else:
                     print("Warning: suprocess has already quit.")
                     try:
+                        assert process.stderr is not None  # make mypy happy
                         data = await process.stderr.read()
                         print("Subprocess stderr: ", data.decode())
                     except Exception as e:
@@ -327,11 +345,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     async def check_standard_state_transitions(
         self,
-        enabled_commands,
-        skip_commands=None,
-        settingsToApply="",
-        timeout=STD_TIMEOUT,
-    ):
+        enabled_commands: typing.Sequence[str],
+        skip_commands: typing.Optional[typing.Sequence[str]] = None,
+        settingsToApply: str = "",
+        timeout: float = STD_TIMEOUT,
+    ) -> None:
         """Test standard CSC state transitions.
 
         Parameters
@@ -361,7 +379,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         skip_commands = tuple(skip_commands) if skip_commands else ()
 
         # Start in STANDBY state.
-        self.assertEqual(self.csc.summary_state, sal_enums.State.STANDBY)
+        assert self.csc.summary_state == sal_enums.State.STANDBY
         await self.assert_next_summary_state(sal_enums.State.STANDBY)
         await self.check_bad_commands(
             good_commands=("start", "exitControl", "setAuthList", "setLogLevel")
@@ -369,10 +387,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         )
 
         # Send start; new state is DISABLED.
-        await self.remote.cmd_start.set_start(
+        await self.remote.cmd_start.set_start(  # type: ignore
             settingsToApply=settingsToApply, timeout=timeout
         )
-        self.assertEqual(self.csc.summary_state, sal_enums.State.DISABLED)
+        assert self.csc.summary_state == sal_enums.State.DISABLED
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
         await self.check_bad_commands(
             good_commands=("enable", "standby", "setAuthList", "setLogLevel")
@@ -380,8 +398,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         )
 
         # Send enable; new state is ENABLED.
-        await self.remote.cmd_enable.start(timeout=timeout)
-        self.assertEqual(self.csc.summary_state, sal_enums.State.ENABLED)
+        await self.remote.cmd_enable.start(timeout=timeout)  # type: ignore
+        assert self.csc.summary_state == sal_enums.State.ENABLED
         await self.assert_next_summary_state(sal_enums.State.ENABLED)
         all_enabled_commands = tuple(
             sorted(
@@ -393,21 +411,25 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         )
 
         # Send disable; new state is DISABLED.
-        await self.remote.cmd_disable.start(timeout=timeout)
-        self.assertEqual(self.csc.summary_state, sal_enums.State.DISABLED)
+        await self.remote.cmd_disable.start(timeout=timeout)  # type: ignore
+        assert self.csc.summary_state == sal_enums.State.DISABLED
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
 
         # Send standby; new state is STANDBY.
-        await self.remote.cmd_standby.start(timeout=timeout)
-        self.assertEqual(self.csc.summary_state, sal_enums.State.STANDBY)
+        await self.remote.cmd_standby.start(timeout=timeout)  # type: ignore
+        assert self.csc.summary_state == sal_enums.State.STANDBY
         await self.assert_next_summary_state(sal_enums.State.STANDBY)
 
         # Send exitControl; new state is OFFLINE.
-        await self.remote.cmd_exitControl.start(timeout=timeout)
-        self.assertEqual(self.csc.summary_state, sal_enums.State.OFFLINE)
+        await self.remote.cmd_exitControl.start(timeout=timeout)  # type: ignore
+        self.csc.summary_state == sal_enums.State.OFFLINE
         await self.assert_next_summary_state(sal_enums.State.OFFLINE)
 
-    async def check_bad_commands(self, bad_commands=None, good_commands=None):
+    async def check_bad_commands(
+        self,
+        bad_commands: typing.Optional[typing.Sequence[str]] = None,
+        good_commands: typing.Optional[typing.Sequence[str]] = None,
+    ) -> None:
         """Check that bad commands fail.
 
         Parameters
@@ -430,7 +452,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         for command in commands:
             if command in good_commands:
                 continue
-            with self.subTest(command=command):
+            with self.subTest(command=command):  # type: ignore
                 cmd_attr = getattr(self.remote, f"cmd_{command}")
                 with testutils.assertRaisesAckError(
                     ack=sal_enums.SalRetCode.CMD_FAILED

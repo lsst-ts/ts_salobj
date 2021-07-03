@@ -34,10 +34,10 @@ index_gen = salobj.index_generator()
 
 
 class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
 
-    async def test_salinfo_constructor(self):
+    async def test_salinfo_constructor(self) -> None:
         with self.assertRaises(TypeError):
             salobj.SalInfo(domain=None, name="Test")
 
@@ -72,7 +72,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(salinfo.started)
             salinfo.assert_started()
 
-    async def test_salinfo_attributes(self):
+    async def test_salinfo_attributes(self) -> None:
         async with salobj.Domain() as domain:
             index = next(index_gen)
             salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
@@ -137,7 +137,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 salinfo.partition_prefix, os.environ["LSST_DDS_PARTITION_PREFIX"]
             )
 
-    async def test_salinfo_metadata(self):
+    async def test_salinfo_metadata(self) -> None:
         """Test some of the metadata in SalInfo.
 
         The main tests of the IDL parser are elsewhere.
@@ -166,7 +166,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 )
             )
 
-    async def test_lsst_dds_domain_fallback(self):
+    async def test_lsst_dds_domain_fallback(self) -> None:
         # Pick a value for LSST_DDS_DOMAIN that does not match
         # LSST_DDS_PARTITION_PREFIX.
         new_lsst_dds_domain = os.environ["LSST_DDS_PARTITION_PREFIX"] + "Extra text"
@@ -197,7 +197,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                     salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
                 self.assertEqual(salinfo.partition_prefix, new_lsst_dds_domain)
 
-    async def test_lsst_dds_domain_required(self):
+    async def test_lsst_dds_domain_required(self) -> None:
         # Delete LSST_DDS_PARTITION_PREFIX and (if defined) LSST_DDS_DOMAIN.
         # This should raise an error.
         with salobj.modify_environ(
@@ -207,7 +207,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(RuntimeError):
                     salobj.SalInfo(domain=domain, name="Test", index=1)
 
-    async def test_log_level(self):
+    async def test_log_level(self) -> None:
         """Test that log level is decreased (verbosity increased) to INFO."""
         log = logging.getLogger()
         log.setLevel(logging.WARNING)
@@ -230,7 +230,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 for salinfo in salinfos:
                     await salinfo.close()
 
-    async def test_make_ack_cmd(self):
+    async def test_make_ack_cmd(self) -> None:
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain=domain, name="Test")
 

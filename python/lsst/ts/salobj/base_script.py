@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -28,11 +30,13 @@ import os
 import re
 import sys
 import types
+import typing
 
 import yaml
 
 from . import base
 from . import controller
+from . import type_hints
 from . import validator
 from lsst.ts.idl.enums.Script import (
     MetadataCoordSys,
@@ -58,6 +62,15 @@ def _make_remote_name(remote):
     if index is not None:
         name = name + ":" + str(index)
     return name
+
+
+class StateType:
+    """A class to make mypy happy with BaseScript.state"""
+
+    def __init__(self):
+        self.state: ScriptState = ScriptState.UNKNOWN
+        self.last_checkpoint: str = ""
+        self.reason: str = ""
 
 
 class BaseScript(controller.Controller, abc.ABC):
@@ -89,17 +102,17 @@ class BaseScript(controller.Controller, abc.ABC):
         Used to set timestamp data in the ``script`` event.
     """
 
-    def __init__(self, index, descr):
+    def __init__(self, index: int, descr: str) -> None:
         if index == 0:
             raise ValueError("index must be nonzero")
 
         schema = self.get_schema()
         if schema is None:
-            self.config_validator = None
+            self.config_validator: typing.Optional[validator.DefaultingValidator] = None
         else:
             self.config_validator = validator.DefaultingValidator(schema=schema)
-        self._run_task = None
-        self._pause_future = None
+        self._run_task: typing.Optional[asyncio.Future] = None
+        self._pause_future: typing.Optional[asyncio.Future] = None
         # Value incremented by `next_supplemented_group_id`
         # and cleared by do_setGroupId.
         self._sub_group_id = 0
@@ -109,9 +122,9 @@ class BaseScript(controller.Controller, abc.ABC):
         self.final_state_delay = 0.3
 
         # A dict of state: timestamp (TAI seconds).
-        self.timestamps = dict()
+        self.timestamps: typing.Dict[ScriptState, float] = dict()
 
-        self._heartbeat_task = asyncio.Future()
+        self._heartbeat_task: asyncio.Future = asyncio.Future()
 
         # Speed up script loading time and avoid expensive system alignments
         # by making sure scripts never become master.
@@ -126,10 +139,13 @@ class BaseScript(controller.Controller, abc.ABC):
             else:
                 os.environ[base.MASTER_PRIORITY_ENV_VAR] = initial_master_prority
 
-        self.evt_description.set(classname=type(self).__name__, description=str(descr))
+        self.evt_description.set(  # type: ignore
+            classname=type(self).__name__,
+            description=str(descr),
+        )
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
-    async def start(self):
+    async def start(self) -> None:
         remote_names = set()
         remote_start_tasks = []
         for salinfo in self.domain.salinfo_set:
@@ -141,13 +157,13 @@ class BaseScript(controller.Controller, abc.ABC):
         await super().start()
         await asyncio.gather(*remote_start_tasks)
 
-        self.evt_state.set_put(state=ScriptState.UNCONFIGURED)
-        self.evt_description.set_put(
+        self.evt_state.set_put(state=ScriptState.UNCONFIGURED)  # type: ignore
+        self.evt_description.set_put(  # type: ignore
             remotes=",".join(sorted(remote_names)), force_output=True
         )
 
     @classmethod
-    def make_from_cmd_line(cls, descr=None):
+    def make_from_cmd_line(cls, descr=None) -> typing.Union[BaseScript, None]:
         """Make a script from command-line arguments.
 
         Return None if ``--schema`` specified.
@@ -191,11 +207,11 @@ class BaseScript(controller.Controller, abc.ABC):
             schema = cls.get_schema()
             if schema is not None:
                 print(yaml.safe_dump(schema))
-            return
+            return None
         return cls(**kwargs)
 
     @classmethod
-    async def amain(cls, descr=None):
+    async def amain(cls, descr: typing.Optional[str] = None) -> None:
         """Run the script from the command line.
 
         Parameters
@@ -229,7 +245,7 @@ class BaseScript(controller.Controller, abc.ABC):
         sys.exit(return_code)
 
     @property
-    def checkpoints(self):
+    def checkpoints(self) -> typing.Any:
         """Get the checkpoints at which to pause and stop.
 
         Returns ``self.evt_checkpoints.data`` which has these fields:
@@ -237,15 +253,15 @@ class BaseScript(controller.Controller, abc.ABC):
         * ``pause``: checkpoints at which to pause, a regular expression
         * ``stop``: checkpoints at which to stop, a regular expression
         """
-        return self.evt_checkpoints.data
+        return self.evt_checkpoints.data  # type: ignore
 
     @property
-    def group_id(self):
+    def group_id(self) -> str:
         """Get the group ID (a `str`), or "" if not set."""
-        return self.evt_state.data.groupId
+        return self.evt_state.data.groupId  # type: ignore
 
     @property
-    def state(self):
+    def state(self) -> StateType:
         """Get the current state.
 
         Returns ``self.evt_state.data``, which has these fields:
@@ -257,10 +273,10 @@ class BaseScript(controller.Controller, abc.ABC):
         * ``reason``: `str`
             Reason for this state, if any.
         """
-        return self.evt_state.data
+        return self.evt_state.data  # type: ignore
 
     @property
-    def state_name(self):
+    def state_name(self) -> str:
         """Get the name of the current `state`.state."""
         try:
             return ScriptState(self.state.state).name
@@ -269,12 +285,12 @@ class BaseScript(controller.Controller, abc.ABC):
 
     def set_state(
         self,
-        state=None,
-        reason=None,
-        keep_old_reason=False,
-        last_checkpoint=None,
-        force_output=False,
-    ):
+        state: typing.Union[ScriptState, int, None] = None,
+        reason: typing.Optional[str] = None,
+        keep_old_reason: bool = False,
+        last_checkpoint: typing.Optional[str] = None,
+        force_output: bool = False,
+    ) -> None:
         """Set the script state.
 
         Parameters
@@ -296,16 +312,16 @@ class BaseScript(controller.Controller, abc.ABC):
             state = ScriptState(state)
             self.timestamps[state] = base.current_tai()
         if keep_old_reason and reason is not None:
-            sepstr = "; " if self.evt_state.data.reason else ""
-            reason = self.evt_state.data.reason + sepstr + reason
-        self.evt_state.set_put(
+            sepstr = "; " if self.evt_state.data.reason else ""  # type: ignore
+            reason = self.evt_state.data.reason + sepstr + reason  # type: ignore
+        self.evt_state.set_put(  # type: ignore
             state=state,
             reason=reason,
             lastCheckpoint=last_checkpoint,
             force_output=force_output,
         )
 
-    async def checkpoint(self, name=""):
+    async def checkpoint(self, name: str = "") -> None:
         """Await this at any "nice" point your script can be paused or stopped.
 
         Parameters
@@ -348,7 +364,7 @@ class BaseScript(controller.Controller, abc.ABC):
             self.set_state(last_checkpoint=name, force_output=True)
             await asyncio.sleep(0.001)
 
-    async def close_tasks(self):
+    async def close_tasks(self) -> None:
         self._is_exiting = True
         await super().close_tasks()
         self._heartbeat_task.cancel()
@@ -359,7 +375,7 @@ class BaseScript(controller.Controller, abc.ABC):
         # self.done_task is handled by Controller.close
 
     @abc.abstractmethod
-    async def configure(self, config):
+    async def configure(self, config) -> None:
         """Configure the script.
 
         Parameters
@@ -375,7 +391,7 @@ class BaseScript(controller.Controller, abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def set_metadata(self, metadata):
+    def set_metadata(self, metadata: typing.Any) -> None:
         """Set metadata fields in the provided struct, given the
         current configuration.
 
@@ -393,7 +409,7 @@ class BaseScript(controller.Controller, abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def run(self):
+    async def run(self) -> None:
         """Run the script.
 
         Your subclass must provide an implementation, as follows:
@@ -412,7 +428,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def get_schema(cls):
+    def get_schema(cls) -> typing.Optional[typing.Dict[str, typing.Any]]:
         """Return a jsonschema to validate configuration, as a `dict`.
 
         Please provide default values for all fields for which defaults
@@ -424,7 +440,7 @@ class BaseScript(controller.Controller, abc.ABC):
         """
         raise NotImplementedError()
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Perform final cleanup, if any.
 
         This method is always called as the script state is exiting
@@ -432,13 +448,13 @@ class BaseScript(controller.Controller, abc.ABC):
         """
         pass
 
-    def assert_state(self, action, states):
+    def assert_state(self, action: str, states: typing.Sequence[ScriptState]) -> None:
         """Assert that the current state is in ``states`` and the script
         is not exiting.
 
         Parameters
         ----------
-        action : `string`
+        action : `str`
             Description of what you want to do.
         states : `list` [`lsst.ts.idl.enums.Script.ScriptState`]
             Allowed states.
@@ -451,7 +467,7 @@ class BaseScript(controller.Controller, abc.ABC):
                 f"Cannot {action}: state={self.state_name} instead of {states_str}"
             )
 
-    async def do_configure(self, data):
+    async def do_configure(self, data: type_hints.BaseDdsDataType) -> None:
         """Configure the currently loaded script.
 
         Parameters
@@ -481,16 +497,17 @@ class BaseScript(controller.Controller, abc.ABC):
         """
         self.assert_state("configure", [ScriptState.UNCONFIGURED])
         try:
+            config_yaml: str = data.config  # type: ignore
             if self.config_validator is None:
-                if data.config:
+                if config_yaml:
                     raise RuntimeError(
-                        "This script has no configuration; "
-                        f"config={data.config} must be empty."
+                        "This script has no configuration so "
+                        f"config={config_yaml} must be empty."
                     )
                 config = types.SimpleNamespace()
             else:
-                if data.config:
-                    user_config_dict = yaml.safe_load(data.config)
+                if config_yaml:
+                    user_config_dict = yaml.safe_load(config_yaml)
                     # Delete metadata, if present
                     if user_config_dict:
                         user_config_dict.pop("metadata", None)
@@ -500,16 +517,19 @@ class BaseScript(controller.Controller, abc.ABC):
                 config = types.SimpleNamespace(**full_config_dict)
             await self.configure(config)
         except Exception as e:
-            errmsg = f"config({data.config}) failed"
+            errmsg = f"config({config_yaml}) failed"
             self.log.exception(errmsg)
             raise base.ExpectedError(f"{errmsg}: {e}") from e
 
-        self._set_checkpoints(pause=data.pauseCheckpoint, stop=data.stopCheckpoint)
-        if data.logLevel != 0:
-            self.log.setLevel(data.logLevel)
+        self._set_checkpoints(
+            pause=data.pauseCheckpoint,  # type: ignore
+            stop=data.stopCheckpoint,  # type: ignore
+        )
+        if data.logLevel != 0:  # type: ignore
+            self.log.setLevel(data.logLevel)  # type: ignore
             self.put_log_level()
 
-        metadata = self.evt_metadata.DataType()
+        metadata = self.evt_metadata.DataType()  # type: ignore
         # initialize to vaguely reasonable values
         metadata.coordinateSystem = MetadataCoordSys.NONE
         metadata.rotationSystem = MetadataRotSys.NONE
@@ -517,11 +537,11 @@ class BaseScript(controller.Controller, abc.ABC):
         metadata.dome = MetadataDome.EITHER
         metadata.duration = 0
         self.set_metadata(metadata)
-        self.evt_metadata.put(metadata)
+        self.evt_metadata.put(metadata)  # type: ignore
         self.set_state(ScriptState.CONFIGURED)
         await asyncio.sleep(0.001)
 
-    async def do_run(self, data):
+    async def do_run(self, data: type_hints.BaseDdsDataType) -> None:
         """Run the script and quit.
 
         The script must have been configured and the group ID set.
@@ -556,7 +576,7 @@ class BaseScript(controller.Controller, abc.ABC):
         await asyncio.sleep(0.001)
         await self._exit()
 
-    async def do_resume(self, data):
+    async def do_resume(self, data: type_hints.BaseDdsDataType) -> None:
         """Resume the currently paused script.
 
         Parameters
@@ -571,9 +591,11 @@ class BaseScript(controller.Controller, abc.ABC):
             `lsst.ts.idl.enums.Script.ScriptState.PAUSED`.
         """
         self.assert_state("resume", [ScriptState.PAUSED])
+        if self._pause_future is None or self._pause_future.done():
+            return
         self._pause_future.set_result(None)
 
-    async def do_setCheckpoints(self, data):
+    async def do_setCheckpoints(self, data: type_hints.BaseDdsDataType) -> None:
         """Set or clear the checkpoints at which to pause and stop.
 
         This command is deprecated. Please set the checkpoints
@@ -604,9 +626,9 @@ class BaseScript(controller.Controller, abc.ABC):
                 ScriptState.PAUSED,
             ],
         )
-        self._set_checkpoints(pause=data.pause, stop=data.stop)
+        self._set_checkpoints(pause=data.pause, stop=data.stop)  # type: ignore
 
-    async def do_setGroupId(self, data):
+    async def do_setGroupId(self, data: type_hints.BaseDdsDataType) -> None:
         """Set or clear the group_id attribute.
 
         The script must be in the Configured state.
@@ -625,10 +647,10 @@ class BaseScript(controller.Controller, abc.ABC):
             `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
         """
         self.assert_state("setGroupId", [ScriptState.CONFIGURED])
-        self.evt_state.set_put(groupId=data.groupId, force_output=True)
+        self.evt_state.set_put(groupId=data.groupId, force_output=True)  # type: ignore
         self._sub_group_id = 0
 
-    async def do_stop(self, data):
+    async def do_stop(self, data: type_hints.BaseDdsDataType) -> None:
         """Stop the script.
 
         Parameters
@@ -649,7 +671,7 @@ class BaseScript(controller.Controller, abc.ABC):
             self.set_state(state=ScriptState.STOPPING)
             await self._exit()
 
-    def next_supplemented_group_id(self):
+    def next_supplemented_group_id(self) -> str:
         """Return the group ID supplemented with a new subgroup.
 
         The returned string has this format: f"{self.group_id}#{subgroup_id}",
@@ -666,15 +688,15 @@ class BaseScript(controller.Controller, abc.ABC):
         self._sub_group_id += 1
         return f"{self.group_id}#{self._sub_group_id}"
 
-    def _set_checkpoints(self, *, pause, stop):
+    def _set_checkpoints(self, *, pause: str, stop: str) -> None:
         """Set the pause and stop checkpoint fields and output the event.
 
         Parameters
         ----------
-        pause : `string`
+        pause : `str`
             Checkpoint(s) at which to pause, as a regular expression.
             "" to not pause at any checkpoint; "*" to pause at all checkpoints.
-        stop : `string`
+        stop : `str`
             Checkpoint(s) at which to stop, as a regular expression.
             "" to not stop at any checkpoint; "*" to stop at all checkpoints.
 
@@ -691,20 +713,20 @@ class BaseScript(controller.Controller, abc.ABC):
             re.compile(stop)
         except Exception as e:
             raise base.ExpectedError(f"stop={stop!r} not a valid regex: {e}")
-        self.evt_checkpoints.set_put(pause=pause, stop=stop, force_output=True)
+        self.evt_checkpoints.set_put(pause=pause, stop=stop, force_output=True)  # type: ignore
 
-    async def _heartbeat_loop(self):
+    async def _heartbeat_loop(self) -> None:
         """Output heartbeat at regular intervals."""
         while True:
             try:
                 await asyncio.sleep(HEARTBEAT_INTERVAL)
-                self.evt_heartbeat.put()
+                self.evt_heartbeat.put()  # type: ignore
             except asyncio.CancelledError:
                 break
             except Exception:
                 self.log.exception("Heartbeat output failed")
 
-    async def _exit(self):
+    async def _exit(self) -> None:
         """Call cleanup (if the script was run) and exit the script."""
         if self._is_exiting:
             return

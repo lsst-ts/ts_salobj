@@ -24,11 +24,13 @@ import abc
 import importlib
 import os
 import pathlib
+import typing
 import unittest
 import yaml
 
 import jsonschema
 
+from . import type_hints
 from . import validator
 
 
@@ -45,7 +47,7 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
       `check_config_files`.
     """
 
-    def get_module_dir(self, module_name):
+    def get_module_dir(self, module_name: str) -> pathlib.Path:
         """Get the directory of a python module, by importing the module.
 
         Parameters
@@ -67,7 +69,12 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         init_path = pathlib.Path(module.__file__)
         return init_path.parent
 
-    def get_schema(self, csc_package_root, sal_name=None, schema_subpath=None):
+    def get_schema(
+        self,
+        csc_package_root: type_hints.PathType,
+        sal_name: typing.Optional[str] = None,
+        schema_subpath: typing.Optional[str] = None,
+    ):
         """Get the config schema for a package, as a dict.
 
         The schema is expected to be:
@@ -94,10 +101,7 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
             If the file cannot be interpreted as a `dict`.
         """
         csc_package_root = pathlib.Path(csc_package_root)
-        self.assertTrue(
-            csc_package_root.is_dir(),
-            f"csc_package_root={csc_package_root} is not a file",
-        )
+        assert csc_package_root.is_dir()
 
         if schema_subpath is None:
             if sal_name is None:
@@ -105,16 +109,19 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
             schema_path = csc_package_root / "schema" / f"{sal_name}.yaml"
         else:
             schema_path = csc_package_root / schema_subpath
-        self.assertTrue(
-            schema_path.is_file(), f"schema_path={schema_path} is not a file"
-        )
+        assert schema_path.is_file()
         with open(schema_path, "r") as schema_file:
             schema_yaml = schema_file.read()
         schema = yaml.safe_load(schema_yaml)
-        self.assertIsInstance(schema, dict)
+        assert isinstance(schema, dict)
         return schema
 
-    def get_config_dir(self, config_package_root, sal_name, schema):
+    def get_config_dir(
+        self,
+        config_package_root: type_hints.PathType,
+        sal_name: str,
+        schema: typing.Dict[str, typing.Any],
+    ) -> pathlib.Path:
         """Get the directory of config files, assuming the standard
         ts_config_x package layout.
 
@@ -142,22 +149,22 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
             Directory containing configuration files.
         """
         config_package_root = pathlib.Path(config_package_root)
-        self.assertTrue(
-            config_package_root.is_dir(),
-            f"config_package_root={config_package_root} is not a dir",
-        )
+        assert config_package_root.is_dir()
 
         version = schema["title"].split()[-1]
-        self.assertTrue(
-            version.startswith("v"),
-            f"version={version} from schema title {schema['title']} does not start with 'v'",
-        )
+        assert version.startswith(
+            "v"
+        ), f"version={version} from schema title {schema['title']} does not start with 'v'"
 
         config_dir = pathlib.Path(config_package_root) / sal_name / version
-        self.assertTrue(config_dir.is_dir(), f"config_dir={config_dir} is not a dir")
+        assert config_dir.is_dir()
         return config_dir
 
-    def check_config_files(self, config_dir, schema):
+    def check_config_files(
+        self,
+        config_dir: type_hints.PathType,
+        schema: typing.Dict[str, typing.Any],
+    ) -> None:
         """Check all configuration files for a given package.
 
         Parameters
@@ -168,15 +175,14 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
             Configuration schema.
         """
         config_dir = pathlib.Path(config_dir)
-        self.assertTrue(config_dir.is_dir(), f"config_dir={config_dir} is not a dir")
-        self.assertIsInstance(schema, dict)
+        assert config_dir.is_dir()
+        assert isinstance(schema, dict)
 
         config_validator = validator.DefaultingValidator(schema)
         version = schema["title"].split()[-1]
-        self.assertTrue(
-            version.startswith("v"),
-            f"version={version} from schema title {schema['title']} does not start with 'v'",
-        )
+        assert version.startswith(
+            "v"
+        ), f"version={version} from schema title {schema['title']} does not start with 'v'"
 
         config_files = config_dir.glob("*.yaml")
 
@@ -208,9 +214,7 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         # Check that all entries in the label dict are valid
         # and point to existing files.
         labels_path = config_dir / "_labels.yaml"
-        self.assertTrue(
-            labels_path.is_file(), f"labels file={labels_path} is not a file"
-        )
+        assert labels_path.is_file()
         with open(labels_path, "r") as f:
             labels_yaml = f.read()
         if labels_yaml:
@@ -218,7 +222,7 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
             if input_dict is None:
                 input_dict = {}
             else:
-                self.assertIsInstance(input_dict, dict)
+                assert isinstance(input_dict, dict)
         else:
             input_dict = {}
 
@@ -233,22 +237,26 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
             if not (config_dir / config_name).is_file():
                 missing_files.append(config_name)
         if invalid_labels:
-            self.fail(f"Invalid labels {invalid_labels} in {labels_path}")
+            raise AssertionError(f"Invalid labels {invalid_labels} in {labels_path}")
         if invalid_files:
-            self.fail(f"Labels to invalid file {invalid_files} in {labels_path}")
+            raise AssertionError(
+                f"Labels to invalid file {invalid_files} in {labels_path}"
+            )
         if missing_files:
-            self.fail(f"Labels to missing files {missing_files} in {labels_path}")
+            raise AssertionError(
+                f"Labels to missing files {missing_files} in {labels_path}"
+            )
 
     def check_standard_config_files(
         self,
-        sal_name=None,
-        module_name=None,
-        package_name=None,
-        schema_name=None,
-        schema_subpath=None,
-        config_package_root=None,
-        config_dir=None,
-    ):
+        sal_name: typing.Optional[str] = None,
+        module_name: typing.Optional[str] = None,
+        package_name: typing.Optional[str] = None,
+        schema_name: typing.Optional[str] = None,
+        schema_subpath: typing.Optional[str] = None,
+        config_package_root: typing.Union[str, pathlib.Path, None] = None,
+        config_dir: typing.Union[str, pathlib.Path, None] = None,
+    ) -> None:
         """A wrapper around `check_config_files` that handles the most common
         case.
 
@@ -274,13 +282,13 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
             Module name, e.g. "lsst.ts.salobj".
             If not None then get the CSC package root by importing
             the module and ignore ``package_name``.
-        package_name : `str`, optional
+        package_name : `str` or `None`, optional
             If ``module_name`` is None then specify this argument
             and get the CSC package root using environment variable
             ``f"{package_name.upper()}_DIR"``.
             This is useful for non-python packages or packages that
             need a special environment to be imported.
-        schema_name : `str` or None, optional
+        schema_name : `str` or `None`, optional
             Name of schema constant in the module, typically "CONFIG_SCHEMA".
             If None then look for a schema file instead of a schema constant.
         schema_subpath : `str` or `None`
@@ -312,12 +320,15 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
                     raise RuntimeError("Must specify module_name or package_name")
                 else:
                     env_var = package_name.upper() + "_DIR"
-                    csc_package_root = os.environ.get(env_var)
-                    if csc_package_root is None:
+                    temp_package_root = os.environ.get(env_var)
+                    if temp_package_root is None:
                         raise unittest.SkipTest(
                             f"Cannot find package {package_name}; "
                             f"environment variable {env_var} not defined"
                         )
+                    csc_package_root: typing.Union[
+                        str, pathlib.Path
+                    ] = temp_package_root
             else:
                 num_dots = len(module_name.split("."))
                 try:
@@ -336,6 +347,8 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
                 raise RuntimeError(
                     "config_package_root or config_dir must be specified."
                 )
+            if sal_name is None:
+                raise ValueError("sal_name must be specified if config_dir is None")
             config_dir = self.get_config_dir(
                 config_package_root=config_package_root,
                 sal_name=sal_name,
