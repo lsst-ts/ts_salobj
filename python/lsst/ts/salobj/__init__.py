@@ -1,7 +1,12 @@
-try:
-    from .version import *
-except ImportError:
+import typing
+
+if typing.TYPE_CHECKING:
     __version__ = "?"
+else:
+    try:
+        from .version import *
+    except ImportError:
+        __version__ = "?"
 
 from .async_s3_bucket import *
 from .sal_enums import *
