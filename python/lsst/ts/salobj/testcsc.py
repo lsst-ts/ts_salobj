@@ -198,12 +198,10 @@ class TestCsc(ConfigurableCsc):
         return dict(
             boolean0=bool,
             byte0=np.uint8,
-            char0=str,
             short0=np.int16,
             int0=np.int32,
             long0=np.int32,
             longLong0=np.int64,
-            octet0=np.uint8,
             unsignedShort0=np.uint16,
             unsignedInt0=np.uint32,
             unsignedLong0=np.uint32,
@@ -222,7 +220,6 @@ class TestCsc(ConfigurableCsc):
             "int0",
             "long0",
             "longLong0",
-            "octet0",
             "unsignedShort0",
             "unsignedInt0",
             "unsignedLong0",
@@ -236,12 +233,10 @@ class TestCsc(ConfigurableCsc):
         return (
             "boolean0",
             "byte0",
-            "char0",
             "short0",
             "int0",
             "long0",
             "longLong0",
-            "octet0",
             "unsignedShort0",
             "unsignedInt0",
             "unsignedLong0",
@@ -259,7 +254,6 @@ class TestCsc(ConfigurableCsc):
             "int0",
             "long0",
             "longLong0",
-            "octet0",
             "unsignedShort0",
             "unsignedInt0",
             "unsignedLong0",
@@ -344,7 +338,6 @@ class TestCsc(ConfigurableCsc):
         data = dtype()
         data.boolean0 = np.random.choice([False, True])
         printable_chars = [c for c in string.printable]
-        data.char0 = "".join(np.random.choice(printable_chars, size=(20,)))
         data.string0 = "".join(np.random.choice(printable_chars, size=(20,)))
         for field in self.int_fields:
             field_type = self.field_type[field]
