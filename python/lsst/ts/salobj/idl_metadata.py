@@ -195,7 +195,7 @@ def parse_idl(name: str, idl_path: type_hints.PathType) -> IdlMetadata:
         fr"\s*(?P<type_name>(?:unsigned )?(?:{type_names_str}))(?:<(?P<str_length>\d+)>)?"
         r"\s+(?P<field_name>[a-zA-Z][a-zA-Z0-9_-]*)(?:\[(?P<array_length>\d+)\])?;"
         r"\s*(?://\s*private)?"
-        r'\s*(?:// @Metadata=\((?:Units="(?P<units>[^"]*)"),?'
+        r'\s*(?://\s+@Metadata=\((?:Units="(?P<units>[^"]*)",)?'
         r'\s*(?:Description="(?P<description>.*)")?\))?'
     )
 

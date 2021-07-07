@@ -21,6 +21,7 @@
 
 import unittest
 import pathlib
+import typing
 
 from lsst.ts import idl
 from lsst.ts import salobj
@@ -52,8 +53,8 @@ class IdlParserTestCase(unittest.TestCase):
         self.assertEqual(metadata.name, "Simple")
         self.assertTrue(idl_path.samefile(metadata.idl_path))
         if has_metadata:
-            self.assertEqual(metadata.sal_version, "4.1.0")
-            self.assertEqual(metadata.xml_version, "1.0.0")
+            self.assertEqual(metadata.sal_version, "5.1.1")
+            self.assertEqual(metadata.xml_version, "9.2.0")
         else:
             self.assertIsNone(metadata.sal_version)
             self.assertIsNone(metadata.xml_version)
@@ -72,13 +73,14 @@ class IdlParserTestCase(unittest.TestCase):
             private_identity="string",
             private_origin="long",
             boolean0="boolean",
-            char0="string",
+            byte0="octet",
+            int0="long",
             short0="short",
             long0="long",
             longLong0="long long",
-            octet0="octet",
             string0="string",
             unsignedShort0="unsigned short",
+            unsignedInt0="unsigned long",
             unsignedLong0="unsigned long",
             float0="float",
             double0="double",
@@ -86,9 +88,14 @@ class IdlParserTestCase(unittest.TestCase):
         )
 
         for sal_topic_name, topic_metadata in metadata.topic_info.items():
-            with self.subTest(sal_topic_name=sal_topic_name):
+            # with self.subTest(sal_topic_name=sal_topic_name):
+            if True:
                 self.assertEqual(topic_metadata.sal_name, sal_topic_name)
-                self.assertEqual(topic_metadata.version_hash, "1234abcd")
+                expected_hash = {
+                    "command_setArrays": "0dd79125",
+                    "logevent_scalars": "0ad55b18",
+                }[sal_topic_name]
+                self.assertEqual(topic_metadata.version_hash, expected_hash)
                 if has_metadata:
                     expected_description = f"Description of {sal_topic_name}"
                     self.assertEqual(topic_metadata.description, expected_description)
@@ -99,7 +106,7 @@ class IdlParserTestCase(unittest.TestCase):
                     expected_field_names = set(
                         name
                         for name in expected_field_names
-                        if name not in ("char0", "string0", "priority")
+                        if name not in ("string0", "priority")
                     )
 
                 self.assertEqual(
@@ -108,11 +115,12 @@ class IdlParserTestCase(unittest.TestCase):
                 for field_name, field_metadata in topic_metadata.field_info.items():
                     self.assertEqual(field_metadata.name, field_name)
                     if has_metadata:
-                        expected_units = (
-                            "secs"
-                            if field_metadata.name.endswith("Stamp")
-                            else "unitless"
-                        )
+                        if field_metadata.name.endswith("Stamp"):
+                            expected_units: typing.Optional[str] = "second"
+                        elif field_metadata.name == "TestID":
+                            expected_units = None
+                        else:
+                            expected_units = "unitless"
                         self.assertEqual(field_metadata.units, expected_units)
                         self.assertEqual(
                             field_metadata.description, f"Description of {field_name}"
@@ -120,9 +128,11 @@ class IdlParserTestCase(unittest.TestCase):
                     else:
                         self.assertIsNone(field_metadata.units)
                         self.assertIsNone(field_metadata.description)
-                    expected_str_length = {"string0": 20, "private_revCode": 8}.get(
-                        field_name
-                    )
+                    expected_str_length = {
+                        "string0": 20,
+                        "private_revCode": 8,
+                        "private_identity": 128,
+                    }.get(field_name)
                     self.assertEqual(field_metadata.str_length, expected_str_length)
                     self.assertEqual(field_metadata.type_name, field_types[field_name])
                     if sal_topic_name == "command_setArrays":
@@ -176,12 +186,10 @@ class IdlParserTestCase(unittest.TestCase):
             private_origin="long",
             boolean0="boolean",
             byte0="octet",
-            char0="string",
             short0="short",
             int0="long",
             long0="long",
             longLong0="long long",
-            octet0="octet",
             string0="string",
             unsignedShort0="unsigned short",
             unsignedInt0="unsigned long",
@@ -201,9 +209,11 @@ class IdlParserTestCase(unittest.TestCase):
         for topic_name in ("arrays", "logevent_arrays", "command_setArrays"):
             with self.subTest(topic_name=topic_name):
                 topic_metadata = metadata.topic_info[topic_name]
+                for deprecated_field in ("char0", "octet0"):
+                    topic_metadata.field_info.pop(deprecated_field, None)
+
                 expected_field_names = set(field_types.keys())
                 expected_field_names.remove("string0")  # only in scalars
-                expected_field_names.remove("char0")  # only in scalars
                 if not topic_name.startswith("logevent_"):
                     expected_field_names.remove("priority")
                 self.assertEqual(
@@ -212,14 +222,9 @@ class IdlParserTestCase(unittest.TestCase):
                 for field_metadata in topic_metadata.field_info.values():
                     if field_metadata.name[-1] != "0":
                         self.assertIsNone(field_metadata.array_length)
-                    elif field_metadata.name == "char0":
-                        self.assertIsNone(field_metadata.array_length)
                     else:
                         self.assertEqual(field_metadata.array_length, 5)
-                    if field_metadata.name == "TestID":
-                        self.assertIsNone(field_metadata.description)
-                    else:
-                        self.assertIsInstance(field_metadata.description, str)
+                    self.assertIsInstance(field_metadata.description, str)
                     self.assertEqual(
                         field_metadata.type_name, field_types[field_metadata.name]
                     )
@@ -229,6 +234,8 @@ class IdlParserTestCase(unittest.TestCase):
         for topic_name in ("scalars", "logevent_scalars", "command_setScalars"):
             with self.subTest(topic_name=topic_name):
                 topic_metadata = metadata.topic_info[topic_name]
+                for deprecated_field in ("char0", "octet0"):
+                    topic_metadata.field_info.pop(deprecated_field, None)
                 expected_field_names = set(field_types.keys())
                 if not topic_name.startswith("logevent_"):
                     expected_field_names.remove("priority")
@@ -237,10 +244,7 @@ class IdlParserTestCase(unittest.TestCase):
                 )
                 for field_metadata in topic_metadata.field_info.values():
                     self.assertIsNone(field_metadata.array_length)
-                    if field_metadata.name == "TestID":
-                        self.assertIsNone(field_metadata.description)
-                    else:
-                        self.assertIsInstance(field_metadata.description, str)
+                    self.assertIsInstance(field_metadata.description, str)
                     self.assertEqual(
                         field_metadata.type_name, field_types[field_metadata.name]
                     )
