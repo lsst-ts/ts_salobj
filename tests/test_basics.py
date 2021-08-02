@@ -226,6 +226,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             name = os.environ.get("LSST_DDS_PARTITION_PREFIX")
             self.assertTrue(name)
             names.add(name)
+            self.assertNotIn(".", name)  # type: ignore
         # any duplicate names will reduce the size of names
         self.assertEqual(len(names), NumToTest)
 
