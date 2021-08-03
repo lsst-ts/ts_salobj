@@ -38,9 +38,9 @@ class BaseDdsDataType:
 
     This is missing:
 
-    • _SAL_component_name_\ ID (e.g. ScriptID): only present
+    * _SAL_component_name_\ ID (e.g. ScriptID): only present
       for indexed SAL components
-    • priority: present for events, but not used
+    * priority: present for events, but not used
     * all topic-specific public fields
     """
     private_revCode: str = ""

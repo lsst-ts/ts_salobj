@@ -180,9 +180,8 @@ def set_random_lsst_dds_partition_prefix() -> None:
     hostname = socket.gethostname()
     curr_time = time.time()
     random_int = random.randint(0, 999999)
-    os.environ[
-        "LSST_DDS_PARTITION_PREFIX"
-    ] = f"Test-{hostname}-{curr_time}-{random_int}"
+    name = f"Test-{hostname}-{curr_time}-{random_int}".replace(".", "_")
+    os.environ["LSST_DDS_PARTITION_PREFIX"] = name
 
 
 def set_random_lsst_dds_domain() -> None:
