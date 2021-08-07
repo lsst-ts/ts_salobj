@@ -52,7 +52,11 @@ class TestCscCommander(csc_commander.CscCommander):
         index: typing.Optional[int],
         enable: bool = False,
         exclude: typing.Optional[typing.Sequence[str]] = None,
-        fields_to_ignore: typing.Sequence[str] = ("ignored", "value", "priority"),
+        fields_to_ignore: typing.Sequence[str] = (
+            "ignored",
+            "value",
+            "priority",
+        ),
     ) -> None:
         super().__init__(
             name="Test",

@@ -302,8 +302,8 @@ def index_generator(
 
     # define an inner generator and return that
     # in order to get immediate argument checking
-    def index_impl():
-        index = i0 - 1
+    def index_impl() -> typing.Generator[int, None, None]:
+        index = i0 - 1  # type: ignore
         while True:
             index += 1
             if index > imax:
@@ -632,7 +632,7 @@ def _get_current_tai_function() -> typing.Callable[[], float]:
         # meanwhile, the standard value 11 works just fine.
         clock_tai = getattr(time, "CLOCK_TAI", 11)
 
-        def system_tai():
+        def system_tai() -> float:
             """Return current TAI in unix seconds, using clock_gettime."""
             return time.clock_gettime(clock_tai)
 

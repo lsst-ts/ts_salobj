@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pathlib
+import typing
 import unittest
 
 import numpy as np
@@ -37,7 +38,7 @@ class InvalidPkgNameCsc(salobj.TestCsc):
     """A CSC whose get_pkg_name classmethod returns a nonexistent package."""
 
     @staticmethod
-    def get_config_pkg():
+    def get_config_pkg() -> str:
         """Return a name of a non-existent package."""
         return "not_a_valid_pkg_name"
 
@@ -46,7 +47,7 @@ class WrongConfigPkgCsc(salobj.TestCsc):
     """A CSC whose get_pkg_name classmethod returns the wrong package."""
 
     @staticmethod
-    def get_config_pkg():
+    def get_config_pkg() -> str:
         """Return a package that does not have a Test subdirectory."""
         return "ts_salobj"
 
@@ -58,14 +59,14 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
     requires an event loop.
     """
 
-    def setUp(self):
+    def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
 
-    async def test_class_attributes(self):
+    async def test_class_attributes(self) -> None:
         self.assertEqual(list(salobj.TestCsc.valid_simulation_modes), [0])
         self.assertEqual(salobj.TestCsc.version, salobj.__version__)
 
-    async def test_initial_state(self):
+    async def test_initial_state(self) -> None:
         """Test all allowed initial_state values, both as enums and ints."""
         for initial_state in salobj.State:
             if initial_state == salobj.State.FAULT:
@@ -74,7 +75,7 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
                 await self.check_initial_state(initial_state)
                 await self.check_initial_state(int(initial_state))
 
-    async def check_initial_state(self, initial_state):
+    async def check_initial_state(self, initial_state: salobj.State) -> None:
         """Check that specifying the initial_state constructur argument
         sets the initial reported state to match.
         """
@@ -82,7 +83,7 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
         async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
             self.assertEqual(csc.summary_state, initial_state)
 
-    async def test_deprecated_schema_path_arg(self):
+    async def test_deprecated_schema_path_arg(self) -> None:
         with self.assertWarnsRegex(
             DeprecationWarning, "schema_path argument is deprecated"
         ):
@@ -100,7 +101,7 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
                     expected_schema[key],
                 )
 
-    async def test_invalid_config_dir(self):
+    async def test_invalid_config_dir(self) -> None:
         """Test that invalid integer initial_state is rejected."""
         with self.assertRaises(ValueError):
             salobj.TestCsc(
@@ -109,15 +110,15 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
                 config_dir=TEST_CONFIG_DIR / "not_a_directory",
             )
 
-    async def test_invalid_config_pkg(self):
+    async def test_invalid_config_pkg(self) -> None:
         with self.assertRaises(RuntimeError):
             InvalidPkgNameCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
 
-    async def test_wrong_config_pkg(self):
+    async def test_wrong_config_pkg(self) -> None:
         with self.assertRaises(RuntimeError):
             WrongConfigPkgCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
 
-    async def test_invalid_initial_state(self):
+    async def test_invalid_initial_state(self) -> None:
         """Test that invalid integer initial_state is rejected."""
         for invalid_state in (
             salobj.State.FAULT,
@@ -128,7 +129,7 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(ValueError):
                     salobj.TestCsc(index=next(index_gen), initial_state=invalid_state)
 
-    async def test_late_callback_assignment(self):
+    async def test_late_callback_assignment(self) -> None:
         """Test that command callbacks are not assigned until start
         is called.
         """
@@ -147,19 +148,19 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
         finally:
             await csc.close()
 
-    async def test_missing_version(self):
+    async def test_missing_version(self) -> None:
         class MissingVersionCsc(salobj.BaseCsc):
             """A do-nothing CSC with no version class variable."""
 
             valid_simulation_modes = [0]
 
-            def __init__(self, index):
+            def __init__(self, index: int) -> None:
                 for attr_name in dir(salobj.TestCsc):
                     if attr_name.startswith("do_"):
                         setattr(self, attr_name, self.noop)
                 super().__init__(index=index, name="Test")
 
-            async def noop(self, *args, **kwargs):
+            async def noop(self, *args: typing.Any, **kwargs: typing.Any) -> None:
                 pass
 
         mv = None

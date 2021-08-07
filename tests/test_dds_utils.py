@@ -26,10 +26,10 @@ from lsst.ts import salobj
 
 
 class DdsUtilsTestCase(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
 
-    def test_get_dds_version(self):
+    def test_get_dds_version(self) -> None:
         for dds_file, desired_version in (
             ("dds-6.9.181127OSS-py3.7-linux-x86_64.egg/dds.so", "6.9.181127"),
             ("other-6.9.181127OSS-py3.7/dds.so", "6.9.181127"),

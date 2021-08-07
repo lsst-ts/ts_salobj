@@ -29,27 +29,27 @@ from lsst.ts import salobj
 
 
 class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.bucket_name = "async_bucket_test"
         self.file_data = b"Data for the test case"
         self.key = "test_file"
         self.bucket = salobj.AsyncS3Bucket(self.bucket_name, create=True, domock=True)
         self.fileobj = io.BytesIO(self.file_data)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.bucket.stop_mock()
 
-    async def test_attributes(self):
+    async def test_attributes(self) -> None:
         self.assertEqual(self.bucket.name, self.bucket_name)
 
-    async def test_blank_s3_endpoint_url(self):
+    async def test_blank_s3_endpoint_url(self) -> None:
         with salobj.modify_environ(S3_ENDPOINT_URL=""):
             bucket = salobj.AsyncS3Bucket(self.bucket_name)
             self.assertIn(
                 "amazon", bucket.service_resource.meta.client.meta.endpoint_url
             )
 
-    async def test_no_s3_endpoint_url(self):
+    async def test_no_s3_endpoint_url(self) -> None:
         # Clear "S3_ENDPOINT_URL" if it exists.
         with salobj.modify_environ(S3_ENDPOINT_URL=None):
             bucket = salobj.AsyncS3Bucket(self.bucket_name)
@@ -57,7 +57,7 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
                 "amazon", bucket.service_resource.meta.client.meta.endpoint_url
             )
 
-    async def test_specified_s3_endpoint_url(self):
+    async def test_specified_s3_endpoint_url(self) -> None:
         endpoint_url = "http://foo.bar.edu:9000"
         with salobj.modify_environ(S3_ENDPOINT_URL=endpoint_url):
             bucket = salobj.AsyncS3Bucket(self.bucket_name)
@@ -65,13 +65,13 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
                 bucket.service_resource.meta.client.meta.endpoint_url, endpoint_url
             )
 
-    async def test_file_transfer(self):
+    async def test_file_transfer(self) -> None:
         await self.bucket.upload(fileobj=self.fileobj, key=self.key)
         roundtrip_fileobj = await self.bucket.download(key=self.key)
         roundtrip_data = roundtrip_fileobj.read()
         self.assertEqual(self.file_data, roundtrip_data)
 
-    async def test_exists(self):
+    async def test_exists(self) -> None:
         should_be_false = await self.bucket.exists(key="no_such_file")
         self.assertFalse(should_be_false)
 
@@ -79,21 +79,21 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
         should_be_true = await self.bucket.exists(key=self.key)
         self.assertTrue(should_be_true)
 
-    async def test_size(self):
+    async def test_size(self) -> None:
         await self.bucket.upload(fileobj=self.fileobj, key=self.key)
         reported_size = await self.bucket.size(key=self.key)
         self.assertEqual(reported_size, len(self.file_data))
 
-    async def test_callbacks(self):
+    async def test_callbacks(self) -> None:
         """Test callback functions with file transfers."""
         uploaded_nbytes = []
         downloaded_nbytes = []
 
-        def upload_callback(nbytes):
+        def upload_callback(nbytes: int) -> None:
             nonlocal uploaded_nbytes
             uploaded_nbytes.append(nbytes)
 
-        def download_callback(nbytes):
+        def download_callback(nbytes: int) -> None:
             nonlocal downloaded_nbytes
             downloaded_nbytes.append(nbytes)
 
@@ -112,7 +112,7 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
 
 
 class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
-    async def test_make_bucket_name_good(self):
+    async def test_make_bucket_name_good(self) -> None:
         s3instance = "5TEST"
         expected_name = "rubinobs-lfa-5test"
         name = salobj.AsyncS3Bucket.make_bucket_name(s3instance=s3instance)
@@ -130,7 +130,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(name, expected_name)
 
-    async def test_make_bucket_name_bad(self):
+    async def test_make_bucket_name_bad(self) -> None:
         good_kwargs = dict(s3instance="TEST", s3category="other")
         expected_name = "rubinobs-other-test"
         name = salobj.AsyncS3Bucket.make_bucket_name(**good_kwargs)
@@ -153,7 +153,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
                     with self.assertRaises(ValueError):
                         salobj.AsyncS3Bucket.make_bucket_name(**bad_kwargs)
 
-    async def test_make_key(self):
+    async def test_make_key(self) -> None:
         # Try a date such that 12 hours earlier is just barely the previous day
         date = astropy.time.Time("2020-04-02T11:59:59.999", scale="tai")
         salname = "Foo"
@@ -227,7 +227,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(key, expected_key)
 
-    def test_env_var_secrets(self):
+    def test_env_var_secrets(self) -> None:
         """Check that moto.mock ovewrites authorization env vars."""
         env_names = (
             "AWS_ACCESS_KEY_ID",

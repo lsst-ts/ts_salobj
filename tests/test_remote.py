@@ -40,7 +40,7 @@ index_gen = salobj.index_generator()
 
 
 class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
-    async def test_constructor_include_exclude(self):
+    async def test_constructor_include_exclude(self) -> None:
         """Test the include and exclude arguments for salobj.Remote."""
 
         index = next(index_gen)
@@ -183,7 +183,9 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
                     exclude=exclude,
                 )
 
-    def assert_max_history(self, remote, evt_max_history=1):
+    def assert_max_history(
+        self, remote: salobj.Remote, evt_max_history: int = 1
+    ) -> None:
         for evt in [
             getattr(remote, f"evt_{name}") for name in remote.salinfo.event_names
         ]:
@@ -195,14 +197,14 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(tel.max_history, 0)
             self.assertFalse(evt.volatile)
 
-    async def test_default_max_history(self):
+    async def test_default_max_history(self) -> None:
         """Test default evt_max_history ctor argument."""
         index = next(index_gen)
         async with salobj.Domain() as domain:
             remote = salobj.Remote(domain=domain, name="Test", index=index)
             self.assert_max_history(remote)
 
-    async def test_evt_max_history(self):
+    async def test_evt_max_history(self) -> None:
         """Test non-default evt_max_history Remote constructor argument."""
         evt_max_history = 0
         index = next(index_gen)
@@ -212,7 +214,7 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
             )
             self.assert_max_history(remote, evt_max_history=evt_max_history)
 
-    async def test_start_false(self):
+    async def test_start_false(self) -> None:
         """Test the start argument of Remote."""
 
         index = next(index_gen)
@@ -224,7 +226,7 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
         INITIAL_HISTORY_TIMEOUT is not None and float(INITIAL_HISTORY_TIMEOUT) < 0,
         f"${HISTORY_TIMEOUT_NAME}={INITIAL_HISTORY_TIMEOUT} < 0",
     )
-    async def test_negative_lsst_dds_historysync(self):
+    async def test_negative_lsst_dds_historysync(self) -> None:
         """Test that setting LSST_DDS_HISTORYSYNC < 0
         prevents waiting for historical data.
 

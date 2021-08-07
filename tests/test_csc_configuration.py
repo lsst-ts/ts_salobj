@@ -21,6 +21,7 @@
 
 import os
 import pathlib
+import typing
 import unittest
 
 import numpy as np
@@ -39,7 +40,7 @@ TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
 class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         # defaults hard-coded in <ts_salobj_root>/schema/Test.yaml
         self.default_dict = dict(
             string0="default value for string0",
@@ -50,7 +51,12 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
         )
         self.config_fields = self.default_dict.keys()
 
-    def basic_make_csc(self, initial_state, config_dir, simulation_mode):
+    def basic_make_csc(
+        self,
+        initial_state: typing.Union[salobj.State, int],
+        config_dir: typing.Union[str, pathlib.Path, None],
+        simulation_mode: int,
+    ) -> salobj.BaseCsc:
         return salobj.TestCsc(
             self.next_index(),
             initial_state=initial_state,
@@ -58,7 +64,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             simulation_mode=simulation_mode,
         )
 
-    async def check_settings_events(self, config_file):
+    async def check_settings_events(self, config_file: str) -> None:
         """Check the settingsApplied and appliedSettingsMatchStart events.
 
         Parameters
@@ -81,7 +87,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             appliedSettingsMatchStartIsTrue=True,
         )
 
-    async def test_no_config_specified(self):
+    async def test_no_config_specified(self) -> None:
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
         ):
@@ -124,7 +130,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             )
             await self.check_settings_events("")
 
-    async def test_default_config_dir(self):
+    async def test_default_config_dir(self) -> None:
         async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=None):
             await self.assert_next_summary_state(salobj.State.STANDBY)
             data = await self.remote.evt_settingVersions.next(
@@ -135,7 +141,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             config_path = pathlib.Path(data.settingsUrl[7:])
             self.assertTrue(config_path.samefile(self.csc.config_dir))
 
-    async def test_empty_label(self):
+    async def test_empty_label(self) -> None:
         config_name = "empty"
 
         async with self.make_csc(
@@ -152,7 +158,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
             await self.check_settings_events("empty.yaml")
 
-    async def test_some_fields_label(self):
+    async def test_some_fields_label(self) -> None:
         """Test a config with some fields set to valid values."""
         config_label = "some_fields"
         config_file = "some_fields.yaml"
@@ -179,7 +185,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
             await self.check_settings_events(config_file)
 
-    async def test_some_fields_file_no_hash(self):
+    async def test_some_fields_file_no_hash(self) -> None:
         """Test a config specified by filename."""
         config_file = "some_fields.yaml"
 
@@ -205,7 +211,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
             await self.check_settings_events(config_file)
 
-    async def test_some_fields_file_with_hash(self):
+    async def test_some_fields_file_with_hash(self) -> None:
         """Test a config specified by filename:hash."""
         config_file = "some_fields.yaml"
 
@@ -231,7 +237,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
             await self.check_settings_events(config_file)
 
-    async def test_all_fields_label(self):
+    async def test_all_fields_label(self) -> None:
         """Test a config with all fields set to valid values."""
         config_name = "all_fields"
         config_file = "all_fields.yaml"
@@ -254,7 +260,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
             await self.check_settings_events(config_file)
 
-    async def test_invalid_configs(self):
+    async def test_invalid_configs(self) -> None:
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
         ):

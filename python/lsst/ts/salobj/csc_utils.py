@@ -31,8 +31,12 @@ import typing
 from .sal_enums import State
 from .remote import Remote
 
+StateTransitionDictType = typing.Dict[
+    typing.Tuple[State, State], typing.List[typing.Tuple[str, State]]
+]
 
-def make_state_transition_dict():
+
+def make_state_transition_dict() -> StateTransitionDictType:
     """Make a dict of state transition commands and states
 
     The keys are (beginning state, ending state).
@@ -53,7 +57,7 @@ def make_state_transition_dict():
     }
 
     # compute transitions from non-FAULT to all other states
-    state_transition_dict = dict()
+    state_transition_dict: StateTransitionDictType = dict()
     for beg_ind, beg_state in enumerate(ordered_states):
         for end_ind, end_state in enumerate(ordered_states):
             if beg_ind == end_ind:
@@ -73,7 +77,7 @@ def make_state_transition_dict():
         command_state_list = [("standby", State.STANDBY)]
         if end_state != State.STANDBY:
             command_state_list += state_transition_dict[State.STANDBY, end_state]
-        state_transition_dict[State.FAULT, end_state] = command_state_list
+        state_transition_dict[(State.FAULT, end_state)] = command_state_list
     return state_transition_dict
 
 

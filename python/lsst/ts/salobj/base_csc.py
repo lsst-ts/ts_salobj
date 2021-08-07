@@ -211,7 +211,7 @@ class BaseCsc(Controller):
         # Set evt_simulationMode, now that it is available.
         self.evt_simulationMode.set(mode=int(simulation_mode))  # type: ignore
 
-        def format_version(version):
+        def format_version(version: typing.Optional[str]) -> str:
             return "?" if version is None else version
 
         self.evt_softwareVersions.set(  # type: ignore
@@ -438,7 +438,7 @@ class BaseCsc(Controller):
         await csc.done_task
 
     @classmethod
-    def add_arguments(cls, parser: argparse.ArgumentParser):
+    def add_arguments(cls, parser: argparse.ArgumentParser) -> None:
         """Add arguments to the parser created by `make_from_cmd_line`.
 
         Parameters

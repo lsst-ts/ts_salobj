@@ -75,7 +75,7 @@ class DefaultingValidator:
         self,
         schema: typing.Dict[str, typing.Any],
         # jsonschema 3.2 has no public base class for validators
-        ValidatorClass=jsonschema.Draft7Validator,
+        ValidatorClass: jsonschema.Draft7Validator = jsonschema.Draft7Validator,
     ) -> None:
         ValidatorClass.check_schema(schema)
         self.final_validator = ValidatorClass(schema=schema)

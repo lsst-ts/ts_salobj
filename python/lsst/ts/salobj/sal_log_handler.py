@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -23,6 +25,10 @@ __all__ = ["SalLogHandler"]
 
 import logging
 import sys
+import typing
+
+if typing.TYPE_CHECKING:
+    from .controller import Controller
 
 
 class SalLogHandler(logging.Handler):
@@ -36,7 +42,7 @@ class SalLogHandler(logging.Handler):
         ``evt_logEvent``.
     """
 
-    def __init__(self, controller) -> None:
+    def __init__(self, controller: Controller) -> None:
         self.controller = controller
         super().__init__()
 
@@ -47,7 +53,7 @@ class SalLogHandler(logging.Handler):
                 traceback = str(record.exc_text.encode("utf-8", "replace"))
             else:
                 traceback = ""
-            self.controller.evt_logMessage.set_put(
+            self.controller.evt_logMessage.set_put(  # type: ignore
                 name=record.name,
                 level=record.levelno,
                 message=record.message.encode("utf-8", "replace"),

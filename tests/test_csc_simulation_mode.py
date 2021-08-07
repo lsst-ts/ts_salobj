@@ -21,6 +21,7 @@
 
 import asyncio
 import sys
+import typing
 import unittest
 
 import numpy as np
@@ -37,7 +38,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
     command-line argument.
     """
 
-    def setUp(self):
+    def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
         # Valid simulation modes that will exercise several things:
         # If 0 is present it is the default,
@@ -54,7 +55,9 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
             (4, 1, 0),
         )
 
-    def make_csc_class(self, modes):
+    def make_csc_class(
+        self, modes: typing.Optional[typing.Iterable[int]]
+    ) -> salobj.TestCsc:
         """Make a subclass of TestCsc with specified valid simulation modes"""
 
         class TestCscWithSimulation(salobj.TestCsc):
@@ -62,7 +65,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
 
         return TestCscWithSimulation
 
-    async def test_invalid_simulation_modes(self):
+    async def test_invalid_simulation_modes(self) -> None:
         index = next(index_gen)
         for valid_simulation_modes in self.valid_simulation_modes_list:
             csc_class = self.make_csc_class(valid_simulation_modes)
@@ -72,7 +75,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(ValueError):
                     csc_class(index=index, simulation_mode=bad_simulation_mode)
 
-    async def test_valid_simulation_modes(self):
+    async def test_valid_simulation_modes(self) -> None:
         for valid_simulation_modes in self.valid_simulation_modes_list:
             csc_class = self.make_csc_class(valid_simulation_modes)
             for simulation_mode in csc_class.valid_simulation_modes:
@@ -82,7 +85,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
                 ) as csc:
                     self.assertEqual(csc.simulation_mode, simulation_mode)
 
-    async def test_simulate_cmdline_arg(self):
+    async def test_simulate_cmdline_arg(self) -> None:
         orig_argv = sys.argv[:]
         try:
             for valid_simulation_modes in self.valid_simulation_modes_list:
@@ -188,7 +191,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
         finally:
             sys.argv[:] = orig_argv
 
-    async def test_none_valid_simulation_modes_simulation_mode(self):
+    async def test_none_valid_simulation_modes_simulation_mode(self) -> None:
         """Test that a CSC that uses the deprecated valid_simulation_modes=None
         checks simulation mode in start, not the constructor.
 
@@ -220,7 +223,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
             await csc.do_exitControl(data=None)
             await asyncio.wait_for(csc.done_task, timeout=5)
 
-    async def test_none_valid_simulation_modes_cmdline(self):
+    async def test_none_valid_simulation_modes_cmdline(self) -> None:
         """Test that when valid_simulation_modes=None that the command
         parser does not add the --simulate argument.
         """

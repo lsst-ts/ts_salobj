@@ -26,6 +26,7 @@ __all__ = ["Domain"]
 import asyncio
 import os
 import pathlib
+import types
 import typing
 import weakref
 import warnings
@@ -182,7 +183,7 @@ class Domain:
             test_remote = salobj.Remote(domain=domain, name="Test", index=5)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.isopen = True
         self.user_host = base.get_user_host()
         self.default_identity = self.user_host
@@ -190,10 +191,10 @@ class Domain:
         # Accumulators for verifying that close is working.
         self.num_read_loops = 0
 
-        self.done_task = asyncio.Future()
+        self.done_task: asyncio.Future = asyncio.Future()
 
         # Set of SalInfo.
-        self._salinfo_set: typing.Set[SalInfo] = weakref.WeakSet()
+        self._salinfo_set: weakref.WeakSet[SalInfo] = weakref.WeakSet()
 
         self.origin = os.getpid()
         self.idl_dir = idl.get_idl_dir()
@@ -211,7 +212,7 @@ class Domain:
         self.participant = dds.DomainParticipant(qos=participant_qos)
 
     @property
-    def salinfo_set(self) -> typing.Set[SalInfo]:
+    def salinfo_set(self) -> weakref.WeakSet[SalInfo]:
         return self._salinfo_set
 
     def add_salinfo(self, salinfo: SalInfo) -> None:
@@ -318,8 +319,13 @@ class Domain:
             )
         self.done_task.set_result(None)
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Domain:
         return self
 
-    async def __aexit__(self, type, value, traceback):
+    async def __aexit__(
+        self,
+        type: typing.Optional[typing.Type[BaseException]],
+        value: typing.Optional[BaseException],
+        traceback: typing.Optional[types.TracebackType],
+    ) -> None:
         await self.close()

@@ -23,7 +23,7 @@ base_prefix = pathlib.Path(sys.base_prefix)
 data_files_path = tools_path.relative_to(base_prefix).parents[1]
 
 
-def local_scheme(version):
+def local_scheme(version: str) -> str:
     return ""
 
 

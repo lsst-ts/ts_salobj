@@ -1,6 +1,7 @@
-import enum
-
 __all__ = ["SalRetCode", "State", "as_salRetCode", "as_state"]
+
+import enum
+import typing
 
 
 class SalRetCode(enum.IntEnum):
@@ -68,7 +69,9 @@ class State(enum.IntEnum):
     FAULT = 3
 
 
-def as_salRetCode(value):
+def as_salRetCode(
+    value: typing.Union[int, SalRetCode]
+) -> typing.Union[int, SalRetCode]:
     """Convert an int (or SalRetCode) to a SalRetCode.
 
     Return the original value if no match.
@@ -79,7 +82,7 @@ def as_salRetCode(value):
         return value
 
 
-def as_state(value):
+def as_state(value: typing.Union[int, State]) -> typing.Union[int, State]:
     """Convert an int (or State) to a State.
 
     Return the original value if no match.

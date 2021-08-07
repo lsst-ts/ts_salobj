@@ -25,6 +25,7 @@ import itertools
 import logging
 import pathlib
 import subprocess
+import typing
 import unittest
 import warnings
 
@@ -45,7 +46,9 @@ TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "dat
 TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
-def all_permutations(items):
+def all_permutations(
+    items: typing.Sequence[typing.Any],
+) -> typing.Iterator[typing.Any]:
     """Return all permutations of a list of items and of all sublists,
     including [].
     """
@@ -74,12 +77,12 @@ class FailInReportFaultCsc(salobj.TestCsc):
         If false then call it last.
     """
 
-    def __init__(self, index, doraise, report_first):
+    def __init__(self, index: int, doraise: bool, report_first: bool) -> None:
         super().__init__(index=index, initial_state=salobj.State.ENABLED)
         self.doraise = doraise
         self.report_first = report_first
 
-    def report_summary_state(self):
+    def report_summary_state(self) -> None:
         if self.report_first:
             super().report_summary_state()
         if self.summary_state == salobj.State.FAULT:
@@ -98,7 +101,12 @@ class FailInReportFaultCsc(salobj.TestCsc):
 
 
 class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
-    def basic_make_csc(self, initial_state, config_dir, simulation_mode):
+    def basic_make_csc(
+        self,
+        initial_state: typing.Union[salobj.State, int],
+        config_dir: typing.Union[str, pathlib.Path, None],
+        simulation_mode: int,
+    ) -> salobj.BaseCsc:
         return salobj.TestCsc(
             self.next_index(),
             initial_state=initial_state,
@@ -108,9 +116,8 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
     @contextlib.asynccontextmanager
     async def make_remote(
-        self,
-        identity,
-    ):
+        self, identity: str
+    ) -> typing.AsyncGenerator[salobj.Remote, None]:
         """Create a remote to talk to self.csc with a specified identity.
 
         Uses the domain created by make_csc.
@@ -142,7 +149,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         finally:
             await remote.close()
 
-    async def test_authorization(self):
+    async def test_authorization(self) -> None:
         """Test authorization.
 
         For simplicity this test calls setAuthList without a +/- prefix.
@@ -259,7 +266,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                             duration=0, timeout=STD_TIMEOUT
                         )
 
-    async def test_set_auth_list_prefix(self):
+    async def test_set_auth_list_prefix(self) -> None:
         """Test the setAuthList command with a +/- prefix"""
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             await self.assert_next_sample(
@@ -351,7 +358,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     nonAuthorizedCSCs="",
                 )
 
-    async def test_heartbeat(self):
+    async def test_heartbeat(self) -> None:
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             self.csc.heartbeat_interval = 0.1
             await self.remote.evt_heartbeat.next(flush=True, timeout=STD_TIMEOUT)
@@ -359,7 +366,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
             await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
 
-    async def test_bin_script_run(self):
+    async def test_bin_script_run(self) -> None:
         """Test running the Test CSC from the bin script.
 
         Note that the bin script calls class method ``amain``.
@@ -382,7 +389,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     settings_to_apply=settings_to_apply,
                 )
 
-    async def test_bin_script_version(self):
+    async def test_bin_script_version(self) -> None:
         """Test running the Test CSC from the bin script.
 
         Note that the bin script calls class method ``amain``.
@@ -410,7 +417,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 process.terminate()
                 warnings.warn("Killed a process that was not properly terminated")
 
-    async def test_log_level(self):
+    async def test_log_level(self) -> None:
         """Test that specifying a log level to make_csc works."""
         # If specified then log level is the value given.
         async with self.make_csc(
@@ -428,7 +435,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             self.assertEqual(self.csc.log.getEffectiveLevel(), logging.INFO)
 
-    async def test_setArrays_command(self):
+    async def test_setArrays_command(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             # until the controller gets its first setArrays
             # it will not send any arrays events or telemetry
@@ -462,7 +469,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             self.csc.assert_arrays_equal(cmd_data_sent, self.remote.tel_arrays.get())
             self.csc.assert_arrays_equal(cmd_data_sent, self.remote.evt_arrays.get())
 
-    async def test_setScalars_command(self):
+    async def test_setScalars_command(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             # until the controller gets its first setArrays
             # it will not send any arrays events or telemetry
@@ -496,7 +503,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             self.csc.assert_scalars_equal(cmd_data_sent, self.remote.tel_scalars.get())
             self.csc.assert_scalars_equal(cmd_data_sent, self.remote.evt_scalars.get())
 
-    async def test_fault_state_transitions(self):
+    async def test_fault_state_transitions(self) -> None:
         """Test CSC state transitions into fault and out again.
 
         Going into the fault state is done via the ``fault`` command.
@@ -525,7 +532,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
                     await self.assert_next_summary_state(salobj.State.STANDBY)
 
-    async def test_fault_method(self):
+    async def test_fault_method(self) -> None:
         """Test BaseCsc.fault with and without optional arguments."""
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             await self.assert_next_summary_state(salobj.State.STANDBY)
@@ -582,7 +589,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
             await self.remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
 
-    async def test_fault_problems(self):
+    async def test_fault_problems(self) -> None:
         """Test BaseCsc.fault when report_summary_state misbehaves."""
         index = self.next_index()
         for doraise, report_first in itertools.product((False, True), (False, True)):
@@ -621,14 +628,14 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                             flush=False, timeout=NODATA_TIMEOUT
                         )
 
-    async def test_make_csc_timeout(self):
+    async def test_make_csc_timeout(self) -> None:
         """Test that setting the timeout argument to make_csc works."""
         with self.assertRaises(asyncio.TimeoutError):
             # Use such a short timeout that make_csc times out
             async with self.make_csc(initial_state=salobj.State.STANDBY, timeout=0):
                 pass
 
-    async def test_standard_state_transitions(self):
+    async def test_standard_state_transitions(self) -> None:
         """Test standard CSC state transitions.
 
         The initial state is STANDBY.
