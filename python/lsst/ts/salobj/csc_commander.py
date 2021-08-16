@@ -30,6 +30,7 @@ import enum
 import functools
 import shlex
 import sys
+import types
 import typing
 import warnings
 
@@ -51,7 +52,9 @@ BOOL_DICT = {
 }
 
 
-async def stream_as_generator(stream, encoding="utf-8"):
+async def stream_as_generator(
+    stream: typing.TextIO, encoding: str = "utf-8"
+) -> typing.AsyncGenerator[str, None]:
     """Await lines of text from stdin or another input stream.
 
     Example usage:
@@ -63,9 +66,8 @@ async def stream_as_generator(stream, encoding="utf-8"):
     ----------
     stream : ``stream``
         Stream to read, e.g. `sys.stdin`.
-    encoding : `str` or `None`
-        Encoding. If provided then decode the line,
-        else return the line as raw bytes.
+    encoding : `str`
+        Encoding.
 
     Returns
     -------
@@ -85,9 +87,7 @@ async def stream_as_generator(stream, encoding="utf-8"):
         line = await reader.readline()
         if not line:  # EOF.
             break
-        if encoding is not None:
-            line = line.decode(encoding)
-        yield line
+        yield line.decode(encoding)
 
 
 def round_any(
@@ -313,7 +313,7 @@ help  # print this help
         await self.remote.close()
         await self.domain.close()
 
-    def output(self, msg) -> None:
+    def output(self, msg: str) -> None:
         """Print a message to output, appending a final newline.
 
         Please call this instead of print to support unit tests.
@@ -783,9 +783,14 @@ help  # print this help
 
         return cls(**kwargs)
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> CscCommander:
         await self.remote.start_task
         return self
 
-    async def __aexit__(self, type, value, traceback):
+    async def __aexit__(
+        self,
+        type: typing.Optional[typing.Type[BaseException]],
+        value: typing.Optional[BaseException],
+        traceback: typing.Optional[types.TracebackType],
+    ) -> None:
         await self.close()

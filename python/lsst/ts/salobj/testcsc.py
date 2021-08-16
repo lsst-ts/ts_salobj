@@ -23,6 +23,7 @@ __all__ = ["TestCsc"]
 
 import asyncio
 import string
+import types
 import typing
 
 import numpy as np
@@ -134,9 +135,11 @@ class TestCsc(ConfigurableCsc):
             **config_kwargs,
         )
         self.cmd_wait.allow_multiple_callbacks = True  # type: ignore
-        self.config = None
+        self.config: typing.Optional[types.SimpleNamespace] = None
 
-    def as_dict(self, data: typing.Any, fields: typing.Sequence[str]):
+    def as_dict(
+        self, data: typing.Any, fields: typing.Sequence[str]
+    ) -> typing.Dict[str, typing.Any]:
         """Return the specified fields from a data struct as a dict.
 
         Parameters
@@ -193,7 +196,7 @@ class TestCsc(ConfigurableCsc):
         await asyncio.sleep(abs(duration))
 
     @property
-    def field_type(self):
+    def field_type(self) -> typing.Dict[str, typing.Any]:
         """Get a dict of field_name: element type."""
         return dict(
             boolean0=bool,
@@ -211,7 +214,7 @@ class TestCsc(ConfigurableCsc):
         )
 
     @property
-    def arrays_fields(self):
+    def arrays_fields(self) -> typing.Sequence[str]:
         """Get a tuple of the fields in an arrays struct."""
         return (
             "boolean0",
@@ -228,7 +231,7 @@ class TestCsc(ConfigurableCsc):
         )
 
     @property
-    def scalars_fields(self):
+    def scalars_fields(self) -> typing.Sequence[str]:
         """Get a tuple of the fields in a scalars struct."""
         return (
             "boolean0",
@@ -246,7 +249,7 @@ class TestCsc(ConfigurableCsc):
         )
 
     @property
-    def int_fields(self):
+    def int_fields(self) -> typing.Sequence[str]:
         """Get a tuple of the integer fields in a struct."""
         return (
             "byte0",
@@ -259,7 +262,7 @@ class TestCsc(ConfigurableCsc):
             "unsignedLong0",
         )
 
-    def assert_arrays_equal(self, arrays1, arrays2):
+    def assert_arrays_equal(self, arrays1: typing.Any, arrays2: typing.Any) -> None:
         """Assert that two arrays data structs are equal.
 
         The types need not match; each struct can be command, event
@@ -271,12 +274,14 @@ class TestCsc(ConfigurableCsc):
             field_arr1 = getattr(arrays1, field)
             field_arr2 = getattr(arrays2, field)
             is_float = field in ("float0", "double0")
-            if not np.array_equal(field_arr1, field_arr2, equal_nan=is_float):
+            if not np.array_equal(  # type: ignore
+                field_arr1, field_arr2, equal_nan=is_float
+            ):
                 raise AssertionError(
                     f"arrays1.{field} = {field_arr1} != {field_arr2} = arrays2.{field}"
                 )
 
-    def assert_scalars_equal(self, scalars1, scalars2):
+    def assert_scalars_equal(self, scalars1: typing.Any, scalars2: typing.Any) -> None:
         """Assert that two scalars data structs are equal.
 
         The types need not match; each struct can be command, event
@@ -288,30 +293,32 @@ class TestCsc(ConfigurableCsc):
             field_val1 = getattr(scalars1, field)
             field_val2 = getattr(scalars2, field)
             is_float = field in ("float0", "double0")
-            if not np.array_equal(field_val1, field_val2, equal_nan=is_float):
+            if not np.array_equal(  # type: ignore
+                field_val1, field_val2, equal_nan=is_float
+            ):
                 raise AssertionError(
                     f"scalars1.{field} = {field_val1} != {field_val2} = scalars2.{field}"
                 )
 
-    def make_random_cmd_arrays(self):
-        return self._make_random_arrays(dtype=self.cmd_setArrays.DataType)
+    def make_random_cmd_arrays(self) -> typing.Any:
+        return self._make_random_arrays(dtype=self.cmd_setArrays.DataType)  # type: ignore
 
-    def make_random_evt_arrays(self):
-        return self._make_random_arrays(dtype=self.evt_arrays.DataType)
+    def make_random_evt_arrays(self) -> typing.Any:
+        return self._make_random_arrays(dtype=self.evt_arrays.DataType)  # type: ignore
 
-    def make_random_tel_arrays(self):
-        return self._make_random_arrays(dtype=self.tel_arrays.DataType)
+    def make_random_tel_arrays(self) -> typing.Any:
+        return self._make_random_arrays(dtype=self.tel_arrays.DataType)  # type: ignore
 
-    def make_random_cmd_scalars(self):
-        return self._make_random_scalars(dtype=self.cmd_setScalars.DataType)
+    def make_random_cmd_scalars(self) -> typing.Any:
+        return self._make_random_scalars(dtype=self.cmd_setScalars.DataType)  # type: ignore
 
-    def make_random_evt_scalars(self):
-        return self._make_random_scalars(dtype=self.evt_scalars.DataType)
+    def make_random_evt_scalars(self) -> typing.Any:
+        return self._make_random_scalars(dtype=self.evt_scalars.DataType)  # type: ignore
 
-    def make_random_tel_scalars(self):
-        return self._make_random_scalars(dtype=self.tel_scalars.DataType)
+    def make_random_tel_scalars(self) -> typing.Any:
+        return self._make_random_scalars(dtype=self.tel_scalars.DataType)  # type: ignore
 
-    def _make_random_arrays(self, dtype):
+    def _make_random_arrays(self, dtype: typing.Any) -> typing.Any:
         """Make random arrays data using numpy.random."""
         data = dtype()
         nelts = len(data.boolean0)
@@ -333,7 +340,7 @@ class TestCsc(ConfigurableCsc):
             setattr(data, field, field_data)
         return data
 
-    def _make_random_scalars(self, dtype):
+    def _make_random_scalars(self, dtype: typing.Any) -> typing.Any:
         """Make random data for cmd_setScalars using numpy.random."""
         data = dtype()
         data.boolean0 = np.random.choice([False, True])
@@ -354,8 +361,8 @@ class TestCsc(ConfigurableCsc):
         return data
 
     @staticmethod
-    def get_config_pkg():
+    def get_config_pkg() -> str:
         return "ts_config_ocs"
 
-    async def configure(self, config):
+    async def configure(self, config: types.SimpleNamespace) -> None:
         self.config = config

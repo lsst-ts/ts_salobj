@@ -23,6 +23,8 @@ import asyncio
 import logging
 import os
 import subprocess
+import types
+import typing
 import unittest
 import warnings
 
@@ -44,23 +46,23 @@ class NonConfigurableScript(salobj.BaseScript):
     In other words get_schema returns None.
     """
 
-    def __init__(self, index):
+    def __init__(self, index: int) -> None:
         super().__init__(index=index, descr="Non-configurable script")
-        self.config = None
+        self.config: typing.Optional[types.SimpleNamespace] = None
         self.run_called = False
         self.set_metadata_called = False
 
     @classmethod
-    def get_schema(cls):
+    def get_schema(cls) -> None:
         return None
 
-    async def configure(self, config):
+    async def configure(self, config: typing.Optional[types.SimpleNamespace]) -> None:
         self.config = config
 
-    async def run(self):
+    async def run(self) -> None:
         self.run_called = True
 
-    def set_metadata(self, metadata):
+    def set_metadata(self, metadata: salobj.BaseDdsDataType) -> None:
         self.set_metadata_called = True
 
 
@@ -69,20 +71,25 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
     `NonConfigurableScript`.
     """
 
-    def setUp(self):
+    def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
         self.datadir = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
         self.index = next(index_gen)
 
     async def configure_and_check(
-        self, script, log_level=0, pause_checkpoint="", stop_checkpoint="", **kwargs
-    ):
+        self,
+        script: salobj.TestScript,
+        log_level: int = 0,
+        pause_checkpoint: str = "",
+        stop_checkpoint: str = "",
+        **kwargs: typing.Any,
+    ) -> None:
         """Configure a script by calling ``do_configure`` and set group ID
         and check the result.
 
         Parameters
         ----------
-        script : `ts.salobj.TestScript`
+        script : `TestScript`
             A test script
         log_level : `int`, optional
             Log level as a `logging` level,
@@ -147,18 +154,18 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(script.group_id, group_id)
         self.assertEqual(script.evt_state.data.groupId, group_id)
 
-    def test_get_schema(self):
+    def test_get_schema(self) -> None:
         schema = salobj.TestScript.get_schema()
         self.assertTrue(isinstance(schema, dict))
         for name in ("$schema", "$id", "title", "description", "type", "properties"):
             self.assertIn(name, schema)
         self.assertFalse(schema["additionalProperties"])
 
-    def test_non_configurable_script_get_schema(self):
+    def test_non_configurable_script_get_schema(self) -> None:
         schema = NonConfigurableScript.get_schema()
         self.assertIsNone(schema)
 
-    async def test_non_configurable_script_empty_config(self):
+    async def test_non_configurable_script_empty_config(self) -> None:
         """Test configuring the script with no data. This should work."""
         async with NonConfigurableScript(index=self.index) as script:
             data = script.cmd_configure.DataType()
@@ -167,7 +174,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(script.set_metadata_called)
             self.assertFalse(script.run_called)
 
-    async def test_non_configurable_script_invalid_config(self):
+    async def test_non_configurable_script_invalid_config(self) -> None:
         async with NonConfigurableScript(index=self.index) as script:
             data = script.cmd_configure.DataType()
             data.config = "invalid: should be empty"
@@ -175,7 +182,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 await script.do_configure(data)
             self.assertIsNone(script.config)
 
-    async def test_script_environ(self):
+    async def test_script_environ(self) -> None:
         """Test that creating a script does not modify os.environ.
 
         I would like to also test that a script has master priority 0
@@ -194,7 +201,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 # closing a script should not modify the environment.
                 self.assertEqual(os.environ, initial_environ)
 
-    async def test_setCheckpoints(self):
+    async def test_setCheckpoints(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
 
             # try valid values
@@ -225,7 +232,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(script.checkpoints.pause, initial_pause)
                 self.assertEqual(script.checkpoints.stop, initial_stop)
 
-    async def test_set_state_and_attributes(self):
+    async def test_set_state_and_attributes(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
             # check keep_old_reason argument of set_state
             reason = "initial reason"
@@ -270,7 +277,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
             self.assertFalse(script.done_task.done())
 
-    async def test_next_supplemented_group_id(self):
+    async def test_next_supplemented_group_id(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
             await self.configure_and_check(script)
             group_id = script.group_id
@@ -299,7 +306,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(RuntimeError):
                 script.next_supplemented_group_id()
 
-    async def test_pause(self):
+    async def test_pause(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
             # Cannot run in UNCONFIGURED state.
             run_data = script.cmd_run.DataType()
@@ -382,7 +389,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             print(f"test_pause duration={duration:0.2f}")
             self.assertLess(abs(duration - desired_duration), 0.2)
 
-    async def test_stop_at_checkpoint(self):
+    async def test_stop_at_checkpoint(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
             wait_time = 0.1
             await self.configure_and_check(script, wait_time=wait_time)
@@ -409,7 +416,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             print(f"test_stop_at_checkpoint duration={duration:0.2f}")
             self.assertLess(abs(duration - desired_duration), 0.2)
 
-    async def test_stop_while_paused(self):
+    async def test_stop_while_paused(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
             wait_time = 5
             await self.configure_and_check(script, wait_time=wait_time)
@@ -443,7 +450,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertGreater(duration, 0.0)
             self.assertLess(abs(duration - desired_duration), 0.2)
 
-    async def test_stop_while_running(self):
+    async def test_stop_while_running(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
             wait_time = 5
             pause_time = 0.5
@@ -470,7 +477,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             print(f"test_stop_while_running duration={duration:0.2f}")
             self.assertLess(abs(duration - desired_duration), 0.2)
 
-    async def check_fail(self, fail_run):
+    async def check_fail(self, fail_run: bool) -> None:
         """Check failure in run or cleanup.
 
         Parameters
@@ -508,17 +515,17 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             print(f"test_fail duration={duration:0.3f} with fail_run={fail_run}")
             self.assertLess(abs(duration - desired_duration), 0.2)
 
-    async def test_fail_run(self):
+    async def test_fail_run(self) -> None:
         await self.check_fail(fail_run=True)
 
-    async def test_fail_cleanup(self):
+    async def test_fail_cleanup(self) -> None:
         await self.check_fail(fail_run=False)
 
-    async def test_zero_index(self):
+    async def test_zero_index(self) -> None:
         with self.assertRaises(ValueError):
             salobj.TestScript(index=0)
 
-    async def test_remote(self):
+    async def test_remote(self) -> None:
         """Test a script with remotes.
 
         Check that the remote_names attribute of the description event
@@ -527,7 +534,9 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         """
 
         class ScriptWithRemotes(salobj.TestScript):
-            def __init__(self, index, remote_indices):
+            def __init__(
+                self, index: int, remote_indices: typing.Iterable[int]
+            ) -> None:
                 super().__init__(index, descr="Script with remotes")
                 remotes = []
                 # use remotes that read history here, to check that
@@ -546,7 +555,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             for remote in script.remotes:
                 self.assertTrue(remote.start_task.done())
 
-    async def test_script_process(self):
+    async def test_script_process(self) -> None:
         """Test running a script as a subprocess."""
         script_path = os.path.join(self.datadir, "script1")
 
@@ -562,7 +571,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                     )
                     await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
 
-                    def logcallback(data):
+                    def logcallback(data: salobj.BaseDdsDataType) -> None:
                         print(f"message={data.message}")
 
                     remote.evt_logMessage.callback = logcallback
@@ -625,7 +634,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                                 "Killed a process that was not properly terminated"
                             )
 
-    async def test_script_schema_process(self):
+    async def test_script_schema_process(self) -> None:
         """Test running a script with --schema as a subprocess."""
         script_path = os.path.join(self.datadir, "script1")
         index = 1  # index is ignored

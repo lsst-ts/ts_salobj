@@ -51,7 +51,7 @@ AngleOrDegType = typing.Union[astropy.coordinates.Angle, float]
 
 def assertAnglesAlmostEqual(
     angle1: AngleOrDegType, angle2: AngleOrDegType, max_diff: AngleOrDegType = 1e-5
-):
+) -> None:
     """Raise AssertionError if angle1 and angle2 are too different,
     ignoring wrap.
 

@@ -331,7 +331,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(ValueError):
                     salobj.name_to_name_index(bad_name)
 
-    def check_tai_from_utc(self, utc_ap):
+    def check_tai_from_utc(self, utc_ap: astropy.time.Time) -> None:
         """Check tai_from_utc at a specific UTC date.
 
         Parameters

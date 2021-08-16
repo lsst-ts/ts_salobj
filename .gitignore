@@ -1,5 +1,5 @@
 .swp
-.cache
+.mypy_cache
 .pytest_cache
 .coverage*
 pytest_session.txt

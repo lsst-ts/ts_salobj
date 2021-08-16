@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -22,6 +24,7 @@
 __all__ = ["Remote"]
 
 import asyncio
+import types
 import typing
 import warnings
 
@@ -138,8 +141,8 @@ class Remote:
         index: typing.Optional[int] = None,
         *,
         readonly: bool = False,
-        include: typing.Optional[typing.Sequence[str]] = None,
-        exclude: typing.Optional[typing.Sequence[str]] = None,
+        include: typing.Optional[typing.Iterable[str]] = None,
+        exclude: typing.Optional[typing.Iterable[str]] = None,
         evt_max_history: int = 1,
         tel_max_history: typing.Optional[int] = None,
         start: bool = True,
@@ -211,9 +214,14 @@ class Remote:
         """
         await self.salinfo.close()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Remote:
         await self.start_task
         return self
 
-    async def __aexit__(self, type, value, traceback):
+    async def __aexit__(
+        self,
+        type: typing.Optional[typing.Type[BaseException]],
+        value: typing.Optional[BaseException],
+        traceback: typing.Optional[types.TracebackType],
+    ) -> None:
         await self.close()

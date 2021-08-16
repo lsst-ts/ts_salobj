@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -27,6 +29,7 @@ import concurrent
 import logging
 import os
 import time
+import types
 import typing
 import warnings
 
@@ -469,7 +472,9 @@ class SalInfo:
             timeout=timeout,
         )
 
-    def makeAckCmd(self, *args, **kwargs):
+    def makeAckCmd(
+        self, *args: typing.Any, **kwargs: typing.Any
+    ) -> type_hints.AckCmdDataType:
         """Deprecated version of make_ackcmd."""
         # TODO DM-26518: remove this method
         warnings.warn(
@@ -477,7 +482,7 @@ class SalInfo:
         )
         return self.make_ackcmd(*args, **kwargs)
 
-    def parse_metadata(self):
+    def parse_metadata(self) -> None:
         """Parse the IDL metadata to generate some attributes.
 
         Set the following attributes (see the class doc string for details):
@@ -515,7 +520,7 @@ class SalInfo:
         self.sal_topic_names = tuple(sorted(self.metadata.topic_info.keys()))
         self.revnames = revnames
 
-    def basic_close(self):
+    def basic_close(self) -> None:
         """A synchronous and less thorough version of `close`.
 
         Intended for exit handlers and constructor error handlers.
@@ -537,7 +542,7 @@ class SalInfo:
         for writer in self._writer_list:
             writer.basic_close()
 
-    async def close(self):
+    async def close(self) -> None:
         """Shut down and clean up resources.
 
         May be called multiple times. The first call closes the SalInfo;
@@ -576,7 +581,7 @@ class SalInfo:
             if not self.done_task.done():
                 self.done_task.set_result(None)
 
-    def add_reader(self, topic):
+    def add_reader(self, topic: topics.ReadTopic) -> None:
         """Add a ReadTopic, so it can be read by the read loop and closed
         by `close`.
 
@@ -597,7 +602,7 @@ class SalInfo:
         self._reader_dict[topic._read_condition] = topic
         self._waitset.attach(topic._read_condition)
 
-    def add_writer(self, topic):
+    def add_writer(self, topic: topics.WriteTopic) -> None:
         """Add a WriteTopic, so it can be closed by `close`.
 
         Parameters
@@ -607,7 +612,7 @@ class SalInfo:
         """
         self._writer_list.append(topic)
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the read loop.
 
         Call this after all topics have been added.
@@ -688,7 +693,7 @@ class SalInfo:
             self.start_task.set_exception(e)
             raise
 
-    def _detach_read_conditions(self):
+    def _detach_read_conditions(self) -> None:
         """Try to detach all read conditions from the wait set.
 
         ADLink suggests doing this at shutdown to work around a bug
@@ -699,7 +704,7 @@ class SalInfo:
         for read_cond in self._reader_dict:
             self._waitset.detach(read_cond)
 
-    async def _read_loop(self, loop):
+    async def _read_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         """Read and process data.
 
         Parameters
@@ -718,7 +723,7 @@ class SalInfo:
         finally:
             self.domain.num_read_loops -= 1
 
-    def _read_loop_thread(self, loop):
+    def _read_loop_thread(self, loop: asyncio.AbstractEventLoop) -> None:
         """Read and process DDS data in a background thread.
 
         Parameters
@@ -749,7 +754,7 @@ class SalInfo:
                 if sd_list:
                     reader._queue_data(sd_list, loop=loop)
 
-    def _sample_to_data(self, sd, si):
+    def _sample_to_data(self, sd: dds._Sample, si: dds.SampleInfo) -> dds._Sample:
         """Process one sample data, sample info pair.
 
         Set sd.private_rcvStamp based on si.reception_timestamp
@@ -760,7 +765,7 @@ class SalInfo:
         sd.private_rcvStamp = rcv_tai
         return sd
 
-    def _wait_history(self):
+    def _wait_history(self) -> bool:
         """Wait for historical data to be available for all topics.
 
         Blocks, so intended to be run in a background thread.
@@ -770,11 +775,11 @@ class SalInfo:
         iosk : `bool`
             True if we got historical data or none was wanted
         """
-        time_limit = os.environ.get("LSST_DDS_HISTORYSYNC")
-        if time_limit is None:
-            time_limit = DEFAULT_LSST_DDS_HISTORYSYNC
+        time_limit_str = os.environ.get("LSST_DDS_HISTORYSYNC")
+        if time_limit_str is None:
+            time_limit: float = DEFAULT_LSST_DDS_HISTORYSYNC
         else:
-            time_limit = float(time_limit)
+            time_limit = float(time_limit_str)
         if time_limit < 0:
             self.log.info(
                 f"Time limit {time_limit} < 0; not waiting for historical data"
@@ -799,13 +804,18 @@ class SalInfo:
             wait_timeout = dds.DDSDuration(sec=rem_time)
         return num_ok > 0 or num_checked == 0
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> SalInfo:
         if self.start_called:
             await self.start_task
         return self
 
-    async def __aexit__(self, type, value, traceback):
+    async def __aexit__(
+        self,
+        type: typing.Optional[typing.Type[BaseException]],
+        value: typing.Optional[BaseException],
+        traceback: typing.Optional[types.TracebackType],
+    ) -> None:
         await self.close()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"SalInfo({self.name}, {self.index})"

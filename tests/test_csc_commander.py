@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import pathlib
+import typing
 import unittest
 
 import numpy as np
@@ -39,17 +41,22 @@ class BasicCscCommander(salobj.TestCscCommander):
     ("setArrays") and to test hiding unsupported generic commands.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: typing.Any) -> None:
         super().__init__(**kwargs)
         self.help_dict["echo"] = "any  # echo arguments, space-separated"
 
-    def do_echo(self, args):
+    def do_echo(self, args: str) -> None:
         """Output the arguments."""
         self.output(" ".join(args))
 
 
 class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
-    def basic_make_csc(self, initial_state, config_dir, simulation_mode):
+    def basic_make_csc(
+        self,
+        initial_state: typing.Union[salobj.State, int],
+        config_dir: typing.Union[str, pathlib.Path, None],
+        simulation_mode: int,
+    ) -> salobj.BaseCsc:
         index = self.next_index()
         self.commander = BasicCscCommander(index=index)
         self.addAsyncCleanup(self.commander.close)
@@ -62,7 +69,7 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
             simulation_mode=simulation_mode,
         )
 
-    async def test_basics(self):
+    async def test_basics(self) -> None:
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             await self.commander.start()
             await self.assert_next_summary_state(salobj.State.STANDBY)

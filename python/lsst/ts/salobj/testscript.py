@@ -22,6 +22,8 @@
 __all__ = ["TestScript"]
 
 import asyncio
+import types
+import typing
 
 import yaml
 
@@ -46,7 +48,7 @@ class TestScript(BaseScript):
         super().__init__(index=index, descr=descr)
 
     @classmethod
-    def get_schema(cls):
+    def get_schema(cls) -> typing.Dict[str, str]:
         schema_yaml = """
             $schema: http://json-schema.org/draft-07/schema#
             $id: https://github.com/lsst-ts/ts_salobj/TestScript.yaml
@@ -75,7 +77,7 @@ class TestScript(BaseScript):
         """
         return yaml.safe_load(schema_yaml)
 
-    async def configure(self, config):
+    async def configure(self, config: types.SimpleNamespace) -> None:
         """Configure the script.
 
         Parameters
@@ -101,10 +103,10 @@ class TestScript(BaseScript):
         )
         self.log.info("Configure succeeded")
 
-    def set_metadata(self, metadata):
+    def set_metadata(self, metadata: typing.Any) -> None:
         metadata.duration = self.config.wait_time
 
-    async def run(self):
+    async def run(self) -> None:
         self.log.info("Run started")
         await self.checkpoint("start")
         if self.config.fail_run:
@@ -115,7 +117,7 @@ class TestScript(BaseScript):
         await self.checkpoint("end")
         self.log.info("Run succeeded")
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         self.log.info("Cleanup started")
         if self.config.fail_cleanup:
             raise salobj.ExpectedError(

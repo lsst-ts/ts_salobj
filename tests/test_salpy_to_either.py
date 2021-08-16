@@ -43,20 +43,20 @@ index_gen = salobj.index_generator()
 
 
 class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"
         self.index = next(index_gen)
 
     @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
-    async def test_salpy_remote_salobj_controller(self):
+    async def test_salpy_remote_salobj_controller(self) -> None:
         await self.check_salpy_remote("minimal_salobj_controller.py")
 
     @unittest.skipIf(SALPY_Test is None, "Could not import SALPY_Test")
-    async def test_salpy_remote_salpy_controller(self):
+    async def test_salpy_remote_salpy_controller(self) -> None:
         await self.check_salpy_remote("minimal_salpy_controller.py")
 
-    async def check_salpy_remote(self, exec_name):
+    async def check_salpy_remote(self, exec_name: str) -> None:
         # Create at least the scalars telemetry reader before creating
         # the subprocess, to be sure the remote sees telemetry from the
         # subprocess (telemetry is volatile, so has no historical data).
@@ -78,7 +78,7 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
 
         try:
 
-            async def get_logLevel():
+            async def get_logLevel() -> salobj.BaseDdsDataType:
                 data = SALPY_Test.Test_logevent_logLevelC()
                 while True:
                     retcode = manager.getEvent_logLevel(data)
@@ -88,7 +88,7 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
                         raise RuntimeError(f"Unexpected return code {retcode}")
                     await asyncio.sleep(0.01)
 
-            async def get_scalars():
+            async def get_scalars() -> salobj.BaseDdsDataType:
                 data = SALPY_Test.Test_scalarsC()
                 while True:
                     retcode = manager.getNextSample_scalars(data)
@@ -98,7 +98,7 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
                         raise RuntimeError(f"Unexpected return code {retcode}")
                     await asyncio.sleep(0.01)
 
-            async def send_setLogLevel(level):
+            async def send_setLogLevel(level: int) -> salobj.AckCmdDataType:
                 done_ack_codes = frozenset(
                     (
                         SALPY_Test.SAL__CMD_ABORTED,

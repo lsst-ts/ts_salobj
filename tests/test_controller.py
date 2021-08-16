@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import typing
 import unittest
 
 import numpy as np
@@ -41,21 +42,21 @@ class ControllerWithDoMethods(salobj.Controller):
         methods.
     """
 
-    def __init__(self, command_names):
+    def __init__(self, command_names: typing.Iterable[str]) -> None:
         index = next(index_gen)
         for name in command_names:
             setattr(self, f"do_{name}", self.mock_do_method)
         super().__init__("Test", index, do_callbacks=True)
 
-    def mock_do_method(self, *args, **kwargs):
+    def mock_do_method(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         pass
 
 
 class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
 
-    async def test_do_callbacks_false(self):
+    async def test_do_callbacks_false(self) -> None:
         index = next(index_gen)
         async with salobj.Controller("Test", index, do_callbacks=False) as controller:
             command_names = controller.salinfo.command_names
@@ -66,7 +67,7 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual(controller.salinfo.identity, f"Test:{index}")
 
-    async def test_do_callbacks_true(self):
+    async def test_do_callbacks_true(self) -> None:
         index = next(index_gen)
         async with salobj.Domain() as domain, salobj.SalInfo(
             domain=domain, name="Test", index=index
