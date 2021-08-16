@@ -36,6 +36,7 @@ import yaml
 
 from . import base
 from . import controller
+from .remote import Remote
 from . import type_hints
 from . import validator
 from lsst.ts.idl.enums.Script import (
@@ -49,7 +50,7 @@ from lsst.ts.idl.enums.Script import (
 HEARTBEAT_INTERVAL = 5  # seconds
 
 
-def _make_remote_name(remote):
+def _make_remote_name(remote: Remote) -> str:
     """Make a remote name from a remote, for output as script metadata.
 
     Parameters
@@ -67,7 +68,7 @@ def _make_remote_name(remote):
 class StateType:
     """A class to make mypy happy with BaseScript.state"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.state: ScriptState = ScriptState.UNKNOWN
         self.last_checkpoint: str = ""
         self.reason: str = ""
@@ -163,7 +164,9 @@ class BaseScript(controller.Controller, abc.ABC):
         )
 
     @classmethod
-    def make_from_cmd_line(cls, descr=None) -> typing.Union[BaseScript, None]:
+    def make_from_cmd_line(
+        cls, descr: typing.Optional[str] = None
+    ) -> typing.Union[BaseScript, None]:
         """Make a script from command-line arguments.
 
         Return None if ``--schema`` specified.
@@ -375,7 +378,7 @@ class BaseScript(controller.Controller, abc.ABC):
         # self.done_task is handled by Controller.close
 
     @abc.abstractmethod
-    async def configure(self, config) -> None:
+    async def configure(self, config: types.SimpleNamespace) -> None:
         """Configure the script.
 
         Parameters
@@ -391,7 +394,7 @@ class BaseScript(controller.Controller, abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def set_metadata(self, metadata: typing.Any) -> None:
+    def set_metadata(self, metadata: type_hints.BaseDdsDataType) -> None:
         """Set metadata fields in the provided struct, given the
         current configuration.
 

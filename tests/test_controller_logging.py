@@ -23,6 +23,7 @@ import asyncio
 import logging
 import os
 import pathlib
+import typing
 import unittest
 
 import numpy as np
@@ -45,18 +46,23 @@ TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 class FailedCallbackCsc(salobj.TestCsc):
     """A CSC whose do_wait command raises a RuntimeError"""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         super().__init__(*args, **kwargs)
         self.exc_msg = "do_wait raised an exception on purpose"
 
-    async def do_wait(self, data):
+    async def do_wait(self, data: salobj.BaseDdsDataType) -> None:
         raise RuntimeError(self.exc_msg)
 
 
 class ControllerLoggingTestCase(
     salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase
 ):
-    def basic_make_csc(self, initial_state, config_dir, simulation_mode):
+    def basic_make_csc(
+        self,
+        initial_state: typing.Union[salobj.State, int],
+        config_dir: typing.Union[str, pathlib.Path, None],
+        simulation_mode: int,
+    ) -> salobj.BaseCsc:
         return FailedCallbackCsc(
             initial_state=initial_state,
             index=self.next_index(),
@@ -64,7 +70,7 @@ class ControllerLoggingTestCase(
             simulation_mode=simulation_mode,
         )
 
-    async def test_logging(self):
+    async def test_logging(self) -> None:
         async with self.make_csc(
             initial_state=salobj.State.ENABLED, config_dir=TEST_CONFIG_DIR
         ):

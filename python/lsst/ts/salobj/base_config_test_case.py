@@ -74,7 +74,7 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         csc_package_root: type_hints.PathType,
         sal_name: typing.Optional[str] = None,
         schema_subpath: typing.Optional[str] = None,
-    ):
+    ) -> typing.Dict[str, str]:
         """Get the config schema for a package, as a dict.
 
         The schema is expected to be:

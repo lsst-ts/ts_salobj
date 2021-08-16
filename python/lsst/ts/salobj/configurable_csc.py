@@ -193,7 +193,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
         Parameters
         ----------
-        config_dir : `str`, `bytes`, or `pathlib.Path`
+        config_dir : `str`, `pathlib.Path`
             New configuration directory.
 
         Returns
@@ -209,7 +209,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         return self._config_dir
 
     @config_dir.setter
-    def config_dir(self, config_dir) -> None:
+    def config_dir(self, config_dir: typing.Union[str, pathlib.Path]) -> None:
         config_dir = pathlib.Path(config_dir).resolve()
         if not config_dir.is_dir():
             raise ValueError(

@@ -23,6 +23,7 @@ import enum
 import os
 import pathlib
 import sys
+import typing
 import unittest
 
 import numpy as np
@@ -41,12 +42,12 @@ class NoIndexCsc(salobj.TestCsc):
 
     def __init__(
         self,
-        arg1,
-        arg2,
-        initial_state=salobj.State.STANDBY,
-        settings_to_apply="",
-        config_dir=None,
-    ):
+        arg1: typing.Any,
+        arg2: typing.Any,
+        initial_state: salobj.State = salobj.State.STANDBY,
+        settings_to_apply: str = "",
+        config_dir: typing.Union[str, pathlib.Path, None] = None,
+    ) -> None:
         super().__init__(
             index=next(index_gen),
             initial_state=initial_state,
@@ -75,14 +76,14 @@ class TestCscSettingsRequiredNoCmdLineState(salobj.TestCsc):
 
 
 class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
         self.original_argv = sys.argv[:]
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         sys.argv = self.original_argv
 
-    async def test_no_index(self):
+    async def test_no_index(self) -> None:
         for index in (0, None):
             with self.subTest(index=index):
                 sys.argv = [sys.argv[0]]
@@ -95,14 +96,14 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(csc.arg2, arg2)
                     await csc.close()
 
-    async def test_specified_index(self):
+    async def test_specified_index(self) -> None:
         sys.argv = [sys.argv[0]]
         index = next(index_gen)
         async with salobj.TestCsc.make_from_cmd_line(index=index) as csc:
             self.assertEqual(csc.salinfo.index, index)
             await csc.close()
 
-    async def test_enum_index(self):
+    async def test_enum_index(self) -> None:
         class SalIndex(enum.IntEnum):
             ONE = 1
             TWO = 2
@@ -114,7 +115,7 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(csc.salinfo.index, index)
                 await csc.close()
 
-    async def test_index_from_argument_and_default_config_dir(self):
+    async def test_index_from_argument_and_default_config_dir(self) -> None:
         index = next(index_gen)
         sys.argv = [sys.argv[0], str(index)]
         async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
@@ -128,7 +129,7 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(csc.config_dir, desired_config_dir)
             await csc.close()
 
-    async def test_config_from_argument(self):
+    async def test_config_from_argument(self) -> None:
         index = next(index_gen)
         sys.argv = [sys.argv[0], str(index), "--config", str(TEST_CONFIG_DIR)]
         async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
@@ -136,7 +137,7 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(csc.config_dir, TEST_CONFIG_DIR)
             await csc.close()
 
-    async def test_state_good(self):
+    async def test_state_good(self) -> None:
         """Test valid --state and --settings arguments."""
         for state, settings in (
             (salobj.State.OFFLINE, ""),
@@ -170,7 +171,7 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
                     self.fail("Unhandled case.")
                 await csc.close()
 
-    async def test_state_bad(self):
+    async def test_state_bad(self) -> None:
         """Test invalid --state or --settings arguments."""
         # The only allowed --state values are "standby", "disabled",
         # and "enabled".

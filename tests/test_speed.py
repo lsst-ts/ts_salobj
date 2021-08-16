@@ -23,6 +23,7 @@ import asyncio
 import contextlib
 import pathlib
 import time
+import typing
 import unittest
 
 import ddsutil
@@ -50,7 +51,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
     """
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         if verify is None:
             return
         metrics = (
@@ -94,26 +95,28 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 unit=u.ct / u.second,
             ),
         )
-        cls.verify_job = verify.Job(metrics=metrics)
+        cls.verify_job = verify.Job(metrics=metrics)  # type: ignore
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         if verify is None:
             return
         measurements_dir = pathlib.Path(__file__).resolve().parent / "measurements"
-        cls.verify_job.write(measurements_dir / "speed.json")
+        cls.verify_job.write(measurements_dir / "speed.json")  # type: ignore
 
-    def setUp(self):
+    def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"
         self.index = next(index_gen)
 
-    def insert_measurement(self, measurement):
-        measurement.metric = self.verify_job.metrics[measurement.metric_name]
-        self.verify_job.measurements.insert(measurement)
+    def insert_measurement(self, measurement: verify.Measurement) -> None:
+        measurement.metric = self.verify_job.metrics[measurement.metric_name]  # type: ignore
+        self.verify_job.measurements.insert(measurement)  # type: ignore
 
     @contextlib.asynccontextmanager
-    async def make_remote_and_topic_writer(self):
+    async def make_remote_and_topic_writer(
+        self,
+    ) -> typing.AsyncGenerator[salobj.Remote, None]:
         """Make a remote and launch a topic writer in a subprocess.
 
         Return the remote.
@@ -136,7 +139,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 print("Warning: killing the topic writer")
                 process.kill()
 
-    async def test_class_creation_speed(self):
+    async def test_class_creation_speed(self) -> None:
         """Test the speed of creating topic classes on the fly."""
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain, "Test", index=self.index)
@@ -162,7 +165,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                     )
                 )
 
-    async def test_command_speed(self):
+    async def test_command_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
             await remote.evt_summaryState.next(flush=False, timeout=60)
             t0 = time.monotonic()
@@ -182,7 +185,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                     )
                 )
 
-    async def test_read_speed(self):
+    async def test_read_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
             await salobj.set_summary_state(
                 remote=remote,
@@ -252,7 +255,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                     )
                 )
 
-    async def test_write_speed(self):
+    async def test_write_speed(self) -> None:
         async with salobj.Controller(
             name="Test", index=self.index, do_callbacks=False
         ) as controller:

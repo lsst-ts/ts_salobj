@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+# type: ignore
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.

@@ -22,6 +22,7 @@
 import itertools
 import pathlib
 import unittest
+import typing
 
 from lsst.ts import salobj
 
@@ -34,7 +35,13 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data" / "config"
 
 
 class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
-    def basic_make_csc(self, initial_state, config_dir, simulation_mode):
+    def basic_make_csc(
+        self,
+        initial_state: typing.Union[salobj.State, int],
+        config_dir: typing.Union[str, pathlib.Path, None],
+        simulation_mode: int,
+    ) -> salobj.BaseCsc:
+
         return salobj.TestCsc(
             self.next_index(),
             initial_state=initial_state,
@@ -42,7 +49,7 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             simulation_mode=simulation_mode,
         )
 
-    async def test_set_summary_state_valid(self):
+    async def test_set_summary_state_valid(self) -> None:
         """Test set_summary_state with valid states."""
         for initial_state, final_state in itertools.product(salobj.State, salobj.State):
             if initial_state in (salobj.State.OFFLINE, salobj.State.FAULT):
@@ -56,7 +63,7 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     initial_state=initial_state, final_state=final_state
                 )
 
-    async def test_set_summary_state_invalid_state(self):
+    async def test_set_summary_state_invalid_state(self) -> None:
         """Test set_summary_state with invalid states."""
         for initial_state in salobj.State:
             if initial_state in (salobj.State.OFFLINE, salobj.State.FAULT):
@@ -80,7 +87,9 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                                 timeout=STD_TIMEOUT,
                             )
 
-    async def check_set_summary_state(self, initial_state, final_state):
+    async def check_set_summary_state(
+        self, initial_state: salobj.State, final_state: salobj.State
+    ) -> None:
         """Check set_summary_state for valid state transitions.
 
         Parameters

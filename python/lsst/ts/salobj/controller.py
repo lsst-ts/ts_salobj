@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -22,6 +24,7 @@
 __all__ = ["Controller", "OPTIONAL_COMMAND_NAMES"]
 
 import asyncio
+import types
 import typing
 
 from . import base
@@ -472,14 +475,19 @@ class Controller:
                 raise RuntimeError(f"Can't find method {do_method_name}")
             else:
 
-                def reject_command(data):
+                def reject_command(data: typing.Any) -> None:
                     raise base.ExpectedError("Not supported by this CSC")
 
                 cmd.callback = reject_command
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Controller:
         await self.start_task
         return self
 
-    async def __aexit__(self, type, value, traceback):
+    async def __aexit__(
+        self,
+        type: typing.Optional[typing.Type[BaseException]],
+        value: typing.Optional[BaseException],
+        traceback: typing.Optional[types.TracebackType],
+    ) -> None:
         await self.close()

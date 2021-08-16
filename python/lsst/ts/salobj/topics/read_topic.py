@@ -711,7 +711,7 @@ class ReadTopic(BaseTopic):
     def _queue_data(
         self,
         data_list: typing.Sequence[type_hints.BaseDdsDataType],
-        loop: asyncio.AbstractEventLoop,
+        loop: typing.Optional[asyncio.AbstractEventLoop],
     ) -> None:
         """Queue multiple one or more messages.
 
