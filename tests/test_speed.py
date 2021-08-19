@@ -25,16 +25,27 @@ import pathlib
 import time
 import typing
 import unittest
+import warnings
 
 import ddsutil
 import astropy.units as u
 
+from unittest.mock import MagicMock
+
+from lsst.ts import salobj
+
+
+class MockVerify:
+    Measurement = MagicMock()
+    Metric = MagicMock()
+    Job = MagicMock()
+
+
 try:
     from lsst import verify
 except ImportError:
-    verify = None
-
-from lsst.ts import salobj
+    warnings.warn("verify could not be imported; measurements will not be uploaded")
+    verify = MockVerify
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -52,8 +63,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        if verify is None:
-            return
+
         metrics = (
             verify.Metric(
                 name="salobj.CreateClasses",
@@ -99,8 +109,6 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        if verify is None:
-            return
         measurements_dir = pathlib.Path(__file__).resolve().parent / "measurements"
         cls.verify_job.write(measurements_dir / "speed.json")  # type: ignore
 
@@ -158,12 +166,11 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             print(
                 f"Created {creation_speed:0.1f} topic classes/sec ({ntopics} topic classes)"
             )
-            if verify is not None:
-                self.insert_measurement(
-                    verify.Measurement(
-                        "salobj.CreateClasses", creation_speed * u.ct / u.second
-                    )
+            self.insert_measurement(
+                verify.Measurement(
+                    "salobj.CreateClasses", creation_speed * u.ct / u.second
                 )
+            )
 
     async def test_command_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
@@ -178,12 +185,11 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 f"Issued {command_speed:0.0f} fault commands/second ({num_commands} commands)"
             )
 
-            if verify is not None:
-                self.insert_measurement(
-                    verify.Measurement(
-                        "salobj.IssueCommands", command_speed * u.ct / u.second
-                    )
+            self.insert_measurement(
+                verify.Measurement(
+                    "salobj.IssueCommands", command_speed * u.ct / u.second
                 )
+            )
 
     async def test_read_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
@@ -210,13 +216,12 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 f"lost {nlost} samples"
             )
 
-            if verify is not None:
-                self.insert_measurement(
-                    verify.Measurement(
-                        "salobj.ReadTest_arrays",
-                        arrays_read_speed * u.ct / u.second,
-                    )
+            self.insert_measurement(
+                verify.Measurement(
+                    "salobj.ReadTest_arrays",
+                    arrays_read_speed * u.ct / u.second,
                 )
+            )
 
             await salobj.set_summary_state(
                 remote=remote, state=salobj.State.STANDBY, timeout=STD_TIMEOUT
@@ -247,13 +252,12 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 f"lost {nlost} samples"
             )
 
-            if verify is not None:
-                self.insert_measurement(
-                    verify.Measurement(
-                        "salobj.ReadTest_logLevel",
-                        log_level_read_speed * u.ct / u.second,
-                    )
+            self.insert_measurement(
+                verify.Measurement(
+                    "salobj.ReadTest_logLevel",
+                    log_level_read_speed * u.ct / u.second,
                 )
+            )
 
     async def test_write_speed(self) -> None:
         async with salobj.Controller(
@@ -273,12 +277,11 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 f"Wrote {arrays_write_speed:0.0f} arrays samples/second ({num_samples} samples)"
             )
 
-            if verify is not None:
-                self.insert_measurement(
-                    verify.Measurement(
-                        "salobj.WriteTest_arrays", arrays_write_speed * u.ct / u.second
-                    )
+            self.insert_measurement(
+                verify.Measurement(
+                    "salobj.WriteTest_arrays", arrays_write_speed * u.ct / u.second
                 )
+            )
 
             t0 = time.monotonic()
             for i in range(num_samples):
@@ -290,13 +293,12 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 f"Wrote {log_level_write_speed:0.0f} logLevel samples/second ({num_samples} samples)"
             )
 
-            if verify is not None:
-                self.insert_measurement(
-                    verify.Measurement(
-                        "salobj.WriteTest_logLevel",
-                        log_level_write_speed * u.ct / u.second,
-                    )
+            self.insert_measurement(
+                verify.Measurement(
+                    "salobj.WriteTest_logLevel",
+                    log_level_write_speed * u.ct / u.second,
                 )
+            )
 
 
 if __name__ == "__main__":
