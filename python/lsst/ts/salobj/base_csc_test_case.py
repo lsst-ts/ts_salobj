@@ -24,7 +24,6 @@ import abc
 import asyncio
 import contextlib
 import enum
-import logging
 import pathlib
 import shutil
 import subprocess
@@ -134,10 +133,6 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Extra keyword arguments for `basic_make_csc`.
             For a configurable CSC this may include ``settings_to_apply``,
             especially if ``initial_state`` is DISABLED or ENABLED.
-
-        Notes
-        -----
-        Adds a logging.StreamHandler if one is not already present.
         """
         testutils.set_random_lsst_dds_partition_prefix()
         items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
@@ -149,8 +144,6 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 **kwargs,
             )
             items_to_close.append(self.csc)
-            if len(self.csc.log.handlers) < 2:
-                self.csc.log.addHandler(logging.StreamHandler())
             self.remote = Remote(
                 domain=self.csc.domain,
                 name=self.csc.salinfo.name,
