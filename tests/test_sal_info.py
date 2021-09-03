@@ -24,6 +24,7 @@ import logging
 import os
 import unittest
 
+from lsst.ts import utils
 from lsst.ts import salobj
 
 # Long enough to perform any reasonable operation
@@ -173,7 +174,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
         # Test that LSST_DDS_DOMAIN is ignored, with a warning,
         # if both that and LSST_DDS_PARTITION_PREFIX are defined.
-        with salobj.modify_environ(LSST_DDS_DOMAIN=new_lsst_dds_domain):
+        with utils.modify_environ(LSST_DDS_DOMAIN=new_lsst_dds_domain):
             async with salobj.Domain() as domain:
                 with self.assertWarnsRegex(
                     DeprecationWarning,
@@ -186,7 +187,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
         # Test that LSST_DDS_DOMAIN is used, with a warning,
         # if LSST_DDS_PARTITION_PREFIX is not defined.
-        with salobj.modify_environ(
+        with utils.modify_environ(
             LSST_DDS_PARTITION_PREFIX=None, LSST_DDS_DOMAIN=new_lsst_dds_domain
         ):
             async with salobj.Domain() as domain:
@@ -200,9 +201,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_lsst_dds_domain_required(self) -> None:
         # Delete LSST_DDS_PARTITION_PREFIX and (if defined) LSST_DDS_DOMAIN.
         # This should raise an error.
-        with salobj.modify_environ(
-            LSST_DDS_PARTITION_PREFIX=None, LSST_DDS_DOMAIN=None
-        ):
+        with utils.modify_environ(LSST_DDS_PARTITION_PREFIX=None, LSST_DDS_DOMAIN=None):
             async with salobj.Domain() as domain:
                 with self.assertRaises(RuntimeError):
                     salobj.SalInfo(domain=domain, name="Test", index=1)

@@ -30,6 +30,7 @@ import warnings
 
 import yaml
 
+from lsst.ts import utils
 from lsst.ts import salobj
 from lsst.ts.idl.enums.Script import ScriptState
 
@@ -191,7 +192,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         but that information is not available.
         """
         for master_priority in ("21", None):
-            with salobj.modify_environ(
+            with utils.modify_environ(
                 **{salobj.MASTER_PRIORITY_ENV_VAR: master_priority}
             ):
                 initial_environ = os.environ.copy()

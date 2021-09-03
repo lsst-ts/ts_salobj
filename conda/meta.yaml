@@ -25,6 +25,7 @@ test:
     - ts-ddsconfig
     - ts-dds
     - ts-idl {{ idl_version }}
+    - ts-utils
   source_files:
     - python
     - bin
@@ -56,3 +57,4 @@ requirements:
     - moto
     - ts-ddsconfig
     - ts-dds
+    - ts-utils
