@@ -120,6 +120,7 @@ Most CSCs can be configured.
         * If your CSC does not support simulation then set ``valid_simulation_modes = [0]``.
           The value 0 is always used for normal operation.
         * To implement nonzero simulation modes see :ref:`simulation mode<lsst.ts.salobj-simulation_mode>`.
+
     * ``simulation_help`` (str): help for the ``--simulate`` command-line argument.
       Please provide this if your CSC has more than 2 valid values for simulation_mode
       (e.g. more than 0 for normal operation and 1 for simulation).
@@ -308,6 +309,7 @@ Unit Testing your CSC
     * In ``tearDown`` Do not assume that `BaseCscTestCase.basic_make_csc` was called, because some test methods may not need to construct a CSC.
       If you add attributes in `BaseCscTestCase.basic_make_csc` then you must check that they exist in ``tearDown``.
       A simple way to handle this is to add a ``setUp`` method and initialize any such attributes to `None`, then in ``tearDown`` only perform cleanup if the attributes are not ``None``.
+
 * In each test that needs a CSC call ``async with self.make_csc(...):`` to construct:
 
   * ``self.csc``: the CSC

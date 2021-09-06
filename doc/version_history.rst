@@ -17,6 +17,7 @@ Changes:
   * ``angle_wrap_center`` and similar angle functions.
   * ``make_done_future``.
   * test utilities ``assertAnglesAlmostEqual`` (called ``assert_angles_almost_equal`` in ts_utils) and ``modify_environ``.
+
 * Added temporary wrappers for the code that was moved, for backwards compatibility.
   These wrappers issue a `DepreciationWarning` warning and will be removed in ts_salobj v7.
 
@@ -457,6 +458,7 @@ Changes:
       The old method remains, for backwards compatibility, but is deprecated.
     * Round telemetry to 2 digits by default, instead of 4.
       That should greatly reduce the need to write custom code for CSC commanders.
+
 * Improve `Controller` to fail in the constructor if the ``authList`` event is missing.
   The event was already required; this change simply reports the error earlier and more clearly.
 
@@ -554,6 +556,7 @@ How to update your Code. Except as noted, all changes are backwards compatible w
     (so it *must* have settings specified in the ``start`` command)
     specify class variable ``settings_required = True``.
     This is rare, but Watcher is one such CSC.
+
 * If you have a configurable CSC, add constructor argument ``settings_to_apply=""`` and pass it (by name) to ``super().__init__``.
   This is essential if you set ``enable_cmdline_state = True``, and useful for unit tests even if not.
   This change is *not* backwards compatible with ts_salobj 6.0.
@@ -612,6 +615,7 @@ Changes:
       that prints the version and quits.
       Otherwise do not add that command-line argument.
       Note: formerly the ``--version`` command-line argument was always present, but returned the version of ts_salobj.
+
 * Update "Writing a CSC" documentation accordingly.
 * Improved error handling in `BaseCscTestCase.make_csc`.
   Fails gracefully if the CSC or Remote cannot be constructed.
@@ -664,6 +668,7 @@ Backward Incompatible Changes:
   It is very unlikely that any code outside of ts_salobj was using this.
 * Removed ``bin/purge_topics.py`` command-line script, because it is no longer needed.
 * Removed many deprecated features:
+
     * Removed ``main`` method from `BaseCsc` and `BaseScript`.
       Call `BaseCsc.amain` or `BaseScript.amain` instead, e.g. ``asyncio.run(MyCSC(index=...))`` or ``asyncio.run(MyScript.amain())``.
     * Removed ``initial_simulation_mode`` argument from `BaseCsc` and `ConfigurableCsc`.
@@ -687,6 +692,7 @@ Deprecations:
     Start your simulator in whichever other method seems most appropriate.
   * Deprecated the need to override `BaseCsc.add_arguments` and `BaseCsc.add_kwargs_from_args` to add the ``--simulate`` command-line argument.
     This argument is added automatically if ``valid_simulation_modes`` has more than one entry.
+
 * Renamed environment variable ``LSST_DDS_DOMAIN`` to ``LSST_DDS_PARTITION_PREFIX``.
   The old environment variable is used, with a deprecation warning, if the new one is not defined.
 * Renamed `SalInfo.makeAckCmd` to `SalInfo.make_ackcmd`.
