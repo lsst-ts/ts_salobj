@@ -39,6 +39,17 @@ pipeline {
                 }
             }
         }
+        stage("Checkout ts_utils") {
+            steps {
+                script {
+                    sh "docker exec -u saluser \${container_name} sh -c \"" +
+                        "source ~/.setup.sh && " +
+                        "cd /home/saluser/repos/ts_utils && " +
+                        "/home/saluser/.checkout_repo.sh \${work_branches} && " +
+                        "git pull\""
+                }
+            }
+        }
         stage("Checkout ts_ddsconfig") {
             steps {
                 script {
@@ -50,7 +61,7 @@ pipeline {
                 }
             }
         }
-        stage("Checkout sal") {
+        stage("Checkout ts_sal") {
             steps {
                 script {
                     sh "docker exec -u saluser \${container_name} sh -c \"" +
@@ -61,7 +72,7 @@ pipeline {
                 }
             }
         }
-        stage("Checkout xml") {
+        stage("Checkout ts_xml") {
             steps {
                 script {
                     sh "docker exec -u saluser \${container_name} sh -c \"" +
@@ -72,7 +83,7 @@ pipeline {
                 }
             }
         }
-        stage("Checkout IDL") {
+        stage("Checkout ts_idl") {
             steps {
                 script {
                     sh "docker exec -u saluser \${container_name} sh -c \"" +

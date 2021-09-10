@@ -60,3 +60,4 @@ You may generate new IDL files using the ``make_idl_files.py`` command-line scri
 .. _ts_ddsconfig environment variables: https://ts-ddsconfig.lsst.io/#environment-variables-in-ospl-configuration-files
 .. _ts_idl: https://github.com/lsst-ts/ts_idl
 .. _ts_sal: https://github.com/lsst-ts/ts_sal
+.. _ts_utils: https://github.com/lsst-ts/ts_utils
