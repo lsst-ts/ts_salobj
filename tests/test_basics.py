@@ -24,14 +24,15 @@ import getpass
 import os
 import random
 import socket
-import time
 import unittest
 
 import astropy.time
 from astropy.coordinates import Angle
 import astropy.units as u
 import numpy as np
+import pytest
 
+from lsst.ts import utils
 from lsst.ts import salobj
 
 
@@ -247,7 +248,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             new_key0: "bar",
             new_key1: None,
         }
-        with salobj.modify_environ(**kwargs):
+        with self.assertWarns(DeprecationWarning), salobj.modify_environ(**kwargs):
             for name, value in kwargs.items():
                 if value is None:
                     self.assertNotIn(name, os.environ)
@@ -265,7 +266,9 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(RuntimeError):
                 bad_kwargs = kwargs.copy()
                 bad_kwargs[new_key1] = bad_value  # type: ignore
-                with salobj.modify_environ(**bad_kwargs):
+                with self.assertWarns(DeprecationWarning), salobj.modify_environ(
+                    **bad_kwargs
+                ):
                     pass
             self.assertEqual(os.environ, original_environ)
 
@@ -331,6 +334,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(ValueError):
                     salobj.name_to_name_index(bad_name)
 
+    # DM-31660: Remove this test of deprecated code
     def check_tai_from_utc(self, utc_ap: astropy.time.Time) -> None:
         """Check tai_from_utc at a specific UTC date.
 
@@ -365,21 +369,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         tai7 = salobj.tai_from_utc(utc_ap)
         self.assertAlmostEqual(tai, tai7, delta=1e-6)
 
-    def test_leap_second_table(self) -> None:
-        """Check that the leap second table is set and an update scheduled."""
-        self.assertIsNotNone(salobj.base._UTC_LEAP_SECOND_TABLE)
-        update_timer = salobj.base._LEAP_SECOND_TABLE_UPDATE_TIMER
-        self.assertTrue(update_timer.is_alive())
-        self.assertTrue(update_timer.daemon)
-        self.assertIs(update_timer.function, salobj.base._update_leap_second_table)
-        update_margin = (
-            salobj.base._LEAP_SECOND_TABLE_UPDATE_MARGIN_DAYS * salobj.SECONDS_PER_DAY
-        )
-        current_duration = (
-            time.time() - salobj.base._UTC_LEAP_SECOND_TABLE[-1][0] - update_margin
-        )
-        self.assertGreater(update_timer.interval, current_duration)
-
+    # DM-31660: Remove this test of deprecated code
     def test_tai_from_utc(self) -> None:
         """Test tai_from_utc."""
         # Check tai_from_utc near leap second transition at UTC = 2017-01-01
@@ -394,199 +384,123 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             (utc0_ap + 1 * u.second),
         ):
             with self.subTest(utc_ap=utc_ap):
-                self.check_tai_from_utc(utc_ap=utc_ap)
+                tai1 = utils.tai_from_utc(utc_ap)
+                tai2 = salobj.tai_from_utc(utc_ap)
+                assert tai1 == tai2
 
-        # Test values near the limits of the leap second table, which starts
-        # on 1972-01-01T00:00:00 and ends whenever the table expires.
-        first_utc_unix, first_tai_minus_utc = salobj.base._UTC_LEAP_SECOND_TABLE[0]
-        desired_first_utc_unix = astropy.time.Time(
-            "1972-01-01", scale="utc", format="iso"
-        ).unix
-        desired_first_tai_minus_utc = 10
-        self.assertAlmostEqual(first_utc_unix, desired_first_utc_unix)
-        self.assertAlmostEqual(first_tai_minus_utc, desired_first_tai_minus_utc)
-        first_tai_unix = salobj.tai_from_utc(first_utc_unix)
-        self.assertAlmostEqual(first_tai_unix, first_utc_unix + first_tai_minus_utc)
-        with self.assertRaises(ValueError):
-            salobj.tai_from_utc(first_utc_unix - 0.001)
-
-        last_utc_unix, last_tai_minus_utc = salobj.base._UTC_LEAP_SECOND_TABLE[-1]
-        # The last UTC that can be converted to TAI is a day earlier
-        # than the last entry in the leap second table,
-        # due to the possible 1 day smearing on the day before a leap second.
-        last_usable_utc_unix = last_utc_unix - salobj.SECONDS_PER_DAY
-        # last_utc_unix -= salobj.SECONDS_PER_DAY
-        last_tai_unix = salobj.tai_from_utc(last_usable_utc_unix)
-        # Final value of TAI-UTC in the table.
-        # Note that the last entry in the table has TAI-UTC = None.
-        final_tai_minus_utc = salobj.base._UTC_LEAP_SECOND_TABLE[-1][1]
-        self.assertAlmostEqual(
-            last_tai_unix - last_usable_utc_unix, final_tai_minus_utc
-        )
-        with self.assertRaises(ValueError):
-            salobj.tai_from_utc(last_usable_utc_unix + 0.001)
-
+    # DM-31660: Remove this test of deprecated code
     def test_utc_from_tai_unix(self) -> None:
         # Check utc_from_tai_unix near leap second transition at
         # UTC = 2017-01-01 when leap seconds went from 36 to 37.
         utc0 = astropy.time.Time("2017-01-01", scale="utc", format="iso").unix
-        tai_minus_utc_before = 36
         tai_minus_utc_after = 37
         tai0 = utc0 + tai_minus_utc_after
-        desired_tai_minus_utc_after = salobj.tai_from_utc_unix(utc0) - utc0
-        self.assertAlmostEqual(tai_minus_utc_after, desired_tai_minus_utc_after)
         # Don't test right at tai0 because roundoff error could cause failure;
         # utc_from_tai_unix is discontinuous at a leap second tranition.
         for tai in (
-            (tai0 - 0.5 * salobj.SECONDS_PER_DAY),
-            (tai0 - 1),
-            (tai0 - 0.001),
-            (tai0 + 0.001),
-            (tai0 + 1),
-            (tai0 + 0.5 * salobj.SECONDS_PER_DAY),
+            tai0 - 0.5 * utils.SECONDS_PER_DAY,
+            tai0 - 1,
+            tai0 - 0.001,
+            tai0 + 0.001,
+            tai0 + 1,
+            tai0 + 0.5 * utils.SECONDS_PER_DAY,
         ):
-            utc = salobj.utc_from_tai_unix(tai)
-            tai_minus_utc = tai - utc
-            if tai < tai0:
-                self.assertAlmostEqual(tai_minus_utc, tai_minus_utc_before)
-            else:
-                self.assertAlmostEqual(tai_minus_utc, tai_minus_utc_after)
+            utc1 = salobj.utc_from_tai_unix(tai)
+            utc2 = utils.utc_from_tai_unix(tai)
+            assert utc1 == utc2
 
-        # Test values near the limits of the TAI leap second table
-        first_tai_unix, first_tai_minus_utc = salobj.base._TAI_LEAP_SECOND_TABLE[0]
-        first_utc_unix = salobj.utc_from_tai_unix(first_tai_unix)
-        desired_first_tai_minus_utc = 10
-        self.assertAlmostEqual(first_tai_minus_utc, desired_first_tai_minus_utc)
-        self.assertAlmostEqual(
-            first_tai_unix - first_utc_unix, desired_first_tai_minus_utc
-        )
-        with self.assertRaises(ValueError):
-            salobj.utc_from_tai_unix(first_tai_unix - 0.001)
-
-        last_tai_unix, last_tai_minus_utc = salobj.base._TAI_LEAP_SECOND_TABLE[-1]
-        last_utc_unix = salobj.utc_from_tai_unix(last_tai_unix)
-        self.assertAlmostEqual(last_tai_unix - last_utc_unix, last_tai_minus_utc)
-        with self.assertRaises(ValueError):
-            salobj.utc_from_tai_unix(last_tai_unix + 0.001)
-
+    # DM-31660: Remove this test of deprecated code
     def test_current_tai(self) -> None:
-        utc0 = time.time()
-        tai0 = salobj.tai_from_utc(utc0)
-        # salobj.base.current_tai_from_utc uses tai_from_utc,
-        # so it should give the same answer.
-        tai1 = salobj.base.current_tai_from_utc()
-        # salobj.current_tai uses the system TAI clock, if available.
-        # This gives the correct answer (if your operating system
-        # is correctly configured) and can differ from the answer given by
-        # tai_from_utc by as much as a second on the day of a leap second.
-        tai2 = salobj.current_tai()
-        print(f"tai1-tai0={tai1-tai0:0.4f}")
-        # The difference should be much less than 0.1
-        # but pytest can introduce unexpected delays.
-        self.assertLess(abs(tai1 - tai0), 0.1)
-        self.assertGreaterEqual(tai1, tai0)
-        # The difference between the value returned by current_tai
-        # and current_tai_from_utc
-        self.assertLess(abs(tai2 - tai0), 1.1)
-        self.assertIs(type(tai0), float)
-        self.assertIs(type(tai1), float)
-        self.assertIs(type(tai2), float)
+        tai0 = salobj.current_tai()
+        tai1 = utils.current_tai()
+        # Leave plenty of slop because time has jitter on macOS Docker.
+        pytest.approx(tai0, tai1, abs=0.2)
 
+    # DM-31660: Remove this test of deprecated code
     def test_angle_diff(self) -> None:
-        for angle1, angle2, expected_diff in (
-            (5.15, 0, 5.15),
-            (5.21, 359.20, 6.01),
-            (270, -90, 0),
+        for angle1, angle2 in (
+            (5.15, 0),
+            (5.21, 359.20),
+            (270, -90),
         ):
-            with self.subTest(
-                angle1=angle1, angle2=angle2, expected_diff=expected_diff
-            ):
-                diff = salobj.angle_diff(angle1, angle2)
-                self.assertAlmostEqual(diff.deg, expected_diff)
-                diff = salobj.angle_diff(angle2, angle1)
-                self.assertAlmostEqual(diff.deg, -expected_diff)
-                diff = salobj.angle_diff(Angle(angle1, u.deg), angle2)
-                self.assertAlmostEqual(diff.deg, expected_diff)
-                diff = salobj.angle_diff(angle1, Angle(angle2, u.deg))
-                self.assertAlmostEqual(diff.deg, expected_diff)
-                diff = salobj.angle_diff(Angle(angle1, u.deg), Angle(angle2, u.deg))
-                self.assertAlmostEqual(diff.deg, expected_diff)
+            for swap in (False, True):
+                if swap:
+                    angle1, angle2 = angle2, angle1
+                with self.subTest(angle1=angle1, angle2=angle2):
+                    diff1 = utils.angle_diff(angle1, angle2)
+                    with self.assertWarns(DeprecationWarning):
+                        diff2 = salobj.angle_diff(angle1, angle2)
+                    assert diff1 == diff2
 
+    # DM-31660: Remove this test of deprecated code
     def test_angle_wrap_center(self) -> None:
-        for base_angle, expected_result in (
-            (-180.001, 179.999),
-            (-180, -180),
-            (0, 0),
-            (179.999, 179.999),
-            (180, -180),
-        ):
+        for base_angle in (-180, -180, 0, 179, 180):
             for nwraps in (-2, -1, 0, 1, 2):
-                with self.subTest(
-                    base_angle=base_angle,
-                    expected_result=expected_result,
-                    nwraps=nwraps,
-                ):
+                with self.subTest(base_angle=base_angle, nwraps=nwraps):
                     angle = base_angle + 360 * nwraps
-                    result = salobj.angle_wrap_center(angle)
-                    self.assertAlmostEqual(result.deg, expected_result)
-                    result = salobj.angle_wrap_center(Angle(angle, u.deg))
-                    self.assertAlmostEqual(result.deg, expected_result)
+                    with self.assertWarns(DeprecationWarning):
+                        wrapped1 = salobj.angle_wrap_center(angle)
+                    wrapped2 = utils.angle_wrap_center(angle)
+                    assert wrapped1 == wrapped2
 
+    # DM-31660: Remove this test of deprecated code
     def test_angle_wrap_nonnegative(self) -> None:
-        for base_angle, expected_result in (
-            (-0.001, 359.999),
-            (0, 0),
-            (180, 180),
-            (359.999, 359.999),
-            (360, 0),
-        ):
+        for base_angle in (-0, 0, 180, 359, 360):
             for nwraps in (-2, -1, 0, 1, 2):
-                with self.subTest(
-                    base_angle=base_angle,
-                    expected_result=expected_result,
-                    nwraps=nwraps,
-                ):
+                with self.subTest(base_angle=base_angle, nwraps=nwraps):
                     angle = base_angle + 360 * nwraps
-                    result = salobj.angle_wrap_nonnegative(angle)
-                    self.assertAlmostEqual(result.deg, expected_result)
-                    result = salobj.angle_wrap_nonnegative(Angle(angle, u.deg))
-                    self.assertAlmostEqual(result.deg, expected_result)
+                    with self.assertWarns(DeprecationWarning):
+                        wrapped1 = salobj.angle_wrap_nonnegative(angle)
+                    wrapped2 = utils.angle_wrap_nonnegative(angle)
+                    assert wrapped1 == wrapped2
 
+    # DM-31660: Remove this test of deprecated code
     def test_assertAnglesAlmostEqual(self) -> None:
         for angle1, angle2 in ((5.15, 5.14), (-0.20, 359.81), (270, -90.1)):
             epsilon = Angle(1e-15, u.deg)
             with self.subTest(angle1=angle1, angle2=angle2):
-                diff = abs(salobj.angle_diff(angle1, angle2))
+                diff = abs(utils.angle_diff(angle1, angle2))
                 bad_diff = diff - epsilon
                 self.assertGreater(bad_diff.deg, 0)
-                with self.assertRaises(AssertionError):
-                    salobj.assertAnglesAlmostEqual(angle1, angle2, bad_diff)
-                with self.assertRaises(AssertionError):
-                    salobj.assertAnglesAlmostEqual(angle1, angle2, bad_diff.deg)
-                with self.assertRaises(AssertionError):
-                    salobj.assertAnglesAlmostEqual(angle2, angle1, bad_diff)
-                with self.assertRaises(AssertionError):
-                    salobj.assertAnglesAlmostEqual(
-                        Angle(angle1, u.deg), angle2, bad_diff
-                    )
-                with self.assertRaises(AssertionError):
-                    salobj.assertAnglesAlmostEqual(
-                        angle1, Angle(angle2, u.deg), bad_diff
-                    )
-                with self.assertRaises(AssertionError):
-                    salobj.assertAnglesAlmostEqual(
-                        Angle(angle1, u.deg), Angle(angle2, u.deg), bad_diff
-                    )
 
-                good_diff = diff + epsilon
-                salobj.assertAnglesAlmostEqual(angle1, angle2, good_diff)
-                salobj.assertAnglesAlmostEqual(angle1, angle2, good_diff.deg)
-                salobj.assertAnglesAlmostEqual(angle2, angle1, good_diff)
-                salobj.assertAnglesAlmostEqual(Angle(angle1, u.deg), angle2, good_diff)
-                salobj.assertAnglesAlmostEqual(angle1, Angle(angle2, u.deg), good_diff)
-                salobj.assertAnglesAlmostEqual(
-                    Angle(angle1, u.deg), Angle(angle2, u.deg), good_diff
-                )
+                for arg1, arg2 in (
+                    (angle1, angle2),
+                    (angle2, angle1),
+                    (Angle(angle1, u.deg), angle2),
+                    (Angle(angle1, u.deg), Angle(angle2, u.deg)),
+                ):
+                    with self.subTest(arg1=arg1, arg2=arg2):
+                        # Test too-large differences
+                        with self.assertRaises(AssertionError):
+                            utils.assert_angles_almost_equal(
+                                angle1=arg1, angle2=arg2, max_diff=bad_diff
+                            )
+                        with self.assertRaises(AssertionError), self.assertWarns(
+                            DeprecationWarning
+                        ):
+                            salobj.assertAnglesAlmostEqual(
+                                arg1, arg2, max_diff=bad_diff
+                            )
+                        with self.assertRaises(AssertionError), self.assertWarns(
+                            DeprecationWarning
+                        ):
+                            salobj.assertAnglesAlmostEqual(
+                                arg1, arg2, max_diff=bad_diff.deg
+                            )
+
+                        # Test acceptable differences
+                        good_diff = diff + epsilon
+                        utils.assert_angles_almost_equal(
+                            angle1=arg1, angle2=arg2, max_diff=good_diff
+                        )
+                        with self.assertWarns(DeprecationWarning):
+                            salobj.assertAnglesAlmostEqual(
+                                arg1, arg2, max_diff=good_diff
+                            )
+                        with self.assertWarns(DeprecationWarning):
+                            salobj.assertAnglesAlmostEqual(
+                                arg1, arg2, max_diff=good_diff.deg
+                            )
 
 
 if __name__ == "__main__":

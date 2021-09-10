@@ -35,45 +35,31 @@ import random
 import socket
 import subprocess
 import time
-import unittest.mock
 import typing
 import warnings
 
 import astropy.coordinates
-import astropy.units as u
 
+from lsst.ts import utils
 from . import type_hints
-from .base import AckError, AckTimeoutError, angle_diff
+from .base import AckError, AckTimeoutError
 
 
 AngleOrDegType = typing.Union[astropy.coordinates.Angle, float]
 
 
+# DM-31660: Remove this deprecated wrapper
 def assertAnglesAlmostEqual(
     angle1: AngleOrDegType, angle2: AngleOrDegType, max_diff: AngleOrDegType = 1e-5
 ) -> None:
-    """Raise AssertionError if angle1 and angle2 are too different,
-    ignoring wrap.
-
-    Parameters
-    ----------
-    angle1 : `astropy.coordinates.Angle` or `float`
-        Angle 1; if a float then in degrees
-    angle2 : `astropy.coordinates.Angle` or `float`
-        Angle 2; if a float then in degrees
-    max_diff : `astropy.coordinates.Angle` or `float`
-        Maximum allowed difference; if a float then in degrees
-
-    Raises
-    ------
-    AssertionError
-        If `angle_diff` of angle1 and angle2 exceeds max_diff.
-    """
-    diff = abs(angle_diff(angle1, angle2))
-    if diff > astropy.coordinates.Angle(max_diff, u.deg):
-        raise AssertionError(f"{angle1} and {angle2} differ by {diff} > {max_diff}")
+    """Deprecated version of lsst.ts.utils.assert_angles_almost_equal."""
+    warnings.warn(
+        "Use lsst.ts.utils.assert_angles_almost_equal instead", DeprecationWarning
+    )
+    utils.assert_angles_almost_equal(angle1=angle1, angle2=angle2, max_diff=max_diff)
 
 
+# DM-31660: Remove this deprecated wrapper
 @contextlib.contextmanager
 def assertRaisesAckError(
     ack: typing.Optional[int] = None,
@@ -194,56 +180,7 @@ def set_random_lsst_dds_domain() -> None:
 
 @contextlib.contextmanager
 def modify_environ(**kwargs: typing.Any) -> typing.Generator[None, None, None]:
-    """Context manager to temporarily patch os.environ.
-
-    This calls `unittest.mock.patch` and is only intended for unit tests.
-
-    Parameters
-    ----------
-    kwargs : `dict` [`str`, `str` or `None`]
-        Environment variables to set or clear.
-        Each key is the name of an environment variable (with correct case);
-        it need not already exist. Each value must be one of:
-
-        * A string value to set the env variable.
-        * None to delete the env variable, if present.
-
-    Raises
-    ------
-    RuntimeError
-        If any value in kwargs is not of type `str` or `None`.
-
-    Notes
-    -----
-    Example of use::
-
-        from lsst.ts import salobj
-        ...
-        def test_foo(self):
-            set_value = "Value for $ENV_TO_SET"
-            with salobj.modify_environ(
-                HOME=None,  # Delete this env var
-                ENV_TO_SET=set_value,  # Set this env var
-            ):
-                self.assertNotIn("HOME", os.environ)
-                self.assert(os.environ["ENV_TO_SET"], set_value)
-    """
-    bad_value_strs = [
-        f"{name}: {value!r}"
-        for name, value in kwargs.items()
-        if not isinstance(value, str) and value is not None
-    ]
-    if bad_value_strs:
-        raise RuntimeError(
-            "The following arguments are not of type str or None: "
-            + ", ".join(bad_value_strs)
-        )
-
-    new_environ = os.environ.copy()
-    for name, value in kwargs.items():
-        if value is None:
-            new_environ.pop(name, None)
-        else:
-            new_environ[name] = value
-    with unittest.mock.patch("os.environ", new_environ):
+    """Deprecated version of lsst.ts.utils.modify_environ."""
+    warnings.warn("Use lsst.ts.utils.modify_environ instead", DeprecationWarning)
+    with utils.modify_environ(**kwargs):
         yield

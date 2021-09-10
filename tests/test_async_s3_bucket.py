@@ -25,6 +25,7 @@ import unittest
 import astropy.time
 import moto
 
+from lsst.ts import utils
 from lsst.ts import salobj
 
 
@@ -43,7 +44,7 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.bucket.name, self.bucket_name)
 
     async def test_blank_s3_endpoint_url(self) -> None:
-        with salobj.modify_environ(S3_ENDPOINT_URL=""):
+        with utils.modify_environ(S3_ENDPOINT_URL=""):
             bucket = salobj.AsyncS3Bucket(self.bucket_name)
             self.assertIn(
                 "amazon", bucket.service_resource.meta.client.meta.endpoint_url
@@ -51,7 +52,7 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_no_s3_endpoint_url(self) -> None:
         # Clear "S3_ENDPOINT_URL" if it exists.
-        with salobj.modify_environ(S3_ENDPOINT_URL=None):
+        with utils.modify_environ(S3_ENDPOINT_URL=None):
             bucket = salobj.AsyncS3Bucket(self.bucket_name)
             self.assertIn(
                 "amazon", bucket.service_resource.meta.client.meta.endpoint_url
@@ -59,7 +60,7 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_specified_s3_endpoint_url(self) -> None:
         endpoint_url = "http://foo.bar.edu:9000"
-        with salobj.modify_environ(S3_ENDPOINT_URL=endpoint_url):
+        with utils.modify_environ(S3_ENDPOINT_URL=endpoint_url):
             bucket = salobj.AsyncS3Bucket(self.bucket_name)
             self.assertEqual(
                 bucket.service_resource.meta.client.meta.endpoint_url, endpoint_url
@@ -234,7 +235,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             "AWS_SECRET_ACCESS_KEY",
         )
         env_dict = {name: f"arbitrary value for {name}" for name in env_names}
-        with salobj.modify_environ(**env_dict):
+        with utils.modify_environ(**env_dict):
             with moto.mock_s3():
                 for name, my_value in env_dict.items():
                     self.assertNotEqual(os.environ[name], my_value)
