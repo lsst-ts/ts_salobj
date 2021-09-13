@@ -185,6 +185,7 @@ def angle_wrap_nonnegative(
     return utils.angle_wrap_nonnegative(angle)
 
 
+# TODO DM-31660: Remove this deprecated wrapper
 def astropy_time_from_tai_unix(tai_unix: float) -> astropy.time.Time:
     """Get astropy time from TAI in unix seconds.
 
@@ -194,8 +195,10 @@ def astropy_time_from_tai_unix(tai_unix: float) -> astropy.time.Time:
         TAI time as unix seconds, e.g. the time returned by CLOCK_TAI
         on linux systems.
     """
-    tai_mjd = (MJD_MINUS_UNIX_SECONDS + tai_unix) / SECONDS_PER_DAY
-    return astropy.time.Time(tai_mjd, scale="tai", format="mjd")
+    warnings.warn(
+        "Use lsst.ts.utils.astropy_time_from_tai_unix instead", DeprecationWarning
+    )
+    return utils.astropy_time_from_tai_unix(tai_unix)
 
 
 _log = logging.getLogger("lsst.ts.salobj.base")
