@@ -37,22 +37,6 @@ from lsst.ts import utils
 from lsst.ts import salobj
 
 
-def alternate_tai_from_utc_unix(utc_unix: float) -> float:
-    """Compute TAI in unix seconds given UTC in unix seconds.
-
-    Parameters
-    ----------
-    utc_unix : `float`
-
-    This is not the implementation in base.py for two reasons:
-
-    * It is too slow; it slows tests/test_speed.py by a factor of 8.
-    * It blocks while downloading a leap second table.
-    """
-    ap_time = astropy.time.Time(utc_unix, scale="utc", format="unix")
-    return ap_time.tai.mjd * salobj.SECONDS_PER_DAY - salobj.MJD_MINUS_UNIX_SECONDS
-
-
 class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
@@ -159,12 +143,11 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         for dt in (-1, -0.5, -0.1, 0, 0.1, 1):
             with self.subTest(dt=dt):
                 utc_unix = unix_time0 + dt
-                tai_unix = salobj.tai_from_utc(utc_unix)
-                astropy_time1 = salobj.astropy_time_from_tai_unix(tai_unix)
-                self.assertIsInstance(astropy_time1, astropy.time.Time)
-                self.assertEqual(astropy_time1.scale, "tai")
-                tai_unix_round_trip1 = salobj.tai_from_utc(astropy_time1)
-                self.assertAlmostEqual(tai_unix, tai_unix_round_trip1, delta=1e-6)
+                tai_unix = utils.tai_from_utc(utc_unix)
+                with self.assertWarns(DeprecationWarning):
+                    astropy_time1 = salobj.astropy_time_from_tai_unix(tai_unix)
+                astropy_time2 = utils.astropy_time_from_tai_unix(tai_unix)
+                assert astropy_time1 == astropy_time2
 
     async def test_get_opensplice_version(self) -> None:
         ospl_version = salobj.get_opensplice_version()
@@ -344,30 +327,40 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         utc_ap : `astropy.time.Time`
             UTC date as an astropy time.
         """
-        tai = salobj.tai_from_utc(utc_ap.utc.unix)
+        tai = utils.tai_from_utc_unix(utc_ap.utc.unix)
+        with self.assertWarns(DeprecationWarning):
+            tai0 = salobj.tai_from_utc_unix(utc_ap.utc.unix)
+        assert tai == tai0
 
-        tai_alt = alternate_tai_from_utc_unix(utc_ap.utc.unix)
-        self.assertAlmostEqual(tai, tai_alt, delta=1e-6)
+        with self.assertWarns(DeprecationWarning):
+            tai1 = salobj.tai_from_utc(utc_ap.utc.unix)
+        self.assertAlmostEqual(tai, tai1, delta=1e-6)
 
-        tai2 = salobj.tai_from_utc(utc_ap.utc.iso, format="iso")
+        with self.assertWarns(DeprecationWarning):
+            tai2 = salobj.tai_from_utc(utc_ap.utc.iso, format="iso")
         self.assertAlmostEqual(tai, tai2, delta=1e-6)
 
-        tai3 = salobj.tai_from_utc(utc_ap.utc.iso, format=None)
+        with self.assertWarns(DeprecationWarning):
+            tai3 = salobj.tai_from_utc(utc_ap.utc.iso, format=None)
         self.assertAlmostEqual(tai, tai3, delta=1e-6)
 
-        tai4 = salobj.tai_from_utc(utc_ap.utc.mjd, format="mjd")
+        with self.assertWarns(DeprecationWarning):
+            tai4 = salobj.tai_from_utc(utc_ap.utc.mjd, format="mjd")
         self.assertAlmostEqual(tai, tai4, delta=1e-6)
 
         tai_mjd = (tai + salobj.MJD_MINUS_UNIX_SECONDS) / salobj.SECONDS_PER_DAY
         tai_mjd_ap = astropy.time.Time(tai_mjd, scale="tai", format="mjd")
-        tai5 = salobj.tai_from_utc(tai_mjd_ap)
+        with self.assertWarns(DeprecationWarning):
+            tai5 = salobj.tai_from_utc(tai_mjd_ap)
         self.assertAlmostEqual(tai, tai5, delta=1e-6)
 
         tai_iso_ap = astropy.time.Time(utc_ap.tai.iso, scale="tai", format="iso")
-        tai6 = salobj.tai_from_utc(tai_iso_ap)
+        with self.assertWarns(DeprecationWarning):
+            tai6 = salobj.tai_from_utc(tai_iso_ap)
         self.assertAlmostEqual(tai, tai6, delta=1e-6)
 
-        tai7 = salobj.tai_from_utc(utc_ap)
+        with self.assertWarns(DeprecationWarning):
+            tai7 = salobj.tai_from_utc(utc_ap)
         self.assertAlmostEqual(tai, tai7, delta=1e-6)
 
     # DM-31660: Remove this test of deprecated code
@@ -386,7 +379,8 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         ):
             with self.subTest(utc_ap=utc_ap):
                 tai1 = utils.tai_from_utc(utc_ap)
-                tai2 = salobj.tai_from_utc(utc_ap)
+                with self.assertWarns(DeprecationWarning):
+                    tai2 = salobj.tai_from_utc(utc_ap)
                 assert tai1 == tai2
 
     # DM-31660: Remove this test of deprecated code
@@ -406,13 +400,15 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             tai0 + 1,
             tai0 + 0.5 * utils.SECONDS_PER_DAY,
         ):
-            utc1 = salobj.utc_from_tai_unix(tai)
+            with self.assertWarns(DeprecationWarning):
+                utc1 = salobj.utc_from_tai_unix(tai)
             utc2 = utils.utc_from_tai_unix(tai)
             assert utc1 == utc2
 
     # DM-31660: Remove this test of deprecated code
     def test_current_tai(self) -> None:
-        tai0 = salobj.current_tai()
+        with self.assertWarns(DeprecationWarning):
+            tai0 = salobj.current_tai()
         tai1 = utils.current_tai()
         # Leave plenty of slop because time has jitter on macOS Docker.
         pytest.approx(tai0, tai1, abs=0.2)

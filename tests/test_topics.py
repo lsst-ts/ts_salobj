@@ -31,6 +31,7 @@ import unittest
 
 import numpy as np
 
+from lsst.ts import utils
 from lsst.ts import salobj
 
 # Long enough to perform any reasonable operation
@@ -316,10 +317,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.csc.evt_scalars.data = evt_data1
             self.assertTrue(self.csc.evt_scalars.has_data)
             self.csc.assert_scalars_equal(evt_data1, self.csc.evt_scalars.data)
-            send_tai0 = salobj.current_tai()
+            send_tai0 = utils.current_tai()
             self.csc.evt_scalars.put()
             data = await self.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
-            rcv_tai0 = salobj.current_tai()
+            rcv_tai0 = utils.current_tai()
             self.csc.assert_scalars_equal(data, self.csc.evt_scalars.data)
             with self.assertRaises(asyncio.TimeoutError):
                 await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
