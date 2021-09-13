@@ -411,12 +411,13 @@ Telemetry Loop Example
 ----------------------
 
 Here is an example of how to write a telemetry loop.
+This assumes ts_utils has been imported using `from lsst.ts import utils`.
 
 1. In the constructor (``__init__``): initialize:
 
   .. code-block:: python
 
-    self.telemetry_loop_task = salobj.make_done_future()
+    self.telemetry_loop_task = utils.make_done_future()
     self.telemetry_interval = 1  # seconds between telemetry output
 
   Initializing ``telemetry_loop_task`` to an `asyncio.Future` that is already done makes it easier to test and cancel than initializing it to `None`.

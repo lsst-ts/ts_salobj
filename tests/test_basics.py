@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import asyncio
 import datetime
 import getpass
 import os
@@ -453,6 +454,16 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                         wrapped1 = salobj.angle_wrap_nonnegative(angle)
                     wrapped2 = utils.angle_wrap_nonnegative(angle)
                     assert wrapped1 == wrapped2
+
+    # DM-31660: Remove this test of deprecated code
+    def test_make_done_future(self) -> None:
+        with self.assertWarns(DeprecationWarning):
+            done_future = salobj.make_done_future()
+            assert isinstance(done_future, asyncio.Future)
+            assert done_future.done()
+            assert done_future.result() is None
+            assert not done_future.cancelled()
+            assert done_future.exception() is None
 
     # DM-31660: Remove this test of deprecated code
     def test_assertAnglesAlmostEqual(self) -> None:

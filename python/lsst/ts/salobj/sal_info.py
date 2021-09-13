@@ -36,6 +36,7 @@ import warnings
 import dds
 import ddsutil
 
+from lsst.ts import utils
 from . import base
 from . import idl_metadata
 from . import sal_enums
@@ -252,7 +253,7 @@ class SalInfo:
         self._guardcond = dds.GuardCondition()
         self._waitset = dds.WaitSet()
         self._waitset.attach(self._guardcond)
-        self._read_loop_task = base.make_done_future()
+        self._read_loop_task = utils.make_done_future()
 
         idl_path = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
         if not idl_path.is_file():

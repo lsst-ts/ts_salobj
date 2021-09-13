@@ -33,6 +33,7 @@ import warnings
 
 import dds
 
+from lsst.ts import utils
 from .. import base
 from .. import type_hints
 from .base_topic import BaseTopic
@@ -310,10 +311,10 @@ class ReadTopic(BaseTopic):
         # We do this instead of having `next` itself pop the oldest message
         # because it allows multiple callers of `next` to all get the same
         # message, and it avoids a potential race condition with `flush`.
-        self._next_task = base.make_done_future()
+        self._next_task = utils.make_done_future()
         self._callback: typing.Optional[CallbackType] = None
         self._callback_tasks: typing.Set[asyncio.Task] = set()
-        self._callback_loop_task = base.make_done_future()
+        self._callback_loop_task = utils.make_done_future()
         self.dds_queue_length_checker = QueueCapacityChecker(
             descr=f"{name} DDS read queue",
             log=self.log,

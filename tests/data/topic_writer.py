@@ -25,6 +25,7 @@
 
 import asyncio
 
+from lsst.ts import utils
 from lsst.ts import salobj
 
 
@@ -52,7 +53,7 @@ class TopicWriter(salobj.BaseCsc):
     def __init__(self, index):
         print(f"TopicWriter: starting with index={index}")
         super().__init__(name="Test", index=index)
-        self.write_task = salobj.make_done_future()
+        self.write_task = utils.make_done_future()
         self.is_log_level = False
 
     async def do_fault(self, data):
