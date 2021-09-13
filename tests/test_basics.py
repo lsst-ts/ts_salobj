@@ -318,7 +318,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(ValueError):
                     salobj.name_to_name_index(bad_name)
 
-    # DM-31660: Remove this test of deprecated code
+    # TODO DM-31660: Remove this test of deprecated code
     def check_tai_from_utc(self, utc_ap: astropy.time.Time) -> None:
         """Check tai_from_utc at a specific UTC date.
 
@@ -363,7 +363,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             tai7 = salobj.tai_from_utc(utc_ap)
         self.assertAlmostEqual(tai, tai7, delta=1e-6)
 
-    # DM-31660: Remove this test of deprecated code
+    # TODO DM-31660: Remove this test of deprecated code
     def test_tai_from_utc(self) -> None:
         """Test tai_from_utc."""
         # Check tai_from_utc near leap second transition at UTC = 2017-01-01
@@ -383,7 +383,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                     tai2 = salobj.tai_from_utc(utc_ap)
                 assert tai1 == tai2
 
-    # DM-31660: Remove this test of deprecated code
+    # TODO DM-31660: Remove this test of deprecated code
     def test_utc_from_tai_unix(self) -> None:
         # Check utc_from_tai_unix near leap second transition at
         # UTC = 2017-01-01 when leap seconds went from 36 to 37.
@@ -405,7 +405,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             utc2 = utils.utc_from_tai_unix(tai)
             assert utc1 == utc2
 
-    # DM-31660: Remove this test of deprecated code
+    # TODO DM-31660: Remove this test of deprecated code
     def test_current_tai(self) -> None:
         with self.assertWarns(DeprecationWarning):
             tai0 = salobj.current_tai()
@@ -413,7 +413,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         # Leave plenty of slop because time has jitter on macOS Docker.
         pytest.approx(tai0, tai1, abs=0.2)
 
-    # DM-31660: Remove this test of deprecated code
+    # TODO DM-31660: Remove this test of deprecated code
     def test_angle_diff(self) -> None:
         for angle1, angle2 in (
             (5.15, 0),
@@ -429,7 +429,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                         diff2 = salobj.angle_diff(angle1, angle2)
                     assert diff1 == diff2
 
-    # DM-31660: Remove this test of deprecated code
+    # TODO DM-31660: Remove this test of deprecated code
     def test_angle_wrap_center(self) -> None:
         for base_angle in (-180, -180, 0, 179, 180):
             for nwraps in (-2, -1, 0, 1, 2):
@@ -440,7 +440,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                     wrapped2 = utils.angle_wrap_center(angle)
                     assert wrapped1 == wrapped2
 
-    # DM-31660: Remove this test of deprecated code
+    # TODO DM-31660: Remove this test of deprecated code
     def test_angle_wrap_nonnegative(self) -> None:
         for base_angle in (-0, 0, 180, 359, 360):
             for nwraps in (-2, -1, 0, 1, 2):
@@ -451,7 +451,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                     wrapped2 = utils.angle_wrap_nonnegative(angle)
                     assert wrapped1 == wrapped2
 
-    # DM-31660: Remove this test of deprecated code
+    # TODO DM-31660: Remove this test of deprecated code
     def test_make_done_future(self) -> None:
         with self.assertWarns(DeprecationWarning):
             done_future = salobj.make_done_future()
@@ -461,7 +461,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             assert not done_future.cancelled()
             assert done_future.exception() is None
 
-    # DM-31660: Remove this test of deprecated code
+    # TODO DM-31660: Remove this test of deprecated code
     def test_assertAnglesAlmostEqual(self) -> None:
         for angle1, angle2 in ((5.15, 5.14), (-0.20, 359.81), (270, -90.1)):
             epsilon = Angle(1e-15, u.deg)
