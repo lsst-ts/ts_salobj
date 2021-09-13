@@ -48,7 +48,7 @@ from .base import AckError, AckTimeoutError
 AngleOrDegType = typing.Union[astropy.coordinates.Angle, float]
 
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 def assertAnglesAlmostEqual(
     angle1: AngleOrDegType, angle2: AngleOrDegType, max_diff: AngleOrDegType = 1e-5
 ) -> None:
@@ -59,7 +59,7 @@ def assertAnglesAlmostEqual(
     utils.assert_angles_almost_equal(angle1=angle1, angle2=angle2, max_diff=max_diff)
 
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 @contextlib.contextmanager
 def assertRaisesAckError(
     ack: typing.Optional[int] = None,

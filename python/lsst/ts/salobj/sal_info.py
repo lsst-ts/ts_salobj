@@ -36,7 +36,7 @@ import warnings
 import dds
 import ddsutil
 
-from . import base
+from lsst.ts import utils
 from . import idl_metadata
 from . import sal_enums
 from . import topics
@@ -252,7 +252,7 @@ class SalInfo:
         self._guardcond = dds.GuardCondition()
         self._waitset = dds.WaitSet()
         self._waitset.attach(self._guardcond)
-        self._read_loop_task = base.make_done_future()
+        self._read_loop_task = utils.make_done_future()
 
         idl_path = domain.idl_dir / f"sal_revCoded_{self.name}.idl"
         if not idl_path.is_file():
@@ -761,7 +761,7 @@ class SalInfo:
         and return the updated sd.
         """
         rcv_utc = si.reception_timestamp * 1e-9
-        rcv_tai = base.tai_from_utc_unix(rcv_utc)
+        rcv_tai = utils.tai_from_utc_unix(rcv_utc)
         sd.private_rcvStamp = rcv_tai
         return sd
 

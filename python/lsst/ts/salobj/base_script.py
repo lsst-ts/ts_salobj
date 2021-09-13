@@ -34,6 +34,7 @@ import typing
 
 import yaml
 
+from lsst.ts import utils
 from . import base
 from . import controller
 from .remote import Remote
@@ -313,7 +314,7 @@ class BaseScript(controller.Controller, abc.ABC):
         """
         if state is not None:
             state = ScriptState(state)
-            self.timestamps[state] = base.current_tai()
+            self.timestamps[state] = utils.current_tai()
         if keep_old_reason and reason is not None:
             sepstr = "; " if self.evt_state.data.reason else ""  # type: ignore
             reason = self.evt_state.data.reason + sepstr + reason  # type: ignore
