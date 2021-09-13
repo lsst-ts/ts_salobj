@@ -28,6 +28,7 @@ import typing
 
 import numpy as np
 
+from lsst.ts import utils
 from .. import type_hints
 from .. import base
 from .base_topic import BaseTopic
@@ -197,7 +198,7 @@ class WriteTopic(BaseTopic):
         if data is not None:
             self.data = data
 
-        self.data.private_sndStamp = base.current_tai()
+        self.data.private_sndStamp = utils.current_tai()
         self.data.private_revCode = self.rev_code
         self.data.private_origin = self.salinfo.domain.origin
         self.data.private_identity = self.salinfo.identity

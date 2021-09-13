@@ -25,6 +25,7 @@ import unittest
 
 import numpy as np
 
+from lsst.ts import utils
 from lsst.ts import salobj
 
 np.random.seed(47)
@@ -84,12 +85,12 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
             await self.assert_next_summary_state(salobj.State.DISABLED)
             await self.commander.run_command("enable")
             await self.assert_next_summary_state(salobj.State.ENABLED)
-            t0 = salobj.current_tai()
+            t0 = utils.current_tai()
             wait_time = 2  # seconds
             await self.commander.run_command(
                 f"wait {salobj.SalRetCode.CMD_COMPLETE} {wait_time}"
             )
-            dt = salobj.current_tai() - t0
+            dt = utils.current_tai() - t0
             # The margin of 0.2 compensates for the clock in Docker on macOS
             # not being strictly monotonic.
             self.assertGreaterEqual(dt, wait_time - 0.2)

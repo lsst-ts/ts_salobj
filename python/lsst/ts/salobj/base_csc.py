@@ -30,6 +30,7 @@ import sys
 import typing
 import warnings
 
+from lsst.ts import utils
 from . import base
 from . import dds_utils
 from . import type_hints
@@ -193,7 +194,7 @@ class BaseCsc(Controller):
         self._summary_state = State(self.default_initial_state)
         self._initial_state = initial_state
         self._faulting = False
-        self._heartbeat_task = base.make_done_future()
+        self._heartbeat_task = utils.make_done_future()
         # Interval between heartbeat events (sec)
         self.heartbeat_interval = HEARTBEAT_INTERVAL
 

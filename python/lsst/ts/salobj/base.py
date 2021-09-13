@@ -72,11 +72,11 @@ MASTER_PRIORITY_ENV_VAR = "OSPL_MASTER_PRIORITY"
 # Maximum allowed SAL index (inclusive)
 MAX_SAL_INDEX = (1 << 31) - 1
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 SECONDS_PER_DAY = utils.SECONDS_PER_DAY
 
 # MJD - unix seconds, in seconds
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 MJD_MINUS_UNIX_SECONDS = utils.MJD_MINUS_UNIX_SECONDS
 
 # Regex for a SAL component name encoded as <name>[:<index>]
@@ -155,7 +155,7 @@ class ExpectedError(Exception):
     pass
 
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 def angle_diff(
     angle1: typing.Union[astropy.coordinates.Angle, float],
     angle2: typing.Union[astropy.coordinates.Angle, float],
@@ -165,7 +165,7 @@ def angle_diff(
     return utils.angle_diff(angle1, angle2)
 
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 def angle_wrap_center(
     angle: typing.Union[astropy.coordinates.Angle, float]
 ) -> astropy.coordinates.Angle:
@@ -174,7 +174,7 @@ def angle_wrap_center(
     return utils.angle_wrap_center(angle)
 
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 def angle_wrap_nonnegative(
     angle: typing.Union[astropy.coordinates.Angle, float]
 ) -> astropy.coordinates.Angle:
@@ -185,6 +185,7 @@ def angle_wrap_nonnegative(
     return utils.angle_wrap_nonnegative(angle)
 
 
+# TODO DM-31660: Remove this deprecated wrapper
 def astropy_time_from_tai_unix(tai_unix: float) -> astropy.time.Time:
     """Get astropy time from TAI in unix seconds.
 
@@ -194,8 +195,10 @@ def astropy_time_from_tai_unix(tai_unix: float) -> astropy.time.Time:
         TAI time as unix seconds, e.g. the time returned by CLOCK_TAI
         on linux systems.
     """
-    tai_mjd = (MJD_MINUS_UNIX_SECONDS + tai_unix) / SECONDS_PER_DAY
-    return astropy.time.Time(tai_mjd, scale="tai", format="mjd")
+    warnings.warn(
+        "Use lsst.ts.utils.astropy_time_from_tai_unix instead", DeprecationWarning
+    )
+    return utils.astropy_time_from_tai_unix(tai_unix)
 
 
 _log = logging.getLogger("lsst.ts.salobj.base")
@@ -286,7 +289,7 @@ def index_generator(
     return index_impl()
 
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 def make_done_future() -> asyncio.Future:
     """Deprecated version of lsst.ts.utils.make_done_future."""
     warnings.warn("Use lsst.ts.utils.make_done_future instead", DeprecationWarning)
@@ -339,7 +342,7 @@ def current_tai_from_utc() -> float:
     return tai_from_utc_unix(time.time())
 
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 def tai_from_utc(
     utc: typing.Union[float, str, astropy.time.Time],
     format: typing.Optional[str] = "unix",
@@ -349,21 +352,21 @@ def tai_from_utc(
     return utils.tai_from_utc(utc=utc, format=format)
 
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 def tai_from_utc_unix(utc_unix: float) -> float:
     """Deprecated version of lsst.ts.utils.tai_from_utc_unix."""
     warnings.warn("Use lsst.ts.utils.tai_from_utc_unix instead", DeprecationWarning)
     return utils.tai_from_utc_unix(utc_unix)
 
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 def utc_from_tai_unix(tai_unix: float) -> float:
     """Deprecated version of lsst.ts.utils.utc_from_tai_unix."""
     warnings.warn("Use lsst.ts.utils.utc_from_tai_unix instead", DeprecationWarning)
     return utils.utc_from_tai_unix(tai_unix)
 
 
-# DM-31660: Remove this deprecated wrapper
+# TODO DM-31660: Remove this deprecated wrapper
 def current_tai() -> float:
     """Deprecated version of lsst.ts.utils.current_tai."""
     warnings.warn("Use lsst.ts.utils.current_tai instead", DeprecationWarning)

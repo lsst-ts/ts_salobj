@@ -211,6 +211,8 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
                 )
             with self.assertRaises(salobj.base.ExpectedError):
                 await csc.start_task
+            with self.assertRaises(salobj.base.ExpectedError):
+                await csc.done_task
 
         # Test the one valid simulation mode
         index = next(index_gen)
