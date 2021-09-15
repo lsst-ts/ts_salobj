@@ -250,6 +250,29 @@ Most CSCs can be configured.
     * Detailed state should be *orthogonal* to summary state.
       You may provide an enum field in your detailedState event, but it is not required and, if present, should not include summary states.
 
+------------
+Indexed CSCs
+------------
+
+If your CSC has named SAL indexes specified in the ``<IndexEnumeration>`` field of ``SALSubsystems.xml`` in ts_xml:
+
+* Add an `enum.IntEnum` enum class named ``SalIndex`` to the ``ts_idl`` package,
+  with entries that match those in ``SALSubsystems.xml``.
+  This gives users named access to the allowed indices without having to import your CSC package.
+* Specify that enum class as the index when calling `BaseCsc.amain` in your bin script.
+  ``amain`` will then insist that the user provide an index and will reject invalid values.
+  Here is an example bin script that runs the MT Hexapod CSCs::
+    
+    #!/usr/bin/env python
+    import asyncio
+
+    from lsst.ts.idl.enums.MTHexapod import SalIndex
+    from lsst.ts.mthexapod import HexapodCsc
+
+    asyncio.run(HexapodCsc.amain(index=SalIndex))
+
+* Similarly, if you use `CscCommander` then call `CscCommander.amain` with ``index=SalIndex``.
+
 ------------------------
 Configurable CSC Details
 ------------------------

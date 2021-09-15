@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import enum
 import logging
 import os
 import unittest
@@ -45,6 +46,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
         async with salobj.Domain() as domain:
             with self.assertRaises(RuntimeError):
                 salobj.SalInfo(domain=domain, name="invalid_component_name")
+
+            for invalid_index in (1.1, "one"):
+                with self.assertRaises(TypeError):
+                    salobj.SalInfo(domain=domain, name="Test", index=invalid_index)
 
             index = next(index_gen)
             salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
@@ -72,6 +77,15 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(salinfo.done_task.done())
             self.assertTrue(salinfo.started)
             salinfo.assert_started()
+
+            # Test enum index
+            class SalIndex(enum.IntEnum):
+                ONE = 1
+                TWO = 2
+
+            salinfo = salobj.SalInfo(domain=domain, name="Script", index=SalIndex.ONE)
+            assert isinstance(salinfo.index, SalIndex)
+            assert salinfo.index == SalIndex.ONE
 
     async def test_salinfo_attributes(self) -> None:
         async with salobj.Domain() as domain:
