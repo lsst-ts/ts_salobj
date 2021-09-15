@@ -26,6 +26,7 @@ __all__ = ["SalInfo", "MAX_RESULT_LEN"]
 import asyncio
 import atexit
 import concurrent
+import enum
 import logging
 import os
 import time
@@ -83,7 +84,8 @@ class SalInfo:
     RuntimeError
         If the IDL file cannot be found for the specified ``name``.
     TypeError
-        If ``domain`` is not a `Domain`.
+        If ``domain`` is not an instance of `Domain`
+        or if ``index`` is not an `int`, `enum.IntEnum`, or `None`.
     ValueError
         If ``index`` is nonzero and the component is not indexed.
 
@@ -178,10 +180,15 @@ class SalInfo:
     ) -> None:
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
+        if index is not None:
+            if not (isinstance(index, int) or isinstance(index, enum.IntEnum)):
+                raise TypeError(
+                    f"index {index!r} must be an integer, enum.IntEnum, or None"
+                )
         self.isopen = False
         self.domain = domain
         self.name = name
-        self.index = 0 if index is None else int(index)
+        self.index = 0 if index is None else index
         self.identity = domain.default_identity
         self.start_called = False
 
