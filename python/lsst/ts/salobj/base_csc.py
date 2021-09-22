@@ -261,6 +261,9 @@ class BaseCsc(Controller):
                         data.settingsToApply = self._settings_to_apply
                     self.log.info(f"Executing {command} command during startup")
                     await method(data)
+                    # Wait briefly, to be sure the new summaryState event
+                    # will have a different timestamp than the previous one.
+                    await asyncio.sleep(0.001)
             except Exception:
                 self.log.exception(
                     f"Failed in start on state transition command {command}; continuing."
