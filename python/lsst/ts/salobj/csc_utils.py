@@ -40,10 +40,7 @@ def make_state_transition_dict() -> StateTransitionDictType:
     """Make a dict of state transition commands and states
 
     The keys are (beginning state, ending state).
-    The values are a list of tuples:
-
-    * A state transition command
-    * The expected state after that command
+    The values are the name of the state transition command.
     """
     ordered_states = (State.OFFLINE, State.STANDBY, State.DISABLED, State.ENABLED)
 
@@ -155,7 +152,7 @@ async def set_summary_state(
     try:
         remote.cmd_start.data.settingsToApply = settingsToApply  # type: ignore
 
-        for command, state in command_state_list:
+        for command, resulting_state in command_state_list:
             cmd = getattr(remote, f"cmd_{command}")
             try:
                 await cmd.start(timeout=timeout)
@@ -163,7 +160,7 @@ async def set_summary_state(
                 raise RuntimeError(
                     f"Error on cmd=cmd_{command}, initial_state={current_state}: {e}"
                 ) from e
-            states.append(state)
+            states.append(resulting_state)
     finally:
         remote.cmd_start.data.settingsToApply = old_settings_to_apply  # type: ignore
     return states

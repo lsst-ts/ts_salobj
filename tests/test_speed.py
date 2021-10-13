@@ -27,7 +27,6 @@ import typing
 import unittest
 import warnings
 
-import ddsutil
 import astropy.units as u
 
 from unittest.mock import MagicMock
@@ -150,21 +149,24 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_class_creation_speed(self) -> None:
         """Test the speed of creating topic classes on the fly."""
         async with salobj.Domain() as domain:
+            t0 = time.monotonic()
             salinfo = salobj.SalInfo(domain, "Test", index=self.index)
             topic_names = (
                 ["logevent_" + name for name in salinfo.event_names]
                 + ["command_" + name for name in salinfo.command_names]
                 + list(salinfo.telemetry_names)
             )
-            t0 = time.monotonic()
             for topic_name in topic_names:
                 revname = salinfo.revnames.get(topic_name)
-                ddsutil.get_dds_classes_from_idl(salinfo.metadata.idl_path, revname)
+                salobj.make_dds_topic_class(
+                    parsed_idl=salinfo.parsed_idl, revname=revname
+                )
             dt = time.monotonic() - t0
             ntopics = len(topic_names)
             creation_speed = ntopics / dt
             print(
-                f"Created {creation_speed:0.1f} topic classes/sec ({ntopics} topic classes)"
+                f"Created {creation_speed:0.1f} topic classes/sec ({ntopics} topic classes); "
+                f"total duration {dt:0.2f} seconds."
             )
             self.insert_measurement(
                 verify.Measurement(
