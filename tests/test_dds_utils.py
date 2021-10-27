@@ -42,8 +42,4 @@ class DdsUtilsTestCase(unittest.TestCase):
             with self.subTest(dds_file=dds_file):
                 with unittest.mock.patch("dds.__file__", dds_file):
                     dds_version = salobj.get_dds_version()
-                    self.assertEqual(dds_version, desired_version)
-
-
-if __name__ == "__main__":
-    unittest.main()
+                    assert dds_version == desired_version

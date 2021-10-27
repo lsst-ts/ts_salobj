@@ -30,6 +30,7 @@ import unittest
 import warnings
 
 import numpy as np
+import pytest
 
 from lsst.ts import salobj
 
@@ -142,7 +143,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
         finally:
             domain.default_identity = original_default_identity
-        self.assertEqual(remote.salinfo.identity, identity)
+        assert remote.salinfo.identity == identity
         try:
             await remote.start_task
             yield remote
@@ -409,9 +410,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             stdout, stderr = await asyncio.wait_for(
                 process.communicate(), timeout=STD_TIMEOUT
             )
-            self.assertEqual(stdout.decode()[:-1], salobj.__version__)
+            assert stdout.decode()[:-1] == salobj.__version__
             await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
-            self.assertEqual(process.returncode, 0)
+            assert process.returncode == 0
         finally:
             if process.returncode is None:
                 process.terminate()
@@ -423,28 +424,28 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, log_level=logging.DEBUG
         ):
-            self.assertEqual(self.csc.log.getEffectiveLevel(), logging.DEBUG)
+            assert self.csc.log.getEffectiveLevel() == logging.DEBUG
 
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, log_level=logging.WARNING
         ):
-            self.assertEqual(self.csc.log.getEffectiveLevel(), logging.WARNING)
+            assert self.csc.log.getEffectiveLevel() == logging.WARNING
 
         # At this point log level is WARNING; now check that by default
         # log verbosity is increased (log level decreased) to INFO.
         async with self.make_csc(initial_state=salobj.State.STANDBY):
-            self.assertEqual(self.csc.log.getEffectiveLevel(), logging.INFO)
+            assert self.csc.log.getEffectiveLevel() == logging.INFO
 
     async def test_setArrays_command(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             # until the controller gets its first setArrays
             # it will not send any arrays events or telemetry
-            self.assertFalse(self.csc.evt_arrays.has_data)
-            self.assertFalse(self.csc.tel_arrays.has_data)
-            self.assertFalse(self.remote.evt_arrays.has_data)
-            self.assertFalse(self.remote.tel_arrays.has_data)
-            self.assertIsNone(self.remote.evt_arrays.get())
-            self.assertIsNone(self.remote.tel_arrays.get())
+            assert not self.csc.evt_arrays.has_data
+            assert not self.csc.tel_arrays.has_data
+            assert not self.remote.evt_arrays.has_data
+            assert not self.remote.tel_arrays.has_data
+            assert self.remote.evt_arrays.get() is None
+            assert self.remote.tel_arrays.get() is None
 
             # send the setArrays command with random data
             cmd_data_sent = self.csc.make_random_cmd_arrays()
@@ -460,10 +461,10 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
             self.csc.assert_arrays_equal(cmd_data_sent, tel_data)
 
-            self.assertTrue(self.csc.evt_arrays.has_data)
-            self.assertTrue(self.csc.tel_arrays.has_data)
-            self.assertTrue(self.remote.evt_arrays.has_data)
-            self.assertTrue(self.remote.tel_arrays.has_data)
+            assert self.csc.evt_arrays.has_data
+            assert self.csc.tel_arrays.has_data
+            assert self.remote.evt_arrays.has_data
+            assert self.remote.tel_arrays.has_data
 
             # also test get
             self.csc.assert_arrays_equal(cmd_data_sent, self.remote.tel_arrays.get())
@@ -473,12 +474,12 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             # until the controller gets its first setArrays
             # it will not send any arrays events or telemetry
-            self.assertFalse(self.csc.evt_scalars.has_data)
-            self.assertFalse(self.csc.tel_scalars.has_data)
-            self.assertFalse(self.remote.evt_scalars.has_data)
-            self.assertFalse(self.remote.tel_scalars.has_data)
-            self.assertIsNone(self.remote.evt_scalars.get())
-            self.assertIsNone(self.remote.tel_scalars.get())
+            assert not self.csc.evt_scalars.has_data
+            assert not self.csc.tel_scalars.has_data
+            assert not self.remote.evt_scalars.has_data
+            assert not self.remote.tel_scalars.has_data
+            assert self.remote.evt_scalars.get() is None
+            assert self.remote.tel_scalars.get() is None
 
             # send the setScalars command with random data
             cmd_data_sent = self.csc.make_random_cmd_scalars()
@@ -494,10 +495,10 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
             self.csc.assert_scalars_equal(cmd_data_sent, tel_data)
 
-            self.assertTrue(self.csc.evt_scalars.has_data)
-            self.assertTrue(self.csc.tel_scalars.has_data)
-            self.assertTrue(self.remote.evt_scalars.has_data)
-            self.assertTrue(self.remote.tel_scalars.has_data)
+            assert self.csc.evt_scalars.has_data
+            assert self.csc.tel_scalars.has_data
+            assert self.remote.evt_scalars.has_data
+            assert self.remote.tel_scalars.has_data
 
             # also test get
             self.csc.assert_scalars_equal(cmd_data_sent, self.remote.tel_scalars.get())
@@ -536,7 +537,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         """Test BaseCsc.fault with and without optional arguments."""
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            with self.assertRaises(asyncio.TimeoutError):
+            with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_errorCode.next(
                     flush=False, timeout=NODATA_TIMEOUT
                 )
@@ -549,7 +550,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             # but the CSC stil goes into a FAULT state
             self.csc.fault(code="not a valid code", report=report)
             await self.assert_next_summary_state(salobj.State.FAULT)
-            with self.assertRaises(asyncio.TimeoutError):
+            with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_errorCode.next(
                     flush=False, timeout=NODATA_TIMEOUT
                 )
@@ -619,18 +620,18 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     )
 
                     # make sure FAULT state and errorCode are only sent once
-                    with self.assertRaises(asyncio.TimeoutError):
+                    with pytest.raises(asyncio.TimeoutError):
                         await remote.evt_summaryState.next(
                             flush=False, timeout=NODATA_TIMEOUT
                         )
-                    with self.assertRaises(asyncio.TimeoutError):
+                    with pytest.raises(asyncio.TimeoutError):
                         await remote.evt_errorCode.next(
                             flush=False, timeout=NODATA_TIMEOUT
                         )
 
     async def test_make_csc_timeout(self) -> None:
         """Test that setting the timeout argument to make_csc works."""
-        with self.assertRaises(asyncio.TimeoutError):
+        with pytest.raises(asyncio.TimeoutError):
             # Use such a short timeout that make_csc times out
             async with self.make_csc(initial_state=salobj.State.STANDBY, timeout=0):
                 pass
@@ -656,7 +657,3 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 skip_commands=("fault",),
                 settingsToApply="all_fields",
             )
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -50,17 +50,16 @@ class IdlParserTestCase(unittest.TestCase):
         else:
             idl_path = self.data_path / "sal_revCoded_SimpleWithoutMetadata.idl"
         metadata = salobj.parse_idl(name="Simple", idl_path=idl_path)
-        self.assertEqual(metadata.name, "Simple")
-        self.assertTrue(idl_path.samefile(metadata.idl_path))
+        assert metadata.name == "Simple"
+        assert idl_path.samefile(metadata.idl_path)
         if has_metadata:
-            self.assertEqual(metadata.sal_version, "5.1.1")
-            self.assertEqual(metadata.xml_version, "9.2.0")
+            assert metadata.sal_version == "5.1.1"
+            assert metadata.xml_version == "9.2.0"
         else:
-            self.assertIsNone(metadata.sal_version)
-            self.assertIsNone(metadata.xml_version)
-        self.assertEqual(
-            set(metadata.topic_info.keys()),
-            set(("command_setArrays", "logevent_scalars")),
+            assert metadata.sal_version is None
+            assert metadata.xml_version is None
+        assert set(metadata.topic_info.keys()) == set(
+            ("command_setArrays", "logevent_scalars")
         )
 
         # Dict of field name: expected type name
@@ -90,17 +89,17 @@ class IdlParserTestCase(unittest.TestCase):
         for sal_topic_name, topic_metadata in metadata.topic_info.items():
             # with self.subTest(sal_topic_name=sal_topic_name):
             if True:
-                self.assertEqual(topic_metadata.sal_name, sal_topic_name)
+                assert topic_metadata.sal_name == sal_topic_name
                 expected_hash = {
                     "command_setArrays": "0dd79125",
                     "logevent_scalars": "0ad55b18",
                 }[sal_topic_name]
-                self.assertEqual(topic_metadata.version_hash, expected_hash)
+                assert topic_metadata.version_hash == expected_hash
                 if has_metadata:
                     expected_description = f"Description of {sal_topic_name}"
-                    self.assertEqual(topic_metadata.description, expected_description)
+                    assert topic_metadata.description == expected_description
                 else:
-                    self.assertIsNone(topic_metadata.description)
+                    assert topic_metadata.description is None
                 expected_field_names = set(field_types.keys())
                 if sal_topic_name == "command_setArrays":
                     expected_field_names = set(
@@ -109,11 +108,9 @@ class IdlParserTestCase(unittest.TestCase):
                         if name not in ("string0", "priority")
                     )
 
-                self.assertEqual(
-                    set(topic_metadata.field_info.keys()), expected_field_names
-                )
+                assert set(topic_metadata.field_info.keys()) == expected_field_names
                 for field_name, field_metadata in topic_metadata.field_info.items():
-                    self.assertEqual(field_metadata.name, field_name)
+                    assert field_metadata.name == field_name
                     if has_metadata:
                         if field_metadata.name.endswith("Stamp"):
                             expected_units: typing.Optional[str] = "second"
@@ -121,25 +118,25 @@ class IdlParserTestCase(unittest.TestCase):
                             expected_units = None
                         else:
                             expected_units = "unitless"
-                        self.assertEqual(field_metadata.units, expected_units)
-                        self.assertEqual(
-                            field_metadata.description, f"Description of {field_name}"
+                        assert field_metadata.units == expected_units
+                        assert (
+                            field_metadata.description == f"Description of {field_name}"
                         )
                     else:
-                        self.assertIsNone(field_metadata.units)
-                        self.assertIsNone(field_metadata.description)
+                        assert field_metadata.units is None
+                        assert field_metadata.description is None
                     expected_str_length = {
                         "string0": 20,
                         "private_revCode": 8,
                         "private_identity": 128,
                     }.get(field_name)
-                    self.assertEqual(field_metadata.str_length, expected_str_length)
-                    self.assertEqual(field_metadata.type_name, field_types[field_name])
+                    assert field_metadata.str_length == expected_str_length
+                    assert field_metadata.type_name == field_types[field_name]
                     if sal_topic_name == "command_setArrays":
                         expected_array_length = 5 if field_name.endswith("0") else None
                     else:
                         expected_array_length = None
-                    self.assertEqual(field_metadata.array_length, expected_array_length)
+                    assert field_metadata.array_length == expected_array_length
 
     def test_test_idl(self) -> None:
         """Test a Test IDL file generated by the current version of ts_sal.
@@ -151,15 +148,15 @@ class IdlParserTestCase(unittest.TestCase):
         """
         idl_path = idl.get_idl_dir() / "sal_revCoded_Test.idl"
         metadata = salobj.parse_idl(name="Test", idl_path=idl_path)
-        self.assertEqual(metadata.name, "Test")
-        self.assertTrue(idl_path.samefile(metadata.idl_path))
+        assert metadata.name == "Test"
+        assert idl_path.samefile(metadata.idl_path)
 
         # Check that names match between info dict keys
         # and the name in the metadata.
         for sal_topic_name, topic_metadata in metadata.topic_info.items():
-            self.assertEqual(topic_metadata.sal_name, sal_topic_name)
+            assert topic_metadata.sal_name == sal_topic_name
             for field_name, field_metadata in topic_metadata.field_info.items():
-                self.assertEqual(field_metadata.name, field_name)
+                assert field_metadata.name == field_name
 
         # Check that some of the expected topic names are present.
         some_expected_topic_names = (
@@ -171,9 +168,7 @@ class IdlParserTestCase(unittest.TestCase):
             "arrays",
             "scalars",
         )
-        self.assertTrue(
-            set(some_expected_topic_names).issubset(set(metadata.topic_info.keys()))
-        )
+        assert set(some_expected_topic_names).issubset(set(metadata.topic_info.keys()))
 
         # Dict of field name: expected type name
         field_types = dict(
@@ -216,18 +211,14 @@ class IdlParserTestCase(unittest.TestCase):
                 expected_field_names.remove("string0")  # only in scalars
                 if not topic_name.startswith("logevent_"):
                     expected_field_names.remove("priority")
-                self.assertEqual(
-                    set(topic_metadata.field_info.keys()), expected_field_names
-                )
+                assert set(topic_metadata.field_info.keys()) == expected_field_names
                 for field_metadata in topic_metadata.field_info.values():
                     if field_metadata.name[-1] != "0":
-                        self.assertIsNone(field_metadata.array_length)
+                        assert field_metadata.array_length is None
                     else:
-                        self.assertEqual(field_metadata.array_length, 5)
-                    self.assertIsInstance(field_metadata.description, str)
-                    self.assertEqual(
-                        field_metadata.type_name, field_types[field_metadata.name]
-                    )
+                        assert field_metadata.array_length == 5
+                    assert isinstance(field_metadata.description, str)
+                    assert field_metadata.type_name == field_types[field_metadata.name]
 
         # Check some details of scalars topics, including data type,
         # array length and string length.
@@ -239,16 +230,8 @@ class IdlParserTestCase(unittest.TestCase):
                 expected_field_names = set(field_types.keys())
                 if not topic_name.startswith("logevent_"):
                     expected_field_names.remove("priority")
-                self.assertEqual(
-                    set(topic_metadata.field_info.keys()), expected_field_names
-                )
+                assert set(topic_metadata.field_info.keys()) == expected_field_names
                 for field_metadata in topic_metadata.field_info.values():
-                    self.assertIsNone(field_metadata.array_length)
-                    self.assertIsInstance(field_metadata.description, str)
-                    self.assertEqual(
-                        field_metadata.type_name, field_types[field_metadata.name]
-                    )
-
-
-if __name__ == "__main__":
-    unittest.main()
+                    assert field_metadata.array_length is None
+                    assert isinstance(field_metadata.description, str)
+                    assert field_metadata.type_name == field_types[field_metadata.name]

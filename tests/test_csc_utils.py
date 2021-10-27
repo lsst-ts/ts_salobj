@@ -24,6 +24,8 @@ import pathlib
 import unittest
 import typing
 
+import pytest
+
 from lsst.ts import salobj
 
 # Long enough to perform any reasonable operation
@@ -80,7 +82,7 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     with self.subTest(
                         initial_state=initial_state, bad_final_state=bad_final_state
                     ):
-                        with self.assertRaises(ValueError):
+                        with pytest.raises(ValueError):
                             await salobj.set_summary_state(
                                 remote=self.remote,
                                 state=bad_final_state,
@@ -102,7 +104,7 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
         async with self.make_csc(
             initial_state=initial_state, config_dir=TEST_CONFIG_DIR
         ):
-            self.assertEqual(self.csc.summary_state, initial_state)
+            assert self.csc.summary_state == initial_state
             await self.assert_next_summary_state(initial_state)
 
             states = await salobj.set_summary_state(
@@ -111,9 +113,9 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 settingsToApply="all_fields",
                 timeout=STD_TIMEOUT,
             )
-            self.assertEqual(states[0], initial_state)
-            self.assertEqual(states[-1], final_state)
-            self.assertEqual(self.csc.summary_state, final_state)
+            assert states[0] == initial_state
+            assert states[-1] == final_state
+            assert self.csc.summary_state == final_state
             if (
                 initial_state
                 in (
@@ -124,15 +126,15 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             ):
                 # The start command was sent, so check that the configuration
                 # is as specified to the set_summary_state function.
-                self.assertIsNotNone(self.csc.config)
-                self.assertEqual(self.csc.config.string0, "an arbitrary string")
+                assert self.csc.config is not None
+                assert self.csc.config.string0 == "an arbitrary string"
             elif initial_state in (salobj.State.DISABLED, salobj.State.ENABLED):
                 # The start command was not sent, so check that
                 # the configuration is the default.
-                self.assertIsNotNone(self.csc.config)
-                self.assertEqual(self.csc.config.string0, "default value for string0")
+                assert self.csc.config is not None
+                assert self.csc.config.string0 == "default value for string0"
             else:
-                self.assertIsNone(self.csc.config)
+                assert self.csc.config is None
             # The initial state was read by the remote in set_summary_state
             # (and in the test), so only check for subsequent states.
             for expected_state in states[1:]:
@@ -170,10 +172,4 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                         # starts with the correct state.
                         for expected_state in states[1:]:
                             await self.assert_next_summary_state(expected_state)
-                        self.assertEqual(
-                            self.csc.config.string0, "default value for string0"
-                        )
-
-
-if __name__ == "__main__":
-    unittest.main()
+                        assert self.csc.config.string0 == "default value for string0"

@@ -23,8 +23,9 @@ import pathlib
 import unittest
 import typing
 
-import yaml
 import jsonschema
+import pytest
+import yaml
 
 from lsst.ts import salobj
 
@@ -45,11 +46,11 @@ class ValidatorTestCase(unittest.TestCase):
             intarr0=[-1, 1],
             multi_type=None,
         )
-        self.assertEqual(data_dict, {})  # input not changed
-        self.assertEqual(result, expected_result)
+        assert data_dict == {}  # input not changed
+        assert result == expected_result
 
         result = self.validator.validate(None)
-        self.assertEqual(result, expected_result)
+        assert result == expected_result
 
     def test_all_fields(self) -> None:
         """Test a config with all fields set to a non-default value."""
@@ -63,9 +64,9 @@ class ValidatorTestCase(unittest.TestCase):
         )
         original_data = data_dict.copy()
         result = self.validator.validate(data_dict)
-        self.assertEqual(result, original_data)  # input not changed
+        assert result == original_data  # input not changed
         # all values were provided so none should be altered
-        self.assertEqual(data_dict, original_data)
+        assert data_dict == original_data
 
     def test_some_fields(self) -> None:
         """Test a config with some fields set to a non-default value."""
@@ -90,7 +91,7 @@ class ValidatorTestCase(unittest.TestCase):
             expected_values[name] = value
             one_item_data_dict: typing.Dict[str, typing.Any] = {name: value}
         result = self.validator.validate(one_item_data_dict)
-        self.assertEqual(result, expected_values)
+        assert result == expected_values
 
     def test_invalid_data(self) -> None:
         good_data = dict(
@@ -108,23 +109,23 @@ class ValidatorTestCase(unittest.TestCase):
         for field in good_data:
             data = good_data.copy()
             data[field] = bad_data[field]
-            with self.assertRaises(jsonschema.exceptions.ValidationError):
+            with pytest.raises(jsonschema.exceptions.ValidationError):
                 self.validator.validate(data)
 
         # all fields are invalid
-        with self.assertRaises(jsonschema.exceptions.ValidationError):
+        with pytest.raises(jsonschema.exceptions.ValidationError):
             self.validator.validate(bad_data)
 
         # extra field
         bad_data = good_data.copy()
         bad_data["unwanted"] = 0
-        with self.assertRaises(jsonschema.exceptions.ValidationError):
+        with pytest.raises(jsonschema.exceptions.ValidationError):
             self.validator.validate(bad_data)
 
         # invalid types
         for bad_type_data in (True, False, 1, 1.34, "hello", (1, 2), ["a", "b"]):
             with self.subTest(bad_type_data=bad_type_data):
-                with self.assertRaises(jsonschema.exceptions.ValidationError):
+                with pytest.raises(jsonschema.exceptions.ValidationError):
                     self.validator.validate(bad_type_data)
 
 
@@ -140,12 +141,8 @@ class DefaultingTestCase(unittest.TestCase):
         self.validator = salobj.DefaultingValidator(schema=self.schema)
         default_values = self.validator.validate({})
         print(f"default_values={default_values}")
-        self.assertEqual(default_values["number1"], 1)
-        self.assertEqual(default_values["subobject"]["subnumber1"], 2)
+        assert default_values["number1"] == 1
+        assert default_values["subobject"]["subnumber1"] == 2
         import types
 
         print(types.SimpleNamespace(**default_values))
-
-
-if __name__ == "__main__":
-    unittest.main()

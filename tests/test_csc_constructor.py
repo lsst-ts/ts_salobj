@@ -20,10 +20,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pathlib
+import re
 import typing
 import unittest
 
 import numpy as np
+import pytest
 
 from lsst.ts import salobj
 
@@ -63,8 +65,8 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
         salobj.set_random_lsst_dds_partition_prefix()
 
     async def test_class_attributes(self) -> None:
-        self.assertEqual(list(salobj.TestCsc.valid_simulation_modes), [0])
-        self.assertEqual(salobj.TestCsc.version, salobj.__version__)
+        assert list(salobj.TestCsc.valid_simulation_modes) == [0]
+        assert salobj.TestCsc.version == salobj.__version__
 
     async def test_initial_state(self) -> None:
         """Test all allowed initial_state values, both as enums and ints."""
@@ -81,11 +83,11 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
         """
         index = next(index_gen)
         async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
-            self.assertEqual(csc.summary_state, initial_state)
+            assert csc.summary_state == initial_state
 
     async def test_deprecated_schema_path_arg(self) -> None:
-        with self.assertWarnsRegex(
-            DeprecationWarning, "schema_path argument is deprecated"
+        with pytest.warns(
+            DeprecationWarning, match="schema_path argument is deprecated"
         ):
             expected_schema = salobj.CONFIG_SCHEMA
             schema_path = (
@@ -96,14 +98,14 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             for key, value in expected_schema.items():
                 if key in ("$id", "description"):
                     continue
-                self.assertEqual(
-                    csc.config_validator.final_validator.schema[key],
-                    expected_schema[key],
+                assert (
+                    csc.config_validator.final_validator.schema[key]
+                    == expected_schema[key]
                 )
 
     async def test_invalid_config_dir(self) -> None:
         """Test that invalid integer initial_state is rejected."""
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             salobj.TestCsc(
                 index=next(index_gen),
                 initial_state=salobj.State.STANDBY,
@@ -111,11 +113,11 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             )
 
     async def test_invalid_config_pkg(self) -> None:
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             InvalidPkgNameCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
 
     async def test_wrong_config_pkg(self) -> None:
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             WrongConfigPkgCsc(index=next(index_gen), initial_state=salobj.State.STANDBY)
 
     async def test_invalid_initial_state(self) -> None:
@@ -126,7 +128,7 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             max(salobj.State) + 1,
         ):
             with self.subTest(invalid_state=invalid_state):
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     salobj.TestCsc(index=next(index_gen), initial_state=invalid_state)
 
     async def test_late_callback_assignment(self) -> None:
@@ -140,11 +142,11 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
                 getattr(csc, f"cmd_{name}") for name in csc.salinfo.command_names
             ]
             for topic in cmd_topics:
-                self.assertIsNone(topic.callback)
+                assert topic.callback is None
 
             await csc.start_task
             for topic in cmd_topics:
-                self.assertIsNotNone(topic.callback)
+                assert topic.callback is not None
         finally:
             await csc.close()
 
@@ -163,28 +165,19 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             async def noop(self, *args: typing.Any, **kwargs: typing.Any) -> None:
                 pass
 
-        mv = None
-        # Expected fragment of warning message.
+        # Expected regex fragment of warning message.
         message_regex = r"set class attribute .*version"
-        try:
-            with self.assertWarnsRegex(DeprecationWarning, message_regex):
-                mv = MissingVersionCsc(index=next(index_gen))
-        finally:
-            if mv is not None:
-                await mv.close()
+        with pytest.warns(DeprecationWarning, match=message_regex):
+            async with MissingVersionCsc(index=next(index_gen)):
+                pass
 
         # Adding the version attribute should eliminate the warning
         # in question.
         MissingVersionCsc.version = "foo"
-        mv = None
-        try:
-            with self.assertRaises(AssertionError):
-                with self.assertWarnsRegex(DeprecationWarning, message_regex):
-                    mv = MissingVersionCsc(index=next(index_gen))
-        finally:
-            if mv is not None:
-                await mv.close()
-
-
-if __name__ == "__main__":
-    unittest.main()
+        with pytest.warns(None) as warnings:
+            async with MissingVersionCsc(index=next(index_gen)):
+                pass
+            # Make the test robust against other warnings
+            for w in warnings:
+                if isinstance(w.message, DeprecationWarning):
+                    assert re.search(message_regex, w.message.args[0]) is None
