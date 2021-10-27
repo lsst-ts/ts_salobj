@@ -145,8 +145,11 @@ class SalInfo:
     <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
     follow the link for details:
 
+    * ``LSST_DDS_ENABLE_AUTHLIST`` (optional): if set to "1"
+      enable authlist-based command authorization.
+      If "0" or undefined, do not enable authorization.
     * ``LSST_DDS_PARTITION_PREFIX`` (required): the DDS partition name.
-    * ``LSST_DDS_HISTORYSYNC``, optional: time limit (sec)
+    * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec)
       for waiting for historical (late-joiner) data.
 
     **Usage**
@@ -192,6 +195,10 @@ class SalInfo:
         self.identity = domain.default_identity
         self.start_called = False
 
+        self.log = logging.getLogger(self.name)
+        if self.log.getEffectiveLevel() > MAX_LOG_LEVEL:
+            self.log.setLevel(MAX_LOG_LEVEL)
+
         # Dict of SAL topic name: wait_for_historical_data succeeded
         # for each topic for which wait_for_historical_data was called.
         # This is primarily intended for unit tests.
@@ -221,9 +228,22 @@ class SalInfo:
         self.start_task: asyncio.Future = asyncio.Future()
         self.done_task: asyncio.Future = asyncio.Future()
 
-        self.log = logging.getLogger(self.name)
-        if self.log.getEffectiveLevel() > MAX_LOG_LEVEL:
-            self.log.setLevel(MAX_LOG_LEVEL)
+        # Parse environment variable LSST_DDS_ENABLE_AUTHLIST
+        # to determine whether to implement command authorization.
+        # TODO DM-32379: remove this code block, including the
+        # default_authorize attribute.
+        authorize_str = os.environ.get("LSST_DDS_ENABLE_AUTHLIST", "0")
+        if authorize_str not in ("0", "1"):
+            self.log.warning(
+                f"Invalid value $LSST_DDS_ENABLE_AUTHLIST={authorize_str!r}. "
+                "Specify '1' to enable, '0' or undefined to disable "
+                "authlist-based command authorization. Disabling."
+            )
+        self.default_authorize = authorize_str == "1"
+        if self.default_authorize:
+            self.log.debug("Enabling authlist-based command authorization")
+        else:
+            self.log.debug("Disabling authlist-based command authorization")
 
         self.authorized_users: typing.Set[str] = set()
         self.non_authorized_cscs: typing.Set[str] = set()

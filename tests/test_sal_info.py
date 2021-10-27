@@ -177,6 +177,18 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 set(salinfo.metadata.topic_info.keys())
             )
 
+    async def test_default_authorize(self) -> None:
+        """Test that LSST_DDS_ENABLE_AUTHLIST correctly sets the
+        default_authorize attribute.
+        """
+        async with salobj.Domain() as domain:
+            for env_var_value in ("0", "1", None, "2", "", "00"):
+                expected_default_authorize = True if env_var_value == "1" else False
+                index = next(index_gen)
+                with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST=env_var_value):
+                    salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
+                    assert salinfo.default_authorize == expected_default_authorize
+
     async def test_lsst_dds_domain_fallback(self) -> None:
         # Pick a value for LSST_DDS_DOMAIN that does not match
         # LSST_DDS_PARTITION_PREFIX.

@@ -67,6 +67,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_attributes(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             for obj in (self.remote, self.csc):
+                is_remote = isinstance(obj, salobj.Remote)
+                # TODO DM-36605 remove this line once authorization is enabled
+                # by default.
+                assert not self.csc.salinfo.default_authorize
                 for cmd_name in obj.salinfo.command_names:
                     cmd = getattr(obj, f"cmd_{cmd_name}")
                     assert cmd.name == cmd_name
@@ -77,6 +81,15 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         == cmd.salinfo.name + "_" + cmd.sal_name + "_" + cmd.rev_code
                     )
                     assert cmd.volatile
+                    # TODO DM-36605 change to ``assert cmd.authorize``
+                    # once authorization is enabled by default
+                    if is_remote:
+                        assert isinstance(cmd, salobj.topics.RemoteCommand)
+                    else:
+                        assert isinstance(cmd, salobj.topics.ControllerCommand)
+                        # TODO DM-36605 change "assert not" to "assert"
+                        # once authorization is enabled by default.
+                        assert not cmd.authorize
                     self.check_topic_metadata(cmd)
 
                 for evt_name in obj.salinfo.event_names:
@@ -90,6 +103,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     )
                     assert not evt.volatile
                     self.check_topic_metadata(evt)
+                    if is_remote:
+                        assert isinstance(evt, salobj.topics.RemoteEvent)
+                    else:
+                        assert isinstance(evt, salobj.topics.ControllerEvent)
 
                 for tel_name in obj.salinfo.telemetry_names:
                     tel = getattr(obj, f"tel_{tel_name}")
@@ -102,30 +119,45 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     )
                     assert tel.volatile
                     self.check_topic_metadata(tel)
+                    if is_remote:
+                        assert isinstance(tel, salobj.topics.RemoteTelemetry)
+                    else:
+                        assert isinstance(tel, salobj.topics.ControllerTelemetry)
 
-            # cannot add new topics to the existing salinfos
-            # (because the read loop has started) so create a new one
-            salinfo = salobj.SalInfo(
+            # Create a new SalInfo, because we cannot add new topics
+            # to an existing SalInfo once its read loop has started.
+            async with salobj.SalInfo(
                 domain=self.csc.salinfo.domain,
                 name=self.csc.salinfo.name,
                 index=self.csc.salinfo.index,
-            )
-            for ackcmd in (
-                salobj.topics.AckCmdReader(salinfo=salinfo),
-                salobj.topics.AckCmdWriter(salinfo=salinfo),
-            ):
-                assert ackcmd.name == "ackcmd"
-                assert ackcmd.attr_name == "ack_" + ackcmd.name
-                assert ackcmd.sal_name == ackcmd.name
-                assert (
-                    ackcmd.dds_name
-                    == ackcmd.salinfo.name
-                    + "_"
-                    + ackcmd.sal_name
-                    + "_"
-                    + ackcmd.rev_code
-                )
-                assert ackcmd.volatile
+            ) as salinfo:
+                for ackcmd in (
+                    salobj.topics.AckCmdReader(salinfo=salinfo),
+                    salobj.topics.AckCmdWriter(salinfo=salinfo),
+                ):
+                    assert ackcmd.name == "ackcmd"
+                    assert ackcmd.attr_name == "ack_" + ackcmd.name
+                    assert ackcmd.sal_name == ackcmd.name
+                    assert (
+                        ackcmd.dds_name
+                        == ackcmd.salinfo.name
+                        + "_"
+                        + ackcmd.sal_name
+                        + "_"
+                        + ackcmd.rev_code
+                    )
+                    assert ackcmd.volatile
+
+            # Test command topics with authorization enabled
+            # TODO DM-36605 remove this entire block once authorization
+            # is enabled by default
+            with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST="1"):
+                async with salobj.TestCsc(index=self.next_index()) as csc:
+                    print(f"csc={csc!r}")
+                    assert csc.salinfo.default_authorize
+                    for cmd_name in csc.salinfo.command_names:
+                        cmd = getattr(csc, f"cmd_{cmd_name}")
+                        assert cmd.authorize
 
     async def test_base_topic_constructor_good(self) -> None:
         async with salobj.Domain() as domain:
