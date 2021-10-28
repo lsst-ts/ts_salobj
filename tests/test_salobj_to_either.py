@@ -90,7 +90,7 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
                         flush=False, timeout=STD_TIMEOUT
                     )
                     print(f"Remote: read initial logLevel.level={data.level}")
-                    self.assertEqual(data.level, INITIAL_LOG_LEVEL)
+                    assert data.level == INITIAL_LOG_LEVEL
 
                     for level in (10, 52, 0):
                         # remote.cmd_setLogLevel.put()
@@ -99,19 +99,19 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
                         ackcmd = await remote.cmd_setLogLevel.set_start(
                             level=level, timeout=STD_TIMEOUT
                         )
-                        self.assertEqual(ackcmd.identity, remote.salinfo.identity)
+                        assert ackcmd.identity == remote.salinfo.identity
                         print("Remote: wait for logLevel event")
                         data = await remote.evt_logLevel.next(
                             flush=False, timeout=STD_TIMEOUT
                         )
                         print(f"Remote: read logLevel={data.level}")
-                        self.assertEqual(data.level, level)
+                        assert data.level == level
                         print("Remote: wait for scalars telemetry")
                         data = await remote.tel_scalars.next(
                             flush=False, timeout=STD_TIMEOUT
                         )
                         print(f"Remote: read scalars.int0={data.int0}")
-                        self.assertEqual(data.int0, level)
+                        assert data.int0 == level
                         await asyncio.sleep(0.1)
 
                     await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
@@ -122,7 +122,3 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
                         warnings.warn(
                             "Killed a process that was not properly terminated"
                         )
-
-
-if __name__ == "__main__":
-    unittest.main()

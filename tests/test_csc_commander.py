@@ -24,6 +24,7 @@ import typing
 import unittest
 
 import numpy as np
+import pytest
 
 from lsst.ts import utils
 from lsst.ts import salobj
@@ -93,32 +94,30 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
             dt = utils.current_tai() - t0
             # The margin of 0.2 compensates for the clock in Docker on macOS
             # not being strictly monotonic.
-            self.assertGreaterEqual(dt, wait_time - 0.2)
+            assert dt >= wait_time - 0.2
             self.commander.output_queue.clear()
 
             # Test the help command
             await self.commander.run_command("help")
-            self.assertEqual(len(self.commander.output_queue), 1)
+            assert len(self.commander.output_queue) == 1
             help_str = self.commander.output_queue.pop()
             for substr in ("standby", "exitControl", "echo", "help"):
-                self.assertIn(substr, help_str)
+                assert substr in help_str
             for hidden_command in ("abort", "enterControl", "setValue"):
-                self.assertNotIn(hidden_command, help_str)
+                assert hidden_command not in help_str
 
             # Test TestCscCommander's custom setArrays command handler
             # Too many values
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 await self.commander.run_command("setArrays int0=1,2,3,4,5,6")
             # No such field
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 await self.commander.run_command("setArrays no_such_field=1,2,3,4,5,6")
             # A valid command
             await self.commander.run_command("setArrays boolean0=0,1 int0=-2,33,42")
             for topic in self.csc.evt_arrays, self.csc.tel_arrays:
-                self.assertEqual(
-                    topic.data.boolean0, [False, True, False, False, False]
-                )
-                self.assertEqual(topic.data.int0, [-2, 33, 42, 0, 0])
+                assert topic.data.boolean0 == [False, True, False, False, False]
+                assert topic.data.int0 == [-2, 33, 42, 0, 0]
 
             # Test bool argument handling. Set all other fields to 0
             # and ignore them.
@@ -142,23 +141,19 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
                 args = ["0"] * n_scalar_fields
                 args[bool_index] = good_bool_arg
                 await self.commander.run_command("setScalars " + " ".join(args))
-                self.assertEqual(self.csc.evt_scalars.data.boolean0, value)
+                assert self.csc.evt_scalars.data.boolean0 == value
 
             for bad_bool_arg in ("2", "fail", "falsely"):
                 args = ["0"] * n_scalar_fields
                 args[bool_index] = bad_bool_arg
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     await self.commander.run_command("setScalars " + " ".join(args))
 
             # Test BasicCscCommander's "echo" command
             self.commander.output_queue.clear()
             argstr = "1   2.3   arbitrary   text"
             await self.commander.run_command(f"echo {argstr}")
-            self.assertEqual(len(self.commander.output_queue), 1)
+            assert len(self.commander.output_queue) == 1
             expected_output = " ".join(argstr.split())
             output_str = self.commander.output_queue.pop()
-            self.assertEqual(output_str, expected_output)
-
-
-if __name__ == "__main__":
-    unittest.main()
+            assert output_str == expected_output

@@ -23,6 +23,8 @@ import os
 import pathlib
 import unittest
 
+import pytest
+
 from lsst.ts import salobj
 
 
@@ -33,36 +35,36 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
     def test_get_schema(self) -> None:
         csc_package_root = pathlib.Path(__file__).parents[1]
         schema = self.get_schema(csc_package_root=csc_package_root, sal_name="Test")
-        self.assertIsInstance(schema, dict)
+        assert isinstance(schema, dict)
 
         schema2 = self.get_schema(
             csc_package_root=csc_package_root, schema_subpath="schema/Test.yaml"
         )
-        self.assertEqual(schema, schema2)
+        assert schema == schema2
 
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             # Invalid sal_name
             self.get_schema(
                 csc_package_root=csc_package_root, sal_name="NoSuchSalComponent"
             )
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             # Invalid schema_subpath
             self.get_schema(
                 csc_package_root=csc_package_root,
                 schema_subpath="schema/no_such_file.yaml",
             )
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             # Invalid csc_package_root
             self.get_schema(csc_package_root="not/a/directory", sal_name="Test")
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             # Must specify sal_name or schema_subpath
             self.get_schema(csc_package_root=csc_package_root)
 
     def test_get_module_dir(self) -> None:
         module_dir = self.get_module_dir("lsst.ts.salobj")
-        self.assertTrue(str(module_dir).endswith("lsst/ts/salobj"))
+        assert str(module_dir).endswith("lsst/ts/salobj")
 
-        with self.assertRaises(ModuleNotFoundError):
+        with pytest.raises(ModuleNotFoundError):
             self.get_module_dir("lsst.lsst.lsst.no_such_module")
 
     @unittest.skipIf("TS_CONFIG_OCS_DIR" not in os.environ, "ts_config_ocs not found")
@@ -100,7 +102,7 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
             schema_subpath="schema/Test.yaml",
         )
 
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             self.check_standard_config_files(
                 sal_name="Test",
                 package_name="ts_salobj",
@@ -118,9 +120,5 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
 
         for config_dir in data_root.glob("config_bad*"):
             with self.subTest(config_dir=str(config_dir)):
-                with self.assertRaises(AssertionError):
+                with pytest.raises(AssertionError):
                     self.check_config_files(config_dir=config_dir, schema=self.schema)
-
-
-if __name__ == "__main__":
-    unittest.main()

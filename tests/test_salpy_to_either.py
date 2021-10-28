@@ -122,7 +122,7 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
                 while True:
                     response_id = manager.getResponse_setLogLevel(ack_data)
                     if response_id == cmd_id:
-                        self.assertEqual(ack_data.identity, f"Test:{self.index}")
+                        assert ack_data.identity == f"Test:{self.index}"
                         if ack_data.ack == SALPY_Test.SAL__CMD_COMPLETE:
                             return ack_data
                         elif ack_data.ack in done_ack_codes:
@@ -134,7 +134,7 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
             print("Remote: wait for initial logLevel event")
             data = await asyncio.wait_for(get_logLevel(), timeout=STD_TIMEOUT)
             print(f"Remote: read logLevel.level={data.level}")
-            self.assertEqual(data.level, INITIAL_LOG_LEVEL)
+            assert data.level == INITIAL_LOG_LEVEL
 
             for level in (10, 52, 0):
                 print(f"Remote: send setLogLevel(level={level}) command")
@@ -143,11 +143,11 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
                 print("Remote: wait for logLevel event")
                 data = await asyncio.wait_for(get_logLevel(), timeout=STD_TIMEOUT)
                 print(f"Remote: read logLevel.level={data.level}")
-                self.assertEqual(data.level, level)
+                assert data.level == level
                 print("Remote: wait for scalars telemetry")
                 data = await asyncio.wait_for(get_scalars(), timeout=STD_TIMEOUT)
                 print(f"Remote: read scalars.int0={data.int0}")
-                self.assertEqual(data.int0, level)
+                assert data.int0 == level
                 await asyncio.sleep(0.1)
 
             await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
@@ -158,7 +158,3 @@ class SALPYTestCase(unittest.IsolatedAsyncioTestCase):
             if process.returncode is None:
                 process.terminate()
                 warnings.warn("Killed a process that was not properly terminated")
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -25,6 +25,7 @@ import typing
 import unittest
 
 import numpy as np
+import pytest
 
 from lsst.ts import salobj
 
@@ -72,7 +73,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
             for bad_simulation_mode in range(-1, 5):
                 if bad_simulation_mode in csc_class.valid_simulation_modes:
                     continue
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     csc_class(index=index, simulation_mode=bad_simulation_mode)
 
     async def test_valid_simulation_modes(self) -> None:
@@ -83,7 +84,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
                 async with csc_class(
                     index=index, simulation_mode=simulation_mode
                 ) as csc:
-                    self.assertEqual(csc.simulation_mode, simulation_mode)
+                    assert csc.simulation_mode == simulation_mode
 
     async def test_simulate_cmdline_arg(self) -> None:
         orig_argv = sys.argv[:]
@@ -104,7 +105,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
                         str(index),
                         "--simulate",
                     ]
-                    with self.assertRaises(SystemExit):
+                    with pytest.raises(SystemExit):
                         csc_class.make_from_cmd_line(index=True)
 
                     # Test invalid simulation modes
@@ -117,7 +118,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
                             "--simulate",
                             str(bad_simulation_mode),
                         ]
-                        with self.assertRaises(SystemExit):
+                        with pytest.raises(SystemExit):
                             csc_class.make_from_cmd_line(index=True)
 
                     # Test valid simulation modes
@@ -133,7 +134,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
                             # The simulation mode isn't assigned
                             # until the CSC starts.
                             await csc.start_task
-                            self.assertEqual(csc.simulation_mode, good_simulation_mode)
+                            assert csc.simulation_mode == good_simulation_mode
                         finally:
                             await csc.do_exitControl(data=None)
                             await asyncio.wait_for(csc.done_task, timeout=5)
@@ -147,7 +148,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
                             "--simulate",
                             str(simulation_mode),
                         ]
-                        with self.assertRaises(SystemExit):
+                        with pytest.raises(SystemExit):
                             csc_class.make_from_cmd_line(index=True)
 
                     if valid_simulation_modes[0] == 0:
@@ -166,9 +167,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
                         # The simulation mode isn't assigned
                         # until the CSC starts.
                         await csc.start_task
-                        self.assertEqual(
-                            csc.simulation_mode, nondefault_simulation_mode
-                        )
+                        assert csc.simulation_mode == nondefault_simulation_mode
                     finally:
                         await csc.do_exitControl(data=None)
                         await asyncio.wait_for(csc.done_task, timeout=5)
@@ -183,7 +182,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
                 try:
                     # The simulation mode isn't assigned until the CSC starts
                     await csc.start_task
-                    self.assertEqual(csc.simulation_mode, default_simulation_mode)
+                    assert csc.simulation_mode == default_simulation_mode
                 finally:
                     await csc.do_exitControl(data=None)
                     await asyncio.wait_for(csc.done_task, timeout=5)
@@ -200,27 +199,27 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
         """
         TestCscWithDeprecatedSimulation = self.make_csc_class(None)
 
-        self.assertEqual(TestCscWithDeprecatedSimulation.valid_simulation_modes, None)
+        assert TestCscWithDeprecatedSimulation.valid_simulation_modes is None
 
         for bad_simulation_mode in (1, 2):
             index = next(index_gen)
             warning_regex = "valid_simulation_modes=None is deprecated"
-            with self.assertWarnsRegex(DeprecationWarning, warning_regex):
+            with pytest.warns(DeprecationWarning, match=warning_regex):
                 csc = TestCscWithDeprecatedSimulation(
                     index=index, simulation_mode=bad_simulation_mode
                 )
-            with self.assertRaises(salobj.base.ExpectedError):
+            with pytest.raises(salobj.base.ExpectedError):
                 await csc.start_task
-            with self.assertRaises(salobj.base.ExpectedError):
+            with pytest.raises(salobj.base.ExpectedError):
                 await csc.done_task
 
         # Test the one valid simulation mode
         index = next(index_gen)
-        with self.assertWarnsRegex(DeprecationWarning, warning_regex):
+        with pytest.warns(DeprecationWarning, match=warning_regex):
             csc = TestCscWithDeprecatedSimulation(index=index, simulation_mode=0)
         try:
             await csc.start_task
-            self.assertEqual(csc.simulation_mode, 0)
+            assert csc.simulation_mode == 0
         finally:
             await csc.do_exitControl(data=None)
             await asyncio.wait_for(csc.done_task, timeout=5)
@@ -231,7 +230,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
         """
         TestCscWithDeprecatedSimulation = self.make_csc_class(None)
 
-        self.assertEqual(TestCscWithDeprecatedSimulation.valid_simulation_modes, None)
+        assert TestCscWithDeprecatedSimulation.valid_simulation_modes is None
 
         orig_argv = sys.argv[:]
         try:
@@ -240,11 +239,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
             # because there is no --simulate command-line argument.
             simulation_mode = 0
             sys.argv = ["test_csc.py", str(index), "--simulate", str(simulation_mode)]
-            with self.assertRaises(SystemExit):
+            with pytest.raises(SystemExit):
                 TestCscWithDeprecatedSimulation.make_from_cmd_line(index=True)
         finally:
             sys.argv[:] = orig_argv
-
-
-if __name__ == "__main__":
-    unittest.main()

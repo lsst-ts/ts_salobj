@@ -187,10 +187,6 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         config_files = config_dir.glob("*.yaml")
 
         # Check that all config files are valid.
-        # Avoid using self.subTest because that somehow prevents
-        # the following from working with known bad config files:
-        #     with self.assertRaises(AssertionError): # or Exception
-        #         self.check_config_files(...)
         bad_config_files = []
         for config_file in config_files:
             if config_file.name == "_labels.yaml":
