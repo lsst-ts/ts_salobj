@@ -594,6 +594,14 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                     try:
                         assert process.returncode is None
 
+                        descr = await remote.evt_description.next(
+                            flush=False, timeout=STD_TIMEOUT
+                        )
+                        assert descr.classname == "TestScript"
+                        assert descr.description == "test script"
+                        assert "test script that waits" in descr.help
+                        assert descr.remotes == ""
+
                         state = await remote.evt_state.next(
                             flush=False, timeout=STD_TIMEOUT
                         )
