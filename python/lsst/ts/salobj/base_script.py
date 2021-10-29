@@ -86,6 +86,9 @@ class BaseScript(controller.Controller, abc.ABC):
         (to avoid multiple scripts responding to a command).
     descr : `str`
         Short description of what the script does, for operator display.
+    help : `str`, optional
+        Detailed help for the script. Markdown formatting is encouraged.
+        This need not duplicate descriptions in the configuration schema.
 
     Raises
     ------
@@ -104,7 +107,7 @@ class BaseScript(controller.Controller, abc.ABC):
         Used to set timestamp data in the ``script`` event.
     """
 
-    def __init__(self, index: int, descr: str) -> None:
+    def __init__(self, index: int, descr: str, help: str = "") -> None:
         if index == 0:
             raise ValueError("index must be nonzero")
 
@@ -150,6 +153,7 @@ class BaseScript(controller.Controller, abc.ABC):
         self.evt_description.set(  # type: ignore
             classname=type(self).__name__,
             description=str(descr),
+            help=str(help),
         )
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 

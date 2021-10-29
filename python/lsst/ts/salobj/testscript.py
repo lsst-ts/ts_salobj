@@ -38,14 +38,24 @@ class TestScript(BaseScript):
     ----------
     index : `int`
         Index of Script SAL component.
+    descr : `str`, optional
+        Brief description. Note: this is not a typical constructor argument
+        for scripts. It is present in case subclasses or unit tests
+        wish to override the default.
 
     Wait for the specified time, then exit. See `configure` for details.
     """
 
     __test__ = False  # stop pytest from warning that this is not a test
 
-    def __init__(self, index: int, descr: str = "") -> None:
-        super().__init__(index=index, descr=descr)
+    def __init__(self, index: int, descr: str = "test script") -> None:
+        super().__init__(
+            index=index,
+            descr=descr,
+            help="A test script that waits for a configurable period of time, then exits. "
+            "It has two breakpoints: `start` (before the wait) and `end` (after the wait). "
+            "You may configure it to fail in the run or cleanup phases.",
+        )
 
     @classmethod
     def get_schema(cls) -> typing.Dict[str, str]:
