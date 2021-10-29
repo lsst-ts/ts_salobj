@@ -105,6 +105,7 @@ class TestScript(BaseScript):
 
     def set_metadata(self, metadata: typing.Any) -> None:
         metadata.duration = self.config.wait_time
+        metadata.totalCheckpoints = 2
 
     async def run(self) -> None:
         self.log.info("Run started")
