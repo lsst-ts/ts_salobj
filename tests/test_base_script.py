@@ -358,16 +358,18 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 pause_checkpoint=prelim_pause_checkpoint,
                 stop_checkpoint=prelim_stop_checkpoint,
             )
+            assert script.state.numCheckpoints == 0
 
             # Set a pause checkpoint that exists.
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
-            checkpoint_named_start = "start"
-            checkpoint_that_does_not_exist = "nonexistent checkpoint"
-            setCheckpoints_data.pause = checkpoint_named_start
-            setCheckpoints_data.stop = checkpoint_that_does_not_exist
+            start_checkpoint = "start"
+            end_checkpoint = "end"
+            nonexistent_checkpoint = "nonexistent checkpoint"
+            setCheckpoints_data.pause = start_checkpoint
+            setCheckpoints_data.stop = nonexistent_checkpoint
             await script.do_setCheckpoints(setCheckpoints_data)
-            assert script.checkpoints.pause == checkpoint_named_start
-            assert script.checkpoints.stop == checkpoint_that_does_not_exist
+            assert script.checkpoints.pause == start_checkpoint
+            assert script.checkpoints.stop == nonexistent_checkpoint
 
             # Run the script.
             run_data = script.cmd_run.DataType()
@@ -376,13 +378,16 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             while script.state.state != ScriptState.PAUSED:
                 niter += 1
                 await asyncio.sleep(0)
-            assert script.state.lastCheckpoint == checkpoint_named_start
-            assert script.checkpoints.pause == checkpoint_named_start
-            assert script.checkpoints.stop == checkpoint_that_does_not_exist
+            assert script.state.lastCheckpoint == start_checkpoint
+            assert script.state.numCheckpoints == 1
+            assert script.checkpoints.pause == start_checkpoint
+            assert script.checkpoints.stop == nonexistent_checkpoint
             resume_data = script.cmd_resume.DataType()
             await script.do_resume(resume_data)
             await asyncio.wait_for(run_task, 2)
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
+            assert script.state.lastCheckpoint == end_checkpoint
+            assert script.state.numCheckpoints == 2
             duration = (
                 script.timestamps[ScriptState.ENDING]
                 - script.timestamps[ScriptState.RUNNING]
@@ -398,16 +403,17 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
             # set a stop checkpoint
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
-            checkpoint_named_end = "end"
-            setCheckpoints_data.stop = checkpoint_named_end
+            end_checkpoint = "end"
+            setCheckpoints_data.stop = end_checkpoint
             await script.do_setCheckpoints(setCheckpoints_data)
             assert script.checkpoints.pause == ""
-            assert script.checkpoints.stop == checkpoint_named_end
+            assert script.checkpoints.stop == end_checkpoint
 
             run_data = script.cmd_run.DataType()
             await asyncio.wait_for(script.do_run(run_data), 2)
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
-            assert script.state.lastCheckpoint == checkpoint_named_end
+            assert script.state.lastCheckpoint == end_checkpoint
+            assert script.state.numCheckpoints == 2
             assert script.state.state == ScriptState.STOPPED
             duration = (
                 script.timestamps[ScriptState.STOPPING]
@@ -425,10 +431,10 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
             # set a stop checkpoint
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
-            checkpoint_named_start = "start"
-            setCheckpoints_data.pause = checkpoint_named_start
+            start_checkpoint = "start"
+            setCheckpoints_data.pause = start_checkpoint
             await script.do_setCheckpoints(setCheckpoints_data)
-            assert script.checkpoints.pause == checkpoint_named_start
+            assert script.checkpoints.pause == start_checkpoint
             assert script.checkpoints.stop == ""
 
             run_data = script.cmd_run.DataType()
@@ -439,7 +445,8 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             stop_data = script.cmd_stop.DataType()
             await script.do_stop(stop_data)
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
-            assert script.state.lastCheckpoint == checkpoint_named_start
+            assert script.state.lastCheckpoint == start_checkpoint
+            assert script.state.numCheckpoints == 1
             assert script.state.state == ScriptState.STOPPED
             duration = (
                 script.timestamps[ScriptState.STOPPING]
@@ -458,17 +465,18 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             pause_time = 0.5
             await self.configure_and_check(script, wait_time=wait_time)
 
-            checkpoint_named_start = "start"
+            start_checkpoint = "start"
             run_data = script.cmd_run.DataType()
             asyncio.create_task(script.do_run(run_data))
-            while script.state.lastCheckpoint != checkpoint_named_start:
+            while script.state.lastCheckpoint != start_checkpoint:
                 await asyncio.sleep(0)
             assert script.state.state == ScriptState.RUNNING
             await asyncio.sleep(pause_time)
             stop_data = script.cmd_stop.DataType()
             await script.do_stop(stop_data)
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
-            assert script.state.lastCheckpoint == checkpoint_named_start
+            assert script.state.lastCheckpoint == start_checkpoint
+            assert script.state.numCheckpoints == 1
             assert script.state.state == ScriptState.STOPPED
             duration = (
                 script.timestamps[ScriptState.STOPPING]
@@ -500,12 +508,14 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             if fail_run:
                 await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
                 assert script.state.lastCheckpoint == "start"
+                assert script.state.numCheckpoints == 1
                 assert script.state.state == ScriptState.FAILED
                 end_run_state = ScriptState.FAILING
             else:
                 with pytest.raises(salobj.ExpectedError):
                     await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
                 assert script.state.lastCheckpoint == "end"
+                assert script.state.numCheckpoints == 2
                 end_run_state = ScriptState.ENDING
             duration = (
                 script.timestamps[end_run_state]
@@ -612,6 +622,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                             flush=False, timeout=STD_TIMEOUT
                         )
                         assert metadata.duration == wait_time
+                        assert metadata.totalCheckpoints == 2
 
                         group_id = "a non-blank group ID"
                         await remote.cmd_setGroupId.set_start(
