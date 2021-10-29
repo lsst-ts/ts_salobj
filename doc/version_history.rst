@@ -13,6 +13,8 @@ Changes:
 
 * Support optional authlist-based command authorization using environment variable ``LSST_DDS_ENABLE_AUTHLIST``.
 * Modernize unit tests to use bare `assert`.
+* Remove all use of SALPY.
+  Inter-language SAL communication is now tested in a separate integration test package.
 
 Requirements:
 
