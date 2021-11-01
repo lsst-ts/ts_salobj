@@ -15,6 +15,9 @@ Changes:
 * Modernize unit tests to use bare `assert`.
 * Remove all use of SALPY.
   Inter-language SAL communication is now tested in a separate integration test package.
+* `BaseScript`: support new checkpoint counting fields in Script SAL topics:
+  ``totalCheckpoints`` in the ``metadata`` event and ``numCheckpoints`` in the ``state`` event.
+* Update ``sal_scripts.rst`` to describe the `BaseScript.set_metadata` method.
 
 Requirements:
 

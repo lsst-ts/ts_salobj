@@ -112,6 +112,17 @@ See `BaseScript.configure` for details.
 Note that ``configure`` will always be called once before ``run`` and never again.
 Thus if ``configure`` sets attributes needed by ``run``, there is no point to initializing those attributes in the constructor.
 
+set_metadata method
+-------------------
+
+Set metadata about your script, to be published in the `metadata`_ Script event.
+The ``metadata`` argument is an instance of `metadata`_ Script event data.
+You need only set the fields that are relevant to your script.
+
+This method is called after ``configure``, allowing you to set metadata based on the configuration.
+
+.. _metadata: https://ts-xml.lsst.io/sal_interfaces/Script.html#metadata
+
 run method
 ----------
 
