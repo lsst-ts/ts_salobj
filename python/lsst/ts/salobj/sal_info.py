@@ -35,9 +35,9 @@ import typing
 import warnings
 
 import dds
+import ddsutil
 
 from lsst.ts import utils
-from . import dds_utils
 from . import idl_metadata
 from . import sal_enums
 from . import topics
@@ -286,7 +286,7 @@ class SalInfo:
             raise RuntimeError(
                 f"Cannot find IDL file {idl_path} for name={self.name!r}"
             )
-        self.parsed_idl = dds_utils.parse_idl_file(idl_path)
+        self.parsed_idl = ddsutil.parse_idl_file(idl_path)
         self.metadata = idl_metadata.parse_idl(name=self.name, idl_path=idl_path)
         self.parse_metadata()  # Adds self.indexed, self.revnames, etc.
         if self.index != 0 and not self.indexed:
@@ -297,10 +297,8 @@ class SalInfo:
             ackcmd_revname = self.revnames.get("ackcmd")
             if ackcmd_revname is None:
                 raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
-            self._ackcmd_type: type_hints.AckCmdDataType = (
-                dds_utils.make_dds_topic_class(
-                    parsed_idl=self.parsed_idl, revname=ackcmd_revname
-                )
+            self._ackcmd_type: type_hints.AckCmdDataType = ddsutil.make_dds_topic_class(
+                parsed_idl=self.parsed_idl, revname=ackcmd_revname
             )
 
         domain.add_salinfo(self)
