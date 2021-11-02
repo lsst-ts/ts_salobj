@@ -166,8 +166,7 @@ class SalInfo:
 
     The DDS partition name for each topic is {prefix}.{name}.{suffix}, where:
 
-    * ``prefix`` = $LSST_DDS_PARTITION_PREFIX
-      (fall back to $LSST_DDS_DOMAIN if necessary).
+    * ``prefix`` = $LSST_DDS_PARTITION_PREFIX.
     * ``name`` = the ``name`` constructor argument.
     * ``suffix`` = "cmd" for command topics, and "data" for all other topics,
       including ``ackcmd``.
@@ -204,26 +203,11 @@ class SalInfo:
         # This is primarily intended for unit tests.
         self.wait_history_isok: typing.Dict[str, bool] = dict()
 
-        partition_prefix = os.environ.get("LSST_DDS_PARTITION_PREFIX")
-        if partition_prefix is None:
-            partition_prefix = os.environ.get("LSST_DDS_DOMAIN")
-            if partition_prefix is None:
-                raise RuntimeError(
-                    "Environment variable $LSST_DDS_PARTITION_PREFIX not defined, "
-                    "nor is the deprecated fallback $LSST_DDS_DOMAIN"
-                )
-            warnings.warn(
-                "Environment variable $LSST_DDS_PARTITION_PREFIX not defined; "
-                "using deprecated fallback $LSST_DDS_DOMAIN instead",
-                DeprecationWarning,
+        self.partition_prefix = os.environ.get("LSST_DDS_PARTITION_PREFIX")
+        if self.partition_prefix is None:
+            raise RuntimeError(
+                "Environment variable $LSST_DDS_PARTITION_PREFIX not defined."
             )
-        elif os.environ.get("LSST_DDS_DOMAIN") is not None:
-            warnings.warn(
-                "Using environment variable $LSST_DDS_PARTITION_PREFIX "
-                "instead of deprecated $LSST_DDS_DOMAIN",
-                DeprecationWarning,
-            )
-        self.partition_prefix = partition_prefix
 
         self.start_task: asyncio.Future = asyncio.Future()
         self.done_task: asyncio.Future = asyncio.Future()
