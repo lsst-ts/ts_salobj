@@ -86,6 +86,9 @@ class BaseScript(controller.Controller, abc.ABC):
         (to avoid multiple scripts responding to a command).
     descr : `str`
         Short description of what the script does, for operator display.
+    help : `str`, optional
+        Detailed help for the script. Markdown formatting is encouraged.
+        This need not duplicate descriptions in the configuration schema.
 
     Raises
     ------
@@ -104,7 +107,7 @@ class BaseScript(controller.Controller, abc.ABC):
         Used to set timestamp data in the ``script`` event.
     """
 
-    def __init__(self, index: int, descr: str) -> None:
+    def __init__(self, index: int, descr: str, help: str = "") -> None:
         if index == 0:
             raise ValueError("index must be nonzero")
 
@@ -122,6 +125,12 @@ class BaseScript(controller.Controller, abc.ABC):
         # Delay (sec) to allow sending the final state and acknowleding
         # the command before exiting.
         self.final_state_delay = 0.3
+
+        # The number of checkpoints seen
+        self.num_checkpoints = 0
+
+        # The name of the last checkpoint seen
+        self.last_checkpoint = ""
 
         # A dict of state: timestamp (TAI seconds).
         self.timestamps: typing.Dict[ScriptState, float] = dict()
@@ -144,6 +153,7 @@ class BaseScript(controller.Controller, abc.ABC):
         self.evt_description.set(  # type: ignore
             classname=type(self).__name__,
             description=str(descr),
+            help=str(help),
         )
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
@@ -272,10 +282,12 @@ class BaseScript(controller.Controller, abc.ABC):
 
         * ``state``: `lsst.ts.idl.enums.Script.ScriptState`
             The current state.
-        * ``last_checkpoint``: `str`
+        * ``lastCheckpoint``: `str`
             Name of most recently seen checkpoint.
         * ``reason``: `str`
             Reason for this state, if any.
+        * ``numCheckpoints``: `int`
+            The number of checkpoints seen.
         """
         return self.evt_state.data  # type: ignore
 
@@ -292,7 +304,6 @@ class BaseScript(controller.Controller, abc.ABC):
         state: typing.Union[ScriptState, int, None] = None,
         reason: typing.Optional[str] = None,
         keep_old_reason: bool = False,
-        last_checkpoint: typing.Optional[str] = None,
         force_output: bool = False,
     ) -> None:
         """Set the script state.
@@ -307,10 +318,13 @@ class BaseScript(controller.Controller, abc.ABC):
             If True, keep old reason; append the ``reason`` argument after ";"
             if it is is a non-empty string.
             If False replace with ``reason``, or "" if ``reason`` is `None`.
-        last_checkpoint : `str`, optional
-            Name of most recently seen checkpoint. None for no change.
         force_output : `bool`, optional
             If True the output even if not changed.
+
+        Notes
+        -----
+        The lastCheckpoint field is set from self.last_checkpoint,
+        and the numCheckpoints field is set from self.num_checkpoints.
         """
         if state is not None:
             state = ScriptState(state)
@@ -321,7 +335,8 @@ class BaseScript(controller.Controller, abc.ABC):
         self.evt_state.set_put(  # type: ignore
             state=state,
             reason=reason,
-            lastCheckpoint=last_checkpoint,
+            lastCheckpoint=self.last_checkpoint,
+            numCheckpoints=self.num_checkpoints,
             force_output=force_output,
         )
 
@@ -354,18 +369,21 @@ class BaseScript(controller.Controller, abc.ABC):
                 "checkpoint error: state is RUNNING but run_task is done"
             )
 
+        self.num_checkpoints += 1
+        self.last_checkpoint = name
+
         if re.fullmatch(self.checkpoints.stop, name):
-            self.set_state(ScriptState.STOPPING, last_checkpoint=name)
+            self.set_state(ScriptState.STOPPING)
             raise asyncio.CancelledError(
                 f"stop by request: checkpoint {name} matches {self.checkpoints.stop}"
             )
         elif re.fullmatch(self.checkpoints.pause, name):
             self._pause_future = asyncio.Future()
-            self.set_state(ScriptState.PAUSED, last_checkpoint=name)
+            self.set_state(ScriptState.PAUSED)
             await self._pause_future
             self.set_state(ScriptState.RUNNING)
         else:
-            self.set_state(last_checkpoint=name, force_output=True)
+            self.set_state(force_output=True)
             await asyncio.sleep(0.001)
 
     async def close_tasks(self) -> None:

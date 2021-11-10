@@ -412,7 +412,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             tai0 = salobj.current_tai()
         tai1 = utils.current_tai()
         # Leave plenty of slop because time has jitter on macOS Docker.
-        pytest.approx(tai0, tai1, abs=0.2)
+        assert tai0 == pytest.approx(tai1, abs=0.2)
 
     # TODO DM-31660: Remove this test of deprecated code
     def test_angle_diff(self) -> None:
