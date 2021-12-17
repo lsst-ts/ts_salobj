@@ -343,7 +343,8 @@ class TestCsc(ConfigurableCsc):
     def _make_random_scalars(self, dtype: typing.Any) -> typing.Any:
         """Make random data for cmd_setScalars using numpy.random."""
         data = dtype()
-        data.boolean0 = np.random.choice([False, True])
+        # Cast from numpy._bool to bool to avoid a numpy warning
+        data.boolean0 = bool(np.random.choice([False, True]))
         printable_chars = [c for c in string.printable]
         data.string0 = "".join(np.random.choice(printable_chars, size=(20,)))
         for field in self.int_fields:
