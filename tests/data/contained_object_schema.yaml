@@ -1,5 +1,5 @@
 $schema: http://json-schema.org/draft-07/schema#
-$id: https://github.com/lsst-ts/ts_scheduler/blob/main/schema/Scheduler.yaml
+$id: https://github.com/lsst-ts/ts_salobj/blob/main/tests/data/contained_object_schema.yaml
 title: Scheduler v1
 description: Schema with contained object
 type: object
