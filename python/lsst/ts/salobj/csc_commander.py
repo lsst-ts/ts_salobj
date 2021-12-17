@@ -126,13 +126,7 @@ class CscCommander:
         Names of telemetry or event topics to not print.
         If `None` or empty then no topics are excluded.
     exclude_commands : `List` [`str`], optional
-        Names of commands to ignore. Typically this should include:
-
-        * "abort" and "setValue", two generic commands that few CSCs implement.
-        * "enterControl" unless your CSC is "externally commandable",
-          meaning it can run in the OFFLINE state.
-
-        The default is to exclude nothing, for backwards compatibility.
+        Names of commands to exclude.
     fields_to_ignore : `List` [`str`], optional
         SAL topic fields names to ignore when specifying command parameters,
         and when printing events and telemetry.
@@ -214,10 +208,8 @@ class CscCommander:
         from lsst.ts import salobj
         asyncio.run(salobj.CscCommander.amain(name="Test", index=True))
 
-    However, this will claim to support some generic commands that the
-    Test CSC does not support ( "abort", "enterControl", and "setValue")
-    and it mishandles the "setArrays" command.
-    See `TestCscCommander` for a version that fixes these deficiencies.
+    However, this does not handle array-valued command parameters.
+    See `TestCscCommander` for an example that handles arrays.
     `TestCscCommander` is run as follows::
 
         import asyncio
