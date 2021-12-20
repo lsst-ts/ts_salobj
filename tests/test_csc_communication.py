@@ -526,6 +526,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             with self.subTest(initial_state=initial_state):
                 async with self.make_csc(initial_state=initial_state):
                     await self.assert_next_summary_state(initial_state)
+                    await self.assert_next_sample(
+                        topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+                    )
 
                     # Issue the ``fault`` command
                     # and check the state and error code.
@@ -538,15 +541,17 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     # Issue the ``standby`` command to recover.
                     await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
                     await self.assert_next_summary_state(salobj.State.STANDBY)
+                    await self.assert_next_sample(
+                        topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+                    )
 
     async def test_fault_method(self) -> None:
         """Test BaseCsc.fault with and without optional arguments."""
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(
-                    flush=False, timeout=NODATA_TIMEOUT
-                )
+            await self.assert_next_sample(
+                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+            )
 
             code = 52
             report = "Report for error code"
@@ -562,6 +567,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
+            await self.assert_next_sample(
+                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+            )
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             # if code is specified then errorReport is output;
@@ -582,6 +590,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 await self.remote.cmd_wait.set_start(duration=5, timeout=STD_TIMEOUT)
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
+            await self.assert_next_sample(
+                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+            )
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             self.csc.fault(code=code, report="")
@@ -594,13 +605,16 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
+            await self.assert_next_sample(
+                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+            )
             await self.remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
 
     async def test_fault_problems(self) -> None:
         """Test BaseCsc.fault when report_summary_state misbehaves."""
-        index = self.next_index()
         for doraise, report_first in itertools.product((False, True), (False, True)):
             with self.subTest(doraise=doraise, report_first=report_first):
+                index = self.next_index()
                 async with FailInReportFaultCsc(
                     index=index, doraise=doraise, report_first=report_first
                 ) as csc, salobj.Remote(
@@ -608,6 +622,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 ) as remote:
                     await self.assert_next_summary_state(
                         salobj.State.ENABLED, remote=remote
+                    )
+                    await self.assert_next_sample(
+                        topic=remote.evt_errorCode, errorCode=0, errorReport=""
                     )
 
                     code = 51

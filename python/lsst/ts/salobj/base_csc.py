@@ -728,6 +728,7 @@ class BaseCsc(Controller):
                     self.log.exception(
                         f"Failed to output errorCode: code={code!r}; report={report!r}"
                     )
+                self.log.critical(f"Fault! errorCode={code}, errorReport={report!r}")
             try:
                 self.report_summary_state()
             except Exception:
@@ -805,6 +806,8 @@ class BaseCsc(Controller):
         that got it into that state).
         """
         self.evt_summaryState.set_put(summaryState=self.summary_state)  # type: ignore
+        if self.summary_state is not State.FAULT:
+            self.evt_errorCode.set_put(errorCode=0, errorReport="", traceback="")  # type: ignore
 
     async def _do_change_state(
         self,
