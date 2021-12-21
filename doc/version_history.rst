@@ -17,6 +17,8 @@ Changes:
 * `CscCommander`: update documentation to expect no extra, unwanted generic commands.
   This reflects what you get with ts_xml 10 and ts_sal 6.
 * Fix a new mypy error by not checking DM's `lsst/__init__.py` files.
+* Remove all use of SALPY.
+  Inter-language SAL communication is now tested in a separate integration test package.
 
 Requirements:
 
@@ -34,8 +36,6 @@ Changes:
 
 * Support optional authlist-based command authorization using environment variable ``LSST_DDS_ENABLE_AUTHLIST``.
 * Modernize unit tests to use bare `assert`.
-* Remove all use of SALPY.
-  Inter-language SAL communication is now tested in a separate integration test package.
 * `BaseScript`: support new checkpoint counting fields in Script SAL topics:
   ``totalCheckpoints`` in the ``metadata`` event and ``numCheckpoints`` in the ``state`` event.
 * Update ``sal_scripts.rst`` to describe the `BaseScript.set_metadata` method.
