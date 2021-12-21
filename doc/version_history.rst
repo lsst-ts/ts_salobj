@@ -19,6 +19,7 @@ Changes:
 * Fix a new mypy error by not checking DM's `lsst/__init__.py` files.
 * Remove all use of SALPY.
   Inter-language SAL communication is now tested in a separate integration test package.
+* Update schema links to point to main instead of master.
 
 Requirements:
 
