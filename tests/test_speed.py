@@ -41,7 +41,7 @@ class MockVerify:
 
 
 try:
-    from lsst import verify
+    from lsst import verify  # type: ignore
 except ImportError:
     warnings.warn("verify could not be imported; measurements will not be uploaded")
     verify = MockVerify

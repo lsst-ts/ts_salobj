@@ -35,8 +35,9 @@ from .sal_log_handler import SalLogHandler
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
 
 # Set of generic commands that need not have an associated do_ method.
-# TODO DM-17157: Remove this constant if and when ``SALSubsystems.xml``
-# explicitly lists all generic topics used by every SAL component.
+# TODO DM-17157: Remove this constant and the code that uses it.
+# This requires ts_xml 10.2 or 11 and ts_sal 6. (It would have been ts_xml 10.1
+# but the MT Hexapod and Rotator had unwanted enterControl commands.)
 OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue", "setSimulationMode"))
 
 # Delay before closing the domain participant (seconds).
