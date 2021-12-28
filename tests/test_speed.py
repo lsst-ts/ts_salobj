@@ -41,7 +41,7 @@ class MockVerify:
 
 
 try:
-    from lsst import verify
+    from lsst import verify  # type: ignore
 except ImportError:
     warnings.warn("verify could not be imported; measurements will not be uploaded")
     verify = MockVerify
@@ -301,7 +301,3 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                     log_level_write_speed * u.ct / u.second,
                 )
             )
-
-
-if __name__ == "__main__":
-    unittest.main()

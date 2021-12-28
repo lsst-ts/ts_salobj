@@ -24,6 +24,7 @@ import datetime
 import getpass
 import os
 import random
+import re
 import socket
 import unittest
 
@@ -55,10 +56,10 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                     private_seqNum=private_seqNum, ack=ack, error=error, result=result
                 ),
             )
-            self.assertEqual(err.ackcmd.private_seqNum, private_seqNum)
-            self.assertEqual(err.ackcmd.ack, ack)
-            self.assertEqual(err.ackcmd.error, error)
-            self.assertEqual(err.ackcmd.result, result)
+            assert err.ackcmd.private_seqNum == private_seqNum
+            assert err.ackcmd.ack == ack
+            assert err.ackcmd.error == error
+            assert err.ackcmd.result == result
 
             for ExceptionClass in (
                 Exception,
@@ -67,20 +68,20 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                 RuntimeError,
                 AssertionError,
             ):
-                with self.assertRaises(ExceptionClass):
+                with pytest.raises(ExceptionClass):
                     with salobj.assertRaisesAckError():
                         raise ExceptionClass(
                             "assertRaisesAckError should ignore other exception types"
                         )
 
-            with self.assertRaises(AssertionError):
+            with pytest.raises(AssertionError):
                 with salobj.assertRaisesAckError(ack=5):
                     raise salobj.AckError(
                         "mismatched ack",
                         ackcmd=salinfo.make_ackcmd(private_seqNum=1, ack=1),
                     )
 
-            with self.assertRaises(AssertionError):
+            with pytest.raises(AssertionError):
                 with salobj.assertRaisesAckError(error=47):
                     raise salobj.AckError(
                         "mismatched error",
@@ -130,11 +131,11 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             )
             str_err = str(err)
             for item in (msg, private_seqNum, ack, error, result):
-                self.assertIn(str(item), str_err)
-            self.assertNotIn("AckError", str_err)
+                assert str(item) in str_err
+            assert "AckError" not in str_err
             repr_err = repr(err)
             for item in ("AckError", msg, private_seqNum, ack, error, result):
-                self.assertIn(str(item), repr_err)
+                assert str(item) in repr_err
 
     def test_astropy_time_from_tai_unix(self) -> None:
         # Check the function at a leap second transition,
@@ -144,19 +145,19 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             with self.subTest(dt=dt):
                 utc_unix = unix_time0 + dt
                 tai_unix = utils.tai_from_utc(utc_unix)
-                with self.assertWarns(DeprecationWarning):
+                with pytest.warns(DeprecationWarning):
                     astropy_time1 = salobj.astropy_time_from_tai_unix(tai_unix)
                 astropy_time2 = utils.astropy_time_from_tai_unix(tai_unix)
                 assert astropy_time1 == astropy_time2
 
     async def test_get_opensplice_version(self) -> None:
         ospl_version = salobj.get_opensplice_version()
-        self.assertRegex(ospl_version, r"^\d+\.\d+\.\d+")
+        assert re.search(r"^\d+\.\d+\.\d+", ospl_version) is not None
 
     async def test_get_user_host(self) -> None:
         expected_user_host = getpass.getuser() + "@" + socket.getfqdn()
         user_host = salobj.get_user_host()
-        self.assertEqual(expected_user_host, user_host)
+        assert expected_user_host == user_host
 
     async def test_long_ack_result(self) -> None:
         async with salobj.Domain() as domain:
@@ -170,8 +171,8 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                 "this string is longer than MAX_RESULT_LEN characters "
                 "this string is longer than MAX_RESULT_LEN characters "
             )
-            self.assertGreater(len(long_result), salobj.MAX_RESULT_LEN)
-            with self.assertRaises(ValueError):
+            assert len(long_result) > salobj.MAX_RESULT_LEN
+            with pytest.raises(ValueError):
                 salinfo.make_ackcmd(
                     private_seqNum=1,
                     ack=ack,
@@ -186,21 +187,21 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                 result=long_result,
                 truncate_result=True,
             )
-            self.assertEqual(ackcmd.result, long_result[0 : salobj.MAX_RESULT_LEN])
-            self.assertEqual(ackcmd.ack, ack)
-            self.assertEqual(ackcmd.error, error)
+            assert ackcmd.result == long_result[0 : salobj.MAX_RESULT_LEN]
+            assert ackcmd.ack == ack
+            assert ackcmd.error == error
 
     def test_set_random_lsst_dds_domain(self) -> None:
         """Test that set_random_lsst_dds_domain is a deprecated
         alias for set_random_lsst_dds_partition_prefix.
         """
         old_prefix = os.environ["LSST_DDS_PARTITION_PREFIX"]
-        with self.assertWarnsRegex(
-            DeprecationWarning, "Use set_random_lsst_dds_partition_prefix"
+        with pytest.warns(
+            DeprecationWarning, match="Use set_random_lsst_dds_partition_prefix"
         ):
             salobj.set_random_lsst_dds_domain()
         new_prefix = os.environ["LSST_DDS_PARTITION_PREFIX"]
-        self.assertNotEqual(old_prefix, new_prefix)
+        assert old_prefix != new_prefix
 
     def test_set_random_lsst_dds_partition_prefix(self) -> None:
         random.seed(42)
@@ -209,21 +210,21 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         for i in range(NumToTest):
             salobj.set_random_lsst_dds_partition_prefix()
             name = os.environ.get("LSST_DDS_PARTITION_PREFIX")
-            self.assertTrue(name)
+            assert name
             names.add(name)
-            self.assertNotIn(".", name)  # type: ignore
+            assert "." not in name  # type: ignore
         # any duplicate names will reduce the size of names
-        self.assertEqual(len(names), NumToTest)
+        assert len(names) == NumToTest
 
     def test_modify_environ(self) -> None:
         rng = np.random.default_rng(seed=45)
         original_environ = os.environ.copy()
         n_to_delete = 3
-        self.assertGreater(len(original_environ), n_to_delete)
+        assert len(original_environ) > n_to_delete
         new_key0 = "_a_long_key_name_" + astropy.time.Time.now().isot
         new_key1 = "_another_long_key_name_" + astropy.time.Time.now().isot
-        self.assertNotIn(new_key0, os.environ)
-        self.assertNotIn(new_key1, os.environ)
+        assert new_key0 not in os.environ
+        assert new_key1 not in os.environ
         some_keys = rng.choice(list(original_environ.keys()), 3)
         kwargs = {
             some_keys[0]: None,
@@ -232,53 +233,53 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             new_key0: "bar",
             new_key1: None,
         }
-        with self.assertWarns(DeprecationWarning), salobj.modify_environ(**kwargs):
+        with pytest.warns(DeprecationWarning), salobj.modify_environ(**kwargs):
             for name, value in kwargs.items():
                 if value is None:
-                    self.assertNotIn(name, os.environ)
+                    assert name not in os.environ
                 else:
-                    self.assertEqual(os.environ[name], value)
+                    assert os.environ[name] == value
             for name, value in os.environ.items():
                 if name in kwargs:
-                    self.assertEqual(value, kwargs[name])
+                    assert value == kwargs[name]
                 else:
-                    self.assertEqual(value, original_environ[name])
-        self.assertEqual(os.environ, original_environ)
+                    assert value == original_environ[name]
+        assert os.environ == original_environ
 
         # Values that are neither None nor a string should raise RuntimeError
         for bad_value in (3, 1.23, True, False):
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 bad_kwargs = kwargs.copy()
                 bad_kwargs[new_key1] = bad_value  # type: ignore
-                with self.assertWarns(DeprecationWarning), salobj.modify_environ(
+                with pytest.warns(DeprecationWarning), salobj.modify_environ(
                     **bad_kwargs
                 ):
                     pass
-            self.assertEqual(os.environ, original_environ)
+            assert os.environ == original_environ
 
     async def test_domain_attr(self) -> None:
         async with salobj.Domain() as domain:
-            self.assertEqual(domain.origin, os.getpid())
+            assert domain.origin == os.getpid()
 
-            self.assertEqual(domain.user_host, salobj.get_user_host())
-            self.assertEqual(domain.default_identity, domain.user_host)
-            self.assertEqual(domain.ackcmd_qos_set.profile_name, "AckcmdProfile")
-            self.assertEqual(domain.command_qos_set.profile_name, "CommandProfile")
-            self.assertEqual(domain.event_qos_set.profile_name, "EventProfile")
-            self.assertEqual(domain.telemetry_qos_set.profile_name, "TelemetryProfile")
-            self.assertTrue(domain.ackcmd_qos_set.volatile)
-            self.assertTrue(domain.command_qos_set.volatile)
-            self.assertFalse(domain.event_qos_set.volatile)
-            self.assertTrue(domain.telemetry_qos_set.volatile)
+            assert domain.user_host == salobj.get_user_host()
+            assert domain.default_identity == domain.user_host
+            assert domain.ackcmd_qos_set.profile_name == "AckcmdProfile"
+            assert domain.command_qos_set.profile_name == "CommandProfile"
+            assert domain.event_qos_set.profile_name == "EventProfile"
+            assert domain.telemetry_qos_set.profile_name == "TelemetryProfile"
+            assert domain.ackcmd_qos_set.volatile
+            assert domain.command_qos_set.volatile
+            assert not domain.event_qos_set.volatile
+            assert domain.telemetry_qos_set.volatile
 
     def test_index_generator(self) -> None:
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             salobj.index_generator(1, 1)  # imin >= imax
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             salobj.index_generator(1, 0)  # imin >= imax
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             salobj.index_generator(0, 5, -1)  # i0 < imin
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             salobj.index_generator(0, 5, 6)  # i0 > imax
 
         imin = -2
@@ -286,7 +287,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         gen = salobj.index_generator(imin=imin, imax=imax)
         expected_values = [-2, -1, 0, 1, 2, 3, 4, 5, -2, -1, 0, 1, 2, 3, 4, 5, -2]
         values = [next(gen) for i in range(len(expected_values))]
-        self.assertEqual(values, expected_values)
+        assert values == expected_values
 
         imin = -2
         imax = 5
@@ -294,7 +295,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         expected_values = [5, -2, -1, 0, 1, 2, 3, 4, 5, -2]
         gen = salobj.index_generator(imin=imin, imax=imax, i0=i0)
         values = [next(gen) for i in range(len(expected_values))]
-        self.assertEqual(values, expected_values)
+        assert values == expected_values
 
     def test_name_to_name_index(self) -> None:
         for name, expected_result in (
@@ -306,7 +307,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         ):
             with self.subTest(name=name):
                 result = salobj.name_to_name_index(name)
-                self.assertEqual(result, expected_result)
+                assert result == expected_result
 
         for bad_name in (
             (" Script:15"),  # leading space
@@ -315,7 +316,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             ("Script:zero"),  # index is not an integer
         ):
             with self.subTest(bad_name=bad_name):
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     salobj.name_to_name_index(bad_name)
 
     # TODO DM-31660: Remove this test of deprecated code
@@ -328,40 +329,40 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             UTC date as an astropy time.
         """
         tai = utils.tai_from_utc_unix(utc_ap.utc.unix)
-        with self.assertWarns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             tai0 = salobj.tai_from_utc_unix(utc_ap.utc.unix)
         assert tai == tai0
 
-        with self.assertWarns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             tai1 = salobj.tai_from_utc(utc_ap.utc.unix)
-        self.assertAlmostEqual(tai, tai1, delta=1e-6)
+        assert tai == pytest.approx(tai1, abs=1e-6)
 
-        with self.assertWarns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             tai2 = salobj.tai_from_utc(utc_ap.utc.iso, format="iso")
-        self.assertAlmostEqual(tai, tai2, delta=1e-6)
+        assert tai == pytest.approx(tai2, abs=1e-6)
 
-        with self.assertWarns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             tai3 = salobj.tai_from_utc(utc_ap.utc.iso, format=None)
-        self.assertAlmostEqual(tai, tai3, delta=1e-6)
+        assert tai == pytest.approx(tai3, abs=1e-6)
 
-        with self.assertWarns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             tai4 = salobj.tai_from_utc(utc_ap.utc.mjd, format="mjd")
-        self.assertAlmostEqual(tai, tai4, delta=1e-6)
+        assert tai == pytest.approx(tai4, abs=1e-6)
 
         tai_mjd = (tai + salobj.MJD_MINUS_UNIX_SECONDS) / salobj.SECONDS_PER_DAY
         tai_mjd_ap = astropy.time.Time(tai_mjd, scale="tai", format="mjd")
-        with self.assertWarns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             tai5 = salobj.tai_from_utc(tai_mjd_ap)
-        self.assertAlmostEqual(tai, tai5, delta=1e-6)
+        assert tai == pytest.approx(tai5, abs=1e-6)
 
         tai_iso_ap = astropy.time.Time(utc_ap.tai.iso, scale="tai", format="iso")
-        with self.assertWarns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             tai6 = salobj.tai_from_utc(tai_iso_ap)
-        self.assertAlmostEqual(tai, tai6, delta=1e-6)
+        assert tai == pytest.approx(tai6, abs=1e-6)
 
-        with self.assertWarns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             tai7 = salobj.tai_from_utc(utc_ap)
-        self.assertAlmostEqual(tai, tai7, delta=1e-6)
+        assert tai == pytest.approx(tai7, abs=1e-6)
 
     # TODO DM-31660: Remove this test of deprecated code
     def test_tai_from_utc(self) -> None:
@@ -379,7 +380,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         ):
             with self.subTest(utc_ap=utc_ap):
                 tai1 = utils.tai_from_utc(utc_ap)
-                with self.assertWarns(DeprecationWarning):
+                with pytest.warns(DeprecationWarning):
                     tai2 = salobj.tai_from_utc(utc_ap)
                 assert tai1 == tai2
 
@@ -400,18 +401,18 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             tai0 + 1,
             tai0 + 0.5 * utils.SECONDS_PER_DAY,
         ):
-            with self.assertWarns(DeprecationWarning):
+            with pytest.warns(DeprecationWarning):
                 utc1 = salobj.utc_from_tai_unix(tai)
             utc2 = utils.utc_from_tai_unix(tai)
             assert utc1 == utc2
 
     # TODO DM-31660: Remove this test of deprecated code
     def test_current_tai(self) -> None:
-        with self.assertWarns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             tai0 = salobj.current_tai()
         tai1 = utils.current_tai()
         # Leave plenty of slop because time has jitter on macOS Docker.
-        pytest.approx(tai0, tai1, abs=0.2)
+        assert tai0 == pytest.approx(tai1, abs=0.2)
 
     # TODO DM-31660: Remove this test of deprecated code
     def test_angle_diff(self) -> None:
@@ -425,7 +426,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                     angle1, angle2 = angle2, angle1
                 with self.subTest(angle1=angle1, angle2=angle2):
                     diff1 = utils.angle_diff(angle1, angle2)
-                    with self.assertWarns(DeprecationWarning):
+                    with pytest.warns(DeprecationWarning):
                         diff2 = salobj.angle_diff(angle1, angle2)
                     assert diff1 == diff2
 
@@ -435,7 +436,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             for nwraps in (-2, -1, 0, 1, 2):
                 with self.subTest(base_angle=base_angle, nwraps=nwraps):
                     angle = base_angle + 360 * nwraps
-                    with self.assertWarns(DeprecationWarning):
+                    with pytest.warns(DeprecationWarning):
                         wrapped1 = salobj.angle_wrap_center(angle)
                     wrapped2 = utils.angle_wrap_center(angle)
                     assert wrapped1 == wrapped2
@@ -446,14 +447,14 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             for nwraps in (-2, -1, 0, 1, 2):
                 with self.subTest(base_angle=base_angle, nwraps=nwraps):
                     angle = base_angle + 360 * nwraps
-                    with self.assertWarns(DeprecationWarning):
+                    with pytest.warns(DeprecationWarning):
                         wrapped1 = salobj.angle_wrap_nonnegative(angle)
                     wrapped2 = utils.angle_wrap_nonnegative(angle)
                     assert wrapped1 == wrapped2
 
     # TODO DM-31660: Remove this test of deprecated code
     def test_make_done_future(self) -> None:
-        with self.assertWarns(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             done_future = salobj.make_done_future()
             assert isinstance(done_future, asyncio.Future)
             assert done_future.done()
@@ -468,7 +469,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             with self.subTest(angle1=angle1, angle2=angle2):
                 diff = abs(utils.angle_diff(angle1, angle2))
                 bad_diff = diff - epsilon
-                self.assertGreater(bad_diff.deg, 0)
+                assert bad_diff.deg > 0
 
                 for arg1, arg2 in (
                     (angle1, angle2),
@@ -478,17 +479,17 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                 ):
                     with self.subTest(arg1=arg1, arg2=arg2):
                         # Test too-large differences
-                        with self.assertRaises(AssertionError):
+                        with pytest.raises(AssertionError):
                             utils.assert_angles_almost_equal(
                                 angle1=arg1, angle2=arg2, max_diff=bad_diff
                             )
-                        with self.assertRaises(AssertionError), self.assertWarns(
+                        with pytest.raises(AssertionError), pytest.warns(
                             DeprecationWarning
                         ):
                             salobj.assertAnglesAlmostEqual(
                                 arg1, arg2, max_diff=bad_diff
                             )
-                        with self.assertRaises(AssertionError), self.assertWarns(
+                        with pytest.raises(AssertionError), pytest.warns(
                             DeprecationWarning
                         ):
                             salobj.assertAnglesAlmostEqual(
@@ -500,15 +501,11 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                         utils.assert_angles_almost_equal(
                             angle1=arg1, angle2=arg2, max_diff=good_diff
                         )
-                        with self.assertWarns(DeprecationWarning):
+                        with pytest.warns(DeprecationWarning):
                             salobj.assertAnglesAlmostEqual(
                                 arg1, arg2, max_diff=good_diff
                             )
-                        with self.assertWarns(DeprecationWarning):
+                        with pytest.warns(DeprecationWarning):
                             salobj.assertAnglesAlmostEqual(
                                 arg1, arg2, max_diff=good_diff.deg
                             )
-
-
-if __name__ == "__main__":
-    unittest.main()

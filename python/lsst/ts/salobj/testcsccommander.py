@@ -62,6 +62,8 @@ class TestCscCommander(csc_commander.CscCommander):
             name="Test",
             index=index,
             enable=enable,
+            # TODO DM-17157: delete the exclude_command argument.
+            # This requires ts_sal 6/ts_xml 10.
             exclude_commands=("abort", "enterControl", "setValue"),
         )
 

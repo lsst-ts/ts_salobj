@@ -30,8 +30,10 @@ import unittest
 import warnings
 
 import numpy as np
+import pytest
 
 from lsst.ts import salobj
+from lsst.ts import utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -142,7 +144,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
         finally:
             domain.default_identity = original_default_identity
-        self.assertEqual(remote.salinfo.identity, identity)
+        assert remote.salinfo.identity == identity
         try:
             await remote.start_task
             yield remote
@@ -155,116 +157,121 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         For simplicity this test calls setAuthList without a +/- prefix.
         The prefix is tested elsewhere.
         """
-        async with self.make_csc(initial_state=salobj.State.ENABLED):
-            # TODO DM-26605 remove this line as no longer needed:
-            self.csc.authorize = True
-            await self.assert_next_sample(
-                self.remote.evt_authList,
-                authorizedUsers="",
-                nonAuthorizedCSCs="",
-            )
+        # TODO DM-36605 remove use of utils.modify_environ
+        # once authlist support is enabled by default
+        with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST="1"):
+            async with self.make_csc(initial_state=salobj.State.ENABLED):
+                await self.assert_next_sample(
+                    self.remote.evt_authList,
+                    authorizedUsers="",
+                    nonAuthorizedCSCs="",
+                )
 
-            domain = self.csc.salinfo.domain
+                domain = self.csc.salinfo.domain
 
-            # Note that self.csc and self.remote have the same user_host.
-            csc_user_host = domain.user_host
+                # Note that self.csc and self.remote have the same user_host.
+                csc_user_host = domain.user_host
 
-            # Make a remote that pretends to be from a different CSC
-            # and test non-authorized CSCs
-            other_name_index = "Script:5"
-            async with self.make_remote(identity=other_name_index) as other_csc_remote:
+                # Make a remote that pretends to be from a different CSC
+                # and test non-authorized CSCs
+                other_name_index = "Script:5"
+                async with self.make_remote(
+                    identity=other_name_index
+                ) as other_csc_remote:
 
-                all_csc_names = ["ATDome", "Hexapod:1", other_name_index]
-                for csc_names in all_permutations(all_csc_names):
-                    csc_names_str = ", ".join(csc_names)
-                    with self.subTest(csc_names_str=csc_names_str):
-                        await self.remote.cmd_setAuthList.set_start(
-                            nonAuthorizedCSCs=csc_names_str, timeout=STD_TIMEOUT
-                        )
-                        await self.assert_next_sample(
-                            self.remote.evt_authList,
-                            authorizedUsers="",
-                            nonAuthorizedCSCs=", ".join(sorted(csc_names)),
-                        )
-                        if other_name_index in csc_names:
-                            # A blocked CSC; this should fail.
-                            with salobj.assertRaisesAckError(
-                                ack=salobj.SalRetCode.CMD_NOPERM
-                            ):
+                    all_csc_names = ["ATDome", "Hexapod:1", other_name_index]
+                    for csc_names in all_permutations(all_csc_names):
+                        csc_names_str = ", ".join(csc_names)
+                        with self.subTest(csc_names_str=csc_names_str):
+                            await self.remote.cmd_setAuthList.set_start(
+                                nonAuthorizedCSCs=csc_names_str, timeout=STD_TIMEOUT
+                            )
+                            await self.assert_next_sample(
+                                self.remote.evt_authList,
+                                authorizedUsers="",
+                                nonAuthorizedCSCs=", ".join(sorted(csc_names)),
+                            )
+                            if other_name_index in csc_names:
+                                # A blocked CSC; this should fail.
+                                with salobj.assertRaisesAckError(
+                                    ack=salobj.SalRetCode.CMD_NOPERM
+                                ):
+                                    await other_csc_remote.cmd_wait.set_start(
+                                        duration=0, timeout=STD_TIMEOUT
+                                    )
+                            else:
+                                # Not a blocked CSC; this should work.
                                 await other_csc_remote.cmd_wait.set_start(
                                     duration=0, timeout=STD_TIMEOUT
                                 )
-                        else:
-                            # Not a blocked CSC; this should work.
-                            await other_csc_remote.cmd_wait.set_start(
+
+                            # My user_host should work regardless of
+                            # non-authorized CSCs.
+                            await self.remote.cmd_wait.set_start(
                                 duration=0, timeout=STD_TIMEOUT
                             )
 
-                        # My user_host should work regardless of
-                        # non-authorized CSCs.
-                        await self.remote.cmd_wait.set_start(
-                            duration=0, timeout=STD_TIMEOUT
-                        )
+                            # Disabling authorization should always work
+                            self.csc.cmd_wait.authorize = False
+                            try:
+                                await other_csc_remote.cmd_wait.set_start(
+                                    duration=0, timeout=STD_TIMEOUT
+                                )
+                            finally:
+                                self.csc.cmd_wait.authorize = True
 
-                        # Disabling authorization should always work
-                        self.csc.cmd_wait.authorize = False
-                        try:
-                            await other_csc_remote.cmd_wait.set_start(
-                                duration=0, timeout=STD_TIMEOUT
+                # Test authorized users that are not me.
+                # Reported auth users should always be in alphabetical order;
+                # test this by sending users NOT in alphabetical order.
+                all_other_user_hosts = [f"notme{i}{csc_user_host}" for i in (3, 2, 1)]
+                other_user_host = all_other_user_hosts[1]
+
+                async with self.make_remote(
+                    identity=other_user_host
+                ) as other_user_remote:
+                    for auth_user_hosts in all_permutations(all_other_user_hosts):
+                        users_str = ", ".join(auth_user_hosts)
+                        with self.subTest(users_str=users_str):
+                            await self.remote.cmd_setAuthList.set_start(
+                                authorizedUsers=users_str,
+                                nonAuthorizedCSCs="",
+                                timeout=STD_TIMEOUT,
                             )
-                        finally:
-                            self.csc.cmd_wait.authorize = True
-
-            # Test authorized users that are not me.
-            # Reported auth users should always be in alphabetical order;
-            # test this by sending users NOT in alphabetical order.
-            all_other_user_hosts = [f"notme{i}{csc_user_host}" for i in (3, 2, 1)]
-            other_user_host = all_other_user_hosts[1]
-
-            async with self.make_remote(identity=other_user_host) as other_user_remote:
-                for auth_user_hosts in all_permutations(all_other_user_hosts):
-                    users_str = ", ".join(auth_user_hosts)
-                    with self.subTest(users_str=users_str):
-                        await self.remote.cmd_setAuthList.set_start(
-                            authorizedUsers=users_str,
-                            nonAuthorizedCSCs="",
-                            timeout=STD_TIMEOUT,
-                        )
-                        await self.assert_next_sample(
-                            self.remote.evt_authList,
-                            authorizedUsers=", ".join(sorted(auth_user_hosts)),
-                            nonAuthorizedCSCs="",
-                        )
-                        if other_user_host in auth_user_hosts:
-                            # An allowed user; this should work.
-                            await other_user_remote.cmd_wait.set_start(
-                                duration=0, timeout=STD_TIMEOUT
+                            await self.assert_next_sample(
+                                self.remote.evt_authList,
+                                authorizedUsers=", ".join(sorted(auth_user_hosts)),
+                                nonAuthorizedCSCs="",
                             )
-                        else:
-                            # Not an allowed user; this should fail.
-                            with salobj.assertRaisesAckError(
-                                ack=salobj.SalRetCode.CMD_NOPERM
-                            ):
+                            if other_user_host in auth_user_hosts:
+                                # An allowed user; this should work.
                                 await other_user_remote.cmd_wait.set_start(
                                     duration=0, timeout=STD_TIMEOUT
                                 )
+                            else:
+                                # Not an allowed user; this should fail.
+                                with salobj.assertRaisesAckError(
+                                    ack=salobj.SalRetCode.CMD_NOPERM
+                                ):
+                                    await other_user_remote.cmd_wait.set_start(
+                                        duration=0, timeout=STD_TIMEOUT
+                                    )
 
-                        # Temporarily disable authorization and try again;
-                        # this should always work.
-                        self.csc.cmd_wait.authorize = False
-                        try:
-                            await other_user_remote.cmd_wait.set_start(
+                            # Temporarily disable authorization and try again;
+                            # this should always work.
+                            self.csc.cmd_wait.authorize = False
+                            try:
+                                await other_user_remote.cmd_wait.set_start(
+                                    duration=0, timeout=STD_TIMEOUT
+                                )
+                            finally:
+                                self.csc.cmd_wait.authorize = True
+
+                            # My user_host should work regardless of
+                            # authorized users.
+                            self.remote.salinfo.domain.identity = csc_user_host
+                            await self.remote.cmd_wait.set_start(
                                 duration=0, timeout=STD_TIMEOUT
                             )
-                        finally:
-                            self.csc.cmd_wait.authorize = True
-
-                        # My user_host should work regardless of
-                        # authorized users.
-                        self.remote.salinfo.domain.identity = csc_user_host
-                        await self.remote.cmd_wait.set_start(
-                            duration=0, timeout=STD_TIMEOUT
-                        )
 
     async def test_set_auth_list_prefix(self) -> None:
         """Test the setAuthList command with a +/- prefix"""
@@ -409,9 +416,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             stdout, stderr = await asyncio.wait_for(
                 process.communicate(), timeout=STD_TIMEOUT
             )
-            self.assertEqual(stdout.decode()[:-1], salobj.__version__)
+            assert stdout.decode()[:-1] == salobj.__version__
             await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
-            self.assertEqual(process.returncode, 0)
+            assert process.returncode == 0
         finally:
             if process.returncode is None:
                 process.terminate()
@@ -423,28 +430,28 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, log_level=logging.DEBUG
         ):
-            self.assertEqual(self.csc.log.getEffectiveLevel(), logging.DEBUG)
+            assert self.csc.log.getEffectiveLevel() == logging.DEBUG
 
         async with self.make_csc(
             initial_state=salobj.State.STANDBY, log_level=logging.WARNING
         ):
-            self.assertEqual(self.csc.log.getEffectiveLevel(), logging.WARNING)
+            assert self.csc.log.getEffectiveLevel() == logging.WARNING
 
         # At this point log level is WARNING; now check that by default
         # log verbosity is increased (log level decreased) to INFO.
         async with self.make_csc(initial_state=salobj.State.STANDBY):
-            self.assertEqual(self.csc.log.getEffectiveLevel(), logging.INFO)
+            assert self.csc.log.getEffectiveLevel() == logging.INFO
 
     async def test_setArrays_command(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             # until the controller gets its first setArrays
             # it will not send any arrays events or telemetry
-            self.assertFalse(self.csc.evt_arrays.has_data)
-            self.assertFalse(self.csc.tel_arrays.has_data)
-            self.assertFalse(self.remote.evt_arrays.has_data)
-            self.assertFalse(self.remote.tel_arrays.has_data)
-            self.assertIsNone(self.remote.evt_arrays.get())
-            self.assertIsNone(self.remote.tel_arrays.get())
+            assert not self.csc.evt_arrays.has_data
+            assert not self.csc.tel_arrays.has_data
+            assert not self.remote.evt_arrays.has_data
+            assert not self.remote.tel_arrays.has_data
+            assert self.remote.evt_arrays.get() is None
+            assert self.remote.tel_arrays.get() is None
 
             # send the setArrays command with random data
             cmd_data_sent = self.csc.make_random_cmd_arrays()
@@ -460,10 +467,10 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
             self.csc.assert_arrays_equal(cmd_data_sent, tel_data)
 
-            self.assertTrue(self.csc.evt_arrays.has_data)
-            self.assertTrue(self.csc.tel_arrays.has_data)
-            self.assertTrue(self.remote.evt_arrays.has_data)
-            self.assertTrue(self.remote.tel_arrays.has_data)
+            assert self.csc.evt_arrays.has_data
+            assert self.csc.tel_arrays.has_data
+            assert self.remote.evt_arrays.has_data
+            assert self.remote.tel_arrays.has_data
 
             # also test get
             self.csc.assert_arrays_equal(cmd_data_sent, self.remote.tel_arrays.get())
@@ -473,12 +480,12 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             # until the controller gets its first setArrays
             # it will not send any arrays events or telemetry
-            self.assertFalse(self.csc.evt_scalars.has_data)
-            self.assertFalse(self.csc.tel_scalars.has_data)
-            self.assertFalse(self.remote.evt_scalars.has_data)
-            self.assertFalse(self.remote.tel_scalars.has_data)
-            self.assertIsNone(self.remote.evt_scalars.get())
-            self.assertIsNone(self.remote.tel_scalars.get())
+            assert not self.csc.evt_scalars.has_data
+            assert not self.csc.tel_scalars.has_data
+            assert not self.remote.evt_scalars.has_data
+            assert not self.remote.tel_scalars.has_data
+            assert self.remote.evt_scalars.get() is None
+            assert self.remote.tel_scalars.get() is None
 
             # send the setScalars command with random data
             cmd_data_sent = self.csc.make_random_cmd_scalars()
@@ -494,10 +501,10 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
             self.csc.assert_scalars_equal(cmd_data_sent, tel_data)
 
-            self.assertTrue(self.csc.evt_scalars.has_data)
-            self.assertTrue(self.csc.tel_scalars.has_data)
-            self.assertTrue(self.remote.evt_scalars.has_data)
-            self.assertTrue(self.remote.tel_scalars.has_data)
+            assert self.csc.evt_scalars.has_data
+            assert self.csc.tel_scalars.has_data
+            assert self.remote.evt_scalars.has_data
+            assert self.remote.tel_scalars.has_data
 
             # also test get
             self.csc.assert_scalars_equal(cmd_data_sent, self.remote.tel_scalars.get())
@@ -519,6 +526,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             with self.subTest(initial_state=initial_state):
                 async with self.make_csc(initial_state=initial_state):
                     await self.assert_next_summary_state(initial_state)
+                    await self.assert_next_sample(
+                        topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+                    )
 
                     # Issue the ``fault`` command
                     # and check the state and error code.
@@ -531,15 +541,17 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     # Issue the ``standby`` command to recover.
                     await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
                     await self.assert_next_summary_state(salobj.State.STANDBY)
+                    await self.assert_next_sample(
+                        topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+                    )
 
     async def test_fault_method(self) -> None:
         """Test BaseCsc.fault with and without optional arguments."""
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            with self.assertRaises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(
-                    flush=False, timeout=NODATA_TIMEOUT
-                )
+            await self.assert_next_sample(
+                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+            )
 
             code = 52
             report = "Report for error code"
@@ -549,12 +561,15 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             # but the CSC stil goes into a FAULT state
             self.csc.fault(code="not a valid code", report=report)
             await self.assert_next_summary_state(salobj.State.FAULT)
-            with self.assertRaises(asyncio.TimeoutError):
+            with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_errorCode.next(
                     flush=False, timeout=NODATA_TIMEOUT
                 )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
+            await self.assert_next_sample(
+                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+            )
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             # if code is specified then errorReport is output;
@@ -575,6 +590,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 await self.remote.cmd_wait.set_start(duration=5, timeout=STD_TIMEOUT)
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
+            await self.assert_next_sample(
+                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+            )
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             self.csc.fault(code=code, report="")
@@ -587,13 +605,16 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
+            await self.assert_next_sample(
+                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
+            )
             await self.remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
 
     async def test_fault_problems(self) -> None:
         """Test BaseCsc.fault when report_summary_state misbehaves."""
-        index = self.next_index()
         for doraise, report_first in itertools.product((False, True), (False, True)):
             with self.subTest(doraise=doraise, report_first=report_first):
+                index = self.next_index()
                 async with FailInReportFaultCsc(
                     index=index, doraise=doraise, report_first=report_first
                 ) as csc, salobj.Remote(
@@ -601,6 +622,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 ) as remote:
                     await self.assert_next_summary_state(
                         salobj.State.ENABLED, remote=remote
+                    )
+                    await self.assert_next_sample(
+                        topic=remote.evt_errorCode, errorCode=0, errorReport=""
                     )
 
                     code = 51
@@ -619,18 +643,18 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     )
 
                     # make sure FAULT state and errorCode are only sent once
-                    with self.assertRaises(asyncio.TimeoutError):
+                    with pytest.raises(asyncio.TimeoutError):
                         await remote.evt_summaryState.next(
                             flush=False, timeout=NODATA_TIMEOUT
                         )
-                    with self.assertRaises(asyncio.TimeoutError):
+                    with pytest.raises(asyncio.TimeoutError):
                         await remote.evt_errorCode.next(
                             flush=False, timeout=NODATA_TIMEOUT
                         )
 
     async def test_make_csc_timeout(self) -> None:
         """Test that setting the timeout argument to make_csc works."""
-        with self.assertRaises(asyncio.TimeoutError):
+        with pytest.raises(asyncio.TimeoutError):
             # Use such a short timeout that make_csc times out
             async with self.make_csc(initial_state=salobj.State.STANDBY, timeout=0):
                 pass
@@ -656,7 +680,3 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 skip_commands=("fault",),
                 settingsToApply="all_fields",
             )
-
-
-if __name__ == "__main__":
-    unittest.main()

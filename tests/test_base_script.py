@@ -28,6 +28,7 @@ import typing
 import unittest
 import warnings
 
+import pytest
 import yaml
 
 from lsst.ts import utils
@@ -132,19 +133,19 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         configure_data.pauseCheckpoint = pause_checkpoint
         configure_data.stopCheckpoint = stop_checkpoint
         await script.do_configure(configure_data)
-        self.assertEqual(script.config.wait_time, kwargs.get("wait_time", 0))
-        self.assertEqual(script.config.fail_run, kwargs.get("fail_run", False))
-        self.assertEqual(script.config.fail_cleanup, kwargs.get("fail_cleanup", False))
+        assert script.config.wait_time == kwargs.get("wait_time", 0)
+        assert script.config.fail_run == kwargs.get("fail_run", False)
+        assert script.config.fail_cleanup == kwargs.get("fail_cleanup", False)
         if log_level != 0:
-            self.assertEqual(script.log.getEffectiveLevel(), log_level)
-        self.assertEqual(script.evt_checkpoints.data.pause, pause_checkpoint)
-        self.assertEqual(script.evt_checkpoints.data.stop, stop_checkpoint)
-        self.assertEqual(script.state.state, ScriptState.CONFIGURED)
+            assert script.log.getEffectiveLevel() == log_level
+        assert script.evt_checkpoints.data.pause == pause_checkpoint
+        assert script.evt_checkpoints.data.stop == stop_checkpoint
+        assert script.state.state == ScriptState.CONFIGURED
 
         # Cannot run: groupId is not set.
-        self.assertEqual(script.group_id, "")
+        assert script.group_id == ""
         run_data = script.cmd_run.DataType()
-        with self.assertRaises(salobj.ExpectedError):
+        with pytest.raises(salobj.ExpectedError):
             await script.do_run(run_data)
 
         # Set and check group ID.
@@ -152,36 +153,36 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         group_id_data = script.cmd_setGroupId.DataType()
         group_id_data.groupId = group_id
         await script.do_setGroupId(group_id_data)
-        self.assertEqual(script.group_id, group_id)
-        self.assertEqual(script.evt_state.data.groupId, group_id)
+        assert script.group_id == group_id
+        assert script.evt_state.data.groupId == group_id
 
     def test_get_schema(self) -> None:
         schema = salobj.TestScript.get_schema()
-        self.assertTrue(isinstance(schema, dict))
+        assert isinstance(schema, dict)
         for name in ("$schema", "$id", "title", "description", "type", "properties"):
-            self.assertIn(name, schema)
-        self.assertFalse(schema["additionalProperties"])
+            assert name in schema
+        assert not schema["additionalProperties"]
 
     def test_non_configurable_script_get_schema(self) -> None:
         schema = NonConfigurableScript.get_schema()
-        self.assertIsNone(schema)
+        assert schema is None
 
     async def test_non_configurable_script_empty_config(self) -> None:
         """Test configuring the script with no data. This should work."""
         async with NonConfigurableScript(index=self.index) as script:
             data = script.cmd_configure.DataType()
             await script.do_configure(data)
-            self.assertEqual(len(script.config.__dict__), 0)
-            self.assertTrue(script.set_metadata_called)
-            self.assertFalse(script.run_called)
+            assert len(script.config.__dict__) == 0
+            assert script.set_metadata_called
+            assert not script.run_called
 
     async def test_non_configurable_script_invalid_config(self) -> None:
         async with NonConfigurableScript(index=self.index) as script:
             data = script.cmd_configure.DataType()
             data.config = "invalid: should be empty"
-            with self.assertRaises(salobj.ExpectedError):
+            with pytest.raises(salobj.ExpectedError):
                 await script.do_configure(data)
-            self.assertIsNone(script.config)
+            assert script.config is None
 
     async def test_script_environ(self) -> None:
         """Test that creating a script does not modify os.environ.
@@ -197,10 +198,10 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             ):
                 initial_environ = os.environ.copy()
                 async with NonConfigurableScript(index=self.index):
-                    self.assertEqual(os.environ, initial_environ)
+                    assert os.environ == initial_environ
                 # Test again when script is closed, just to be sure;
                 # closing a script should not modify the environment.
-                self.assertEqual(os.environ, initial_environ)
+                assert os.environ == initial_environ
 
     async def test_setCheckpoints(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
@@ -215,8 +216,8 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 data.pause = pause
                 data.stop = stop
                 await script.do_setCheckpoints(data)
-                self.assertEqual(script.checkpoints.pause, pause)
-                self.assertEqual(script.checkpoints.stop, stop)
+                assert script.checkpoints.pause == pause
+                assert script.checkpoints.stop == stop
 
             # try with at least one checkpoint not a valid regex;
             # do_setCheckpoints should raise and not change the checkpoints
@@ -228,10 +229,10 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             for bad_pause, bad_stop in (("(", ""), ("", "("), ("[", "[")):
                 data.pause = bad_pause
                 data.stop = bad_stop
-                with self.assertRaises(salobj.ExpectedError):
+                with pytest.raises(salobj.ExpectedError):
                     await script.do_setCheckpoints(data)
-                self.assertEqual(script.checkpoints.pause, initial_pause)
-                self.assertEqual(script.checkpoints.stop, initial_stop)
+                assert script.checkpoints.pause == initial_pause
+                assert script.checkpoints.stop == initial_stop
 
     async def test_set_state_and_attributes(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
@@ -240,24 +241,24 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             additional_reason = "check append"
             script.set_state(reason=reason)
             script.set_state(reason=additional_reason, keep_old_reason=True)
-            self.assertEqual(script.state.reason, reason + "; " + additional_reason)
+            assert script.state.reason == reason + "; " + additional_reason
 
             bad_state = 1 + max(s.value for s in ScriptState)
-            with self.assertRaises(ValueError):
+            with pytest.raises(ValueError):
                 script.set_state(bad_state)
             script.state.state = bad_state
-            self.assertEqual(script.state_name, f"UNKNOWN({bad_state})")
-            self.assertFalse(script._is_exiting)
+            assert script.state_name == f"UNKNOWN({bad_state})"
+            assert not script._is_exiting
 
             script.set_state(ScriptState.CONFIGURED)
-            self.assertEqual(script.state_name, "CONFIGURED")
+            assert script.state_name == "CONFIGURED"
 
             # check assert_states
             all_states = set(ScriptState)
             for state in ScriptState:
                 script.set_state(state)
-                self.assertEqual(script.state_name, state.name)
-                with self.assertRaises(salobj.ExpectedError):
+                assert script.state_name == state.name
+                with pytest.raises(salobj.ExpectedError):
                     script.assert_state(
                         "should fail because state not in allowed states",
                         all_states - set([state]),
@@ -265,7 +266,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
                 script.assert_state("should pass", [state])
                 script._is_exiting = True
-                with self.assertRaises(salobj.ExpectedError):
+                with pytest.raises(salobj.ExpectedError):
                     script.assert_state("should fail because exiting", [state])
                 script._is_exiting = False
 
@@ -273,10 +274,10 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 # unless state is RUNNING
                 if state == ScriptState.RUNNING:
                     continue
-                with self.assertRaises(RuntimeError):
+                with pytest.raises(RuntimeError):
                     await script.checkpoint("foo")
 
-            self.assertFalse(script.done_task.done())
+            assert not script.done_task.done()
 
     async def test_next_supplemented_group_id(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
@@ -287,7 +288,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 # in order to have a different implementation than Script
                 desired_supplemented_id = "%s#%s" % (group_id, i + 1)
                 supplemented_id = script.next_supplemented_group_id()
-                self.assertEqual(supplemented_id, desired_supplemented_id)
+                assert supplemented_id == desired_supplemented_id
 
             # Set a new group ID. This should reset the subgroup counter.
             new_group_id = group_id + " modified"
@@ -298,49 +299,49 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             for i in range(5):
                 desired_supplemented_id = "%s#%s" % (new_group_id, i + 1)
                 supplemented_id = script.next_supplemented_group_id()
-                self.assertEqual(supplemented_id, desired_supplemented_id)
+                assert supplemented_id == desired_supplemented_id
 
             # Clear the group ID; getting a supplemened group ID should fail
             group_id_data = script.cmd_setGroupId.DataType()
             group_id_data.groupId = ""
             await script.do_setGroupId(group_id_data)
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 script.next_supplemented_group_id()
 
     async def test_pause(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
             # Cannot run in UNCONFIGURED state.
             run_data = script.cmd_run.DataType()
-            with self.assertRaises(salobj.ExpectedError):
+            with pytest.raises(salobj.ExpectedError):
                 await script.do_run(run_data)
 
             # Test configure with data for a non-existent argument.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "no_such_arg: 1"
-            with self.assertRaises(salobj.ExpectedError):
+            with pytest.raises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
-            self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
+            assert script.state.state == ScriptState.UNCONFIGURED
 
             # Test configure with invalid yaml.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "a : : 2"
-            with self.assertRaises(salobj.ExpectedError):
+            with pytest.raises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
-            self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
+            assert script.state.state == ScriptState.UNCONFIGURED
 
             # Test configure with yaml that makes a string, not a dict.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "just_a_string"
-            with self.assertRaises(salobj.ExpectedError):
+            with pytest.raises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
-            self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
+            assert script.state.state == ScriptState.UNCONFIGURED
 
             # Test configure with yaml that makes a list, not a dict.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "['not', 'a', 'dict']"
-            with self.assertRaises(salobj.ExpectedError):
+            with pytest.raises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
-            self.assertEqual(script.state.state, ScriptState.UNCONFIGURED)
+            assert script.state.state == ScriptState.UNCONFIGURED
 
             # Now test valid configuration; specify nonexistent checkpoints
             # to test that the configure command handles checkpoints at all.
@@ -357,16 +358,18 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 pause_checkpoint=prelim_pause_checkpoint,
                 stop_checkpoint=prelim_stop_checkpoint,
             )
+            assert script.state.numCheckpoints == 0
 
             # Set a pause checkpoint that exists.
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
-            checkpoint_named_start = "start"
-            checkpoint_that_does_not_exist = "nonexistent checkpoint"
-            setCheckpoints_data.pause = checkpoint_named_start
-            setCheckpoints_data.stop = checkpoint_that_does_not_exist
+            start_checkpoint = "start"
+            end_checkpoint = "end"
+            nonexistent_checkpoint = "nonexistent checkpoint"
+            setCheckpoints_data.pause = start_checkpoint
+            setCheckpoints_data.stop = nonexistent_checkpoint
             await script.do_setCheckpoints(setCheckpoints_data)
-            self.assertEqual(script.checkpoints.pause, checkpoint_named_start)
-            self.assertEqual(script.checkpoints.stop, checkpoint_that_does_not_exist)
+            assert script.checkpoints.pause == start_checkpoint
+            assert script.checkpoints.stop == nonexistent_checkpoint
 
             # Run the script.
             run_data = script.cmd_run.DataType()
@@ -375,20 +378,23 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             while script.state.state != ScriptState.PAUSED:
                 niter += 1
                 await asyncio.sleep(0)
-            self.assertEqual(script.state.lastCheckpoint, checkpoint_named_start)
-            self.assertEqual(script.checkpoints.pause, checkpoint_named_start)
-            self.assertEqual(script.checkpoints.stop, checkpoint_that_does_not_exist)
+            assert script.state.lastCheckpoint == start_checkpoint
+            assert script.state.numCheckpoints == 1
+            assert script.checkpoints.pause == start_checkpoint
+            assert script.checkpoints.stop == nonexistent_checkpoint
             resume_data = script.cmd_resume.DataType()
             await script.do_resume(resume_data)
             await asyncio.wait_for(run_task, 2)
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
+            assert script.state.lastCheckpoint == end_checkpoint
+            assert script.state.numCheckpoints == 2
             duration = (
                 script.timestamps[ScriptState.ENDING]
                 - script.timestamps[ScriptState.RUNNING]
             )
             desired_duration = wait_time
             print(f"test_pause duration={duration:0.2f}")
-            self.assertLess(abs(duration - desired_duration), 0.2)
+            assert abs(duration - desired_duration) < 0.2
 
     async def test_stop_at_checkpoint(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
@@ -397,17 +403,18 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
             # set a stop checkpoint
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
-            checkpoint_named_end = "end"
-            setCheckpoints_data.stop = checkpoint_named_end
+            end_checkpoint = "end"
+            setCheckpoints_data.stop = end_checkpoint
             await script.do_setCheckpoints(setCheckpoints_data)
-            self.assertEqual(script.checkpoints.pause, "")
-            self.assertEqual(script.checkpoints.stop, checkpoint_named_end)
+            assert script.checkpoints.pause == ""
+            assert script.checkpoints.stop == end_checkpoint
 
             run_data = script.cmd_run.DataType()
             await asyncio.wait_for(script.do_run(run_data), 2)
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
-            self.assertEqual(script.state.lastCheckpoint, checkpoint_named_end)
-            self.assertEqual(script.state.state, ScriptState.STOPPED)
+            assert script.state.lastCheckpoint == end_checkpoint
+            assert script.state.numCheckpoints == 2
+            assert script.state.state == ScriptState.STOPPED
             duration = (
                 script.timestamps[ScriptState.STOPPING]
                 - script.timestamps[ScriptState.RUNNING]
@@ -415,7 +422,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             # waited and then stopped at the "end" checkpoint
             desired_duration = wait_time
             print(f"test_stop_at_checkpoint duration={duration:0.2f}")
-            self.assertLess(abs(duration - desired_duration), 0.2)
+            assert abs(duration - desired_duration) < 0.2
 
     async def test_stop_while_paused(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
@@ -424,22 +431,23 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
             # set a stop checkpoint
             setCheckpoints_data = script.cmd_setCheckpoints.DataType()
-            checkpoint_named_start = "start"
-            setCheckpoints_data.pause = checkpoint_named_start
+            start_checkpoint = "start"
+            setCheckpoints_data.pause = start_checkpoint
             await script.do_setCheckpoints(setCheckpoints_data)
-            self.assertEqual(script.checkpoints.pause, checkpoint_named_start)
-            self.assertEqual(script.checkpoints.stop, "")
+            assert script.checkpoints.pause == start_checkpoint
+            assert script.checkpoints.stop == ""
 
             run_data = script.cmd_run.DataType()
             asyncio.create_task(script.do_run(run_data))
             while script.state.lastCheckpoint != "start":
                 await asyncio.sleep(0)
-            self.assertEqual(script.state.state, ScriptState.PAUSED)
+            assert script.state.state == ScriptState.PAUSED
             stop_data = script.cmd_stop.DataType()
             await script.do_stop(stop_data)
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
-            self.assertEqual(script.state.lastCheckpoint, checkpoint_named_start)
-            self.assertEqual(script.state.state, ScriptState.STOPPED)
+            assert script.state.lastCheckpoint == start_checkpoint
+            assert script.state.numCheckpoints == 1
+            assert script.state.state == ScriptState.STOPPED
             duration = (
                 script.timestamps[ScriptState.STOPPING]
                 - script.timestamps[ScriptState.RUNNING]
@@ -448,8 +456,8 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             # just as soon as it paused at the "start" checkpoint
             desired_duration = 0
             print(f"test_stop_while_paused duration={duration:0.2f}")
-            self.assertGreater(duration, 0.0)
-            self.assertLess(abs(duration - desired_duration), 0.2)
+            assert duration > 0.0
+            assert abs(duration - desired_duration) < 0.2
 
     async def test_stop_while_running(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
@@ -457,18 +465,19 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             pause_time = 0.5
             await self.configure_and_check(script, wait_time=wait_time)
 
-            checkpoint_named_start = "start"
+            start_checkpoint = "start"
             run_data = script.cmd_run.DataType()
             asyncio.create_task(script.do_run(run_data))
-            while script.state.lastCheckpoint != checkpoint_named_start:
+            while script.state.lastCheckpoint != start_checkpoint:
                 await asyncio.sleep(0)
-            self.assertEqual(script.state.state, ScriptState.RUNNING)
+            assert script.state.state == ScriptState.RUNNING
             await asyncio.sleep(pause_time)
             stop_data = script.cmd_stop.DataType()
             await script.do_stop(stop_data)
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
-            self.assertEqual(script.state.lastCheckpoint, checkpoint_named_start)
-            self.assertEqual(script.state.state, ScriptState.STOPPED)
+            assert script.state.lastCheckpoint == start_checkpoint
+            assert script.state.numCheckpoints == 1
+            assert script.state.state == ScriptState.STOPPED
             duration = (
                 script.timestamps[ScriptState.STOPPING]
                 - script.timestamps[ScriptState.RUNNING]
@@ -476,7 +485,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             # we waited `pause_time` seconds after the "start" checkpoint
             desired_duration = pause_time
             print(f"test_stop_while_running duration={duration:0.2f}")
-            self.assertLess(abs(duration - desired_duration), 0.2)
+            assert abs(duration - desired_duration) < 0.2
 
     async def check_fail(self, fail_run: bool) -> None:
         """Check failure in run or cleanup.
@@ -498,13 +507,15 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(script.do_run(run_data), 2)
             if fail_run:
                 await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
-                self.assertEqual(script.state.lastCheckpoint, "start")
-                self.assertEqual(script.state.state, ScriptState.FAILED)
+                assert script.state.lastCheckpoint == "start"
+                assert script.state.numCheckpoints == 1
+                assert script.state.state == ScriptState.FAILED
                 end_run_state = ScriptState.FAILING
             else:
-                with self.assertRaises(salobj.ExpectedError):
+                with pytest.raises(salobj.ExpectedError):
                     await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
-                self.assertEqual(script.state.lastCheckpoint, "end")
+                assert script.state.lastCheckpoint == "end"
+                assert script.state.numCheckpoints == 2
                 end_run_state = ScriptState.ENDING
             duration = (
                 script.timestamps[end_run_state]
@@ -514,7 +525,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             # otherwise failed after
             desired_duration = 0 if fail_run else wait_time
             print(f"test_fail duration={duration:0.3f} with fail_run={fail_run}")
-            self.assertLess(abs(duration - desired_duration), 0.2)
+            assert abs(duration - desired_duration) < 0.2
 
     async def test_fail_run(self) -> None:
         await self.check_fail(fail_run=True)
@@ -523,7 +534,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         await self.check_fail(fail_run=False)
 
     async def test_zero_index(self) -> None:
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             salobj.TestScript(index=0)
 
     async def test_remote(self) -> None:
@@ -552,9 +563,9 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         async with ScriptWithRemotes(self.index, remote_indices) as script:
             remote_name_list = [f"Test:{ind}" for ind in remote_indices]
             desired_remote_names = ",".join(sorted(remote_name_list))
-            self.assertEqual(script.evt_description.data.remotes, desired_remote_names)
+            assert script.evt_description.data.remotes == desired_remote_names
             for remote in script.remotes:
-                self.assertTrue(remote.start_task.done())
+                assert remote.start_task.done()
 
     async def test_script_process(self) -> None:
         """Test running a script as a subprocess."""
@@ -581,18 +592,26 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                         script_path, str(index)
                     )
                     try:
-                        self.assertIsNone(process.returncode)
+                        assert process.returncode is None
+
+                        descr = await remote.evt_description.next(
+                            flush=False, timeout=STD_TIMEOUT
+                        )
+                        assert descr.classname == "TestScript"
+                        assert descr.description == "test script"
+                        assert "test script that waits" in descr.help
+                        assert descr.remotes == ""
 
                         state = await remote.evt_state.next(
                             flush=False, timeout=STD_TIMEOUT
                         )
-                        self.assertEqual(state.state, ScriptState.UNCONFIGURED)
-                        self.assertEqual(state.groupId, "")
+                        assert state.state == ScriptState.UNCONFIGURED
+                        assert state.groupId == ""
 
                         logLevel_data = await remote.evt_logLevel.next(
                             flush=False, timeout=STD_TIMEOUT
                         )
-                        self.assertEqual(logLevel_data.level, logging.INFO)
+                        assert logLevel_data.level == logging.INFO
 
                         wait_time = 0.1
                         config = f"wait_time: {wait_time}"
@@ -604,13 +623,14 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                         state = await remote.evt_state.next(
                             flush=False, timeout=STD_TIMEOUT
                         )
-                        self.assertEqual(state.state, ScriptState.CONFIGURED)
-                        self.assertEqual(state.groupId, "")
+                        assert state.state == ScriptState.CONFIGURED
+                        assert state.groupId == ""
 
                         metadata = await remote.evt_metadata.next(
                             flush=False, timeout=STD_TIMEOUT
                         )
-                        self.assertEqual(metadata.duration, wait_time)
+                        assert metadata.duration == wait_time
+                        assert metadata.totalCheckpoints == 2
 
                         group_id = "a non-blank group ID"
                         await remote.cmd_setGroupId.set_start(
@@ -619,15 +639,15 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                         state = await remote.evt_state.next(
                             flush=False, timeout=STD_TIMEOUT
                         )
-                        self.assertEqual(state.groupId, group_id)
+                        assert state.groupId == group_id
 
                         await remote.cmd_run.start(timeout=STD_TIMEOUT)
 
                         await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
                         if fail:
-                            self.assertEqual(process.returncode, 1)
+                            assert process.returncode == 1
                         else:
-                            self.assertEqual(process.returncode, 0)
+                            assert process.returncode == 0
                     finally:
                         if process.returncode is None:
                             process.terminate()
@@ -651,14 +671,10 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 process.communicate(), timeout=STD_TIMEOUT
             )
             schema = yaml.safe_load(stdout)
-            self.assertEqual(schema, salobj.TestScript.get_schema())
+            assert schema == salobj.TestScript.get_schema()
             await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
-            self.assertEqual(process.returncode, 0)
+            assert process.returncode == 0
         finally:
             if process.returncode is None:
                 process.terminate()
                 warnings.warn("Killed a process that was not properly terminated")
-
-
-if __name__ == "__main__":
-    unittest.main()

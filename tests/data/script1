@@ -26,4 +26,4 @@ from lsst.ts.salobj import TestScript
 
 
 if __name__ == "__main__":
-    asyncio.run(TestScript.amain(descr="standard script1"))
+    asyncio.run(TestScript.amain())

@@ -23,6 +23,7 @@ import typing
 import unittest
 
 import numpy as np
+import pytest
 
 from lsst.ts import salobj
 
@@ -63,9 +64,9 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             for name in command_names:
                 with self.subTest(name=name):
                     cmd = getattr(controller, "cmd_" + name)
-                    self.assertFalse(cmd.has_callback)
+                    assert not cmd.has_callback
 
-            self.assertEqual(controller.salinfo.identity, f"Test:{index}")
+            assert controller.salinfo.identity == f"Test:{index}"
 
     async def test_do_callbacks_true(self) -> None:
         index = next(index_gen)
@@ -79,7 +80,7 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             for cmd_name in command_names:
                 with self.subTest(cmd_name=cmd_name):
                     cmd = getattr(controller, "cmd_" + cmd_name)
-                    self.assertTrue(cmd.has_callback)
+                    assert cmd.has_callback
 
         skip_names = salobj.OPTIONAL_COMMAND_NAMES.copy()
         # do_setAuthList and do_setLogLevel are provided by Controller
@@ -89,13 +90,9 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
                 continue
             with self.subTest(missing_name=missing_name):
                 bad_names = [name for name in command_names if name != missing_name]
-                with self.assertRaises(TypeError):
+                with pytest.raises(TypeError):
                     ControllerWithDoMethods(bad_names)
 
         extra_names = list(command_names) + ["extra_command"]
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             ControllerWithDoMethods(extra_names)
-
-
-if __name__ == "__main__":
-    unittest.main()

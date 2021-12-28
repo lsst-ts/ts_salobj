@@ -78,7 +78,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             topic=self.remote.evt_settingsApplied,
         )
         desired_prefix = config_file + ":"
-        self.assertEqual(data.settingsVersion[: len(desired_prefix)], desired_prefix)
+        assert data.settingsVersion[: len(desired_prefix)] == desired_prefix
 
         # appliedSettingsMatchStartIsTrue.appliedSettingsMatchStartIsTrue
         # should be True after being configured.
@@ -111,12 +111,12 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
                 settingsUrl=expected_settings_url,
                 recommendedSettingsLabels=expected_settings_labels,
             )
-            self.assertTrue(len(data.recommendedSettingsVersion) > 0)
+            assert len(data.recommendedSettingsVersion) > 0
             await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
             for key, expected_value in self.default_dict.items():
-                self.assertEqual(getattr(config, key), expected_value)
+                assert getattr(config, key) == expected_value
 
             # Test the softwareVersions event.
             # Assume the string length is the same for each field.
@@ -136,10 +136,10 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             data = await self.remote.evt_settingVersions.next(
                 flush=False, timeout=STD_TIMEOUT
             )
-            self.assertTrue(len(data.recommendedSettingsVersion) > 0)
-            self.assertEqual(data.settingsUrl[0:8], "file:///")
+            assert len(data.recommendedSettingsVersion) > 0
+            assert data.settingsUrl[0:8] == "file:///"
             config_path = pathlib.Path(data.settingsUrl[7:])
-            self.assertTrue(config_path.samefile(self.csc.config_dir))
+            assert config_path.samefile(self.csc.config_dir)
 
     async def test_empty_label(self) -> None:
         config_name = "empty"
@@ -154,7 +154,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
             for key, expected_value in self.default_dict.items():
-                self.assertEqual(getattr(config, key), expected_value)
+                assert getattr(config, key) == expected_value
 
             await self.check_settings_events("empty.yaml")
 
@@ -178,10 +178,10 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             config_from_file = yaml.safe_load(config_yaml)
             for key, default_value in self.default_dict.items():
                 if key in config_from_file:
-                    self.assertEqual(getattr(config, key), config_from_file[key])
-                    self.assertNotEqual(getattr(config, key), default_value)
+                    assert getattr(config, key) == config_from_file[key]
+                    assert getattr(config, key) != default_value
                 else:
-                    self.assertEqual(getattr(config, key), default_value)
+                    assert getattr(config, key) == default_value
 
             await self.check_settings_events(config_file)
 
@@ -204,10 +204,10 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             config_from_file = yaml.safe_load(config_yaml)
             for key, default_value in self.default_dict.items():
                 if key in config_from_file:
-                    self.assertEqual(getattr(config, key), config_from_file[key])
-                    self.assertNotEqual(getattr(config, key), default_value)
+                    assert getattr(config, key) == config_from_file[key]
+                    assert getattr(config, key) != default_value
                 else:
-                    self.assertEqual(getattr(config, key), default_value)
+                    assert getattr(config, key) == default_value
 
             await self.check_settings_events(config_file)
 
@@ -230,10 +230,10 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             config_from_file = yaml.safe_load(config_yaml)
             for key, default_value in self.default_dict.items():
                 if key in config_from_file:
-                    self.assertEqual(getattr(config, key), config_from_file[key])
-                    self.assertNotEqual(getattr(config, key), default_value)
+                    assert getattr(config, key) == config_from_file[key]
+                    assert getattr(config, key) != default_value
                 else:
-                    self.assertEqual(getattr(config, key), default_value)
+                    assert getattr(config, key) == default_value
 
             await self.check_settings_events(config_file)
 
@@ -256,7 +256,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
                 config_yaml = f.read()
             config_from_file = yaml.safe_load(config_yaml)
             for key in self.config_fields:
-                self.assertEqual(getattr(config, key), config_from_file[key])
+                assert getattr(config, key) == config_from_file[key]
 
             await self.check_settings_events(config_file)
 
@@ -273,16 +273,12 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
                             settingsToApply=config_file, timeout=STD_TIMEOUT
                         )
                     data = self.remote.evt_summaryState.get()
-                    self.assertEqual(self.csc.summary_state, salobj.State.STANDBY)
-                    self.assertEqual(data.summaryState, salobj.State.STANDBY)
+                    assert self.csc.summary_state == salobj.State.STANDBY
+                    assert data.summaryState == salobj.State.STANDBY
 
             # Make sure the CSC can still be started.
             await self.remote.cmd_start.set_start(
                 settingsToApply="all_fields.yaml", timeout=10
             )
-            self.assertEqual(self.csc.summary_state, salobj.State.DISABLED)
+            assert self.csc.summary_state == salobj.State.DISABLED
             await self.assert_next_summary_state(salobj.State.DISABLED)
-
-
-if __name__ == "__main__":
-    unittest.main()

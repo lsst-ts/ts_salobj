@@ -28,7 +28,7 @@ import yaml
 CONFIG_SCHEMA: typing.Dict[str, typing.Any] = yaml.safe_load(
     """
 $schema: http://json-schema.org/draft-07/schema#
-$id: https://github.com/lsst-ts/ts_salobj/blob/master/python/lsst/ts/salobj/config_schema.py
+$id: https://github.com/lsst-ts/ts_salobj/blob/main/python/lsst/ts/salobj/config_schema.py
 # title must end with one or more spaces followed by the schema version, which must begin with "v"
 title: Test v1
 description: Configuration for the TestCsc

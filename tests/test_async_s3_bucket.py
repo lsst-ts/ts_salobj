@@ -24,6 +24,7 @@ import unittest
 
 import astropy.time
 import moto
+import pytest
 
 from lsst.ts import utils
 from lsst.ts import salobj
@@ -41,49 +42,43 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
         self.bucket.stop_mock()
 
     async def test_attributes(self) -> None:
-        self.assertEqual(self.bucket.name, self.bucket_name)
+        assert self.bucket.name == self.bucket_name
 
     async def test_blank_s3_endpoint_url(self) -> None:
         with utils.modify_environ(S3_ENDPOINT_URL=""):
             bucket = salobj.AsyncS3Bucket(self.bucket_name)
-            self.assertIn(
-                "amazon", bucket.service_resource.meta.client.meta.endpoint_url
-            )
+            assert "amazon" in bucket.service_resource.meta.client.meta.endpoint_url
 
     async def test_no_s3_endpoint_url(self) -> None:
         # Clear "S3_ENDPOINT_URL" if it exists.
         with utils.modify_environ(S3_ENDPOINT_URL=None):
             bucket = salobj.AsyncS3Bucket(self.bucket_name)
-            self.assertIn(
-                "amazon", bucket.service_resource.meta.client.meta.endpoint_url
-            )
+            assert "amazon" in bucket.service_resource.meta.client.meta.endpoint_url
 
     async def test_specified_s3_endpoint_url(self) -> None:
         endpoint_url = "http://foo.bar.edu:9000"
         with utils.modify_environ(S3_ENDPOINT_URL=endpoint_url):
             bucket = salobj.AsyncS3Bucket(self.bucket_name)
-            self.assertEqual(
-                bucket.service_resource.meta.client.meta.endpoint_url, endpoint_url
-            )
+            assert bucket.service_resource.meta.client.meta.endpoint_url == endpoint_url
 
     async def test_file_transfer(self) -> None:
         await self.bucket.upload(fileobj=self.fileobj, key=self.key)
         roundtrip_fileobj = await self.bucket.download(key=self.key)
         roundtrip_data = roundtrip_fileobj.read()
-        self.assertEqual(self.file_data, roundtrip_data)
+        assert self.file_data == roundtrip_data
 
     async def test_exists(self) -> None:
         should_be_false = await self.bucket.exists(key="no_such_file")
-        self.assertFalse(should_be_false)
+        assert not should_be_false
 
         await self.bucket.upload(fileobj=self.fileobj, key=self.key)
         should_be_true = await self.bucket.exists(key=self.key)
-        self.assertTrue(should_be_true)
+        assert should_be_true
 
     async def test_size(self) -> None:
         await self.bucket.upload(fileobj=self.fileobj, key=self.key)
         reported_size = await self.bucket.size(key=self.key)
-        self.assertEqual(reported_size, len(self.file_data))
+        assert reported_size == len(self.file_data)
 
     async def test_callbacks(self) -> None:
         """Test callback functions with file transfers."""
@@ -105,11 +100,11 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
             key=self.key, callback=download_callback
         )
         roundtrip_data = roundtrip_fileobj.getbuffer()
-        self.assertEqual(self.file_data, roundtrip_data)
-        self.assertGreaterEqual(len(uploaded_nbytes), 1)
-        self.assertGreaterEqual(len(downloaded_nbytes), 1)
-        self.assertEqual(sum(uploaded_nbytes), len(self.file_data))
-        self.assertEqual(sum(downloaded_nbytes), len(self.file_data))
+        assert self.file_data == roundtrip_data
+        assert len(uploaded_nbytes) >= 1
+        assert len(downloaded_nbytes) >= 1
+        assert sum(uploaded_nbytes) == len(self.file_data)
+        assert sum(downloaded_nbytes) == len(self.file_data)
 
 
 class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
@@ -117,11 +112,11 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
         s3instance = "5TEST"
         expected_name = "rubinobs-lfa-5test"
         name = salobj.AsyncS3Bucket.make_bucket_name(s3instance=s3instance)
-        self.assertEqual(name, expected_name)
+        assert name == expected_name
 
         expected_name = "rubinobs-lfa-5test"
         name = salobj.AsyncS3Bucket.make_bucket_name(s3instance=s3instance)
-        self.assertEqual(name, expected_name)
+        assert name == expected_name
 
         s3category = "Other3"
         expected_name = "rubinobs-other3-5test"
@@ -129,13 +124,13 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             s3instance=s3instance,
             s3category=s3category,
         )
-        self.assertEqual(name, expected_name)
+        assert name == expected_name
 
     async def test_make_bucket_name_bad(self) -> None:
         good_kwargs = dict(s3instance="TEST", s3category="other")
         expected_name = "rubinobs-other-test"
         name = salobj.AsyncS3Bucket.make_bucket_name(**good_kwargs)
-        self.assertEqual(name, expected_name)
+        assert name == expected_name
 
         for argname in good_kwargs:
             for badvalue in (
@@ -151,7 +146,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
                 with self.subTest(argname=argname, badvalue=badvalue):
                     bad_kwargs = good_kwargs.copy()
                     bad_kwargs[argname] = badvalue
-                    with self.assertRaises(ValueError):
+                    with pytest.raises(ValueError):
                         salobj.AsyncS3Bucket.make_bucket_name(**bad_kwargs)
 
     async def test_make_key(self) -> None:
@@ -167,7 +162,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             "Foo:Blue/testFiberSpecBlue/2020/04/01/"
             "Foo:Blue_testFiberSpecBlue_2020-04-02T11:59:59.999.dat"
         )
-        self.assertEqual(key, expected_key)
+        assert key == expected_key
 
         # Repeat the test with a date that rounds up to the next second.
         date = astropy.time.Time("2020-04-02T11:59:59.9999", scale="tai")
@@ -178,7 +173,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             "Foo:Blue/testFiberSpecBlue/2020/04/02/"
             "Foo:Blue_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
         )
-        self.assertEqual(key, expected_key)
+        assert key == expected_key
 
         # Repeat the test with no sal index name
         key = salobj.AsyncS3Bucket.make_key(
@@ -188,7 +183,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             "Foo/testFiberSpecBlue/2020/04/02/"
             "Foo_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
         )
-        self.assertEqual(key, expected_key)
+        assert key == expected_key
 
         # Repeat the test with an integer sal index name
         key = salobj.AsyncS3Bucket.make_key(
@@ -198,7 +193,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             "Foo:5/testFiberSpecBlue/2020/04/02/"
             "Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
         )
-        self.assertEqual(key, expected_key)
+        assert key == expected_key
 
         # Repeat the test with a specified value for "other"
         key = salobj.AsyncS3Bucket.make_key(
@@ -212,7 +207,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             "Foo:5/testFiberSpecBlue/2020/04/02/"
             "Foo:5_testFiberSpecBlue_othertext.dat"
         )
-        self.assertEqual(key, expected_key)
+        assert key == expected_key
 
         # Repeat the test with a specified value for "suffix"
         key = salobj.AsyncS3Bucket.make_key(
@@ -226,7 +221,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             "Foo:5/testFiberSpecBlue/2020/04/02/"
             "Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000suffixtext"
         )
-        self.assertEqual(key, expected_key)
+        assert key == expected_key
 
     def test_env_var_secrets(self) -> None:
         """Check that moto.mock ovewrites authorization env vars."""
@@ -238,6 +233,6 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
         with utils.modify_environ(**env_dict):
             with moto.mock_s3():
                 for name, my_value in env_dict.items():
-                    self.assertNotEqual(os.environ[name], my_value)
+                    assert os.environ[name] != my_value
             for name, my_value in env_dict.items():
-                self.assertEqual(os.environ[name], my_value)
+                assert os.environ[name] == my_value

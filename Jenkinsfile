@@ -101,8 +101,7 @@ pipeline {
                     sh "docker exec -u saluser \${container_name} sh -c \"" +
                         "source ~/.setup.sh && " +
                         "source /home/saluser/.bashrc && " +
-                        "make_idl_files.py Test Script LOVE && " +
-                        "make_salpy_libs.py Test\""
+                        "make_idl_files.py Test Script LOVE\""
                 }
             }
         }
