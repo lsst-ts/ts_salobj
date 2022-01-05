@@ -50,61 +50,74 @@ class TopicWriter(salobj.BaseCsc):
 
     valid_simulation_modes = [0]
 
-    def __init__(self, index):
-        print(f"TopicWriter: starting with index={index}")
-        super().__init__(name="Test", index=index)
+    def __init__(self):
+        print("TopicWriter: starting")
+
+        # Add limited support for unsupported commands
+        # (just enough to make BaseCsc happy):
+        for name in [
+            "do_abortProfile",
+            "do_abortRaiseM1M3",
+            "do_applyAberrationForces",
+            "do_applyAberrationForcesByBendingModes",
+            "do_applyActiveOpticForces",
+            "do_applyActiveOpticForcesByBendingModes",
+            "do_applyOffsetForces",
+            "do_applyOffsetForcesByMirrorForce",
+            "do_clearAberrationForces",
+            "do_clearActiveOpticForces",
+            "do_clearOffsetForces",
+            "do_disableHardpointChase",
+            "do_disableHardpointCorrections",
+            "do_enableHardpointChase",
+            "do_enableHardpointCorrections",
+            "do_enterEngineering",
+            "do_exitEngineering",
+            "do_forceActuatorBumpTest",
+            "do_killForceActuatorBumpTest",
+            "do_lowerM1M3",
+            "do_modbusTransmit",
+            "do_moveHardpointActuators",
+            "do_positionM1M3",
+            "do_programILC",
+            "do_raiseM1M3",
+            "do_resetPID",
+            "do_runMirrorForceProfile",
+            "do_stopHardpointMotion",
+            "do_testAir",
+            "do_testForceActuator",
+            "do_testHardpoint",
+            "do_translateM1M3",
+            "do_turnAirOff",
+            "do_turnAirOn",
+            "do_turnLightsOff",
+            "do_turnLightsOn",
+            "do_turnPowerOff",
+            "do_turnPowerOn",
+            "do_updatePID",
+        ]:
+            setattr(self, name, self.reject_command)
+
+        super().__init__(name="MTM1M3", index=0)
         self.write_task = utils.make_done_future()
-        self.is_log_level = False
 
-    async def do_fault(self, data):
-        pass
-
-    async def begin_start(self, data):
-        if data.settingsToApply == "logLevel":
-            self.is_log_level = True
-        elif data.settingsToApply == "arrays":
-            self.is_log_level = False
-        else:
-            raise salobj.ExpectedError(
-                f"data.settingsToApply={data.settingsToApply} must be logLevel or arrays"
-            )
-        print(f"TopicWriter: writing {data.settingsToApply}")
-
-    async def do_setArrays(self, data):
-        raise salobj.ExpectedError("Not supported")
-
-    async def do_setScalars(self, data):
-        raise salobj.ExpectedError("Not supported")
-
-    async def do_wait(self, data):
+    async def reject_command(self, data):
         raise salobj.ExpectedError("Not supported")
 
     async def handle_summary_state(self):
         if self.summary_state == salobj.State.ENABLED:
             if self.write_task.done():
-                if self.is_log_level:
-                    self.write_task = asyncio.create_task(self.write_log_level())
-                else:
-                    self.write_task = asyncio.create_task(self.write_arrays())
+                self.write_task = asyncio.create_task(self.write_forceActuatorData())
         else:
             self.write_task.cancel()
 
-    async def write_arrays(self):
-        i = 0
+    async def write_forceActuatorData(self):
+        print("TopicWriter: writing")
         while True:
-            self.tel_arrays.data.int0[0] = i
-            self.tel_arrays.put()
+            self.tel_forceActuatorData.put()
             await asyncio.sleep(0)
-            i += 1
-
-    async def write_log_level(self):
-        i = 0
-        while True:
-            self.evt_logLevel.set_put(level=i)
-            await asyncio.sleep(0)
-            i += 1
 
 
 if __name__ == "__main__":
-    asyncio.run(TopicWriter.amain(index=True))
+    asyncio.run(TopicWriter.amain(index=None))
     print("TopicWriter: done")
