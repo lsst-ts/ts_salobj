@@ -22,6 +22,8 @@
 import unittest
 import unittest.mock
 
+import dds
+
 from lsst.ts import salobj
 
 
@@ -30,16 +32,24 @@ class DdsUtilsTestCase(unittest.TestCase):
         salobj.set_random_lsst_dds_partition_prefix()
 
     def test_get_dds_version(self) -> None:
-        for dds_file, desired_version in (
-            ("dds-6.9.181127OSS-py3.7-linux-x86_64.egg/dds.so", "6.9.181127"),
-            ("other-6.9.181127OSS-py3.7/dds.so", "6.9.181127"),
-            ("dds-6.9.181 -py3.7-linux-x86_64.egg/dds.so", "6.9.181"),
-            # Invalid format
-            ("6.9.OSS-py3.7-linux-x86_64.egg/dds.so", "?"),
-            # Only one level deep
-            ("dds-6.9.181127OSS-py3.7-linux-x86_64.egg", "?"),
-        ):
-            with self.subTest(dds_file=dds_file):
-                with unittest.mock.patch("dds.__file__", dds_file):
-                    dds_version = salobj.get_dds_version()
-                    assert dds_version == desired_version
+        if hasattr(dds, "__version__"):
+            # OpenSplice 6.11 or later
+            assert salobj.get_dds_version() == dds.__version__
+        else:
+            # OpenSplice 6.9 or 6.10
+            desired_version = "6.10.something"
+            with unittest.mock.patch("dds.__version__", desired_version, create=True):
+                assert salobj.get_dds_version() == desired_version
+
+            for dds_file, desired_version in (
+                ("dds-6.9.181127OSS-py3.7-linux-x86_64.egg/dds.so", "6.9.181127"),
+                ("other-6.9.181127OSS-py3.7/dds.so", "6.9.181127"),
+                ("dds-6.9.181 -py3.7-linux-x86_64.egg/dds.so", "6.9.181"),
+                # Invalid format
+                ("6.9.OSS-py3.7-linux-x86_64.egg/dds.so", "?"),
+                # Only one level deep
+                ("dds-6.9.181127OSS-py3.7-linux-x86_64.egg", "?"),
+            ):
+                with self.subTest(dds_file=dds_file):
+                    with unittest.mock.patch("dds.__file__", dds_file):
+                        assert salobj.get_dds_version() == desired_version
