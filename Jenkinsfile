@@ -95,16 +95,6 @@ pipeline {
                 }
             }
         }
-        stage("Build IDL files") {
-            steps {
-                script {
-                    sh "docker exec -u saluser \${container_name} sh -c \"" +
-                        "source ~/.setup.sh && " +
-                        "source /home/saluser/.bashrc && " +
-                        "make_idl_files.py Test Script LOVE\""
-                }
-            }
-        }
         stage("Running tests") {
             steps {
                 script {
