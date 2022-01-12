@@ -32,8 +32,6 @@ Used by `SalInfo`:
 * ``LSST_DDS_ENABLE_AUTHLIST`` (optional): if set to "1"
     enable authlist-based command authorization.
     If "0" or undefined, do not enable authorization.
-* ``LSST_DDS_DOMAIN`` (deprecated): a deprecated alias for ``LSST_DDS_PARTITION_PREFIX``
-  that is used if ``LSST_DDS_PARTITION_PREFIX`` is not defined.
 * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec) for waiting for historical (late-joiner) data.
   If, and only if, you are running DDS without a durability service then set this negative to avoid waiting for historical data.
 

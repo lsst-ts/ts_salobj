@@ -19,18 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["get_dds_version", "parse_idl_file", "make_dds_topic_class"]
+__all__ = ["get_dds_version"]
 
 import pathlib
 import re
-import subprocess
 import typing
-from xml.etree import ElementTree
 
 import dds
-
-from . import _ddsutil
-from . import type_hints
 
 
 def get_dds_version(dds_file: typing.Optional[str] = None) -> str:
@@ -60,65 +55,3 @@ def get_dds_version(dds_file: typing.Optional[str] = None) -> str:
     if match is None:
         return "?"
     return match.groups()[0]
-
-
-def parse_idl_file(idl_path: type_hints.PathType) -> ElementTree.Element:
-    """Parse an IDL file as XML.
-
-    Intended for use with `make_dds_topic_class`.
-    """
-    out = subprocess.Popen(
-        ["idlpp", "-l", "pythondesc", idl_path], stdout=subprocess.PIPE
-    ).communicate()[0]
-    # print ("Descriptor : ", out)
-
-    # Eval version of idlpp puts out a problematic header, remove it.
-    evalHeader = br"[^\n]*EVALUATION VERSION\r?\n"
-    match = re.match(evalHeader, out)
-    if match:
-        out = out[match.end() :].strip()  # strip leading/training spaces, too
-
-    if not out.startswith(b"<topics"):
-        raise RuntimeError("Problem found with given IDL file:\n" + out.decode())
-
-    return ElementTree.fromstring(out)
-
-
-def make_dds_topic_class(parsed_idl: ElementTree.Element, revname: str) -> typing.Any:
-    """Make a data class for a DDS topic.
-
-    Parameters
-    ----------
-    parsed_idl : `xml.xml.etree.ElementTree.Element`
-        IDL file parsed by `parse_idl_file`.
-    revname : `str`
-        Full name of DDS topic, including revision suffix.
-
-    Returns
-    -------
-    The topic data class.
-    """
-    revname = revname
-    topictype = parsed_idl.find("topictype[id='%s']" % revname)
-    if topictype is None:
-        raise RuntimeError(f"IDL file does not define revname={revname}")
-    descriptor = topictype.findtext("descriptor")
-    keys = topictype.findtext("keys")
-
-    root = ElementTree.fromstring(descriptor)  # type: ignore
-    # Compose xpath to find a topic struct
-    gen_classes: typing.Any = {}
-    _ddsutil._process_descriptor_element(root, "", gen_classes)  # type: ignore
-
-    if revname not in _ddsutil._class_dict:  # type: ignore
-        raise RuntimeError(f"Could not find topic data for revname={revname}.")
-
-    data_class = _ddsutil._class_dict[revname]  # type: ignore
-    typesupport_class = _ddsutil._dds_type_support(  # type: ignore
-        descriptor, revname, keys, data_class
-    )
-    return _ddsutil.GeneratedClassInfo(  # type: ignore
-        data_class,
-        typesupport_class,
-        gen_classes,
-    )
