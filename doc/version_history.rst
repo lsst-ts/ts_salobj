@@ -11,6 +11,11 @@ v6.9.0
 * Use the new `parse_idl_file` and `make_dds_topic_class` functions in ADLink's ``ddsutil.py``, instead of our versions.
   This change requires ts-dds version 6.9 (community) or 6.10 (licensed) build 18.
 * Remove deprecated support for environment variable ``LSST_DDS_DOMAIN``.
+* `Remote` and `SalInfo`: improve retrieval of historical data in one special case:
+  reading an indexed SAL component using index=0 in the `Remote` (meaning "read data from all indices").
+  Formerly there would be only 1 sample of historical data: the most recent sample output with any index.
+  Now retrieve the most recent sample _for each index_, in the order received.
+
 
 Requirements:
 

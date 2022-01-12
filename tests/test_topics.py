@@ -1248,6 +1248,18 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         queue_len=warn_max_history + MIN_QUEUE_LEN,
                     )
 
+            # max_history can only be 0 or 1 with index=0
+            # for an indexed component
+            salinfo0 = salobj.SalInfo(domain=domain, name="Test", index=0)
+            for bad_max_history in (-1, 2, 3, 10):
+                with pytest.raises(ValueError):
+                    salobj.topics.ReadTopic(
+                        salinfo=salinfo0,
+                        name="scalars",
+                        sal_prefix="logevent_",
+                        max_history=bad_max_history,
+                    )
+
     async def test_asynchronous_event_callback(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             cmd_scalars_data = self.csc.make_random_cmd_scalars()
@@ -1381,7 +1393,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             assert read_codes2 == expected_codes2
 
     async def test_sal_index(self) -> None:
-        """Test separation of data using SAL index.
+        """Test separation of data using SAL index, including historical data.
 
         Readers with index=0 should see data from all writers of that topic,
         regardless of index.
@@ -1397,7 +1409,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             writer2 = salobj.topics.ControllerEvent(salinfo=salinfo2, name="errorCode")
 
             # write late joiner data (before we have readers);
-            # only the last value should be seen
+            # only the last value for each index should be seen
             for i in (3, 4, 5):
                 writer0.set_put(errorCode=i)
                 await asyncio.sleep(0.01)
@@ -1430,7 +1442,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             read_codes0 = []
             read_codes1 = []
             read_codes2 = []
-            expected_codes0 = [25, 6, 16, 26, 7, 17, 27, 8, 18, 28]
+            expected_codes0 = [5, 15, 25, 6, 16, 26, 7, 17, 27, 8, 18, 28]
             expected_codes1 = [15, 16, 17, 18]
             expected_codes2 = [25, 26, 27, 28]
             try:

@@ -682,13 +682,14 @@ class SalInfo:
                                 "giving up"
                             ) from e
                     self.log.debug(f"Read {len(data_list)} history items for {reader}")
-                    sd_list = [
+                    # All historical data for the specified index
+                    full_sd_list = [
                         self._sample_to_data(sd, si)
                         for sd, si in data_list
                         if si.valid_data
                     ]
-                    if len(sd_list) < len(data_list):
-                        ninvalid = len(data_list) - len(sd_list)
+                    if len(full_sd_list) < len(data_list):
+                        ninvalid = len(data_list) - len(full_sd_list)
                         self.log.warning(
                             f"Read {ninvalid} invalid late-joiner items from {reader}. "
                             "The invalid items were safely skipped, but please examine "
@@ -696,7 +697,19 @@ class SalInfo:
                             "for changes to OpenSplice dds."
                         )
                     if reader.max_history > 0:
-                        sd_list = sd_list[-reader.max_history :]
+                        if self.index == 0 and self.indexed:
+                            # Get the most recent sample for each index
+                            index_field = f"{self.name}ID"
+                            data_dict = {
+                                getattr(data, index_field): data
+                                for data in full_sd_list
+                            }
+                            sd_list: typing.Collection[
+                                type_hints.BaseDdsDataType
+                            ] = data_dict.values()
+                        else:
+                            # Get the max_history most recent samples
+                            sd_list = full_sd_list[-reader.max_history :]
                         if sd_list:
                             reader._queue_data(sd_list, loop=None)
             self._read_loop_task = asyncio.create_task(self._read_loop(loop=loop))
