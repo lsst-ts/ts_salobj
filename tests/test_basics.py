@@ -40,7 +40,7 @@ from lsst.ts import salobj
 
 class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        salobj.set_random_lsst_dds_partition_prefix()
+        salobj.set_random_topic_subname()
 
     async def test_assert_raises_ack_error(self) -> None:
         """Test the assertRaisesAckError function."""
@@ -192,24 +192,22 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             assert ackcmd.error == error
 
     def test_set_random_lsst_dds_domain(self) -> None:
-        """Test that set_random_lsst_dds_domain is a deprecated
-        alias for set_random_lsst_dds_partition_prefix.
+        """Test that set_random_lsst_dds_partition_prefix is a deprecated
+        alias for set_random_topic_subname.
         """
-        old_prefix = os.environ["LSST_DDS_PARTITION_PREFIX"]
-        with pytest.warns(
-            DeprecationWarning, match="Use set_random_lsst_dds_partition_prefix"
-        ):
-            salobj.set_random_lsst_dds_domain()
-        new_prefix = os.environ["LSST_DDS_PARTITION_PREFIX"]
-        assert old_prefix != new_prefix
+        old_value = os.environ["LSST_TOPIC_SUBNAME"]
+        with pytest.warns(DeprecationWarning, match="Use set_random_topic_subname"):
+            salobj.set_random_lsst_dds_partition_prefix()
+        new_value = os.environ["LSST_TOPIC_SUBNAME"]
+        assert old_value != new_value
 
-    def test_set_random_lsst_dds_partition_prefix(self) -> None:
+    def test_set_random_topic_subname(self) -> None:
         random.seed(42)
         NumToTest = 1000
         names = set()
         for i in range(NumToTest):
-            salobj.set_random_lsst_dds_partition_prefix()
-            name = os.environ.get("LSST_DDS_PARTITION_PREFIX")
+            salobj.set_random_topic_subname()
+            name = os.environ.get("LSST_TOPIC_SUBNAME")
             assert name
             names.add(name)
             assert "." not in name  # type: ignore
@@ -263,14 +261,6 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
 
             assert domain.user_host == salobj.get_user_host()
             assert domain.default_identity == domain.user_host
-            assert domain.ackcmd_qos_set.profile_name == "AckcmdProfile"
-            assert domain.command_qos_set.profile_name == "CommandProfile"
-            assert domain.event_qos_set.profile_name == "EventProfile"
-            assert domain.telemetry_qos_set.profile_name == "TelemetryProfile"
-            assert domain.ackcmd_qos_set.volatile
-            assert domain.command_qos_set.volatile
-            assert not domain.event_qos_set.volatile
-            assert domain.telemetry_qos_set.volatile
 
     def test_index_generator(self) -> None:
         with pytest.raises(ValueError):

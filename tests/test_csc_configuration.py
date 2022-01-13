@@ -41,6 +41,7 @@ TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
+        super().setUp()
         # defaults hard-coded in <ts_salobj_root>/schema/Test.yaml
         self.default_dict = dict(
             string0="default value for string0",
@@ -120,12 +121,8 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
             # Test the softwareVersions event.
             # Assume the string length is the same for each field.
-            metadata = self.csc.salinfo.metadata
             data = await self.assert_next_sample(
                 topic=self.remote.evt_softwareVersions,
-                xmlVersion=metadata.xml_version,
-                salVersion=metadata.sal_version,
-                openSpliceVersion=salobj.get_dds_version(),
                 cscVersion=salobj.__version__,
             )
             await self.check_settings_events("")

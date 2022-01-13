@@ -40,7 +40,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
     """
 
     def setUp(self) -> None:
-        salobj.set_random_lsst_dds_partition_prefix()
+        salobj.set_random_topic_subname()
         # Valid simulation modes that will exercise several things:
         # If 0 is present it is the default,
         # otherwise the first value is the default.

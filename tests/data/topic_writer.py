@@ -51,7 +51,8 @@ class TopicWriter(salobj.BaseCsc):
     valid_simulation_modes = [0]
 
     def __init__(self, index):
-        print(f"TopicWriter: starting with index={index}")
+        self.brief_descr = f"TopicWriter(index={index})"
+        print(f"{self.brief_descr} starting")
         super().__init__(name="Test", index=index)
         self.write_task = utils.make_done_future()
         self.is_log_level = False
@@ -68,7 +69,7 @@ class TopicWriter(salobj.BaseCsc):
             raise salobj.ExpectedError(
                 f"data.settingsToApply={data.settingsToApply} must be logLevel or arrays"
             )
-        print(f"TopicWriter: writing {data.settingsToApply}")
+        print(f"{self.brief_descr}: writing {data.settingsToApply}")
 
     async def do_setArrays(self, data):
         raise salobj.ExpectedError("Not supported")
@@ -93,14 +94,14 @@ class TopicWriter(salobj.BaseCsc):
         i = 0
         while True:
             self.tel_arrays.data.int0[0] = i
-            self.tel_arrays.put()
+            await self.tel_arrays.put()
             await asyncio.sleep(0)
             i += 1
 
     async def write_log_level(self):
         i = 0
         while True:
-            self.evt_logLevel.set_put(level=i)
+            await self.evt_logLevel.set_put(level=i)
             await asyncio.sleep(0)
             i += 1
 
