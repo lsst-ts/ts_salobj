@@ -6,6 +6,99 @@
 Version History
 ###############
 
+v7.0.0-experimental
+-------------------
+
+* Use Kafka instead of DDS to read and write SAL topics.
+
+Here are the most important changes that may affect code that uses salobj:
+
+* The following methods are now asynchronous (require an `await`).
+
+  * The ``put`` and ``set_put`` methods for `ControllerEvent`, `ControllerTelemetry`, and `WriteTopic.put`.
+     All of the following are a direct result of that:
+  * `BaseCsc.fault` and 
+  * `BaseCsc.report_summary_state` (but you should probably be calling `handle_summary_state`, instead).
+  * `BaseScript.set_state`
+  * `ControllerCommand.ack`
+  * `ControllerCommand.ack_in_progress`
+
+* You must wait until the `SalInfo` has started before writing SAL messages.
+
+* Function `set_random_lsst_dds_partition_prefix` is now `set_random_topic_subname`.
+  The old function remains (for now) as a deprecated alias.
+
+* New environment variables:
+
+  * ``LSST_TOPIC_SUBNAME``: this acts somewhat like ``LSST_DDS_PARTITION_PREFIX``, in that it isolates topics from each other.
+
+* SAL topic data is now a `dataclass` instead of a special DDS class.
+  To get the data as a dict use ``vars(data)`` instead of ``data.get_vars()``.
+  (`vars` is much more efficient than `dataclasses.asdict`).
+
+* `topics.BaseTopic` and subclasses are now constructed with ``attr_name``, instead of separate ``name`` and ``sal_prefix`` arguments.
+
+Deprecations:
+
+  * `ControllerEvent.put` and ``set_put``: the ``priority`` argument is deprecated and ignored.
+  * `set_random_lsst_dds_partition_prefix` is deprecated; use `set_random_topic_subname` instead.
+
+Removal of old deprecations:
+
+  * `ControllerCommand.ackInProgress` is gone; use `ControllerCommand.ack_in_progress`.
+
+Other changes:
+
+* ``assert_black_formatted`` is gone.
+  Use pytest-black to test black formatting.
+
+* Environment variables that are no longer read:
+
+  * ``LSST_DDS_PARTITION_PREFIX``
+  * ``LSST_DDS_HISTORYSYNC``
+
+* `Domain` is much simpler (and less resource-hungry).
+  It now has very few attributes.
+
+* The type hint `BaseDdsDataType` is deprecated; used `BaseMsgType` instead.
+
+* `SalInfo` has new attributes:
+
+  * ``component_info``, which replaces ``metadata``
+
+  and no longer has attributes:
+
+  * ``metadata``
+  * ``partition_prefix``
+  * ``revnames``
+
+* `topics.BaseTopic` has new attributes:
+
+  * ``topic_info``
+
+ and no longer has attributes and properties:
+
+  * ``cmd_partition_name``
+  * ``cmd_publisher``
+  * ``cmd_subscriber``
+  * ``data_partition_name``
+  * ``data_publisher``
+  * ``data_subscriber``
+  * ``dds_name``
+  * ``name``
+  * ``qos_set``
+  * ``rev_code``
+  * ``volatile``
+
+  and no longer has methods:
+
+  * ``parse_metadata``
+
+* `ReadTopic` no longer has attributes:
+
+  * ``virtual``
+  * ``dds_queue_length_checker``
+
 v6.9.0
 ------
 * Use the new `parse_idl_file` and `make_dds_topic_class` functions in ADLink's ``ddsutil.py``, instead of our versions.
