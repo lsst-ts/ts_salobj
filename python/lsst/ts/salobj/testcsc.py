@@ -154,33 +154,33 @@ class TestCsc(ConfigurableCsc):
             ret[field] = getattr(data, field)
         return ret
 
-    def do_setArrays(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setArrays(self, data: type_hints.BaseDdsDataType) -> None:
         """Execute the setArrays command."""
         self.assert_enabled()
         self.log.info("executing setArrays")
         data_dict = self.as_dict(data, self.arrays_fields)
         self.evt_arrays.set(**data_dict)  # type: ignore
         self.tel_arrays.set(**data_dict)  # type: ignore
-        self.evt_arrays.put()  # type: ignore
-        self.tel_arrays.put()  # type: ignore
+        await self.evt_arrays.put()  # type: ignore
+        await self.tel_arrays.put()  # type: ignore
 
-    def do_setScalars(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setScalars(self, data: type_hints.BaseDdsDataType) -> None:
         """Execute the setScalars command."""
         self.assert_enabled()
         self.log.info("executing setScalars")
         data_dict = self.as_dict(data, self.scalars_fields)
         self.evt_scalars.set(**data_dict)  # type: ignore
         self.tel_scalars.set(**data_dict)  # type: ignore
-        self.evt_scalars.put()  # type: ignore
-        self.tel_scalars.put()  # type: ignore
+        await self.evt_scalars.put()  # type: ignore
+        await self.tel_scalars.put()  # type: ignore
 
-    def do_fault(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_fault(self, data: type_hints.BaseDdsDataType) -> None:
         """Execute the fault command.
 
         Change the summary state to State.FAULT
         """
         self.log.warning("executing the fault command")
-        self.fault(code=1, report="executing the fault command")
+        await self.fault(code=1, report="executing the fault command")
 
     async def do_wait(self, data: type_hints.BaseDdsDataType) -> None:
         """Execute the wait command by waiting for the specified duration.
@@ -192,7 +192,7 @@ class TestCsc(ConfigurableCsc):
         self.assert_enabled()
         duration: float = data.duration  # type: ignore
         if duration >= 0:
-            self.cmd_wait.ack_in_progress(data, timeout=duration)  # type: ignore
+            await self.cmd_wait.ack_in_progress(data, timeout=duration)  # type: ignore
         await asyncio.sleep(abs(duration))
 
     @property

@@ -187,6 +187,7 @@ class Controller:
         # Task that is set done when the controller is closed
         self.done_task: asyncio.Future = asyncio.Future()
         self._do_callbacks = do_callbacks
+        self._sal_log_handler: typing.Optional[SalLogHandler] = None
 
         domain = Domain()
         try:
@@ -217,9 +218,6 @@ class Controller:
                 if not hasattr(self, f"evt_{required_name}"):
                     raise RuntimeError(f"{self!r} has no {required_name} event")
 
-            self._sal_log_handler = SalLogHandler(controller=self)
-            self.log.addHandler(self._sal_log_handler)
-
             # This task is set done when the CSC is fully started.
             # If `start` fails then the task has an exception set
             # and the CSC is not usable.
@@ -247,9 +245,14 @@ class Controller:
 
     async def start(self) -> None:
         """Finish construction."""
-
         # Allow each remote constructor to begin running its start method.
         await asyncio.sleep(0)
+
+        await self.salinfo.start()
+
+        # Wait until the SalInfo has started to add the log handler.
+        self._sal_log_handler = SalLogHandler(controller=self)
+        self.log.addHandler(self._sal_log_handler)
 
         # Wait for all remote salinfos to start.
         start_tasks = []
@@ -260,7 +263,6 @@ class Controller:
                 continue
             start_tasks.append(salinfo.start_task)
         await asyncio.gather(*start_tasks)
-        await self.salinfo.start()
 
         # Assign command callbacks; give up if this fails, since the CSC
         # will be at least partly broken.
@@ -274,8 +276,8 @@ class Controller:
                 await self.close()
                 return
 
-        self.put_log_level()
-        self.evt_authList.set_put(  # type: ignore
+        await self.put_log_level()
+        await self.evt_authList.set_put(  # type: ignore
             authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
             nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
         )
@@ -339,8 +341,9 @@ class Controller:
             self.log.exception("Controller.close_tasks failed; close continues")
         try:
             # Give remotes time to read final DDS messages before closing
-            # the domain participant.
-            self.log.removeHandler(self._sal_log_handler)
+            # the domain.
+            if self._sal_log_handler is not None:
+                self.log.removeHandler(self._sal_log_handler)
             await asyncio.sleep(SHUTDOWN_DELAY)
             await self.domain.close()
         except asyncio.CancelledError:
@@ -363,7 +366,7 @@ class Controller:
         """
         pass
 
-    def do_setAuthList(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setAuthList(self, data: type_hints.BaseMsgType) -> None:
         """Update the authorization list.
 
         Parameters
@@ -411,13 +414,13 @@ class Controller:
             # No prefix: replace CSCs.
             self.salinfo.non_authorized_cscs = cscs_set
 
-        self.evt_authList.set_put(  # type: ignore
+        await self.evt_authList.set_put(  # type: ignore
             authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
             nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
             force_output=True,
         )
 
-    def do_setLogLevel(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setLogLevel(self, data: type_hints.BaseMsgType) -> None:
         """Set logging level.
 
         Parameters
@@ -426,11 +429,11 @@ class Controller:
             Logging level.
         """
         self.log.setLevel(data.level)  # type: ignore
-        self.put_log_level()
+        await self.put_log_level()
 
-    def put_log_level(self) -> None:
+    async def put_log_level(self) -> None:
         """Output the logLevel event."""
-        self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(), force_output=True)  # type: ignore
+        await self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(), force_output=True)  # type: ignore
 
     def _assert_do_methods_present(self) -> None:
         """Assert that all needed do_<name> methods are present."""

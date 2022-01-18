@@ -23,7 +23,6 @@ from __future__ import annotations
 
 __all__ = ["MAX_SEQ_NUM", "WriteTopic"]
 
-import struct
 import typing
 
 import numpy as np
@@ -55,11 +54,10 @@ class WriteTopic(BaseTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
-    name : `str`
-        Topic name, without a "command\_" or "logevent\_" prefix.
-    sal_prefix : `str`
-        SAL topic prefix: one of "command\_", "logevent\_" or ""
+        SAL component information.
+    attr_name : `str`
+        Topic name with attribute prefix: one of "cmd_", "evt_", or "tel_",
+        or "ack_" for the ackcmd topic.
     min_seq_num : `int` or `None`, optional
         Minimum value for the ``private_seqNum`` field. The default is 1.
         If `None` then ``private_seqNum`` is not set; this is needed
@@ -82,17 +80,12 @@ class WriteTopic(BaseTopic):
         self,
         *,
         salinfo: SalInfo,
-        name: str,
-        sal_prefix: str,
+        attr_name: str,
         min_seq_num: typing.Optional[int] = 1,
         max_seq_num: int = MAX_SEQ_NUM,
         initial_seq_num: typing.Optional[int] = None,
     ) -> None:
-        super().__init__(
-            salinfo=salinfo,
-            name=name,
-            sal_prefix=sal_prefix,
-        )
+        super().__init__(salinfo=salinfo, attr_name=attr_name)
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
@@ -104,24 +97,12 @@ class WriteTopic(BaseTopic):
             self._seq_num_generator = base.index_generator(
                 imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num
             )
-        # Command topics use a different a partition name than
-        # all other topics, including ackcmd, and the partition name
-        # is part of the publisher and subscriber.
-        # This split allows us to create just one subscriber and one publisher
-        # for each Controller or Remote:
-        # `Controller` only needs a cmd_subscriber and data_publisher,
-        # `Remote` only needs a cmd_publisher and data_subscriber.
-        if sal_prefix == "command_":
-            publisher = salinfo.cmd_publisher
-        else:
-            publisher = salinfo.data_publisher
-        self._writer = publisher.create_datawriter(self._topic, self.qos_set.writer_qos)
         self._has_data = False
         self._data = self.DataType()
         # Record which field names are float, double or array of either,
         # to make it easy to compare float fields with nan equal.
         self._float_field_names = set()
-        for name, value in self._data.get_vars().items():
+        for name, value in vars(self._data).items():
             if isinstance(value, list):
                 # In our DDS schemas arrays are fixed length
                 # and must contain at least one element.
@@ -134,7 +115,7 @@ class WriteTopic(BaseTopic):
         salinfo.add_writer(self)
 
     @property
-    def data(self) -> type_hints.BaseDdsDataType:
+    def data(self) -> type_hints.BaseMsgType:
         """Internally cached message.
 
         Raises
@@ -150,7 +131,7 @@ class WriteTopic(BaseTopic):
         return self._data
 
     @data.setter
-    def data(self, data: type_hints.BaseDdsDataType) -> None:
+    def data(self, data: type_hints.BaseMsgType) -> None:
         if not isinstance(data, self.DataType):
             raise TypeError(f"data={data!r} must be an instance of {self.DataType}")
         self._data = data
@@ -169,7 +150,6 @@ class WriteTopic(BaseTopic):
         if not self.isopen:
             return
         self.isopen = False
-        self._writer.close()
 
     async def close(self) -> None:
         """Shut down and release resources.
@@ -179,51 +159,44 @@ class WriteTopic(BaseTopic):
         """
         self.basic_close()
 
-    def put(
+    async def put(
         self,
-        data: typing.Optional[type_hints.BaseDdsDataType] = None,
-    ) -> None:
-        """Output this topic.
+        data: typing.Optional[type_hints.BaseMsgType] = None,
+    ) -> type_hints.BaseMsgType:
+        """Output this topic. Return the data that was written.
 
         Parameters
         ----------
         data : ``self.DataType`` or `None`
             New message data to replace ``self.data``, if any.
 
-        Raises
-        ------
-        TypeError
-            If ``data`` is not None and not an instance of `DataType`.
+        Returns
+        -------
+        data : self.DataType
+            AThe data that was written.
+            This can be useful to avoid race conditions
+            (as found in RemoteCommand).
         """
+        self.salinfo.assert_started()
         if data is not None:
             self.data = data
 
         self.data.private_sndStamp = utils.current_tai()
-        self.data.private_revCode = self.rev_code
         self.data.private_origin = self.salinfo.domain.origin
         self.data.private_identity = self.salinfo.identity
         if self._seq_num_generator is not None:
             self.data.private_seqNum = next(self._seq_num_generator)
-        # when index is 0 use the default of 0 and give senders a chance
-        # to override it.
+        # If index is nonzero then set private_index.
+        # Otherwise the default of 0 is correct,
+        # and the user can override it.
         if self.salinfo.index != 0:
-            setattr(self.data, f"{self.salinfo.name}ID", self.salinfo.index)
-        try:
-            self._writer.write(self.data)
-        except struct.error as e:
-            raise ValueError(
-                f"{self.name} write({self.data}) failed: one or more fields invalid"
-            ) from e
-        except TypeError as e:
-            raise ValueError(
-                f"{self.name} write({self.data}) failed: "
-                f"perhaps one or more array fields has been set to a scalar"
-            ) from e
-        except IndexError as e:
-            raise ValueError(
-                f"{self.name} write({self.data}) failed: "
-                f"probably one or more array fields is too short"
-            ) from e
+            self.data.private_index = self.salinfo.index
+        data_dict = vars(self.data)
+        # Make a "copy" in case another task replaces self.data
+        # during the write
+        data = self.data
+        await self.salinfo.write_data(topic_info=self.topic_info, data_dict=data_dict)
+        return data
 
     def set(self, **kwargs: typing.Any) -> bool:
         """Set one or more fields of message data cache ``self.data``.
@@ -257,15 +230,25 @@ class WriteTopic(BaseTopic):
         If one or more fields cannot be set, the message data may be
         partially updated.
         """
+        # Always report did_change true if not self.has_data
         did_change = not self.has_data
+
+        # Set a copy of the data, in case any of the data is invalid.
+        data_dict = vars(self.data)
+        unknown_fields = kwargs.keys() - data_dict.keys()
+        if unknown_fields:
+            raise AttributeError(
+                f"{self.attr_name} has no fields {sorted(unknown_fields)}"
+            )
+
         for field_name, value in kwargs.items():
             if value is None:
-                if not hasattr(self.data, field_name):
-                    raise AttributeError(f"{self.data} has no attribute {field_name}")
+                # Keep the old value
                 continue
-            old_value = getattr(self.data, field_name)
-            try:
-                if not did_change:
+
+            old_value = data_dict[field_name]
+            if not did_change:
+                try:
                     # array_equal works for sequences of all kinds,
                     # as well as strings and scalars
                     is_float = field_name in self._float_field_names
@@ -274,10 +257,12 @@ class WriteTopic(BaseTopic):
                         value,
                         equal_nan=is_float,  # type: ignore
                     )
-                setattr(self.data, field_name, value)
-            except Exception as e:
-                raise ValueError(
-                    f"Could not set {self.data}.{field_name} to {value!r}"
-                ) from e
-        self._has_data = True
+                except Exception as e:
+                    raise TypeError(
+                        f"Cannot set {self.attr_name}.{field_name}={value!r}; wrong type."
+                    ) from e
+            data_dict[field_name] = value
+        # Check the data by creating a DataType, because no checking is done
+        # when directly setting attributes of a dataclass.
+        self.data = self.DataType(**data_dict)
         return did_change

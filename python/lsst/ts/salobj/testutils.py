@@ -23,24 +23,20 @@ __all__ = [
     "assertAnglesAlmostEqual",
     "assertRaisesAckError",
     "assertRaisesAckTimeoutError",
-    "set_random_lsst_dds_domain",  # Deprecated
-    "set_random_lsst_dds_partition_prefix",
+    "set_random_topic_subname",
+    "set_random_lsst_dds_partition_prefix",  # Deprecated
     "modify_environ",
 ]
 
+import base64
 import contextlib
 import os
-import random
-import socket
-import subprocess
-import time
 import typing
 import warnings
 
 import astropy.coordinates
 
 from lsst.ts import utils
-from . import type_hints
 from .base import AckError, AckTimeoutError
 
 
@@ -115,33 +111,24 @@ def assertRaisesAckTimeoutError(
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
 
 
-
-def set_random_lsst_dds_partition_prefix() -> None:
-    """Set a random value for environment variable LSST_DDS_PARTITION_PREFIX
+def set_random_topic_subname() -> None:
+    """Set a random value for environment variable LSST_TOPIC_SUBNAME
 
     Call this for each unit test method that uses SAL message passing,
     in order to avoid collisions with other tests. Note that pytest
     can run unit test methods in parallel.
 
-    The set name will contain the hostname and current time
-    as well as a random integer.
-
-    The random value is generated using the `random` library,
-    so call ``random.seed(...)`` to seed this value.
+    The random value is generated using the os.urandom, so that it cannot
+    be seeded. This avoids collisions with previous test runs.
     """
-    hostname = socket.gethostname()
-    curr_time = time.time()
-    random_int = random.randint(0, 999999)
-    name = f"Test-{hostname}-{curr_time}-{random_int}".replace(".", "_")
-    os.environ["LSST_DDS_PARTITION_PREFIX"] = name
+    random_str = base64.urlsafe_b64encode(os.urandom(12)).decode().replace("=", "_")
+    os.environ["LSST_TOPIC_SUBNAME"] = f"test_{random_str}"
 
 
-def set_random_lsst_dds_domain() -> None:
-    """Deprecated version of `set_random_lsst_dds_partition_prefix`."""
-    warnings.warn(
-        "Use set_random_lsst_dds_partition_prefix instead", DeprecationWarning
-    )
-    set_random_lsst_dds_partition_prefix()
+def set_random_lsst_dds_partition_prefix() -> None:
+    """Deprecated version of `set_random_topic_subname`."""
+    warnings.warn("Use set_random_topic_subname instead", DeprecationWarning)
+    set_random_topic_subname()
 
 
 @contextlib.contextmanager

@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["ControllerEvent"]
 
 import typing
+import warnings
 
 from .. import type_hints
 from . import write_topic
@@ -38,19 +39,19 @@ class ControllerEvent(write_topic.WriteTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     name : `str`
-        Event topic name
+        Event name with no prefix, e.g. "summaryState".
     """
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:
-        super().__init__(salinfo=salinfo, name=name, sal_prefix="logevent_")
+        super().__init__(salinfo=salinfo, attr_name=f"evt_{name}")
 
-    def put(
+    async def put(
         self,
-        data: typing.Optional[type_hints.BaseDdsDataType] = None,
-        priority: int = 0,
-    ) -> None:
+        data: typing.Optional[type_hints.BaseMsgType] = None,
+        priority: typing.Optional[int] = None,
+    ) -> type_hints.BaseMsgType:
         """Output this topic.
 
         Parameters
@@ -58,18 +59,33 @@ class ControllerEvent(write_topic.WriteTopic):
         data : ``self.DataType`` or `None`
             New message data to replace ``self.data``, if any.
         priority : `int`, optional
-            Priority; used to set the priority field of events.
-            Ignored for commands and telemetry.
+            Deprecated and ignored.
+
+        Returns
+        -------
+        data : self.DataType
+            A copy of the data that was written.
+            This can be useful to avoid race conditions
+            (as found in RemoteCommand).
 
         Raises
         ------
         TypeError
             If ``data`` is not None and not an instance of `DataType`.
         """
-        self.data.priority = priority  # type: ignore
-        super().put(data)
+        if priority is not None:
+            warnings.warn(
+                "ControllerEvent.put: the priority argument is deprecated and ignored"
+            )
+        return await super().put(data)
 
-    def set_put(self, *, force_output: bool = False, **kwargs: typing.Any) -> bool:
+    async def set_put(
+        self,
+        *,
+        force_output: bool = False,
+        priority: typing.Optional[int] = None,
+        **kwargs: typing.Any,
+    ) -> bool:
         """Set zero or more fields of ``self.data`` and put if changed
         or if ``force_output`` true.
 
@@ -97,8 +113,12 @@ class ControllerEvent(write_topic.WriteTopic):
         ValueError
             If the field cannot be set to the specified value.
         """
+        if priority is not None:
+            warnings.warn(
+                "ControllerEvent.put: the priority argument is deprecated and ignored"
+            )
         did_change = self.set(**kwargs)
         do_output = did_change or force_output
         if do_output:
-            self.put(self.data)
+            await self.put(self.data)
         return do_output

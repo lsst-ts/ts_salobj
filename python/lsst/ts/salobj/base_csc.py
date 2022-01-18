@@ -32,7 +32,6 @@ import warnings
 
 from lsst.ts import utils
 from . import base
-from . import dds_utils
 from . import type_hints
 from .sal_enums import State
 from .controller import Controller
@@ -215,13 +214,6 @@ class BaseCsc(Controller):
         def format_version(version: typing.Optional[str]) -> str:
             return "?" if version is None else version
 
-        self.evt_softwareVersions.set(  # type: ignore
-            salVersion=format_version(self.salinfo.metadata.sal_version),
-            xmlVersion=format_version(self.salinfo.metadata.xml_version),
-            openSpliceVersion=dds_utils.get_dds_version(),
-            cscVersion=getattr(self, "version", "?"),
-        )
-
     async def start(self) -> None:
         """Finish constructing the CSC.
 
@@ -231,6 +223,9 @@ class BaseCsc(Controller):
         * Set ``self.start_task`` done.
         """
         await super().start()
+        await self.evt_softwareVersions.set_put(  # type: ignore
+            cscVersion=getattr(self, "version", "?"),
+        )
         self._heartbeat_task.cancel()  # Paranoia
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         await self.set_simulation_mode(self.simulation_mode)
@@ -240,7 +235,7 @@ class BaseCsc(Controller):
         # in hopes that the CSC can still be used. For instance
         # if the settings were invalid, the user can specify others.
         await self.handle_summary_state()
-        self.report_summary_state()
+        await self.report_summary_state()
         command = None
         if self._initial_state != self.default_initial_state:
             state_transition_dict = make_state_transition_dict()
@@ -268,8 +263,6 @@ class BaseCsc(Controller):
                 self.log.exception(
                     f"Failed in start on state transition command {command}; continuing."
                 )
-
-        self.evt_softwareVersions.put()  # type: ignore
 
     async def close_tasks(self) -> None:
         """Shut down pending tasks. Called by `close`."""
@@ -479,7 +472,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def do_disable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_disable(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.ENABLED` to `State.DISABLED`.
 
         Parameters
@@ -489,7 +482,7 @@ class BaseCsc(Controller):
         """
         await self._do_change_state(data, "disable", [State.ENABLED], State.DISABLED)
 
-    async def do_enable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_enable(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.DISABLED` to `State.ENABLED`.
 
         Parameters
@@ -499,7 +492,7 @@ class BaseCsc(Controller):
         """
         await self._do_change_state(data, "enable", [State.DISABLED], State.ENABLED)
 
-    async def do_exitControl(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_exitControl(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.STANDBY` to `State.OFFLINE` and quit.
 
         Parameters
@@ -511,7 +504,7 @@ class BaseCsc(Controller):
 
         asyncio.create_task(self.close())
 
-    async def do_standby(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_standby(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.DISABLED` or `State.FAULT` to
         `State.STANDBY`.
 
@@ -524,7 +517,7 @@ class BaseCsc(Controller):
             data, "standby", [State.DISABLED, State.FAULT], State.STANDBY
         )
 
-    async def do_start(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_start(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.STANDBY` to `State.DISABLED`.
 
         Parameters
@@ -561,7 +554,7 @@ class BaseCsc(Controller):
         """
         await self.implement_simulation_mode(simulation_mode)
 
-        self.evt_simulationMode.set_put(mode=simulation_mode, force_output=True)  # type: ignore
+        await self.evt_simulationMode.set_put(mode=simulation_mode, force_output=True)  # type: ignore
 
     async def implement_simulation_mode(self, simulation_mode: int) -> None:
         """Implement going into or out of simulation mode.
@@ -588,7 +581,7 @@ class BaseCsc(Controller):
                 f"This CSC does not support simulation; simulation_mode={simulation_mode} but must be 0"
             )
 
-    async def begin_disable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_disable(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_disable; called before state changes.
 
         Parameters
@@ -598,7 +591,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def begin_enable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_enable(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_enable; called before state changes.
 
         Parameters
@@ -608,7 +601,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def begin_exitControl(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_exitControl(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_exitControl; called before state changes.
 
         Parameters
@@ -618,7 +611,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def begin_standby(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_standby(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_standby; called before the state changes.
 
         Parameters
@@ -628,7 +621,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def begin_start(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_start(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_start; called before state changes.
 
         Parameters
@@ -638,7 +631,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def end_disable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def end_disable(self, data: type_hints.BaseMsgType) -> None:
         """End do_disable; called after state changes
         but before command acknowledged.
 
@@ -649,7 +642,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def end_enable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def end_enable(self, data: type_hints.BaseMsgType) -> None:
         """End do_enable; called after state changes
         but before command acknowledged.
 
@@ -660,7 +653,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def end_exitControl(self, data: type_hints.BaseDdsDataType) -> None:
+    async def end_exitControl(self, data: type_hints.BaseMsgType) -> None:
         """End do_exitControl; called after state changes
         but before command acknowledged.
 
@@ -671,7 +664,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def end_standby(self, data: type_hints.BaseDdsDataType) -> None:
+    async def end_standby(self, data: type_hints.BaseMsgType) -> None:
         """End do_standby; called after state changes
         but before command acknowledged.
 
@@ -682,7 +675,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def end_start(self, data: type_hints.BaseDdsDataType) -> None:
+    async def end_start(self, data: type_hints.BaseMsgType) -> None:
         """End do_start; called after state changes
         but before command acknowledged.
 
@@ -693,7 +686,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    def fault(
+    async def fault(
         self, code: typing.Optional[int], report: str, traceback: str = ""
     ) -> None:
         """Enter the fault state and output the ``errorCode`` event.
@@ -718,7 +711,7 @@ class BaseCsc(Controller):
             self._summary_state = State.FAULT
             if code is not None:
                 try:
-                    self.evt_errorCode.set_put(  # type: ignore
+                    await self.evt_errorCode.set_put(  # type: ignore
                         errorCode=code,
                         errorReport=report,
                         traceback=traceback,
@@ -730,16 +723,16 @@ class BaseCsc(Controller):
                     )
                 self.log.critical(f"Fault! errorCode={code}, errorReport={report!r}")
             try:
-                self.report_summary_state()
+                await self.report_summary_state()
             except Exception:
                 self.log.exception(
                     "report_summary_state failed while going to FAULT; "
                     "some code may not have run."
                 )
-                self.evt_summaryState.set_put(  # type: ignore
+                await self.evt_summaryState.set_put(  # type: ignore
                     summaryState=self._summary_state,
                 )  # type: ignore
-            asyncio.create_task(self.handle_summary_state())
+            await self.handle_summary_state()
         finally:
             self._faulting = False
 
@@ -798,16 +791,16 @@ class BaseCsc(Controller):
         """
         pass
 
-    def report_summary_state(self) -> None:
+    async def report_summary_state(self) -> None:
         """Report a new value for summary_state, including current state.
 
         Subclasses may wish to override for code that depends on
         the current state (rather than the state transition command
         that got it into that state).
         """
-        self.evt_summaryState.set_put(summaryState=self.summary_state)  # type: ignore
+        await self.evt_summaryState.set_put(summaryState=self.summary_state)  # type: ignore
         if self.summary_state is not State.FAULT:
-            self.evt_errorCode.set_put(errorCode=0, errorReport="", traceback="")  # type: ignore
+            await self.evt_errorCode.set_put(errorCode=0, errorReport="", traceback="")  # type: ignore
 
     async def _do_change_state(
         self,
@@ -859,14 +852,14 @@ class BaseCsc(Controller):
             )
             raise
         await self.handle_summary_state()
-        self.report_summary_state()
+        await self.report_summary_state()
 
     async def _heartbeat_loop(self) -> None:
         """Output heartbeat at regular intervals."""
         while True:
             try:
                 await asyncio.sleep(self.heartbeat_interval)
-                self.evt_heartbeat.put()  # type: ignore
+                await self.evt_heartbeat.put()  # type: ignore
             except asyncio.CancelledError:
                 break
             except Exception as e:

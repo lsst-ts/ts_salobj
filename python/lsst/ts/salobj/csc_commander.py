@@ -359,7 +359,7 @@ help  # print this help
         """
         return dict(
             (key, value)
-            for key, value in data.get_vars().items()
+            for key, value in vars(data).items()
             if self.field_is_public(key)
         )
 
@@ -369,7 +369,7 @@ help  # print this help
         """
         return {
             key: round_any(value, digits=digits)
-            for key, value in data.get_vars().items()
+            for key, value in vars(data).items()
             if self.field_is_public(key)
         }
 
@@ -388,7 +388,7 @@ help  # print this help
         """
         self.output(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
 
-    def evt_summaryState_callback(self, data: type_hints.BaseDdsDataType) -> None:
+    def evt_summaryState_callback(self, data: type_hints.BaseMsgType) -> None:
         state_int: int = data.summaryState  # type: ignore
         try:
             state_repr: str = repr(sal_enums.State(state_int))

@@ -21,6 +21,7 @@
 
 __all__ = [
     "AckCmdDataType",
+    "BaseMsgType",
     "BaseDdsDataType",
     "PathType",
 ]
@@ -33,15 +34,12 @@ from . import sal_enums
 
 
 @dataclasses.dataclass
-class BaseDdsDataType:
+class BaseMsgType:
     r"""Base DDS sample data type, for type annotations.
 
-    This is missing:
-
-    * _SAL_component_name_\ ID (e.g. ScriptID): only present
-      for indexed SAL components
-    * priority: present for events, but not used
-    * all topic-specific public fields
+    This is missing all topic-specific public fields.
+    It includes private_index, which is only present for indexed
+    SAL components.
     """
     private_revCode: str = ""
     private_sndStamp: float = 0
@@ -49,13 +47,15 @@ class BaseDdsDataType:
     private_seqNum: int = 0
     private_identity: str = ""
     private_origin: int = 0
+    private_index: int = 0
 
-    def get_vars(self) -> typing.Dict[str, typing.Any]:
-        raise NotImplementedError()
+
+# Backward compatibility
+BaseDdsDataType = BaseMsgType
 
 
 @dataclasses.dataclass
-class AckCmdDataType(BaseDdsDataType):
+class AckCmdDataType(BaseMsgType):
     """AckCmd topic data type, for type annotations."""
 
     ack: sal_enums.SalRetCode = sal_enums.SalRetCode.CMD_ACK

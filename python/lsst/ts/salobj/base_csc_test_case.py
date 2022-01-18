@@ -60,6 +60,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
       assuming you have a binary script to run your CSC.
     """
 
+    def setUp(self) -> None:
+        testutils.set_random_topic_subname()
+
     _index_iter = base.index_generator()
 
     @abc.abstractmethod
@@ -134,7 +137,6 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             For a configurable CSC this may include ``settings_to_apply``,
             especially if ``initial_state`` is DISABLED or ENABLED.
         """
-        testutils.set_random_lsst_dds_partition_prefix()
         items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
         try:
             self.csc = self.basic_make_csc(
@@ -208,7 +210,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         flush: bool = False,
         timeout: float = STD_TIMEOUT,
         **kwargs: typing.Any,
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Wait for the next data sample for the specified topic,
         check specified fields for equality, and return the data.
 
@@ -281,7 +283,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Time limit for the CSC to start and output
             the summaryState event.
         """
-        testutils.set_random_lsst_dds_partition_prefix()
+        testutils.set_random_topic_subname()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
             raise AssertionError(

@@ -31,8 +31,6 @@ import logging
 import typing
 import warnings
 
-import dds
-
 from lsst.ts import utils
 from .. import base
 from .. import type_hints
@@ -50,7 +48,7 @@ MIN_QUEUE_LEN = 10
 
 _BasicReturnType = typing.Optional[type_hints.AckCmdDataType]
 CallbackType = typing.Callable[
-    [type_hints.BaseDdsDataType],
+    [type_hints.BaseMsgType],
     typing.Union[_BasicReturnType, typing.Awaitable[_BasicReturnType]],
 ]
 
@@ -183,11 +181,9 @@ class ReadTopic(BaseTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
-    name : `str`
-        Topic name, without a "command\_" or "logevent\_" prefix.
-    sal_prefix : `str`
-        SAL topic prefix: one of "command\_", "logevent\_" or ""
+    attr_name : `str`
+        Topic name with attribute prefix: one of "cmd_", "evt_", or "tel_",
+        or "ack_" for the ackcmd topic.
     max_history : `int`
         Maximum number of historical items to read:
 
@@ -214,8 +210,6 @@ class ReadTopic(BaseTopic):
     ValueError
         If max_history < 0.
     ValueError
-        If max_history > 0 and the topic is volatile (command or ackcmd).
-    ValueError
         If queue_len < MIN_QUEUE_LEN.
     ValueError
         If max_history > queue_len.
@@ -233,8 +227,6 @@ class ReadTopic(BaseTopic):
     ----------
     isopen : `bool`
         Is this read topic open? `True` until `close` is called.
-    dds_queue_length_checker : `QueueCapacityChecker`
-        Queue length checker for the DDS queue.
     python_queue_length_checker : `QueueCapacityChecker`:
         Queue length checker for the Python queue.
 
@@ -281,19 +273,16 @@ class ReadTopic(BaseTopic):
         self,
         *,
         salinfo: SalInfo,
-        name: str,
-        sal_prefix: str,
+        attr_name: str,
         max_history: int,
         queue_len: int = DEFAULT_QUEUE_LEN,
         filter_ackcmd: bool = True,
     ) -> None:
-        super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
+        super().__init__(salinfo=salinfo, attr_name=attr_name)
         self.isopen = True
         self._allow_multiple_callbacks = False
         if max_history < 0:
             raise ValueError(f"max_history={max_history} must be >= 0")
-        if max_history > 0 and self.volatile:
-            raise ValueError(f"max_history={max_history} must be 0 for volatile topics")
         if salinfo.indexed and salinfo.index == 0 and max_history > 1:
             raise ValueError(
                 f"max_history={max_history} must be 0 or 1 "
@@ -307,21 +296,11 @@ class ReadTopic(BaseTopic):
             raise ValueError(
                 f"max_history={max_history} must be <= queue_len={queue_len}"
             )
-        if (
-            max_history > self.qos_set.reader_qos.history.depth
-            or max_history > self.qos_set.topic_qos.durability_service.history_depth
-        ):
-            warnings.warn(
-                f"max_history={max_history} > history depth={self.qos_set.reader_qos.history.depth} "
-                f"and/or {self.qos_set.topic_qos.durability_service.history_depth}; "
-                "you will get less historical data than you asked for.",
-                UserWarning,
-            )
         self._max_history = int(max_history)
-        self._data_queue: typing.Deque[type_hints.BaseDdsDataType] = collections.deque(
+        self._data_queue: typing.Deque[type_hints.BaseMsgType] = collections.deque(
             maxlen=queue_len
         )
-        self._current_data: typing.Optional[type_hints.BaseDdsDataType] = None
+        self._current_data: typing.Optional[type_hints.BaseMsgType] = None
         # Task that `next` waits on.
         # Its result is set to the oldest message on the queue.
         # We do this instead of having `next` itself pop the oldest message
@@ -331,49 +310,9 @@ class ReadTopic(BaseTopic):
         self._callback: typing.Optional[CallbackType] = None
         self._callback_tasks: typing.Set[asyncio.Task] = set()
         self._callback_loop_task = utils.make_done_future()
-        self.dds_queue_length_checker = QueueCapacityChecker(
-            descr=f"{name} DDS read queue",
-            log=self.log,
-            queue_len=self.qos_set.reader_qos.history.depth,
-        )
         self.python_queue_length_checker = QueueCapacityChecker(
-            descr=f"{name} python read queue", log=self.log, queue_len=queue_len
+            descr=f"{attr_name} python read queue", log=self.log, queue_len=queue_len
         )
-        # Command topics use a different a partition name than
-        # all other topics, including ackcmd, and the partition name
-        # is part of the publisher and subscriber.
-        # This split allows us to create just one subscriber and one publisher
-        # for each Controller or Remote:
-        # `Controller` only needs a cmd_subscriber and data_publisher,
-        # `Remote` only needs a cmd_publisher and data_subscriber.
-        if sal_prefix == "command_":
-            subscriber = salinfo.cmd_subscriber
-        else:
-            subscriber = salinfo.data_subscriber
-        self._reader = subscriber.create_datareader(
-            self._topic, self.qos_set.reader_qos
-        )
-        # TODO DM-26411: replace ANY_INSTANCE_STATE with ALIVE_INSTANCE_STATE
-        # once the OpenSplice issue 00020647 is fixed.
-        read_mask = [
-            dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
-            dds.DDSStateKind.ANY_INSTANCE_STATE,
-        ]
-        queries = []
-        if salinfo.index > 0:
-            queries.append(f"{salinfo.name}ID = {salinfo.index}")
-        if name == "ackcmd" and filter_ackcmd:
-            queries += [
-                f"origin = {salinfo.domain.origin}",
-                f"identity = '{salinfo.identity}'",
-            ]
-        if queries:
-            full_query = " AND ".join(queries)
-            read_condition = dds.QueryCondition(self._reader, read_mask, full_query)
-        else:
-            read_condition = self._reader.create_readcondition(read_mask)
-        self._read_condition = read_condition
-
         salinfo.add_reader(self)
 
     @property
@@ -482,7 +421,6 @@ class ReadTopic(BaseTopic):
             self._next_task.cancel()
         except RuntimeError:
             pass
-        self._reader.close()
         self._data_queue.clear()
 
     async def close(self) -> None:
@@ -495,7 +433,7 @@ class ReadTopic(BaseTopic):
 
     async def aget(
         self, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Get the most recent message, or wait for data if no data has
         ever been seen (`has_data` False).
 
@@ -552,7 +490,7 @@ class ReadTopic(BaseTopic):
 
     def get(
         self, flush: typing.Optional[bool] = None
-    ) -> typing.Optional[type_hints.BaseDdsDataType]:
+    ) -> typing.Optional[type_hints.BaseMsgType]:
         """Get the most recent message, or `None` if no data has ever been seen
         (`has_data` False).
 
@@ -602,7 +540,7 @@ class ReadTopic(BaseTopic):
             self.flush()
         return self._current_data
 
-    def get_oldest(self) -> typing.Optional[type_hints.BaseDdsDataType]:
+    def get_oldest(self) -> typing.Optional[type_hints.BaseMsgType]:
         """Pop and return the oldest message from the queue, or `None` if the
         queue is empty.
 
@@ -635,7 +573,7 @@ class ReadTopic(BaseTopic):
 
     async def next(
         self, *, flush: bool, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Pop and return the oldest message from the queue, waiting for data
         if the queue is empty.
 
@@ -678,7 +616,7 @@ class ReadTopic(BaseTopic):
 
     async def _next(
         self, *, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Implement next.
 
         Unlike `next`, this can be called while using a callback function.
@@ -712,7 +650,7 @@ class ReadTopic(BaseTopic):
             task = self._callback_tasks.pop()
             task.cancel()
 
-    async def _run_callback(self, data: type_hints.BaseDdsDataType) -> None:
+    async def _run_callback(self, data: type_hints.BaseMsgType) -> None:
         try:
             # mypy gets upset because self._callback may be None
             # but it's too expensive to check that
@@ -725,22 +663,15 @@ class ReadTopic(BaseTopic):
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
-    def _queue_data(
-        self,
-        data_list: typing.Collection[type_hints.BaseDdsDataType],
-        loop: typing.Optional[asyncio.AbstractEventLoop],
+    async def _queue_data(
+        self, data_list: typing.Collection[type_hints.BaseMsgType]
     ) -> None:
-        """Queue multiple one or more messages.
+        """Queue one or more messages.
 
         Parameters
         ----------
-        data_list : typing.Collection[type_hints.BaseDdsDataType]
-            DDS messages to be queueued.
-        loop : `asyncio.AbstractEventLoop` or `None`
-            Foreground asyncio loop.
-            Specify the loop if and only if running from a background thread.
-            If running from the main asyncio loop specify ``loop = None``
-            (this is done to read historical data while starting).
+        data_list : typing.Collection[type_hints.BaseMsgType]
+            Messages to be queueued.
 
         Also update ``self._current_data`` and fire `self._next_task`
         (if pending).
@@ -748,16 +679,11 @@ class ReadTopic(BaseTopic):
         if not data_list:
             return
         for data in data_list:
-            self._queue_one_item(data)
+            await self._queue_one_item(data)
         self._current_data = data
-        if loop is not None and loop.is_running():
-            # Reading messages in a background thread.
-            loop.call_soon_threadsafe(self._report_next)
-        else:
-            # Reading messages in the main thread.
-            self._report_next()
+        self._report_next()
 
-    def _queue_one_item(self, data: type_hints.BaseDdsDataType) -> None:
+    async def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
         """Add a single message to the Python queue.
 
         Subclasses may override this to modify the message before queuing.

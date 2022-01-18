@@ -217,7 +217,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
         self._config_dir = config_dir
 
-    def read_config_dir(self) -> None:
+    async def read_config_dir(self) -> None:
         """Set ``self.config_label_dict`` and output ``evt_settingVersions``.
 
         Set ``self.config_label_dict`` from ``self.config_dir/_labels.yaml``.
@@ -245,7 +245,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
         settings_version = self._get_settings_version()
 
-        self.evt_settingVersions.set_put(  # type: ignore
+        await self.evt_settingVersions.set_put(  # type: ignore
             recommendedSettingsLabels=",".join(labels),
             recommendedSettingsVersion=settings_version,
             settingsUrl=f"{self.config_dir.as_uri()}",
@@ -342,15 +342,15 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
         return output_dict
 
-    def report_summary_state(self) -> None:
-        super().report_summary_state()
+    async def report_summary_state(self) -> None:
+        await super().report_summary_state()
         if self.summary_state == State.STANDBY:
             try:
-                self.read_config_dir()
+                await self.read_config_dir()
             except Exception as e:
                 self.log.exception(e)
 
-    async def begin_start(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_start(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_start; configure the CSC before changing state.
 
         Parameters
@@ -368,7 +368,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
           such as a git tag or commit hash. This form does not support labels.
         """
         # Get the latest info about the configurations available
-        self.read_config_dir()
+        await self.read_config_dir()
 
         # Read the configuration
         config_name = data.settingsToApply  # type: ignore
@@ -428,10 +428,10 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
         config = types.SimpleNamespace(**full_config_dict)
         await self.configure(config)
-        self.evt_settingsApplied.set_put(  # type: ignore
+        await self.evt_settingsApplied.set_put(  # type: ignore
             settingsVersion=f"{config_file_name}:{githash}"
         )
-        self.evt_appliedSettingsMatchStart.set_put(  # type: ignore
+        await self.evt_appliedSettingsMatchStart.set_put(  # type: ignore
             appliedSettingsMatchStartIsTrue=True, force_output=True
         )
 

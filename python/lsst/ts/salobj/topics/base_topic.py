@@ -26,17 +26,10 @@ __all__ = ["BaseTopic"]
 import abc
 import typing
 
-import ddsutil
-
 from .. import type_hints
-from ..idl_metadata import TopicMetadata
 
 if typing.TYPE_CHECKING:
     from ..sal_info import SalInfo
-
-# dict of sal_prefix: attr_prefix: the prefix used for
-# Controller and Remote topic attributes.
-_ATTR_PREFIXES = {"": "tel_", "logevent_": "evt_", "command_": "cmd_"}
 
 
 class BaseTopic(abc.ABC):
@@ -45,11 +38,10 @@ class BaseTopic(abc.ABC):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
-    name : `str`
-        Topic name, without a "command\_" or "logevent\_" prefix.
-    sal_prefix : `str`
-        SAL topic prefix: one of "command\_", "logevent\_" or ""
+        SAL component information.
+    attr_name : `str`
+        Topic name with attribute prefix: one of "cmd_", "evt_", or "tel_",
+        or "ack_" for the ackcmd topic.
 
     Raises
     ------
@@ -58,72 +50,38 @@ class BaseTopic(abc.ABC):
 
     Attributes
     ----------
-    salinfo : `.SalInfo`
+    salinfo : `SalInfo`
         The ``salinfo`` constructor argument.
-    name : `str`
-        The ``name`` constructor argument.
-    sal_name : `str`
-        The topic name used by SAL.
-        For example: "logevent_summaryState".
+    topic_info : `TopicInfo`
+        Metadata about the topic.
     log : `logging.Logger`
         A logger.
-    qos_set : `salobj.QosSet`
-        Quality of service set.
-    volatile : `bool`
-        Is this topic volatile (in which case it has no historical data)?
-    attr_name : `str`
-        Name of topic attribute in `Controller` and `Remote`.
-        For example: "evt_summaryState".
-    rev_code : `str`
-        Revision hash code for the topic.
-        This code changes whenever the schema for the topic changes,
-        and it is part of the DDS topic name. For example: "90255bf1"
-    dds_name : `str`
-        Name of topic seen by DDS.
-        For example: "Test_logevent_summaryState_90255bf1".
     """
 
-    def __init__(self, *, salinfo: SalInfo, name: str, sal_prefix: str) -> None:
+    def __init__(self, *, salinfo: SalInfo, attr_name: str) -> None:
         try:
             self.salinfo = salinfo
-            self.name = str(name)
-            self.sal_name = sal_prefix + self.name
+            self.topic_info = self.salinfo.component_info.topics[attr_name]
             self.log = salinfo.log.getChild(self.sal_name)
-
-            attr_prefix = "ack_" if name == "ackcmd" else _ATTR_PREFIXES.get(sal_prefix)
-            if attr_prefix is None:
-                raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
-            self.attr_name = attr_prefix + name
-
-            if name == "ackcmd":
-                self.qos_set = salinfo.domain.ackcmd_qos_set
-            elif sal_prefix == "command_":
-                self.qos_set = salinfo.domain.command_qos_set
-            elif sal_prefix == "logevent_":
-                self.qos_set = salinfo.domain.event_qos_set
-            else:
-                self.qos_set = salinfo.domain.telemetry_qos_set
-
-            revname = salinfo.revnames.get(self.sal_name)
-            if revname is None:
-                raise ValueError(
-                    f"Could not find {self.salinfo.name} topic {self.sal_name}"
-                )
-            self.dds_name = revname.replace("::", "_")
-            self.rev_code = self.dds_name.rsplit("_", 1)[1]
-
-            self._type = ddsutil.make_dds_topic_class(
-                parsed_idl=salinfo.parsed_idl, revname=revname
-            )
-            self._topic = self._type.register_topic(
-                salinfo.domain.participant, self.dds_name, self.qos_set.topic_qos
-            )
+            self._type = self.topic_info.make_dataclass()
 
         except Exception as e:
-            raise RuntimeError(f"Failed to create topic {salinfo.name}.{name}") from e
+            raise RuntimeError(
+                f"Failed to create topic {salinfo.name}.{attr_name}"
+            ) from e
 
     @property
-    def DataType(self) -> typing.Type[type_hints.BaseDdsDataType]:
+    def attr_name(self) -> str:
+        """Get the salobj topic attribute name, e.g. evt_summaryState."""
+        return self.topic_info.attr_name
+
+    @property
+    def sal_name(self) -> str:
+        """Get the SAL topic name, e.g. logevent_summaryState."""
+        return self.topic_info.sal_name
+
+    @property
+    def DataType(self) -> typing.Type[type_hints.BaseMsgType]:
         """The type (class) for a message of this topic.
 
         When you read or write a message for this topic you are reading
@@ -154,17 +112,7 @@ class BaseTopic(abc.ABC):
             message.duration = 2
             await remote.cmd_wait.start(message, timeout=5)
         """
-        return self._type.topic_data_class
-
-    @property
-    def volatile(self) -> bool:
-        """Does this topic have volatile durability?"""
-        return self.qos_set.volatile
-
-    @property
-    def metadata(self) -> typing.Optional[TopicMetadata]:
-        """Get topic metadata as a `TopicMetadata`, if available,else None."""
-        return self.salinfo.metadata.topic_info.get(self.sal_name)
+        return self._type
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.salinfo.name}, {self.salinfo.index}, {self.name})"
+        return f"{type(self).__name__}({self.salinfo.name}, {self.salinfo.index}, {self.attr_name})"

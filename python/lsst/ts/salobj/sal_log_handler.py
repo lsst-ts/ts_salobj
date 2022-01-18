@@ -23,6 +23,7 @@ from __future__ import annotations
 
 __all__ = ["SalLogHandler"]
 
+import asyncio
 import logging
 import sys
 import typing
@@ -53,16 +54,18 @@ class SalLogHandler(logging.Handler):
                 traceback = str(record.exc_text.encode("utf-8", "replace"))
             else:
                 traceback = ""
-            self.controller.evt_logMessage.set_put(  # type: ignore
-                name=record.name,
-                level=record.levelno,
-                message=record.message.encode("utf-8", "replace"),
-                traceback=traceback,
-                filePath=record.pathname,
-                functionName=record.funcName,
-                lineNumber=record.lineno,
-                process=record.process,
-                force_output=True,
+            asyncio.create_task(
+                self.controller.evt_logMessage.set_put(  # type: ignore
+                    name=record.name,
+                    level=record.levelno,
+                    message=record.message,
+                    traceback=traceback,
+                    filePath=record.pathname,
+                    functionName=record.funcName,
+                    lineNumber=record.lineno,
+                    process=record.process,
+                    force_output=True,
+                )
             )
         except Exception as e:
             print(f"SalLogHandler.emit failed: {e}", file=sys.stderr)

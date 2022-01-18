@@ -49,7 +49,7 @@ class AckCmdReader(read_topic.ReadTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     queue_len : `int`
         Number of elements that can be queued for `get_oldest`.
 
@@ -63,11 +63,7 @@ class AckCmdReader(read_topic.ReadTopic):
         self, salinfo: SalInfo, queue_len: int = read_topic.DEFAULT_QUEUE_LEN
     ) -> None:
         super().__init__(
-            salinfo=salinfo,
-            name="ackcmd",
-            sal_prefix="",
-            max_history=0,
-            queue_len=queue_len,
+            salinfo=salinfo, attr_name="ack_ackcmd", max_history=0, queue_len=queue_len
         )
 
 
@@ -152,7 +148,6 @@ class CommandInfo:
         isdone : `bool`
             True if this is a final acknowledgement.
         """
-        # print(f"add_ackcmd; ackcmd.ack={ackcmd.ack}")
         isdone = ackcmd.ack in self.done_ack_codes
         self._ack_queue.append(ackcmd)
         self._next_ack_event.set()
@@ -262,9 +257,9 @@ class RemoteCommand(write_topic.WriteTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     name : `str`
-        Command name
+        Command name with no prefix, e.g. "start".
     """
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:
@@ -276,8 +271,7 @@ class RemoteCommand(write_topic.WriteTopic):
         initial_seq_num = random.randint(min_seq_num, max_seq_num)
         super().__init__(
             salinfo=salinfo,
-            name=name,
-            sal_prefix="command_",
+            attr_name=f"cmd_{name}",
             min_seq_num=min_seq_num,
             max_seq_num=max_seq_num,
             initial_seq_num=initial_seq_num,
@@ -424,7 +418,7 @@ class RemoteCommand(write_topic.WriteTopic):
 
     async def start(
         self,
-        data: type_hints.BaseDdsDataType = None,
+        data: type_hints.BaseMsgType = None,
         timeout: float = DEFAULT_TIMEOUT,
         wait_done: bool = True,
     ) -> type_hints.AckCmdDataType:
@@ -470,11 +464,13 @@ class RemoteCommand(write_topic.WriteTopic):
         self.salinfo.assert_started()
         if data is not None:
             self.data = data
-        self.put()
-        seq_num = self.data.private_seqNum
+        # Avoid race conditions by using the data returned from self.put
+        # instead of using self.data.
+        written_data = await self.put()
+        seq_num = written_data.private_seqNum
         if seq_num in self.salinfo._running_cmds:
             raise RuntimeError(
-                f"{self.name} bug: a command with seq_num={seq_num} is already running"
+                f"{self} bug: a command with seq_num={seq_num} is already running"
             )
         cmd_info = CommandInfo(
             remote_command=self, seq_num=seq_num, wait_done=wait_done

@@ -37,15 +37,15 @@ class ControllerTelemetry(write_topic.WriteTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     name : `str`
-        Command name
+        Telemetry topic name, with no prefix.
     """
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:
-        super().__init__(salinfo=salinfo, name=name, sal_prefix="")
+        super().__init__(salinfo=salinfo, attr_name=f"tel_{name}")
 
-    def set_put(self, **kwargs: typing.Any) -> bool:
+    async def set_put(self, **kwargs: typing.Any) -> bool:
         """Set zero or more fields of ``self.data`` and put the result.
 
         Parameters
@@ -68,5 +68,5 @@ class ControllerTelemetry(write_topic.WriteTopic):
             If the field cannot be set to the specified value.
         """
         did_change = self.set(**kwargs)
-        self.put()
+        await self.put()
         return did_change

@@ -38,9 +38,9 @@ class RemoteTelemetry(read_topic.ReadTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     name : `str`
-        Telemetry topic name
+        Telemetry topic name with no prefix.
     max_history : `int`, optional
         Deprecated because historical telemetry data is no longer available.
         Must be 0 (or None, but please don't do that) if specified.
@@ -67,8 +67,7 @@ class RemoteTelemetry(read_topic.ReadTopic):
 
         super().__init__(
             salinfo=salinfo,
-            name=name,
-            sal_prefix="",
+            attr_name=f"tel_{name}",
             max_history=0,
             queue_len=queue_len,
         )
