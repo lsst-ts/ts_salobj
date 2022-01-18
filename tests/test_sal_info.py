@@ -189,41 +189,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                     salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
                     assert salinfo.default_authorize == expected_default_authorize
 
-    async def test_lsst_dds_domain_fallback(self) -> None:
-        # Pick a value for LSST_DDS_DOMAIN that does not match
-        # LSST_DDS_PARTITION_PREFIX.
-        new_lsst_dds_domain = os.environ["LSST_DDS_PARTITION_PREFIX"] + "Extra text"
-
-        # Test that LSST_DDS_DOMAIN is ignored, with a warning,
-        # if both that and LSST_DDS_PARTITION_PREFIX are defined.
-        with utils.modify_environ(LSST_DDS_DOMAIN=new_lsst_dds_domain):
-            async with salobj.Domain() as domain:
-                with pytest.warns(
-                    DeprecationWarning,
-                    match="LSST_DDS_PARTITION_PREFIX instead of deprecated",
-                ):
-                    salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
-                assert (
-                    salinfo.partition_prefix == os.environ["LSST_DDS_PARTITION_PREFIX"]
-                )
-
-        # Test that LSST_DDS_DOMAIN is used, with a warning,
-        # if LSST_DDS_PARTITION_PREFIX is not defined.
-        with utils.modify_environ(
-            LSST_DDS_PARTITION_PREFIX=None, LSST_DDS_DOMAIN=new_lsst_dds_domain
-        ):
-            async with salobj.Domain() as domain:
-                with pytest.warns(
-                    DeprecationWarning,
-                    match="LSST_DDS_PARTITION_PREFIX not defined; using deprecated fallback",
-                ):
-                    salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
-                assert salinfo.partition_prefix == new_lsst_dds_domain
-
-    async def test_lsst_dds_domain_required(self) -> None:
-        # Delete LSST_DDS_PARTITION_PREFIX and (if defined) LSST_DDS_DOMAIN.
-        # This should raise an error.
-        with utils.modify_environ(LSST_DDS_PARTITION_PREFIX=None, LSST_DDS_DOMAIN=None):
+    async def test_lsst_dds_partition_prefix_required(self) -> None:
+        # Delete LSST_DDS_PARTITION_PREFIX. This should prevent
+        # constructing a Domain
+        with utils.modify_environ(LSST_DDS_PARTITION_PREFIX=None):
             async with salobj.Domain() as domain:
                 with pytest.raises(RuntimeError):
                     salobj.SalInfo(domain=domain, name="Test", index=1)

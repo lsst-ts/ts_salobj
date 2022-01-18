@@ -26,7 +26,8 @@ __all__ = ["BaseTopic"]
 import abc
 import typing
 
-from .. import dds_utils
+import ddsutil
+
 from .. import type_hints
 from ..idl_metadata import TopicMetadata
 
@@ -111,7 +112,7 @@ class BaseTopic(abc.ABC):
             self.dds_name = revname.replace("::", "_")
             self.rev_code = self.dds_name.rsplit("_", 1)[1]
 
-            self._type = dds_utils.make_dds_topic_class(
+            self._type = ddsutil.make_dds_topic_class(
                 parsed_idl=salinfo.parsed_idl, revname=revname
             )
             self._topic = self._type.register_topic(

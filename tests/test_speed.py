@@ -28,6 +28,7 @@ import unittest
 import warnings
 
 import astropy.units as u
+import ddsutil
 
 from unittest.mock import MagicMock
 
@@ -158,7 +159,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             )
             for topic_name in topic_names:
                 revname = salinfo.revnames.get(topic_name)
-                salobj.make_dds_topic_class(
+                ddsutil.make_dds_topic_class(
                     parsed_idl=salinfo.parsed_idl, revname=revname
                 )
             dt = time.monotonic() - t0

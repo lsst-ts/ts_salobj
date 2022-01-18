@@ -35,9 +35,9 @@ import typing
 import warnings
 
 import dds
+import ddsutil
 
 from lsst.ts import utils
-from . import dds_utils
 from . import idl_metadata
 from . import sal_enums
 from . import topics
@@ -166,8 +166,7 @@ class SalInfo:
 
     The DDS partition name for each topic is {prefix}.{name}.{suffix}, where:
 
-    * ``prefix`` = $LSST_DDS_PARTITION_PREFIX
-      (fall back to $LSST_DDS_DOMAIN if necessary).
+    * ``prefix`` = $LSST_DDS_PARTITION_PREFIX.
     * ``name`` = the ``name`` constructor argument.
     * ``suffix`` = "cmd" for command topics, and "data" for all other topics,
       including ``ackcmd``.
@@ -204,26 +203,11 @@ class SalInfo:
         # This is primarily intended for unit tests.
         self.wait_history_isok: typing.Dict[str, bool] = dict()
 
-        partition_prefix = os.environ.get("LSST_DDS_PARTITION_PREFIX")
-        if partition_prefix is None:
-            partition_prefix = os.environ.get("LSST_DDS_DOMAIN")
-            if partition_prefix is None:
-                raise RuntimeError(
-                    "Environment variable $LSST_DDS_PARTITION_PREFIX not defined, "
-                    "nor is the deprecated fallback $LSST_DDS_DOMAIN"
-                )
-            warnings.warn(
-                "Environment variable $LSST_DDS_PARTITION_PREFIX not defined; "
-                "using deprecated fallback $LSST_DDS_DOMAIN instead",
-                DeprecationWarning,
+        self.partition_prefix = os.environ.get("LSST_DDS_PARTITION_PREFIX")
+        if self.partition_prefix is None:
+            raise RuntimeError(
+                "Environment variable $LSST_DDS_PARTITION_PREFIX not defined."
             )
-        elif os.environ.get("LSST_DDS_DOMAIN") is not None:
-            warnings.warn(
-                "Using environment variable $LSST_DDS_PARTITION_PREFIX "
-                "instead of deprecated $LSST_DDS_DOMAIN",
-                DeprecationWarning,
-            )
-        self.partition_prefix = partition_prefix
 
         self.start_task: asyncio.Future = asyncio.Future()
         self.done_task: asyncio.Future = asyncio.Future()
@@ -286,7 +270,7 @@ class SalInfo:
             raise RuntimeError(
                 f"Cannot find IDL file {idl_path} for name={self.name!r}"
             )
-        self.parsed_idl = dds_utils.parse_idl_file(idl_path)
+        self.parsed_idl = ddsutil.parse_idl_file(idl_path)
         self.metadata = idl_metadata.parse_idl(name=self.name, idl_path=idl_path)
         self.parse_metadata()  # Adds self.indexed, self.revnames, etc.
         if self.index != 0 and not self.indexed:
@@ -297,10 +281,8 @@ class SalInfo:
             ackcmd_revname = self.revnames.get("ackcmd")
             if ackcmd_revname is None:
                 raise RuntimeError(f"Could not find {self.name} topic 'ackcmd'")
-            self._ackcmd_type: type_hints.AckCmdDataType = (
-                dds_utils.make_dds_topic_class(
-                    parsed_idl=self.parsed_idl, revname=ackcmd_revname
-                )
+            self._ackcmd_type: type_hints.AckCmdDataType = ddsutil.make_dds_topic_class(
+                parsed_idl=self.parsed_idl, revname=ackcmd_revname
             )
 
         domain.add_salinfo(self)
@@ -700,13 +682,14 @@ class SalInfo:
                                 "giving up"
                             ) from e
                     self.log.debug(f"Read {len(data_list)} history items for {reader}")
-                    sd_list = [
+                    # All historical data for the specified index
+                    full_sd_list = [
                         self._sample_to_data(sd, si)
                         for sd, si in data_list
                         if si.valid_data
                     ]
-                    if len(sd_list) < len(data_list):
-                        ninvalid = len(data_list) - len(sd_list)
+                    if len(full_sd_list) < len(data_list):
+                        ninvalid = len(data_list) - len(full_sd_list)
                         self.log.warning(
                             f"Read {ninvalid} invalid late-joiner items from {reader}. "
                             "The invalid items were safely skipped, but please examine "
@@ -714,7 +697,19 @@ class SalInfo:
                             "for changes to OpenSplice dds."
                         )
                     if reader.max_history > 0:
-                        sd_list = sd_list[-reader.max_history :]
+                        if self.index == 0 and self.indexed:
+                            # Get the most recent sample for each index
+                            index_field = f"{self.name}ID"
+                            data_dict = {
+                                getattr(data, index_field): data
+                                for data in full_sd_list
+                            }
+                            sd_list: typing.Collection[
+                                type_hints.BaseDdsDataType
+                            ] = data_dict.values()
+                        else:
+                            # Get the max_history most recent samples
+                            sd_list = full_sd_list[-reader.max_history :]
                         if sd_list:
                             reader._queue_data(sd_list, loop=None)
             self._read_loop_task = asyncio.create_task(self._read_loop(loop=loop))

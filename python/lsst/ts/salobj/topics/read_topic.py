@@ -191,8 +191,15 @@ class ReadTopic(BaseTopic):
     max_history : `int`
         Maximum number of historical items to read:
 
-        * 0 is required for commands, events, and the ackcmd topic
-        * 1 is recommended for telemetry
+        * 0 is required for commands, events, and the ackcmd topic.
+        * 1 is recommended for telemetry. For an indexed component
+          it is possible for data from one index to push data for another
+          index off the DDS queue, so historical data is not guaranteed.
+        * For the special case of reading an indexed SAL component
+          with index=0 (read all indices) the only allowed values are 0 or 1.
+          If 1 then retrieve the most recent sample for each index
+          that is still in the read queue, in the order received.
+          max_history > 1 is forbidden, because it is difficult to implement.
     queue_len : `int`, optional
         The maximum number of messages that can be read and not dealt with
         by a callback function or `next` before older messages will be dropped.
@@ -212,6 +219,10 @@ class ReadTopic(BaseTopic):
         If queue_len < MIN_QUEUE_LEN.
     ValueError
         If max_history > queue_len.
+    ValueError
+        If for an indexed component if index=0 and max_history > 1.
+        Reading more than one historical sample per index is more trouble
+        than it is worth.
     UserWarning
         If max_history > DDS history queue depth or DDS durability service
         history depth for this topic.
@@ -283,6 +294,11 @@ class ReadTopic(BaseTopic):
             raise ValueError(f"max_history={max_history} must be >= 0")
         if max_history > 0 and self.volatile:
             raise ValueError(f"max_history={max_history} must be 0 for volatile topics")
+        if salinfo.indexed and salinfo.index == 0 and max_history > 1:
+            raise ValueError(
+                f"max_history={max_history} must be 0 or 1 "
+                "for an indexed component read with index=0"
+            )
         if queue_len <= MIN_QUEUE_LEN:
             raise ValueError(
                 f"queue_len={queue_len} must be >= MIN_QUEUE_LEN={MIN_QUEUE_LEN}"
@@ -711,14 +727,14 @@ class ReadTopic(BaseTopic):
 
     def _queue_data(
         self,
-        data_list: typing.Sequence[type_hints.BaseDdsDataType],
+        data_list: typing.Collection[type_hints.BaseDdsDataType],
         loop: typing.Optional[asyncio.AbstractEventLoop],
     ) -> None:
         """Queue multiple one or more messages.
 
         Parameters
         ----------
-        data_list : `list` [dds_messages]
+        data_list : typing.Collection[type_hints.BaseDdsDataType]
             DDS messages to be queueued.
         loop : `asyncio.AbstractEventLoop` or `None`
             Foreground asyncio loop.
