@@ -9,7 +9,8 @@ Version History
 v6.9.1
 ------
 
-* Move index_generator to ts_utils
+* Move index_generator to ts_utils.
+  Keep a deprecated copy in ts_salobj, for backwards compatiblity.
 
 Requirements:
 
