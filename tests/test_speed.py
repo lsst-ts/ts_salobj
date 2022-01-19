@@ -33,6 +33,7 @@ import ddsutil
 from unittest.mock import MagicMock
 
 from lsst.ts import salobj
+from lsst.ts import utils
 
 
 class MockVerify:
@@ -51,7 +52,7 @@ except ImportError:
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 60
 
-index_gen = salobj.index_generator()
+index_gen = utils.index_generator()
 
 
 class SpeedTestCase(unittest.IsolatedAsyncioTestCase):

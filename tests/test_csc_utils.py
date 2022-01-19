@@ -27,12 +27,13 @@ import typing
 import pytest
 
 from lsst.ts import salobj
+from lsst.ts import utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 60
 
-index_gen = salobj.index_generator()
+index_gen = utils.index_generator()
 TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data" / "config"
 
 

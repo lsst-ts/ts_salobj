@@ -27,6 +27,7 @@ import numpy as np
 import pytest
 
 from lsst.ts import salobj
+from lsst.ts import utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -37,7 +38,7 @@ INITIAL_HISTORY_TIMEOUT = os.environ.get(HISTORY_TIMEOUT_NAME, None)
 
 np.random.seed(47)
 
-index_gen = salobj.index_generator()
+index_gen = utils.index_generator()
 
 
 class RemoteTestCase(unittest.IsolatedAsyncioTestCase):

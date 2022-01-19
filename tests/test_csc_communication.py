@@ -43,7 +43,7 @@ NODATA_TIMEOUT = 0.1
 
 np.random.seed(47)
 
-index_gen = salobj.index_generator()
+index_gen = utils.index_generator()
 TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
 TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 

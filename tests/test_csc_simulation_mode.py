@@ -28,10 +28,11 @@ import numpy as np
 import pytest
 
 from lsst.ts import salobj
+from lsst.ts import utils
 
 np.random.seed(47)
 
-index_gen = salobj.index_generator()
+index_gen = utils.index_generator()
 
 
 class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):

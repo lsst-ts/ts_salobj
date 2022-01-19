@@ -30,6 +30,7 @@ import numpy as np
 import pytest
 
 from lsst.ts import salobj
+from lsst.ts import utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -39,7 +40,7 @@ NODATA_TIMEOUT = 0.1
 
 np.random.seed(47)
 
-index_gen = salobj.index_generator()
+index_gen = utils.index_generator()
 TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
 TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 

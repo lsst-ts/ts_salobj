@@ -28,10 +28,11 @@ import numpy as np
 import pytest
 
 from lsst.ts import salobj
+from lsst.ts import utils
 
 np.random.seed(47)
 
-index_gen = salobj.index_generator()
+index_gen = utils.index_generator()
 TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
 TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
