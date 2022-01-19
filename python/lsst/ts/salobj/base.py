@@ -249,44 +249,8 @@ def get_user_host() -> str:
 def index_generator(
     imin: int = 1, imax: int = MAX_SAL_INDEX, i0: typing.Optional[int] = None
 ) -> typing.Generator[int, None, None]:
-    """Sequential index generator.
-
-    Returns values i0, i0+1, i0+2, ..., max, min, min+1, ...
-
-    Parameters
-    ----------
-    imin : `int`, optional
-        Minimum index (inclusive).
-    imax : `int`, optional
-        Maximum index (inclusive).
-    i0 : `int`, optional
-        Initial index; if None then use ``imin``.
-
-    Raises
-    ------
-    ValueError
-        If imin >= imax
-    """
-    imin = int(imin)
-    imax = int(imax)
-    i0 = imin if i0 is None else int(i0)
-    if imax <= imin:
-        raise ValueError(f"imin={imin} must be less than imax={imax}")
-    if not imin <= i0 <= imax:
-        raise ValueError(f"i0={i0} must be >= imin={imin} and <= imax={imax}")
-
-    # define an inner generator and return that
-    # in order to get immediate argument checking
-    def index_impl() -> typing.Generator[int, None, None]:
-        index = i0 - 1  # type: ignore
-        while True:
-            index += 1
-            if index > imax:
-                index = imin
-
-            yield index
-
-    return index_impl()
+    warnings.warn("Use lsst.ts.utils.index_generator instead", DeprecationWarning)
+    return utils.index_generator(imin=imin, imax=imax, i0=i0)
 
 
 # TODO DM-31660: Remove this deprecated wrapper

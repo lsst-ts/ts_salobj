@@ -27,14 +27,14 @@ import unittest
 
 import pytest
 
-from lsst.ts import utils
 from lsst.ts import salobj
+from lsst.ts import utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 60
 
-index_gen = salobj.index_generator()
+index_gen = utils.index_generator()
 
 
 class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
