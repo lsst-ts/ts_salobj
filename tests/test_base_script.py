@@ -39,7 +39,7 @@ from lsst.ts.idl.enums.Script import ScriptState
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 60
 
-index_gen = salobj.index_generator()
+index_gen = utils.index_generator()
 
 
 class NonConfigurableScript(salobj.BaseScript):

@@ -273,27 +273,17 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             assert domain.telemetry_qos_set.volatile
 
     def test_index_generator(self) -> None:
-        with pytest.raises(ValueError):
-            salobj.index_generator(1, 1)  # imin >= imax
-        with pytest.raises(ValueError):
-            salobj.index_generator(1, 0)  # imin >= imax
-        with pytest.raises(ValueError):
-            salobj.index_generator(0, 5, -1)  # i0 < imin
-        with pytest.raises(ValueError):
-            salobj.index_generator(0, 5, 6)  # i0 > imax
-
-        imin = -2
-        imax = 5
-        gen = salobj.index_generator(imin=imin, imax=imax)
-        expected_values = [-2, -1, 0, 1, 2, 3, 4, 5, -2, -1, 0, 1, 2, 3, 4, 5, -2]
-        values = [next(gen) for i in range(len(expected_values))]
-        assert values == expected_values
+        with pytest.warns(DeprecationWarning):
+            gen = salobj.index_generator()
+        first_value = next(gen)
+        assert first_value == 1
 
         imin = -2
         imax = 5
         i0 = 5
         expected_values = [5, -2, -1, 0, 1, 2, 3, 4, 5, -2]
-        gen = salobj.index_generator(imin=imin, imax=imax, i0=i0)
+        with pytest.warns(DeprecationWarning):
+            gen = salobj.index_generator(imin=imin, imax=imax, i0=i0)
         values = [next(gen) for i in range(len(expected_values))]
         assert values == expected_values
 
