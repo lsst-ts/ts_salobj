@@ -41,6 +41,7 @@ TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
+        super().setUp()
         # defaults hard-coded in <ts_salobj_root>/schema/Test.yaml
         self.default_dict = dict(
             string0="default value for string0",
