@@ -29,7 +29,7 @@ import shutil
 import subprocess
 import typing
 
-from . import base
+from lsst.ts import utils
 from . import base_csc
 from . import sal_enums
 from . import testutils
@@ -60,7 +60,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
       assuming you have a binary script to run your CSC.
     """
 
-    _index_iter = base.index_generator()
+    _index_iter = utils.index_generator()
 
     @abc.abstractmethod
     def basic_make_csc(
