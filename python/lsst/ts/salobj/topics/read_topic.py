@@ -232,7 +232,7 @@ class ReadTopic(BaseTopic):
     Attributes
     ----------
     isopen : `bool`
-        Is this read topic open? `True` until `close` is called.
+        Is this instance open? `True` until `close` or `basic_close` is called.
     dds_queue_length_checker : `QueueCapacityChecker`
         Queue length checker for the DDS queue.
     python_queue_length_checker : `QueueCapacityChecker`:

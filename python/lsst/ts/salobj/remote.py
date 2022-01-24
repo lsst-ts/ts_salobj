@@ -86,6 +86,12 @@ class Remote:
 
     Attributes
     ----------
+    isopen : `bool`
+        Is this instance open? `True` until `close` is called.
+        The instance is fully closed when done_task is done.
+    start_called : `bool`
+        Has the start method been called?
+        The instance is fully started when start_task is done.
     cmd_<command_name> : `topics.RemoteCommand`
         Remote command topic for each command supported by the component.
         Omitted if ``readonly`` true.

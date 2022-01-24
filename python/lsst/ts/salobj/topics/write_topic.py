@@ -74,7 +74,7 @@ class WriteTopic(BaseTopic):
     Attributes
     ----------
     isopen : `bool`
-        Is this read topic open? `True` until `close` is called.
+        Is this instance open? `True` until `close` or `basic_close` is called.
     """
 
     def __init__(
