@@ -30,7 +30,6 @@ import numpy as np
 
 from lsst.ts import utils
 from .. import type_hints
-from .. import base
 from .base_topic import BaseTopic
 
 if typing.TYPE_CHECKING:
@@ -75,7 +74,7 @@ class WriteTopic(BaseTopic):
     Attributes
     ----------
     isopen : `bool`
-        Is this read topic open? `True` until `close` is called.
+        Is this instance open? `True` until `close` or `basic_close` is called.
     """
 
     def __init__(
@@ -101,7 +100,7 @@ class WriteTopic(BaseTopic):
                 typing.Generator[int, None, None]
             ] = None
         else:
-            self._seq_num_generator = base.index_generator(
+            self._seq_num_generator = utils.index_generator(
                 imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num
             )
         # Command topics use a different a partition name than

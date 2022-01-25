@@ -105,8 +105,6 @@ class SalInfo:
         Defaults to username@host, but CSCs should use the CSC name:
         * SAL_component_name for a non-indexed SAL component
         * SAL_component_name:index for an indexed SAL component.
-    isopen : `bool`
-        Is this read topic open? `True` until `close` is called.
     log : `logging.Logger`
         A logger.
     partition_prefix : `str`
@@ -116,11 +114,17 @@ class SalInfo:
         A DDS publisher, used to create DDS writers.
     subscriber : ``dds.Subscriber``
         A DDS subscriber, used to create DDS readers.
+    isopen : `bool`
+        Is this instance open? `True` until `close` or `basic_close` is called.
+        This instance is fully closed when done_task is done.
+    start_called : `bool`
+        Has the start method been called?
+        This instance is fully started when start_task is done.
+    done_task : `asyncio.Task`
+        A task which is finished when `close` or `basic_close` is done.
     start_task : `asyncio.Task`
         A task which is finished when `start` is done,
         or to an exception if `start` fails.
-    done_task : `asyncio.Task`
-        A task which is finished when `close` is done.
     command_names : `List` [`str`]
         A tuple of command names without the ``"command_"`` prefix.
     event_names : `List` [`str`]
@@ -187,12 +191,10 @@ class SalInfo:
                 raise TypeError(
                     f"index {index!r} must be an integer, enum.IntEnum, or None"
                 )
-        self.isopen = False
         self.domain = domain
         self.name = name
         self.index = 0 if index is None else index
         self.identity = domain.default_identity
-        self.start_called = False
 
         self.log = logging.getLogger(self.name)
         if self.log.getEffectiveLevel() > MAX_LOG_LEVEL:
@@ -209,8 +211,10 @@ class SalInfo:
                 "Environment variable $LSST_DDS_PARTITION_PREFIX not defined."
             )
 
-        self.start_task: asyncio.Future = asyncio.Future()
+        self.isopen = True
+        self.start_called = False
         self.done_task: asyncio.Future = asyncio.Future()
+        self.start_task: asyncio.Future = asyncio.Future()
 
         # Parse environment variable LSST_DDS_ENABLE_AUTHLIST
         # to determine whether to implement command authorization.
@@ -289,7 +293,6 @@ class SalInfo:
 
         # Make sure the background thread terminates.
         atexit.register(self.basic_close)
-        self.isopen = True
 
     def _ackcmd_callback(self, data: type_hints.AckCmdDataType) -> None:
         if not self._running_cmds:
@@ -632,10 +635,12 @@ class SalInfo:
         Raises
         ------
         RuntimeError
-            If `start` has already been called.
+            If `start` or `close` have already been called.
         """
         if self.start_called:
             raise RuntimeError("Start already called")
+        if not self.isopen:
+            raise RuntimeError("Already closing or closed")
         self.start_called = True
         try:
             loop = asyncio.get_running_loop()

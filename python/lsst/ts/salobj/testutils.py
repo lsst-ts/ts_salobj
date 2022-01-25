@@ -29,12 +29,10 @@ __all__ = [
     "modify_environ",
 ]
 
+import base64
 import contextlib
 import os
-import random
-import socket
 import subprocess
-import time
 import typing
 import warnings
 
@@ -157,17 +155,11 @@ def set_random_lsst_dds_partition_prefix() -> None:
     in order to avoid collisions with other tests. Note that pytest
     can run unit test methods in parallel.
 
-    The set name will contain the hostname and current time
-    as well as a random integer.
-
-    The random value is generated using the `random` library,
-    so call ``random.seed(...)`` to seed this value.
+    The random value is generated using the os.urandom, so that it cannot
+    be seeded. This avoids collisions with previous test runs.
     """
-    hostname = socket.gethostname()
-    curr_time = time.time()
-    random_int = random.randint(0, 999999)
-    name = f"Test-{hostname}-{curr_time}-{random_int}".replace(".", "_")
-    os.environ["LSST_DDS_PARTITION_PREFIX"] = name
+    random_str = base64.urlsafe_b64encode(os.urandom(12)).decode().replace("=", "_")
+    os.environ["LSST_DDS_PARTITION_PREFIX"] = f"test_{random_str}"
 
 
 def set_random_lsst_dds_domain() -> None:

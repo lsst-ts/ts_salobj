@@ -29,7 +29,7 @@ import shutil
 import subprocess
 import typing
 
-from . import base
+from lsst.ts import utils
 from . import base_csc
 from . import sal_enums
 from . import testutils
@@ -60,7 +60,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
       assuming you have a binary script to run your CSC.
     """
 
-    _index_iter = base.index_generator()
+    _index_iter = utils.index_generator()
+
+    def setUp(self) -> None:
+        testutils.set_random_lsst_dds_partition_prefix()
 
     @abc.abstractmethod
     def basic_make_csc(
@@ -134,6 +137,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             For a configurable CSC this may include ``settings_to_apply``,
             especially if ``initial_state`` is DISABLED or ENABLED.
         """
+        # Redundant with setUp, but preserve in case a subclass
+        # forgets to call super().setUp()
         testutils.set_random_lsst_dds_partition_prefix()
         items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
         try:
@@ -281,6 +286,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Time limit for the CSC to start and output
             the summaryState event.
         """
+        # Redundant with setUp, but preserve in case a subclass
+        # forgets to call super().setUp()
         testutils.set_random_lsst_dds_partition_prefix()
         exe_path = shutil.which(exe_name)
         if exe_path is None:

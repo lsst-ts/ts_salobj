@@ -98,6 +98,17 @@ class Controller:
         A logger.
     salinfo : `SalInfo`
         SAL info.
+    isopen : `bool`
+        Is this instance open? `True` until `close` is called.
+        The instance is fully closed when done_task is done.
+    start_called : `bool`
+        Has the start method been called?
+        The instance is fully started when start_task is done.
+    done_task : `asyncio.Task`
+        A task which is finished when `close` or `basic_close` is done.
+    start_task : `asyncio.Task`
+        A task which is finished when `start` is done,
+        or to an exception if `start` fails.
     cmd_<command_name> : `topics.ControllerCommand`
         Controller command topic. There is one for each command supported by
         the SAL component.
@@ -182,9 +193,7 @@ class Controller:
         do_callbacks: bool = False,
     ) -> None:
         self.isopen = False
-
         self.start_called = False
-        # Task that is set done when the controller is closed
         self.done_task: asyncio.Future = asyncio.Future()
         self._do_callbacks = do_callbacks
 
@@ -350,7 +359,7 @@ class Controller:
             self.log.exception("Controller.close failed near the end; close continues")
         finally:
             if not self.done_task.done():
-                if exception:
+                if exception is not None:
                     self.done_task.set_exception(exception)
                 else:
                     self.done_task.set_result(None)
