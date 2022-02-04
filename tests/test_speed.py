@@ -200,7 +200,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             await salobj.set_summary_state(
                 remote=remote,
                 state=salobj.State.ENABLED,
-                settingsToApply="arrays",
+                override="arrays",
                 timeout=STD_TIMEOUT,
             )
 
@@ -233,7 +233,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             await salobj.set_summary_state(
                 remote=remote,
                 state=salobj.State.ENABLED,
-                settingsToApply="logLevel",
+                override="logLevel",
                 timeout=STD_TIMEOUT,
             )
 
@@ -303,3 +303,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                     log_level_write_speed * u.ct / u.second,
                 )
             )
+
+
+if __name__ == "__main__":
+    unittest.main()

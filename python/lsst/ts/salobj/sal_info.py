@@ -513,6 +513,8 @@ class SalInfo:
         event_names = []
         telemetry_names = []
         revnames = {}
+        if not self.metadata.topic_info:
+            raise RuntimeError("Bug! metadata has no topics")
         for topic_metadata in self.metadata.topic_info.values():
             sal_topic_name = topic_metadata.sal_name
             if sal_topic_name.startswith("command_"):
@@ -584,9 +586,9 @@ class SalInfo:
             for writer in self._writer_list:
                 await writer.close()
             while self._running_cmds:
-                private_seqNum, cmd_info = self._running_cmds.popitem()
+                _, cmd_info = self._running_cmds.popitem()
                 try:
-                    cmd_info.abort("shutting down")
+                    cmd_info.close()
                 except Exception:
                     pass
             self.domain.remove_salinfo(self)

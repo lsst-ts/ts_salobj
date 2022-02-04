@@ -134,11 +134,6 @@ class CommandInfo:
         )
         self._last_ackcmd: typing.Optional[type_hints.AckCmdDataType] = None
 
-    def abort(self, result: str = "") -> None:
-        """Report command as aborted. Ignored if already done."""
-        if not self._wait_task.done():
-            self._wait_task.cancel()
-
     def add_ackcmd(self, ackcmd: type_hints.AckCmdDataType) -> bool:
         """Add a command acknowledgement to the queue.
 
@@ -152,11 +147,14 @@ class CommandInfo:
         isdone : `bool`
             True if this is a final acknowledgement.
         """
-        # print(f"add_ackcmd; ackcmd.ack={ackcmd.ack}")
         isdone = ackcmd.ack in self.done_ack_codes
         self._ack_queue.append(ackcmd)
         self._next_ack_event.set()
         return isdone
+
+    def close(self) -> None:
+        """Stop pending tasks."""
+        self._wait_task.cancel()
 
     async def next_ackcmd(
         self, timeout: float = DEFAULT_TIMEOUT
@@ -231,7 +229,7 @@ class CommandInfo:
             elapsed_time = time.monotonic() - t0
 
     async def _get_next_ackcmd(self) -> type_hints.AckCmdDataType:
-        """Get the next cmdack sample.
+        """Get the next ackcmd sample.
 
         Returns
         -------

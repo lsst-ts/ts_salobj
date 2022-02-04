@@ -33,8 +33,8 @@ from lsst.ts import utils
 np.random.seed(47)
 
 index_gen = utils.index_generator()
-TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
-TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
+TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
+TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
 
 
 class InvalidPkgNameCsc(salobj.TestCsc):
@@ -85,24 +85,6 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
         index = next(index_gen)
         async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
             assert csc.summary_state == initial_state
-
-    async def test_deprecated_schema_path_arg(self) -> None:
-        with pytest.warns(
-            DeprecationWarning, match="schema_path argument is deprecated"
-        ):
-            expected_schema = salobj.CONFIG_SCHEMA
-            schema_path = (
-                pathlib.Path(__file__).resolve().parents[1] / "schema" / "Test.yaml"
-            )
-            csc = salobj.TestCsc(index=next(index_gen), schema_path=schema_path)
-            await csc.close()
-            for key, value in expected_schema.items():
-                if key in ("$id", "description"):
-                    continue
-                assert (
-                    csc.config_validator.final_validator.schema[key]
-                    == expected_schema[key]
-                )
 
     async def test_invalid_config_dir(self) -> None:
         """Test that invalid integer initial_state is rejected."""

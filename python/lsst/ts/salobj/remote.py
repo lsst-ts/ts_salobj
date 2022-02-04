@@ -86,9 +86,6 @@ class Remote:
 
     Attributes
     ----------
-    isopen : `bool`
-        Is this instance open? `True` until `close` is called.
-        The instance is fully closed when done_task is done.
     start_called : `bool`
         Has the start method been called?
         The instance is fully started when start_task is done.
@@ -153,8 +150,6 @@ class Remote:
         tel_max_history: typing.Optional[int] = None,
         start: bool = True,
     ) -> None:
-        self.start_called = False
-
         if include is not None and exclude is not None:
             raise ValueError("Cannot specify both include and exclude")
         include_set = set(include) if include is not None else None
@@ -204,9 +199,13 @@ class Remote:
             raise
 
     async def start(self) -> None:
-        if self.start_called:
-            raise RuntimeError("Start can only be called once")
-        self.start_called = True
+        """Start the read loop by starting the contained SalInfo.
+
+        Raises
+        ------
+        RuntimeError
+            If the SalInfo is already started, closing or closed.
+        """
         await self.salinfo.start()
 
     async def close(self) -> None:

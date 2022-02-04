@@ -58,10 +58,11 @@ class BaseCsc(Controller):
         externally commandable CSC) but can also be
         `State.DISABLED`, or `State.ENABLED`,
         in which case you may also want to specify
-        ``settings_to_apply`` for a configurable CSC.
-    settings_to_apply : `str`, optional
-        Settings to apply if ``initial_state`` is `State.DISABLED`
-        or `State.ENABLED`. Ignored if the CSC is not configurable.
+        ``override`` for a configurable CSC.
+    override : `str`, optional
+        Configuration override to apply if ``initial_state`` is
+        `State.DISABLED` or `State.ENABLED`. Ignored if the CSC
+        is not configurable.
     simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
 
@@ -82,15 +83,9 @@ class BaseCsc(Controller):
     enable_cmdline_state : `State`
         A *class* attribute.
         If `True` then add ``--state`` and (if a subclass of `ConfigurableCsc`)
-        ``--settings`` command-line arguments.
+        ``--override`` command-line arguments.
         The default is `False` because CSCs should start in
         ``default_initial_state`` unless we have good reason to do otherwise.
-    require_settings : `bool`
-        A *class* attribute.
-        Controls whether the ``--settings`` command-line argument
-        is required if ``--state`` is specified.
-        Ignored unless ``enable_cmdline_state`` is True
-        and the CSC is a subclass of `ConfigurableCsc`.
     simulation_help : `str`
         A *class* attribute.
         Help for the --simulate command, or None for the default help
@@ -152,7 +147,6 @@ class BaseCsc(Controller):
     # See Attributes in the doc string.
     default_initial_state: State = State.STANDBY
     enable_cmdline_state = False
-    require_settings: bool = False
     valid_simulation_modes: typing.Optional[typing.Sequence[int]] = None
     simulation_help: typing.Optional[str] = None
 
@@ -161,18 +155,9 @@ class BaseCsc(Controller):
         name: str,
         index: typing.Optional[int] = None,
         initial_state: State = State.STANDBY,
-        settings_to_apply: str = "",
+        override: str = "",
         simulation_mode: int = 0,
     ) -> None:
-        # Check for consistent require_settings and enable_cmdline_state.
-        # Do that here, instead of in make_from_cmd_line, to  make sure
-        # the developer sees the problem.
-        if self.require_settings and not self.enable_cmdline_state:
-            raise RuntimeError(
-                "Class variable require_settings=True "
-                "requires class variable enable_cmdline_state=True"
-            )
-
         # cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
         initial_state = State(initial_state)
@@ -190,7 +175,7 @@ class BaseCsc(Controller):
                     f"not in valid_simulation_modes={self.valid_simulation_modes}"
                 )
 
-        self._settings_to_apply = settings_to_apply
+        self._override = override
         self._summary_state = State(self.default_initial_state)
         self._initial_state = initial_state
         self._faulting = False
@@ -237,8 +222,8 @@ class BaseCsc(Controller):
 
         # Handle initial state, then transition to the desired state.
         # If this fails then log the exception and continue,
-        # in hopes that the CSC can still be used. For instance
-        # if the settings were invalid, the user can specify others.
+        # in hopes that the CSC can still be used. For instance if an
+        # override is invalid, the user can specify a different one.
         await self.handle_summary_state()
         self.report_summary_state()
         command = None
@@ -258,7 +243,7 @@ class BaseCsc(Controller):
                     method = getattr(self, f"do_{command}")
                     data = getattr(self, f"cmd_{command}").DataType()
                     if command == "start":
-                        data.settingsToApply = self._settings_to_apply
+                        data.configurationOverride = self._override
                     self.log.info(f"Executing {command} command during startup")
                     await method(data)
                     # Wait briefly, to be sure the new summaryState event
@@ -395,19 +380,9 @@ class BaseCsc(Controller):
             kwargs["index"] = int(index)
         if add_simulate_arg:
             kwargs["simulation_mode"] = args.simulate
-        state_arg = getattr(args, "initial_state", None)
-        if state_arg is not None:
-            initial_state_name = state_arg.upper()
-            initial_state = getattr(State, initial_state_name)
-            kwargs["initial_state"] = initial_state
-        if hasattr(args, "settings_to_apply"):
-            # A configurable CSC with constructor arg ``settings_to_apply``
-            if args.settings_to_apply is not None:
-                kwargs["settings_to_apply"] = args.settings_to_apply
-            elif cls.require_settings and args.initial_state in ("disabled", "enabled"):
-                parser.error(
-                    "You must specify --settings if you specify --state disabled or enabled"
-                )
+        initial_state_name = getattr(args, "initial_state", None)
+        if initial_state_name is not None:
+            kwargs["initial_state"] = getattr(State, initial_state_name.upper())
         cls.add_kwargs_from_args(args=args, kwargs=kwargs)
 
         csc = cls(**kwargs)
