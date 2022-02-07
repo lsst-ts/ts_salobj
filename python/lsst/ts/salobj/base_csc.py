@@ -28,7 +28,6 @@ import asyncio
 import enum
 import sys
 import typing
-import warnings
 
 from lsst.ts import utils
 from . import base
@@ -69,10 +68,13 @@ class BaseCsc(Controller):
     Raises
     ------
     ValueError
-        If ``initial_state`` is invalid.
+        If ``initial_state`` is invalid,
     salobj.ExpectedError
         If ``simulation_mode`` is invalid.
         Note: you will only see this error if you await `start_task`.
+    RuntimeError
+        If class variable ``version`` is not defined.
+        or class variable ``valid_simulation_modes`` is None.
 
     Attributes
     ----------
@@ -86,23 +88,18 @@ class BaseCsc(Controller):
         ``--override`` command-line arguments.
         The default is `False` because CSCs should start in
         ``default_initial_state`` unless we have good reason to do otherwise.
-    simulation_help : `str`
-        A *class* attribute.
-        Help for the --simulate command, or None for the default help
-        (which is fine for the usual case of 0/1).
-        Ignored if simulation is not supported.
     valid_simulation_modes : `list` [`int`] or `None`
-        A *class* attribute. A value of `None` is deprecated
-        (though it is the default, for backwards compatibility;
-        once `None` is prohibited there will be no default).
-        If not `None` has the following effect:
-
-        * ``simulation_mode`` will be checked in the constructor
-        * `implement_simulation_mode` will be a no-op.
-        * The `amain` command parser will have a ``--simulate`` argument.
-          The default value will be 0 if that is a valid simulation mode
-          (and it certainly should be).
-          Otherwise the default value will be the first entry.
+        A *class* attribute.
+        Valid simulation modes; defaults to [0], meaning no simulation.
+        The default simulation mode will be 0 if that is a valid value
+        (and it certainly should be).
+        Otherwise the default value will be the first entry.
+    simulation_help : `str` or `None`
+        A *class* attribute.
+        Help for the --simulate command, or None (the default value)
+        for the default help. None is fine for the usual case of
+        valid_simulation_modes = (0, 1).
+        Ignored if simulation is not supported.
     version : `str`
         A *class* attribute. Used to set the ``cscVersion`` attribute of the
         ``softwareVersions`` event. You should almost always set this to
@@ -144,10 +141,12 @@ class BaseCsc(Controller):
     * Run `start` asynchronously.
     """
 
-    # See Attributes in the doc string.
+    # Subclasses must set the ``version`` class variable
+    # and may wish to override the following class variables.
+    # See Attributes in the doc string for more information.
     default_initial_state: State = State.STANDBY
     enable_cmdline_state = False
-    valid_simulation_modes: typing.Optional[typing.Sequence[int]] = None
+    valid_simulation_modes: typing.Sequence[int] = (0,)
     simulation_help: typing.Optional[str] = None
 
     def __init__(
@@ -158,22 +157,23 @@ class BaseCsc(Controller):
         override: str = "",
         simulation_mode: int = 0,
     ) -> None:
-        # cast initial_state from an int or State to a State,
+        # Check class variables
+        if not hasattr(self, "version"):
+            raise RuntimeError("Class variable `version` is required")
+        if self.valid_simulation_modes is None:
+            raise RuntimeError("Class variable `valid_simulation_modes` cannot be None")
+
+        # Cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
         initial_state = State(initial_state)
         if initial_state == State.FAULT:
             raise ValueError("initial_state cannot be FAULT")
 
-        if self.valid_simulation_modes is None:
-            warnings.warn(
-                "valid_simulation_modes=None is deprecated", DeprecationWarning
+        if simulation_mode not in self.valid_simulation_modes:
+            raise ValueError(
+                f"simulation_mode={simulation_mode} "
+                f"not in valid_simulation_modes={self.valid_simulation_modes}"
             )
-        else:
-            if simulation_mode not in self.valid_simulation_modes:
-                raise ValueError(
-                    f"simulation_mode={simulation_mode} "
-                    f"not in valid_simulation_modes={self.valid_simulation_modes}"
-                )
 
         self._override = override
         self._summary_state = State(self.default_initial_state)
@@ -182,13 +182,6 @@ class BaseCsc(Controller):
         self._heartbeat_task = utils.make_done_future()
         # Interval between heartbeat events (sec)
         self.heartbeat_interval = HEARTBEAT_INTERVAL
-
-        if not hasattr(self, "version"):
-            warnings.warn(
-                "Please set class attribute `version`. It is needed to set "
-                "the `cscVersion` field of the `softwareVersions` event.",
-                DeprecationWarning,
-            )
 
         # Postpone assigning command callbacks until `start` is done (but call
         # assert_do_methods_present to fail early if there is a problem).
@@ -360,15 +353,7 @@ class BaseCsc(Controller):
                     choices=cls.valid_simulation_modes,
                 )
 
-        try:
-            version = getattr(cls, "version", None)
-            if version is not None:
-                parser.add_argument("--version", action="version", version=version)
-        except ImportError:
-            warnings.warn(
-                "No --version command-line argument because __version__ is unavailable.",
-                RuntimeWarning,
-            )
+        parser.add_argument("--version", action="version", version=cls.version)  # type: ignore
         cls.add_arguments(parser)
 
         args = parser.parse_args()

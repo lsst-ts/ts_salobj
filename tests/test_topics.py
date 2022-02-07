@@ -484,21 +484,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 # Make sure the data queue was not flushed.
                 assert read_topic.nqueued == num_commands
 
-                # get with flush=False should warn and not flush the queue
-                with pytest.warns(
-                    DeprecationWarning,
-                    match="Specifying a value for the flush argument is deprecated",
-                ):
-                    data = read_topic.get(flush=False)
-                assert read_topic.nqueued == num_commands
-                self.csc.assert_scalars_equal(cmd_data_list[-1], data)
-
-                # get with flush=True should warn and flush the queue
-                with pytest.warns(DeprecationWarning, match="flush=True is deprecated"):
-                    data = read_topic.get(flush=True)
-                assert read_topic.nqueued == 0
-                self.csc.assert_scalars_equal(cmd_data_list[-1], data)
-
                 is_first = False
 
     async def test_get_oldest(self) -> None:

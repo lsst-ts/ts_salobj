@@ -191,40 +191,6 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
         finally:
             sys.argv[:] = orig_argv
 
-    async def test_none_valid_simulation_modes_simulation_mode(self) -> None:
-        """Test that a CSC that uses the deprecated valid_simulation_modes=None
-        checks simulation mode in start, not the constructor.
-
-        The only valid simulation_mode is 0 because that's what BaseCsc
-        supports and I didn't override that support.
-        """
-        TestCscWithDeprecatedSimulation = self.make_csc_class(None)
-
-        assert TestCscWithDeprecatedSimulation.valid_simulation_modes is None
-
-        for bad_simulation_mode in (1, 2):
-            index = next(index_gen)
-            warning_regex = "valid_simulation_modes=None is deprecated"
-            with pytest.warns(DeprecationWarning, match=warning_regex):
-                csc = TestCscWithDeprecatedSimulation(
-                    index=index, simulation_mode=bad_simulation_mode
-                )
-            with pytest.raises(salobj.base.ExpectedError):
-                await csc.start_task
-            with pytest.raises(salobj.base.ExpectedError):
-                await csc.done_task
-
-        # Test the one valid simulation mode
-        index = next(index_gen)
-        with pytest.warns(DeprecationWarning, match=warning_regex):
-            csc = TestCscWithDeprecatedSimulation(index=index, simulation_mode=0)
-        try:
-            await csc.start_task
-            assert csc.simulation_mode == 0
-        finally:
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
-
     async def test_none_valid_simulation_modes_cmdline(self) -> None:
         """Test that when valid_simulation_modes=None that the command
         parser does not add the --simulate argument.

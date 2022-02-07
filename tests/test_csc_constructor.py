@@ -20,8 +20,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pathlib
-import re
-import typing
 import unittest
 
 import numpy as np
@@ -44,6 +42,21 @@ class InvalidPkgNameCsc(salobj.TestCsc):
     def get_config_pkg() -> str:
         """Return a name of a non-existent package."""
         return "not_a_valid_pkg_name"
+
+
+class MissingVersionCsc(salobj.BaseCsc):
+    """A CSC with no ``version`` class variable."""
+
+    valid_simulation_modes = (0,)
+
+    def __init__(self, index: int) -> None:
+        super().__init__(name="Test", index=index)
+
+
+class ValidSimulationModesNoneCsc(salobj.TestCsc):
+    """A CSC with ``valid_simulation_modes = None``."""
+
+    valid_simulation_modes = None
 
 
 class WrongConfigPkgCsc(salobj.TestCsc):
@@ -134,33 +147,11 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             await csc.close()
 
     async def test_missing_version(self) -> None:
-        class MissingVersionCsc(salobj.BaseCsc):
-            """A do-nothing CSC with no version class variable."""
+        index = next(index_gen)
+        with pytest.raises(RuntimeError):
+            MissingVersionCsc(index=index)
 
-            valid_simulation_modes = [0]
-
-            def __init__(self, index: int) -> None:
-                for attr_name in dir(salobj.TestCsc):
-                    if attr_name.startswith("do_"):
-                        setattr(self, attr_name, self.noop)
-                super().__init__(index=index, name="Test")
-
-            async def noop(self, *args: typing.Any, **kwargs: typing.Any) -> None:
-                pass
-
-        # Expected regex fragment of warning message.
-        message_regex = r"set class attribute .*version"
-        with pytest.warns(DeprecationWarning, match=message_regex):
-            async with MissingVersionCsc(index=next(index_gen)):
-                pass
-
-        # Adding the version attribute should eliminate the warning
-        # in question.
-        MissingVersionCsc.version = "foo"
-        with pytest.warns(None) as warnings:
-            async with MissingVersionCsc(index=next(index_gen)):
-                pass
-            # Make the test robust against other warnings
-            for w in warnings:
-                if isinstance(w.message, DeprecationWarning):
-                    assert re.search(message_regex, w.message.args[0]) is None
+    async def test_valid_simulation_modes_none(self) -> None:
+        index = next(index_gen)
+        with pytest.raises(RuntimeError):
+            ValidSimulationModesNoneCsc(index=index)

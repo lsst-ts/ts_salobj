@@ -49,6 +49,7 @@ class TopicWriter(salobj.BaseCsc):
     """
 
     valid_simulation_modes = [0]
+    version = "none"
 
     def __init__(self, index):
         print(f"TopicWriter: starting with index={index}")
