@@ -194,7 +194,7 @@ class CscCommander:
 
     I have not found a way to write a unit test for this class.
     I tried running a commander in a subprocess but could not figure out
-    how to send multiple commands (the ``suprocess.communicate``
+    how to send multiple commands (the ``subprocess.communicate``
     method only allows sending one item of data).
     Instead I suggest manually running it to control the Test CSC.
 

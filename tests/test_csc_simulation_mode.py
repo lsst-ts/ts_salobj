@@ -191,22 +191,12 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
         finally:
             sys.argv[:] = orig_argv
 
-    async def test_none_valid_simulation_modes_cmdline(self) -> None:
-        """Test that when valid_simulation_modes=None that the command
-        parser does not add the --simulate argument.
-        """
+    async def test_none_valid_simulation_modes(self) -> None:
+        """Test that valid_simulation_modes=None is an error."""
         TestCscWithDeprecatedSimulation = self.make_csc_class(None)
 
         assert TestCscWithDeprecatedSimulation.valid_simulation_modes is None
 
-        orig_argv = sys.argv[:]
-        try:
-            index = next(index_gen)
-            # Try 0, the only valid value. This will still fail
-            # because there is no --simulate command-line argument.
-            simulation_mode = 0
-            sys.argv = ["test_csc.py", str(index), "--simulate", str(simulation_mode)]
-            with pytest.raises(SystemExit):
-                TestCscWithDeprecatedSimulation.make_from_cmd_line(index=True)
-        finally:
-            sys.argv[:] = orig_argv
+        index = next(index_gen)
+        with pytest.raises(RuntimeError):
+            TestCscWithDeprecatedSimulation(index=index, simulation_mode=0)

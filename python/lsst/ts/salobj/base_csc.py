@@ -68,7 +68,7 @@ class BaseCsc(Controller):
     Raises
     ------
     ValueError
-        If ``initial_state`` is invalid,
+        If ``initial_state`` is invalid.
     salobj.ExpectedError
         If ``simulation_mode`` is invalid.
         Note: you will only see this error if you await `start_task`.
@@ -88,7 +88,7 @@ class BaseCsc(Controller):
         ``--override`` command-line arguments.
         The default is `False` because CSCs should start in
         ``default_initial_state`` unless we have good reason to do otherwise.
-    valid_simulation_modes : `list` [`int`] or `None`
+    valid_simulation_modes : `list` [`int`]
         A *class* attribute.
         Valid simulation modes; defaults to [0], meaning no simulation.
         The default simulation mode will be 0 if that is a valid value

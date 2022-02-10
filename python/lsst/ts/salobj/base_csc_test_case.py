@@ -337,7 +337,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                     process.terminate()
                     await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
                 else:
-                    print("Warning: suprocess had already quit.")
+                    print("Warning: subprocess had already quit.")
                     try:
                         assert process.stderr is not None  # make mypy happy
                         errbytes = await process.stderr.read()
