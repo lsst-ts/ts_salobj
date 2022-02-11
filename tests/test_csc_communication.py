@@ -39,13 +39,13 @@ from lsst.ts import utils
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 60
 # Timeout for when we expect no new data (seconds).
-NODATA_TIMEOUT = 0.1
+NODATA_TIMEOUT = 0.5
 
 np.random.seed(47)
 
 index_gen = utils.index_generator()
-TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
-TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
+TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
+TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
 
 
 def all_permutations(
@@ -368,32 +368,31 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
     async def test_heartbeat(self) -> None:
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             self.csc.heartbeat_interval = 0.1
+            timeout = self.csc.heartbeat_interval * 5
             await self.remote.evt_heartbeat.next(flush=True, timeout=STD_TIMEOUT)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
+            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
+            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
+            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
 
     async def test_bin_script_run(self) -> None:
         """Test running the Test CSC from the bin script.
 
         Note that the bin script calls class method ``amain``.
         """
-        for initial_state, settings_to_apply in (
+        for initial_state, override in (
             (None, None),
             (salobj.State.STANDBY, None),
             (salobj.State.DISABLED, "all_fields.yaml"),
             (salobj.State.ENABLED, ""),
         ):
             index = self.next_index()
-            with self.subTest(
-                initial_state=initial_state, settings_to_apply=settings_to_apply
-            ):
+            with self.subTest(initial_state=initial_state, override=override):
                 await self.check_bin_script(
                     name="Test",
                     index=index,
                     exe_name="run_test_csc.py",
                     initial_state=initial_state,
-                    settings_to_apply=settings_to_apply,
+                    override=override,
                 )
 
     async def test_bin_script_version(self) -> None:
@@ -678,5 +677,5 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             await self.check_standard_state_transitions(
                 enabled_commands=("setArrays", "setScalars", "wait"),
                 skip_commands=("fault",),
-                settingsToApply="all_fields",
+                override="all_fields.yaml",
             )

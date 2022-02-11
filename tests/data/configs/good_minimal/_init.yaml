@@ -1,8 +1,9 @@
 metadata:
   arbitrary_key: arbitrary metadata to ignore
   another_key: more arbitrary metadata to ignore
-string0: an arbitrary string
-bool0: false
-int0: -47
-float0: 1.234
-intarr0: [0, 2, -3, -5, 4]
+string0: default value for string0
+bool0: true
+int0: 5
+float0: 3.14
+intarr0: [-1, 1]
+multi_type: null

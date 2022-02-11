@@ -26,7 +26,6 @@ __all__ = ["Remote"]
 import asyncio
 import types
 import typing
-import warnings
 
 from .topics import RemoteEvent, RemoteTelemetry, RemoteCommand
 from .domain import Domain
@@ -67,9 +66,6 @@ class Remote:
     evt_max_history : `int`, optional
         Maximum number of historical items to read for events.
         Set to 0 if your remote is not interested in "late joiner" data.
-    tel_max_history : `int`, optional
-        Deprecated because historical telemetry data is no longer available.
-        Must be 0 (or None, but please don't do that) if specified.
     start : `bool`, optional
         Automatically start the read loop when constructed?
         Normally this should be `True`, but if you are adding topics
@@ -86,9 +82,6 @@ class Remote:
 
     Attributes
     ----------
-    isopen : `bool`
-        Is this instance open? `True` until `close` is called.
-        The instance is fully closed when done_task is done.
     start_called : `bool`
         Has the start method been called?
         The instance is fully started when start_task is done.
@@ -150,26 +143,12 @@ class Remote:
         include: typing.Optional[typing.Iterable[str]] = None,
         exclude: typing.Optional[typing.Iterable[str]] = None,
         evt_max_history: int = 1,
-        tel_max_history: typing.Optional[int] = None,
         start: bool = True,
     ) -> None:
-        self.start_called = False
-
         if include is not None and exclude is not None:
             raise ValueError("Cannot specify both include and exclude")
         include_set = set(include) if include is not None else None
         exclude_set = set(exclude) if exclude is not None else None
-
-        # TODO DM-26474: remove the tel_max_history argument
-        # and this code block.
-        if tel_max_history is not None:
-            if tel_max_history == 0:
-                warnings.warn("tel_max_history is deprecated", DeprecationWarning)
-            else:
-                raise ValueError(
-                    f"tel_max_history={tel_max_history} is deprecated "
-                    "and must be 0 (or None, but please don't do that) if specified"
-                )
 
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
@@ -204,9 +183,13 @@ class Remote:
             raise
 
     async def start(self) -> None:
-        if self.start_called:
-            raise RuntimeError("Start can only be called once")
-        self.start_called = True
+        """Start the read loop by starting the contained SalInfo.
+
+        Raises
+        ------
+        RuntimeError
+            If the SalInfo is already started, closing or closed.
+        """
         await self.salinfo.start()
 
     async def close(self) -> None:

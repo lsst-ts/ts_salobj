@@ -24,7 +24,6 @@ import copy
 import itertools
 import math
 import pathlib
-import random
 import time
 import typing
 import unittest
@@ -160,9 +159,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         assert cmd.authorize
 
     async def test_base_topic_constructor_good(self) -> None:
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
-
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=1
+        ) as salinfo:
             for cmd_name in salinfo.command_names:
                 cmd = salobj.topics.BaseTopic(
                     salinfo=salinfo, name=cmd_name, sal_prefix="command_"
@@ -182,9 +181,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 assert tel.name == tel_name
 
     async def test_base_topic_constructor_errors(self) -> None:
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
-
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=1
+        ) as salinfo:
             for good_name in ("setScalars", "scalars"):
                 for bad_prefix in (
                     "_",
@@ -208,7 +207,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 for non_cmd_prefix in ("", "logevent_"):
                     with pytest.raises(RuntimeError):
                         salobj.topics.BaseTopic(
-                            salinfo=salinfo, name=cmd_name, sal_prefix=non_cmd_prefix
+                            salinfo=salinfo,
+                            name=cmd_name,
+                            sal_prefix=non_cmd_prefix,
                         )
 
             # there is overlap between event and telemetry names
@@ -233,8 +234,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         """Test that multiple RemoteCommands for one command only see
         cmdack replies to their own samples.
         """
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=1
+        ) as salinfo:
+
             cmdreader = salobj.topics.ReadTopic(
                 salinfo=salinfo, name="wait", sal_prefix="command_", max_history=0
             )
@@ -483,21 +486,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
                 # Make sure the data queue was not flushed.
                 assert read_topic.nqueued == num_commands
-
-                # get with flush=False should warn and not flush the queue
-                with pytest.warns(
-                    DeprecationWarning,
-                    match="Specifying a value for the flush argument is deprecated",
-                ):
-                    data = read_topic.get(flush=False)
-                assert read_topic.nqueued == num_commands
-                self.csc.assert_scalars_equal(cmd_data_list[-1], data)
-
-                # get with flush=True should warn and flush the queue
-                with pytest.warns(DeprecationWarning, match="flush=True is deprecated"):
-                    data = read_topic.get(flush=True)
-                assert read_topic.nqueued == 0
-                self.csc.assert_scalars_equal(cmd_data_list[-1], data)
 
                 is_first = False
 
@@ -1069,20 +1057,15 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_remote_command_not_ready(self) -> None:
         """Test RemoteCommand methods that should raise an exception when the
         read loop isn't running."""
-        async with salobj.Domain() as domain:
-            # Use a remote because commands are volatile and we want
-            # at least one non-volatile topic
-            # in order to slow down starting the event loop.
-            remote = salobj.Remote(domain=domain, name="Test", index=self.next_index())
-            topic = remote.cmd_fault
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=self.next_index()
+        ) as salinfo:
+            cmdwriter = salobj.topics.RemoteCommand(salinfo=salinfo, name="setScalars")
             with pytest.raises(RuntimeError):
-                # Use a timeout of 0 because the exception should occur
-                # before the timeout is used, and we cannot afford to wait --
-                # the read loop might start.
-                await topic.start(timeout=0)
+                await cmdwriter.start(timeout=NODATA_TIMEOUT)
             with pytest.raises(RuntimeError):
-                await topic.set_start(timeout=0)
-            await remote.close()
+                await cmdwriter.set_start(timeout=NODATA_TIMEOUT)
+            await salinfo.close()
 
     async def test_remote_command_set(self) -> None:
         """Test that RemoteCommand.set and set_start use new data.
@@ -1091,14 +1074,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         for each call, rather than remembering anything from the previous
         command. This is different than WriteTopic.
         """
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=1
+        ) as salinfo:
             cmdreader = salobj.topics.ControllerCommand(
                 salinfo=salinfo, name="setScalars"
             )
-            # set the random seed before each call so both writers
-            # use the same initial seqNum
-            random.seed(52)
             cmdwriter = salobj.topics.RemoteCommand(salinfo=salinfo, name="setScalars")
             await salinfo.start()
             read_data_list = []
@@ -1139,14 +1120,16 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def test_read_topic_not_ready(self) -> None:
         """Test ReadTopic for exceptions when the read loop isn't running."""
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(
-                domain=domain, name="Test", index=self.next_index()
-            )
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=self.next_index()
+        ) as salinfo:
             # Use a logevent topic because it is not volatile
             # (which might cause the read loop to start too quickly).
             topic = salobj.topics.ReadTopic(
-                salinfo=salinfo, name="scalars", sal_prefix="logevent_", max_history=100
+                salinfo=salinfo,
+                name="scalars",
+                sal_prefix="logevent_",
+                max_history=100,
             )
             with pytest.raises(RuntimeError):
                 topic.has_data
@@ -1164,10 +1147,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def test_read_topic_constructor_errors_and_warnings(self) -> None:
         MIN_QUEUE_LEN = salobj.topics.MIN_QUEUE_LEN
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(
-                domain=domain, name="Test", index=self.next_index()
-            )
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=self.next_index()
+        ) as salinfo:
             # max_history must not be negative
             for bad_max_history in (-1, -10):
                 for name, sal_prefix in (
@@ -1494,8 +1476,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def test_write_topic_set(self) -> None:
         """Test that WriteTopic.set uses existing data for defaults."""
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=1
+        ) as salinfo:
             write_topic = salobj.topics.WriteTopic(
                 salinfo=salinfo, name="scalars", sal_prefix="logevent_"
             )

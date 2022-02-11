@@ -70,55 +70,95 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
     @unittest.skipIf("TS_CONFIG_OCS_DIR" not in os.environ, "ts_config_ocs not found")
     def test_standard_configs(self) -> None:
         """Test the config files in ts_config_ocs/Test/..."""
-        config_package_root = os.environ["TS_CONFIG_OCS_DIR"]
+        config_package_root = pathlib.Path(os.environ["TS_CONFIG_OCS_DIR"])
+        assert config_package_root.is_dir()
         config_dir = self.get_config_dir(
             config_package_root=config_package_root, sal_name="Test", schema=self.schema
         )
         self.check_config_files(config_dir=config_dir, schema=self.schema)
 
-        # Test check_standard_config_files using module import and schema_name
+        minimal_kwargs = dict(
+            module_name="lsst.ts.salobj",
+            config_dir=config_dir,
+        )
+
+        # Check with minimal arguments
+        self.check_standard_config_files(**minimal_kwargs)
+
+        # Omit required arguments
+        for key in minimal_kwargs:
+            bad_kwargs = minimal_kwargs.copy()
+            expected_exception = dict(
+                module_name=TypeError,
+                config_dir=RuntimeError,
+            )[key]
+            del bad_kwargs[key]
+            with pytest.raises(expected_exception):
+                self.check_standard_config_files(**bad_kwargs)
+
+        # Specify schema_name
         self.check_standard_config_files(
             module_name="lsst.ts.salobj",
             schema_name="CONFIG_SCHEMA",
             config_dir=config_dir,
         )
 
-        # Test check_standard_config_files using module import
-        self.check_standard_config_files(
-            sal_name="Test", module_name="lsst.ts.salobj", config_dir=config_dir
-        )
+        # Specify invalid schema_name
+        with pytest.raises(AttributeError):
+            self.check_standard_config_files(
+                module_name="lsst.ts.salobj",
+                schema_name="invalid_name",
+                config_dir=config_dir,
+            )
 
-        # Test check_standard_config_files using env var TS_SALOBJ_DIR
+        # specify sal_name and config_package_root
         self.check_standard_config_files(
-            sal_name="Test", package_name="ts_salobj", config_dir=config_dir
-        )
-
-        # Test check_standard_config_files using env var TS_SALOBJ_DIR
-        # and schema_subpath
-        self.check_standard_config_files(
+            module_name="lsst.ts.salobj",
+            schema_name="CONFIG_SCHEMA",
             sal_name="Test",
-            package_name="ts_salobj",
-            config_dir=config_dir,
-            schema_subpath="schema/Test.yaml",
+            config_package_root=config_package_root,
         )
 
+        # check that sal_name and config_package_root are ignored
+        # if config_dir specified
+        self.check_standard_config_files(
+            module_name="lsst.ts.salobj",
+            schema_name="CONFIG_SCHEMA",
+            sal_name="NoSuchSALComponent",
+            config_package_root=config_package_root / "no such dir",
+            config_dir=config_dir,
+        )
+
+        # Specify invalid sal_name
         with pytest.raises(AssertionError):
             self.check_standard_config_files(
+                module_name="lsst.ts.salobj",
+                schema_name="CONFIG_SCHEMA",
+                sal_name="NoSuchSALComponent",
+                config_package_root=config_package_root,
+            )
+
+        # Specify invalid config_package_root
+        with pytest.raises(AssertionError):
+            self.check_standard_config_files(
+                module_name="lsst.ts.salobj",
+                schema_name="CONFIG_SCHEMA",
                 sal_name="Test",
-                package_name="ts_salobj",
-                config_dir=config_dir,
-                schema_subpath="schema/no_such_file.yaml",
+                config_package_root=config_package_root / "no_such_dir",
             )
 
     def test_local_configs(self) -> None:
         """Test the various local config directories."""
-        data_root = pathlib.Path(__file__).parent / "data"
+        configs_root = pathlib.Path(__file__).parent / "data" / "configs"
 
-        self.check_config_files(
-            config_dir=data_root / "config_good", schema=self.schema
-        )
+        for config_dir in configs_root.glob("good_*"):
+            self.check_config_files(
+                config_dir=config_dir, schema=self.schema, exclude_glob="bad_*"
+            )
 
-        for config_dir in data_root.glob("config_bad*"):
+        for config_dir in configs_root.glob("bad_*"):
             with self.subTest(config_dir=str(config_dir)):
                 with pytest.raises(AssertionError):
-                    self.check_config_files(config_dir=config_dir, schema=self.schema)
+                    self.check_config_files(
+                        config_dir=config_dir, schema=self.schema, exclude_glob="bad_*"
+                    )

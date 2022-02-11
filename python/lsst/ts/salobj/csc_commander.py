@@ -194,7 +194,7 @@ class CscCommander:
 
     I have not found a way to write a unit test for this class.
     I tried running a commander in a subprocess but could not figure out
-    how to send multiple commands (the ``suprocess.communicate``
+    how to send multiple commands (the ``subprocess.communicate``
     method only allows sending one item of data).
     Instead I suggest manually running it to control the Test CSC.
 
@@ -492,11 +492,11 @@ help  # print this help
         """Allow the start command to have no arguments."""
         assert len(args) in (0, 1)
         if args:
-            settingsToApply = args[0]
+            override = args[0]
         else:
-            settingsToApply = ""
+            override = ""
         await self.remote.cmd_start.set_start(  # type: ignore
-            settingsToApply=settingsToApply,
+            configurationOverride=override,
         )
 
     def get_commands_help(self) -> typing.List[str]:
