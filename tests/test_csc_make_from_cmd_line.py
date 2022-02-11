@@ -64,9 +64,13 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
         self.original_argv = sys.argv[:]
+        self.original_lsst_site = os.environ.get("LSST_SITE", None)
+        os.environ["LSST_SITE"] = "test"
 
     def tearDown(self) -> None:
         sys.argv = self.original_argv
+        if self.original_lsst_site is not None:
+            os.environ["LSST_SITE"] = self.original_lsst_site
 
     async def test_no_index(self) -> None:
         for index in (0, None):

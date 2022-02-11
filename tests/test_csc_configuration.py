@@ -28,6 +28,7 @@ import numpy as np
 import yaml
 
 from lsst.ts import salobj
+from lsst.ts import utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -95,15 +96,15 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
     async def test_bad_site(self) -> None:
         config_dir = TEST_CONFIGS_ROOT / "good_with_site_file"
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY,
-            config_dir=config_dir,
-            site="no_such_site",
-        ):
-            await self.assert_next_summary_state(salobj.State.STANDBY)
+        with utils.modify_environ(LSST_SITE="no_such_site"):
+            async with self.make_csc(
+                initial_state=salobj.State.STANDBY,
+                config_dir=config_dir,
+            ):
+                await self.assert_next_summary_state(salobj.State.STANDBY)
 
-            with salobj.assertRaisesAckError():
-                await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
+                with salobj.assertRaisesAckError():
+                    await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
 
     async def test_default_config_dir(self) -> None:
         async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=None):

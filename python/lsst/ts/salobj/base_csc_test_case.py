@@ -24,6 +24,7 @@ import abc
 import asyncio
 import contextlib
 import enum
+import os
 import pathlib
 import shutil
 import subprocess
@@ -64,6 +65,12 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     def setUp(self) -> None:
         testutils.set_random_lsst_dds_partition_prefix()
+        self.original_lsst_site = os.environ.get("LSST_SITE", None)
+        os.environ["LSST_SITE"] = "test"
+
+    def tearDown(self) -> None:
+        if self.original_lsst_site is not None:
+            os.environ["LSST_SITE"] = self.original_lsst_site
 
     @abc.abstractmethod
     def basic_make_csc(
@@ -101,7 +108,6 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         config_dir: typing.Union[str, pathlib.Path, None] = None,
         simulation_mode: int = 0,
         log_level: typing.Optional[int] = None,
-        site: str = "test",
         timeout: float = STD_TIMEOUT,
         **kwargs: typing.Any,
     ) -> typing.AsyncGenerator[None, None]:
@@ -131,8 +137,6 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Logging level, such as `logging.INFO`.
             If `None` then do not set the log level, leaving the default
             behavior of `SalInfo`: increase the log level to INFO.
-        site : `str`, optional
-            Value for the LSST_SITE environment variable.
         timeout : `float`, optional
             Time limit for the CSC to start (seconds).
         **kwargs : `dict`, optional
@@ -144,43 +148,42 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         # forgets to call super().setUp()
         testutils.set_random_lsst_dds_partition_prefix()
         items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
-        with utils.modify_environ(LSST_SITE=site):
-            try:
-                self.csc = self.basic_make_csc(
-                    initial_state=initial_state,
-                    config_dir=config_dir,
-                    simulation_mode=simulation_mode,
-                    **kwargs,
-                )
-                items_to_close.append(self.csc)
-                self.remote = Remote(
-                    domain=self.csc.domain,
-                    name=self.csc.salinfo.name,
-                    index=self.csc.salinfo.index,
-                )
-                items_to_close.append(self.remote)
-                if log_level is not None:
-                    self.csc.log.setLevel(log_level)
+        try:
+            self.csc = self.basic_make_csc(
+                initial_state=initial_state,
+                config_dir=config_dir,
+                simulation_mode=simulation_mode,
+                **kwargs,
+            )
+            items_to_close.append(self.csc)
+            self.remote = Remote(
+                domain=self.csc.domain,
+                name=self.csc.salinfo.name,
+                index=self.csc.salinfo.index,
+            )
+            items_to_close.append(self.remote)
+            if log_level is not None:
+                self.csc.log.setLevel(log_level)
 
-                await asyncio.wait_for(
-                    asyncio.gather(self.csc.start_task, self.remote.start_task),
-                    timeout=timeout,
-                )
+            await asyncio.wait_for(
+                asyncio.gather(self.csc.start_task, self.remote.start_task),
+                timeout=timeout,
+            )
 
-                if initial_state != self.csc.default_initial_state:
-                    # Check all expected summary states expect the final state.
-                    # That is omitted for backwards compatibility.
-                    expected_states = get_expected_summary_states(
-                        initial_state=self.csc.default_initial_state,
-                        final_state=initial_state,
-                    )[:-1]
-                    for state in expected_states:
-                        await self.assert_next_summary_state(state)
+            if initial_state != self.csc.default_initial_state:
+                # Check all expected summary states expect the final state.
+                # That is omitted for backwards compatibility.
+                expected_states = get_expected_summary_states(
+                    initial_state=self.csc.default_initial_state,
+                    final_state=initial_state,
+                )[:-1]
+                for state in expected_states:
+                    await self.assert_next_summary_state(state)
 
-                yield
-            finally:
-                for item in items_to_close:
-                    await item.close()
+            yield
+        finally:
+            for item in items_to_close:
+                await item.close()
 
     async def assert_next_summary_state(
         self,

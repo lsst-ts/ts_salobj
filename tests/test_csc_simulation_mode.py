@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import os
 import sys
 import typing
 import unittest
@@ -42,6 +43,9 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
+        self.original_lsst_site = os.environ.get("LSST_SITE", None)
+        os.environ["LSST_SITE"] = "test"
+
         # Valid simulation modes that will exercise several things:
         # If 0 is present it is the default,
         # otherwise the first value is the default.
@@ -56,6 +60,10 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
             (0, 1, 4),
             (4, 1, 0),
         )
+
+    def tearDown(self) -> None:
+        if self.original_lsst_site is not None:
+            os.environ["LSST_SITE"] = self.original_lsst_site
 
     def make_csc_class(
         self, modes: typing.Optional[typing.Iterable[int]]
