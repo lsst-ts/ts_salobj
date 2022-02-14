@@ -239,24 +239,24 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             # check keep_old_reason argument of set_state
             reason = "initial reason"
             additional_reason = "check append"
-            script.set_state(reason=reason)
-            script.set_state(reason=additional_reason, keep_old_reason=True)
+            await script.set_state(reason=reason)
+            await script.set_state(reason=additional_reason, keep_old_reason=True)
             assert script.state.reason == reason + "; " + additional_reason
 
             bad_state = 1 + max(s.value for s in ScriptState)
             with pytest.raises(ValueError):
-                script.set_state(bad_state)
+                await script.set_state(bad_state)
             script.state.state = bad_state
             assert script.state_name == f"UNKNOWN({bad_state})"
             assert not script._is_exiting
 
-            script.set_state(ScriptState.CONFIGURED)
+            await script.set_state(ScriptState.CONFIGURED)
             assert script.state_name == "CONFIGURED"
 
             # check assert_states
             all_states = set(ScriptState)
             for state in ScriptState:
-                script.set_state(state)
+                await script.set_state(state)
                 assert script.state_name == state.name
                 with pytest.raises(salobj.ExpectedError):
                     script.assert_state(
@@ -652,7 +652,8 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                         if process.returncode is None:
                             process.terminate()
                             warnings.warn(
-                                "Killed a process that was not properly terminated"
+                                "Killed a process that was not properly terminated",
+                                RuntimeWarning,
                             )
 
     async def test_script_schema_process(self) -> None:
@@ -677,4 +678,6 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         finally:
             if process.returncode is None:
                 process.terminate()
-                warnings.warn("Killed a process that was not properly terminated")
+                warnings.warn(
+                    "Killed a process that was not properly terminated", RuntimeWarning
+                )

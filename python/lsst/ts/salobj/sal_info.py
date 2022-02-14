@@ -685,7 +685,7 @@ class SalInfo:
                             # Get the max_history most recent samples
                             sd_list = full_sd_list[-reader.max_history :]
                         if sd_list:
-                            reader._queue_data(sd_list, loop=None)
+                            await reader._queue_data(sd_list)
             self._read_loop_task = asyncio.create_task(self._read_loop(loop=loop))
             self.start_task.set_result(None)
         except Exception as e:
@@ -714,7 +714,16 @@ class SalInfo:
         self.domain.num_read_loops += 1
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                await loop.run_in_executor(pool, self._read_loop_thread, loop)
+                while self.isopen:
+                    reader, sd_list = await loop.run_in_executor(
+                        pool, self._blocking_read
+                    )
+                    if not self.isopen:
+                        break
+                    if reader is None:
+                        continue
+                    await reader._queue_data(sd_list)
+
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -722,36 +731,29 @@ class SalInfo:
         finally:
             self.domain.num_read_loops -= 1
 
-    def _read_loop_thread(self, loop: asyncio.AbstractEventLoop) -> None:
-        """Read and process DDS data in a background thread.
-
-        Parameters
-        ----------
-        loop : `asyncio.AbstractEventLoop`
-            The main asyncio event loop.
-        """
-        while self.isopen:
-            conditions = self._waitset.wait(self._wait_timeout)
-            if not self.isopen:
-                # shutting down; clean everything up
-                return
-            for condition in conditions:
-                reader = self._reader_dict.get(condition)
-                if reader is None or not reader.isopen:
-                    continue
-                # odds are we will only get one value per read,
-                # but read more so we can tell if we are falling behind
-                data_list = reader._reader.take_cond(
-                    condition, reader._data_queue.maxlen
-                )
-                reader.dds_queue_length_checker.check_nitems(len(data_list))
-                sd_list = [
-                    self._sample_to_data(sd, si)
-                    for sd, si in data_list
-                    if si.valid_data
-                ]
-                if sd_list:
-                    reader._queue_data(sd_list, loop=loop)
+    def _blocking_read(
+        self,
+    ) -> typing.Tuple[
+        typing.Optional[topics.ReadTopic], typing.List[type_hints.BaseDdsDataType]
+    ]:
+        """Read DDS data."""
+        conditions = self._waitset.wait(self._wait_timeout)
+        if not self.isopen:
+            # shutting down; clean everything up
+            return (None, [])
+        for condition in conditions:
+            reader = self._reader_dict.get(condition)
+            if reader is None or not reader.isopen:
+                continue
+            # odds are we will only get one value per read,
+            # but read more so we can tell if we are falling behind
+            data_list = reader._reader.take_cond(condition, reader._data_queue.maxlen)
+            reader.dds_queue_length_checker.check_nitems(len(data_list))
+            sd_list = [
+                self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data
+            ]
+            return (reader, sd_list)
+        return (None, [])
 
     def _sample_to_data(self, sd: dds._Sample, si: dds.SampleInfo) -> dds._Sample:
         """Process one sample data, sample info pair.

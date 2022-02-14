@@ -26,6 +26,21 @@ v7.0.0
       Subclasses with ``setUp`` and/or ``tearDown`` methods should call ``super().setUp()`` and/or ``super().tearDown()``.
     * If you have unit tests that do not inherit from `BaseCscTestCase` and construct a configurable CSC, you will have to manage the environment variable yourself.
 
+* Breaking Changes:
+
+  * Eliminate `BaseCsc.report_summary_state`. Use ``handle_summary_state`` instead.
+  * Make `BaseCsc.fault` async.
+  * Make `BaseScript.set_state` async.
+  * Make `Controller.put_log_level` async.
+  * Make `topics.ControllerCommand.ack` and ``ack_in_progress`` async and delete deprecated ``ackinProgress``.
+  * `TestCsc`: eliminate the topic-type-specific ``make_random_[cmd/evt/tel]_[arrays/scalars]`` methods.
+    Use the new ``make_random_[arrays/scalars]_dict`` methods, instead.
+
+* New Deprecations:
+
+  * `topics.WriteTopic`: deprecated ``put`` and ``set_put``; use new async methods ``write`` and ``set_write``, instead.
+    This is for future-proofing salobj and is the underlying cause of the non-configuration-related breaking changes and deprecations.
+
 * Eliminate the following deprecated features:
 
     * Configuration schema must be defined in code; salobj will no longer read it from a file:

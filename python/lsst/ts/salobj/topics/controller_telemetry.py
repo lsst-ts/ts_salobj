@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["ControllerTelemetry"]
 
 import typing
+import warnings
 
 from . import write_topic
 
@@ -67,6 +68,7 @@ class ControllerTelemetry(write_topic.WriteTopic):
         ValueError
             If the field cannot be set to the specified value.
         """
+        warnings.warn("Deprecated; use write instead", DeprecationWarning)
         did_change = self.set(**kwargs)
         self.put()
         return did_change

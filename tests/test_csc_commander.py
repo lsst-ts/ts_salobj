@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import asyncio
 import pathlib
 import typing
 import unittest
@@ -28,6 +29,10 @@ import pytest
 
 from lsst.ts import utils
 from lsst.ts import salobj
+
+# Standard timeout (sec)
+# Long to avoid unnecessary timeouts on slow CI systems.
+STD_TIMEOUT = 60
 
 np.random.seed(47)
 
@@ -73,21 +78,26 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
 
     async def test_basics(self) -> None:
         async with self.make_csc(initial_state=salobj.State.STANDBY):
-            await self.commander.start()
+            await asyncio.wait_for(self.commander.start(), timeout=STD_TIMEOUT)
+            print("wait for summary state")
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             # Test a command that will fail because the CSC is not enabled
+            print("run command that should fail")
             with salobj.assertRaisesAckError(ack=salobj.SalRetCode.CMD_FAILED):
                 await self.commander.run_command(
                     f"wait {salobj.SalRetCode.CMD_COMPLETE} 5"
                 )
             # Test some standard CSC commands
+            print("run start command")
             await self.commander.run_command("start")
             await self.assert_next_summary_state(salobj.State.DISABLED)
+            print("run enable command")
             await self.commander.run_command("enable")
             await self.assert_next_summary_state(salobj.State.ENABLED)
             t0 = utils.current_tai()
             wait_time = 2  # seconds
+            print("run wait command")
             await self.commander.run_command(
                 f"wait {salobj.SalRetCode.CMD_COMPLETE} {wait_time}"
             )

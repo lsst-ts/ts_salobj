@@ -69,6 +69,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         os.environ["LSST_SITE"] = "test"
 
     def tearDown(self) -> None:
+        if not hasattr(self, "original_lsst_site"):
+            raise RuntimeError("Call super().setUp() in your setUp method")
         if self.original_lsst_site is not None:
             os.environ["LSST_SITE"] = self.original_lsst_site
 

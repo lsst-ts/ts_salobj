@@ -26,7 +26,6 @@ __all__ = ["AckCmdWriter", "ControllerCommand"]
 import asyncio
 import inspect
 import typing
-import warnings
 
 from .. import sal_enums
 from .. import base
@@ -106,7 +105,7 @@ class ControllerCommand(read_topic.ReadTopic):
         if salinfo._ackcmd_writer is None:
             self.salinfo._ackcmd_writer = AckCmdWriter(salinfo=salinfo)
 
-    def ack(
+    async def ack(
         self, data: type_hints.BaseDdsDataType, ackcmd: type_hints.AckCmdDataType
     ) -> None:
         """Acknowledge a command by writing a new state.
@@ -120,7 +119,7 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         # mypy thinks salinfo._ackcmd_writer can be None, but it can't.
         # Testing is expensive, so hide the warnings.
-        self.salinfo._ackcmd_writer.set(  # type: ignore
+        await self.salinfo._ackcmd_writer.set_write(  # type: ignore
             private_seqNum=data.private_seqNum,
             origin=data.private_origin,
             identity=data.private_identity,
@@ -130,18 +129,8 @@ class ControllerCommand(read_topic.ReadTopic):
             result=ackcmd.result,
             timeout=ackcmd.timeout,
         )
-        self.salinfo._ackcmd_writer.put()  # type: ignore
 
-    def ackInProgress(self, data: type_hints.BaseDdsDataType, result: str = "") -> None:
-        """Deprecated version of ack_in_progress."""
-        # TODO DM-26518: remove this method
-        warnings.warn(
-            "ackInProgress is deprecated; use ack_in_progress and specify timeout instead",
-            DeprecationWarning,
-        )
-        self.ack_in_progress(data=data, result=result, timeout=0)
-
-    def ack_in_progress(
+    async def ack_in_progress(
         self, data: type_hints.BaseDdsDataType, timeout: float, result: str = ""
     ) -> None:
         """Ackowledge this command as "in progress".
@@ -161,7 +150,7 @@ class ControllerCommand(read_topic.ReadTopic):
             result=result,
             timeout=timeout,
         )
-        self.ack(data, ackcmd)
+        await self.ack(data=data, ackcmd=ackcmd)
 
     async def next(  # type: ignore[override]  # noqa
         self, *, timeout: typing.Optional[float] = None
@@ -194,15 +183,18 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         return await super().next(flush=False, timeout=timeout)
 
-    def _queue_one_item(self, data: type_hints.BaseDdsDataType) -> None:
-        """Convert the value to an ``ackcmd`` and queue it."""
+    async def _queue_one_item(self, data: type_hints.BaseDdsDataType) -> None:
+        """Convert the value to an ``ackcmd`` and queue it.
+
+        Also acknowledge the command with CMD_ACK.
+        """
         if data.private_seqNum <= 0:
             raise ValueError(f"private_seqNum={data.private_seqNum} must be positive")
         ack = self.salinfo.make_ackcmd(
             private_seqNum=data.private_seqNum, ack=sal_enums.SalRetCode.CMD_ACK
         )
-        self.ack(data, ack)
-        super()._queue_one_item(data)
+        await self.ack(data, ack)
+        await super()._queue_one_item(data)
 
     async def _run_callback(self, data: type_hints.BaseDdsDataType) -> None:
         """Run the callback function, acknowledge the command,
@@ -237,7 +229,7 @@ class ControllerCommand(read_topic.ReadTopic):
                         error=1,
                         result=f"Not authorized: {auth_error}",
                     )
-                    self.ack(data, ack)
+                    await self.ack(data, ack)
                     return
             except Exception:
                 self.log.exception("Error checking identity")
@@ -254,7 +246,7 @@ class ControllerCommand(read_topic.ReadTopic):
                     ack=sal_enums.SalRetCode.CMD_COMPLETE,
                     result="Done",
                 )
-            self.ack(data, ack)
+            await self.ack(data, ack)
         except asyncio.CancelledError:
             ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
@@ -262,7 +254,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 error=1,
                 result="Aborted",
             )
-            self.ack(data, ack)
+            await self.ack(data, ack)
         except asyncio.TimeoutError:
             ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
@@ -270,7 +262,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 error=1,
                 result="Timeout",
             )
-            self.ack(data, ack)
+            await self.ack(data, ack)
         except Exception as e:
             ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
@@ -278,6 +270,6 @@ class ControllerCommand(read_topic.ReadTopic):
                 error=1,
                 result=f"Failed: {e}",
             )
-            self.ack(data, ack)
+            await self.ack(data, ack)
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
