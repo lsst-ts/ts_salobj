@@ -181,6 +181,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                     await self.assert_next_summary_state(state)
 
             yield
+        except Exception as e:
+            print(f"BaseCscTestCase.make_csc failed: {e!r}")
+            raise
         finally:
             for item in items_to_close:
                 await item.close()
