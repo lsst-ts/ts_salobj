@@ -19,8 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import os
 import pathlib
+import re
+import typing
 import unittest
 
 import numpy as np
@@ -32,8 +33,8 @@ from lsst.ts import utils
 np.random.seed(47)
 
 index_gen = utils.index_generator()
-TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
-TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
+TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
+TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
 class InvalidPkgNameCsc(salobj.TestCsc):
@@ -43,21 +44,6 @@ class InvalidPkgNameCsc(salobj.TestCsc):
     def get_config_pkg() -> str:
         """Return a name of a non-existent package."""
         return "not_a_valid_pkg_name"
-
-
-class MissingVersionCsc(salobj.BaseCsc):
-    """A CSC with no ``version`` class variable."""
-
-    valid_simulation_modes = (0,)
-
-    def __init__(self, index: int) -> None:
-        super().__init__(name="Test", index=index)
-
-
-class ValidSimulationModesNoneCsc(salobj.TestCsc):
-    """A CSC with ``valid_simulation_modes = None``."""
-
-    valid_simulation_modes = None
 
 
 class WrongConfigPkgCsc(salobj.TestCsc):
@@ -78,12 +64,6 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
-        self.original_lsst_site = os.environ.get("LSST_SITE", None)
-        os.environ["LSST_SITE"] = "test"
-
-    def tearDown(self) -> None:
-        if self.original_lsst_site is not None:
-            os.environ["LSST_SITE"] = self.original_lsst_site
 
     async def test_class_attributes(self) -> None:
         assert list(salobj.TestCsc.valid_simulation_modes) == [0]
@@ -105,6 +85,24 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
         index = next(index_gen)
         async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
             assert csc.summary_state == initial_state
+
+    async def test_deprecated_schema_path_arg(self) -> None:
+        with pytest.warns(
+            DeprecationWarning, match="schema_path argument is deprecated"
+        ):
+            expected_schema = salobj.CONFIG_SCHEMA
+            schema_path = (
+                pathlib.Path(__file__).resolve().parents[1] / "schema" / "Test.yaml"
+            )
+            csc = salobj.TestCsc(index=next(index_gen), schema_path=schema_path)
+            await csc.close()
+            for key, value in expected_schema.items():
+                if key in ("$id", "description"):
+                    continue
+                assert (
+                    csc.config_validator.final_validator.schema[key]
+                    == expected_schema[key]
+                )
 
     async def test_invalid_config_dir(self) -> None:
         """Test that invalid integer initial_state is rejected."""
@@ -154,11 +152,33 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             await csc.close()
 
     async def test_missing_version(self) -> None:
-        index = next(index_gen)
-        with pytest.raises(RuntimeError):
-            MissingVersionCsc(index=index)
+        class MissingVersionCsc(salobj.BaseCsc):
+            """A do-nothing CSC with no version class variable."""
 
-    async def test_valid_simulation_modes_none(self) -> None:
-        index = next(index_gen)
-        with pytest.raises(RuntimeError):
-            ValidSimulationModesNoneCsc(index=index)
+            valid_simulation_modes = [0]
+
+            def __init__(self, index: int) -> None:
+                for attr_name in dir(salobj.TestCsc):
+                    if attr_name.startswith("do_"):
+                        setattr(self, attr_name, self.noop)
+                super().__init__(index=index, name="Test")
+
+            async def noop(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+                pass
+
+        # Expected regex fragment of warning message.
+        message_regex = r"set class attribute .*version"
+        with pytest.warns(DeprecationWarning, match=message_regex):
+            async with MissingVersionCsc(index=next(index_gen)):
+                pass
+
+        # Adding the version attribute should eliminate the warning
+        # in question.
+        MissingVersionCsc.version = "foo"
+        with pytest.warns(None) as warnings:
+            async with MissingVersionCsc(index=next(index_gen)):
+                pass
+            # Make the test robust against other warnings
+            for w in warnings:
+                if isinstance(w.message, DeprecationWarning):
+                    assert re.search(message_regex, w.message.args[0]) is None

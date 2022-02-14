@@ -35,8 +35,8 @@ from lsst.ts import utils
 np.random.seed(47)
 
 index_gen = utils.index_generator()
-TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
-TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
+TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
+TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
 
 
 class NoIndexCsc(salobj.TestCsc):
@@ -47,30 +47,43 @@ class NoIndexCsc(salobj.TestCsc):
         arg1: typing.Any,
         arg2: typing.Any,
         initial_state: salobj.State = salobj.State.STANDBY,
-        override: str = "",
+        settings_to_apply: str = "",
         config_dir: typing.Union[str, pathlib.Path, None] = None,
     ) -> None:
         super().__init__(
             index=next(index_gen),
             initial_state=initial_state,
-            override=override,
+            settings_to_apply=settings_to_apply,
             config_dir=config_dir,
         )
         self.arg1 = arg1
         self.arg2 = arg2
 
 
+class TestCscSettingsRequired(salobj.TestCsc):
+    """A variant of TestCsc that has require_settings=True."""
+
+    require_settings = True
+
+
+class TestCscSettingsRequiredNoCmdLineState(salobj.TestCsc):
+    """An invalid variant of TestCsc with require_settings=True
+    and enable_cmdline_state=True.
+
+    This should raise RuntimeError in make_from_cmd_line.
+    """
+
+    require_settings = True
+    enable_cmdline_state = False
+
+
 class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
         self.original_argv = sys.argv[:]
-        self.original_lsst_site = os.environ.get("LSST_SITE", None)
-        os.environ["LSST_SITE"] = "test"
 
     def tearDown(self) -> None:
         sys.argv = self.original_argv
-        if self.original_lsst_site is not None:
-            os.environ["LSST_SITE"] = self.original_lsst_site
 
     async def test_no_index(self) -> None:
         for index in (0, None):
@@ -112,23 +125,23 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
 
             desired_config_pkg_name = "ts_config_ocs"
             desired_config_env_name = desired_config_pkg_name.upper() + "_DIR"
-            desired_config_pkg_dir = os.environ[desired_config_env_name]
-            desired_config_dir = pathlib.Path(desired_config_pkg_dir) / "Test/v2"
+            desird_config_pkg_dir = os.environ[desired_config_env_name]
+            desired_config_dir = pathlib.Path(desird_config_pkg_dir) / "Test/v1"
             assert csc.get_config_pkg() == desired_config_pkg_name
             assert csc.config_dir == desired_config_dir
             await csc.close()
 
     async def test_config_from_argument(self) -> None:
         index = next(index_gen)
-        sys.argv = [sys.argv[0], str(index), "--configdir", str(TEST_CONFIG_DIR)]
+        sys.argv = [sys.argv[0], str(index), "--config", str(TEST_CONFIG_DIR)]
         async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
             assert csc.salinfo.index == index
             assert csc.config_dir == TEST_CONFIG_DIR
             await csc.close()
 
     async def test_state_good(self) -> None:
-        """Test valid --state and --override arguments."""
-        for state, override in (
+        """Test valid --state and --settings arguments."""
+        for state, settings in (
             (salobj.State.OFFLINE, ""),
             (salobj.State.STANDBY, ""),
             (salobj.State.DISABLED, "all_fields.yaml"),
@@ -139,12 +152,12 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
             sys.argv = [
                 sys.argv[0],
                 str(index),
-                "--configdir",
+                "--config",
                 str(TEST_CONFIG_DIR),
                 "--state",
                 state_name,
-                "--override",
-                override,
+                "--settings",
+                settings,
             ]
             async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
                 assert csc.salinfo.index == index
@@ -152,16 +165,16 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
                 if state not in (salobj.State.DISABLED, salobj.State.ENABLED):
                     # Configuration not applied.
                     assert csc.config is None
-                elif override == "all_fields.yaml":
+                elif settings == "all_fields.yaml":
                     assert csc.config.string0 == "an arbitrary string"
-                elif override == "":
+                elif settings == "":
                     assert csc.config.string0 == "default value for string0"
                 else:
                     self.fail("Unhandled case.")
                 await csc.close()
 
     async def test_state_bad(self) -> None:
-        """Test invalid --state or --override arguments."""
+        """Test invalid --state or --settings arguments."""
         # The only allowed --state values are "standby", "disabled",
         # and "enabled".
         for bad_state_name in ("fault", "not_a_state"):
@@ -169,3 +182,18 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
             sys.argv = [sys.argv[0], str(index), "--state", bad_state_name]
             with pytest.raises(SystemExit):
                 salobj.TestCsc.make_from_cmd_line(index=True)
+
+        # Test that require_settings=True makes --settings required
+        # if state is "disabled" or "enabled".
+        for state_name in ("disabled", "enabled"):
+            index = next(index_gen)
+            sys.argv = [sys.argv[0], str(index), "--state", state_name]
+            with pytest.raises(SystemExit):
+                TestCscSettingsRequired.make_from_cmd_line(index=True)
+
+        # Test that require_settings=True requires enable_cmdline_state=True.
+        # This is caught in the constructor, not the argument parser,
+        # in order to make sure the developer sees it.
+        index = next(index_gen)
+        with pytest.raises(RuntimeError):
+            TestCscSettingsRequiredNoCmdLineState(index=True)

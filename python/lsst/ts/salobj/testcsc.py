@@ -65,11 +65,18 @@ class TestCsc(ConfigurableCsc):
 
         * `salobj.State.ENABLED` if you want the CSC immediately usable.
         * `salobj.State.STANDBY` if you want full emulation of a CSC.
-    override : `str`, optional
-        Configuration override to apply if ``initial_state`` is
-        `State.DISABLED` or `State.ENABLED`.
+    settings_to_apply : `str`, optional
+        Settings to apply if ``initial_state`` is `State.DISABLED`
+        or `State.ENABLED`.
     simulation_mode : `int`, optional
         Simulation mode. The only allowed value is 0.
+    schema_path : `str`, `pathlib.Path` or `None`, optional
+        Path to a schema file used to validate configuration files.
+        This is only for testing the deprecated ``schema_path``
+        `ConfigurableCsc` constructor argument;
+        real CSCs should _not_ provide this argument.
+        If not None then `ConfigurableCsc` is called with this,
+        instead of the ``config_schema`` argument.
 
 
     Raises
@@ -109,17 +116,23 @@ class TestCsc(ConfigurableCsc):
         index: int,
         config_dir: typing.Optional[type_hints.PathType] = None,
         initial_state: State = State.STANDBY,
-        override: str = "",
+        settings_to_apply: str = "",
         simulation_mode: int = 0,
+        schema_path: typing.Optional[type_hints.PathType] = None,
     ):
+        if schema_path is not None:
+            config_kwargs: typing.Dict[str, typing.Any] = dict(schema_path=schema_path)
+        else:
+            config_kwargs = dict(config_schema=CONFIG_SCHEMA)
+        print("config_kwargs=", config_kwargs)
         super().__init__(
             name="Test",
             index=index,
-            config_schema=CONFIG_SCHEMA,
             config_dir=config_dir,
             initial_state=initial_state,
-            override=override,
+            settings_to_apply=settings_to_apply,
             simulation_mode=simulation_mode,
+            **config_kwargs,
         )
         self.cmd_wait.allow_multiple_callbacks = True  # type: ignore
         self.config: typing.Optional[types.SimpleNamespace] = None

@@ -236,6 +236,7 @@ class ControllerCommand(read_topic.ReadTopic):
                         ack=sal_enums.SalRetCode.CMD_NOPERM,
                         error=1,
                         result=f"Not authorized: {auth_error}",
+                        truncate_result=True,
                     )
                     self.ack(data, ack)
                     return
@@ -261,6 +262,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 ack=sal_enums.SalRetCode.CMD_ABORTED,
                 error=1,
                 result="Aborted",
+                truncate_result=True,
             )
             self.ack(data, ack)
         except asyncio.TimeoutError:
@@ -269,6 +271,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 ack=sal_enums.SalRetCode.CMD_TIMEOUT,
                 error=1,
                 result="Timeout",
+                truncate_result=True,
             )
             self.ack(data, ack)
         except Exception as e:
@@ -277,6 +280,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 ack=sal_enums.SalRetCode.CMD_FAILED,
                 error=1,
                 result=f"Failed: {e}",
+                truncate_result=True,
             )
             self.ack(data, ack)
             if not isinstance(e, base.ExpectedError):

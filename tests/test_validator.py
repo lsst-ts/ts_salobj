@@ -20,11 +20,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pathlib
-import pytest
 import unittest
 import typing
 
 import jsonschema
+import pytest
 import yaml
 
 from lsst.ts import salobj
@@ -32,43 +32,7 @@ from lsst.ts import salobj
 
 class ValidatorTestCase(unittest.TestCase):
     def setUp(self) -> None:
-        # A version of the CONFIG_SCHEMA with added defaults
-        self.schema: typing.Dict[str, typing.Any] = yaml.safe_load(
-            """
-description: A schema with defaults
-type: object
-properties:
-  string0:
-    type: string
-    default: default value for string0
-  bool0:
-    type: boolean
-    default: true
-  int0:
-    type: integer
-    default: 5
-  float0:
-    type: number
-    default: 3.14
-  intarr0:
-    type: array
-    default: [-1, 1]
-    items:
-      type: integer
-  multi_type:
-    anyOf:
-      - type: integer
-        minimum: 1
-      - type: string
-      - type: "null"
-    default: null
-
-required: [string0, bool0, int0, float0, intarr0, multi_type]
-additionalProperties: false
-"""
-        )
-
-        self.validator = salobj.DefaultingValidator(schema=self.schema)
+        self.validator = salobj.DefaultingValidator(schema=salobj.CONFIG_SCHEMA)
 
     def test_no_config_specified(self) -> None:
         data_dict: typing.Dict[str, typing.Any] = {}

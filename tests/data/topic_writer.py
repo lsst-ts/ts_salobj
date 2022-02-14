@@ -32,7 +32,7 @@ from lsst.ts import salobj
 class TopicWriter(salobj.BaseCsc):
     """A simple CSC that writes samples as fast as possible.
 
-    Uses the Test API. Specify override:
+    Uses the Test API. Specify settingsToApply:
 
     * logLevel: to write logLevel events when enabled
     * arrays: to write arrays telemetry when enabled
@@ -49,7 +49,6 @@ class TopicWriter(salobj.BaseCsc):
     """
 
     valid_simulation_modes = [0]
-    version = "none"
 
     def __init__(self, index):
         print(f"TopicWriter: starting with index={index}")
@@ -61,15 +60,15 @@ class TopicWriter(salobj.BaseCsc):
         pass
 
     async def begin_start(self, data):
-        if data.configurationOverride == "logLevel":
+        if data.settingsToApply == "logLevel":
             self.is_log_level = True
-        elif data.configurationOverride == "arrays":
+        elif data.settingsToApply == "arrays":
             self.is_log_level = False
         else:
             raise salobj.ExpectedError(
-                f"data.configurationOverride={data.configurationOverride} must be logLevel or arrays"
+                f"data.settingsToApply={data.settingsToApply} must be logLevel or arrays"
             )
-        print(f"TopicWriter: writing {data.configurationOverride}")
+        print(f"TopicWriter: writing {data.settingsToApply}")
 
     async def do_setArrays(self, data):
         raise salobj.ExpectedError("Not supported")

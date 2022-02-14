@@ -101,12 +101,20 @@ Most CSCs can be configured.
         Set `True` to allow your CSC to be started from the command line in a state other than ``default_initial_state``.
         If `True`:
 
-        * `BaseCsc.amain` adds command-line arguments ``--state`` and, if your CSC is configurable, ``--override``.
-        * If your CSC is configurable, then you *must* add constructor argument ``override`` to your CSC and pass it by name to ``super().__init__``.
-        * Note: we recommend the ``override`` constructor argument for *all* configurable CSCs,
+        * `BaseCsc.amain` adds command-line arguments ``--state`` and, if your CSC is configurable, ``--settings``.
+        * If your CSC is configurable, then you *must* add constructor argument ``settings_to_apply`` to your CSC and pass it by name to ``super().__init__``.
+        * Note: we recommend the ``settings_to_apply`` constructor argument for *all* configurable CSCs,
           because it is useful for unit tests, even if ``enable_cmdline_state`` is `False`.
 
         The default is `False` because CSCs should start in ``default_initial_state`` unless you have a good reason to do otherwise.
+    * ``require_settings`` (bool): set True if and only if all of the following apply:
+
+      * Your CSC is configurable.
+      * Your CSC does not have a usable default configuration (this is rare).
+      * ``enable_cmdline_state`` is True.
+
+      `True` makes the ``--settings`` command-line argument required if ``--state`` is specified as ``disabled`` or ``enabled``.
+      The default is `False`.
     * ``valid_simulation_modes`` (list of int): a list or tuple of valid simulation modes:
 
         * If your CSC does not support simulation then set ``valid_simulation_modes = [0]``.
@@ -160,15 +168,16 @@ Most CSCs can be configured.
       See `topics.ReadTopic.allow_multiple_callbacks` for details and limitations of this attribute.
     * If a ``do_<name>`` method must perform slow synchronous operations, such as CPU-heavy tasks or blocking I/O, make the method asynchronous and call the synchronous operation in a thread using the ``run_in_executor`` method of the event loop.
     * ``do_`` is a reserved prefix: all ``do_<name>`` attributes must match a command name and must be callable.
-    * It is strongly discouraged to allow modifying configuration in any way other than the ``start`` command, because that makes it difficult to reproduce the current configuration and determine how it got that way.
+    * It is strongly discouraged to implement the ``setValue`` command or otherwise allow modifying configuration in any way other than the ``start`` command, because that makes it difficult to reproduce the current configuration and determine how it got that way.
+      However, if your CSC does allow this, then you are responsible for ouputting the ``appliedSettingsMatchStart`` event with ``appliedSettingsMatchStartIsTrue=False`` when appropriate.
 
 * Set the following event data in your constructor, if necessary:
 
     * If your CSC has individually versioned subsystems, then call ``self.evt_softwareVersions.set(subsystemVersions=...)``.
-    * If your CSC outputs detailed configuration information (and all configurable CSCs should do that), then call:
-      ``self.evt_configurationApplied.set(otherInfo=...)`` with a comma-separated list of the names of those events,
-      each without the ``logevent_`` prefix.
-    * Note: for both of these events call ``set`` not ``set_put``, because the parent class adds more information before outputting the event.
+    * If your CSC outputs settings information in additional events beyond ``settingsApplied`` then call:
+      ``self.evt_settingsApplied.set(otherSettingsEvents=...)`` with a comma-separated list of the names of those events,
+      without the ``logevent_`` prefix.
+    * Note: for both of these events call ``set`` not ``set_put``, because the parent class adds more information and then outputs the event.
     
 * Override `BaseCsc.handle_summary_state`  to handle tasks such as:
 

@@ -23,20 +23,22 @@ __all__ = ["ConfigurableCsc"]
 
 import abc
 import argparse
-import asyncio
 import os
 import pathlib
 import subprocess
 import types
 import typing
+import warnings
 
 import yaml
 
-from lsst.ts import utils
 from . import base
 from . import type_hints
 from .base_csc import BaseCsc, State
-from .validator import StandardValidator
+from .validator import DefaultingValidator
+
+# maximum length of settingsVersion.recommendedSettingsVersion field
+MAX_LABELS_LEN = 256
 
 
 class ConfigurableCsc(BaseCsc, abc.ABC):
@@ -48,8 +50,17 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         Name of SAL component.
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
-    config_schema : `dict`
+    schema_path : `str`, `pathlib.Path` or `None`, optional
+        Path to a schema file used to validate configuration files.
+        This is deprecated; new code should specify ``config_schema`` instead.
+        The recommended path is ``<package_root>/"schema"/f"{name}.yaml"``
+        for example:
+
+            schema_path = pathlib.Path(__file__).resolve().parents[4] \
+                / "schema" / f"{name}.yaml"
+    config_schema : `dict` or None, optional
         Configuration schema, as a dict in jsonschema format.
+        Exactly one of ``schema_path`` or ``config_schema`` must not be None.
     config_dir : `str`, optional
         Directory of configuration files, or None for the standard
         configuration directory (obtained from `_get_default_config_dir`).
@@ -57,9 +68,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     initial_state : `State` or `int`, optional
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
-    override : `str`, optional
-        Configuration override file to use if ``initial_state`` is
-        `State.DISABLED` or `State.ENABLED`.
+    settings_to_apply : `str`, optional
+        Settings to apply if ``initial_state`` is `State.DISABLED`
+        or `State.ENABLED`.
     simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
 
@@ -67,11 +78,12 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     ------
     ValueError
         If ``config_dir`` is not a directory or ``initial_state`` is invalid.
+    ValueError
+        If ``schema_path`` and ``config_schema`` are both None,
+        or if neither is None.
     salobj.ExpectedError
         If ``simulation_mode`` is invalid.
         Note: you will only see this error if you await `start_task`.
-    RuntimeError
-        If the environment variable ``LSST_SITE`` is not set.
 
     Attributes
     ----------
@@ -83,9 +95,6 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     schema_version : `str`
         Configuration schema version, as specified in the schema as the
         final word of the ``title``. Used to find the ``config_dir``.
-    site : `str`
-        The value of the ``LSST_SITE`` environment variable, e.g. "summit".
-        Used to select the correct configuration files.
 
     Notes
     -----
@@ -94,11 +103,11 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
     Configuration is handled by the ``start`` command, as follows:
 
-    * The ``override`` field specifies a path to a configuration file
+    * The ``settingsToApply`` field specifies a path to a configuration file
       found in the package specified by ``config_pkg`` in a subdirectory
       with the name of this SAL component (e.g. Test or ATDomeTrajectory).
     * The configuration file is validated against the schema specified
-      by specified ``config_schema``.
+      by specified ``schema_path``.
       This includes setting default values from the schema and validating
       the result again (in case the default values are invalid).
     * The validated configuration is converted to a struct-like object
@@ -125,26 +134,38 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         self,
         name: str,
         index: typing.Optional[int],
-        config_schema: typing.Dict[str, typing.Any],
+        schema_path: typing.Union[str, pathlib.Path, None] = None,
+        config_schema: typing.Optional[typing.Dict[str, typing.Any]] = None,
         config_dir: typing.Union[str, pathlib.Path, None] = None,
         initial_state: State = State.STANDBY,
-        override: str = "",
+        settings_to_apply: str = "",
         simulation_mode: int = 0,
     ) -> None:
-        self.site = os.environ.get("LSST_SITE")
-        if self.site is None:
-            raise RuntimeError("Environment variable $LSST_SITE not defined.")
-
         try:
+            if (schema_path is None) == (config_schema is None):
+                raise ValueError(
+                    "Exactly one of schema_path or config_schema must not be None"
+                )
+            if schema_path is not None:
+                warnings.warn(
+                    "The schema_path argument is deprecated. "
+                    "Please specify config_schema instead.",
+                    DeprecationWarning,
+                )
+                with open(schema_path, "r") as f:
+                    config_schema = yaml.safe_load(f.read())
             assert config_schema is not None  # Make mypy happy
-            self.config_validator = StandardValidator(schema=config_schema)
+            self.config_validator = DefaultingValidator(schema=config_schema)
             title = config_schema["title"]
             name_version = title.rsplit(" ", 1)
             if len(name_version) != 2 or not name_version[1].startswith("v"):
                 raise ValueError(f"Schema title {title!r} must end with ' v<version>'")
             self.schema_version = name_version[1]
+
+        except OSError as e:
+            raise ValueError(f"Could not read schema {schema_path}: {e}")
         except Exception as e:
-            raise ValueError(f"Schema {config_schema} invalid: {e!r}") from e
+            raise ValueError(f"Schema {schema_path} invalid") from e
 
         if config_dir is None:
             config_dir = self._get_default_config_dir(name)
@@ -157,27 +178,14 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
 
         self.config_dir = config_dir
-        # Interval between reading the config dir (seconds)
-        self.read_config_dir_interval = 1
-        self.read_config_dir_task = utils.make_done_future()
 
         super().__init__(
             name=name,
             index=index,
             initial_state=initial_state,
-            override=override,
+            settings_to_apply=settings_to_apply,
             simulation_mode=simulation_mode,
         )
-
-        # Set static fields of the generic configuration events.
-        # Neither event is complete, so don't put the information yet.
-        for evt in (
-            self.evt_configurationsAvailable,  # type: ignore
-            self.evt_configurationApplied,  # type: ignore
-        ):
-            evt.set(  # type: ignore
-                schemaVersion=self.schema_version, url=self.config_dir.as_uri()
-            )
 
     @property
     def config_dir(self) -> pathlib.Path:
@@ -209,121 +217,58 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
         self._config_dir = config_dir
 
-    @classmethod
-    def read_config_files(
-        cls,
-        config_validator: StandardValidator,
-        config_dir: pathlib.Path,
-        files_to_read: typing.List[str],
-        git_hash: str = "",
-    ) -> types.SimpleNamespace:
-        """Read a set of configuration files and return the validated config.
+    def read_config_dir(self) -> None:
+        """Set ``self.config_label_dict`` and output ``evt_settingVersions``.
 
-        Parameters
-        ----------
-        config_validator : jsonschema validator
-            Schema validator for configuration.
-        config_dir : pathlib.Path
-            Path to config files.
-        files_to_read : List [str]
-            Names of files to read, with .yaml suffix.
-            Empty names are ignored (a useful feature for BaseConfigTestCase).
-            The files are read in order, with each later file
-            overriding values that have been accumulated so far.
-        git_hash : str, optional
-            Git hash to use for the files. "" if current.
+        Set ``self.config_label_dict`` from ``self.config_dir/_labels.yaml``.
+        Output the ``settingVersions`` event (if changed) as follows:
 
-        Returns
-        -------
-        types.SimpleNamespace
-            The validated config as a simple namespace.
-
-        Raises
-        ------
-        ExpectedError
-            If the specified configuration files cannot be found,
-            cannot be parsed as yaml dicts, or produce an invalid configuration
-            (one that does not match the schema).
+        * ``recommendedSettingsLabels`` is a comma-separated list of
+          labels in ``self.config_label_dict``, truncated by omitting labels
+          if necessary.
+        * ``recommendedSettingsVersion`` is derived from git information for
+          ``self.config_dir``, if it is a git repository, else "".
         """
-        config_dict = {}
-        for filename in files_to_read:
-            if not filename:
-                continue
-            filepath = config_dir / filename
-            if not filepath.is_file():
-                raise base.ExpectedError(f"Config file '{filepath}' does not exist")
-            if git_hash:
-                try:
-                    # git show must run in the target directory
-                    config_raw_data: typing.Union[str, bytes] = subprocess.check_output(
-                        args=["git", "show", f"{git_hash}:./{filename}"],
-                        stderr=subprocess.STDOUT,
-                        cwd=config_dir,
-                    )
-                except subprocess.CalledProcessError as e:
-                    raise base.ExpectedError(
-                        f"Could not read config file {filepath} with git hash {git_hash}: {e.output}"
-                    )
-            else:
-                with open(filepath, "r") as f:
-                    config_raw_data = f.read()
-            try:
-                config_data = yaml.safe_load(config_raw_data)
-            except Exception as e:
-                raise base.ExpectedError(
-                    f"Could not parse data in {filepath} as a dict: {e!r}"
-                )
-            if config_data is not None:
-                config_dict.update(config_data)
+        self.config_label_dict = self._make_config_label_dict()
 
-        # Delete metadata, if present (it is not part of the schema)
-        if config_dict:
-            config_dict.pop("metadata", None)
+        labels = list(self.config_label_dict.keys())
+        labels_str = ",".join(labels)
+        if len(labels_str) > MAX_LABELS_LEN:
+            nitems = len(labels)
+            nitems_to_drop = len(labels_str[MAX_LABELS_LEN:].split(","))
+            self.log.warning(
+                f"Config labels do not all fit into {MAX_LABELS_LEN} characters; "
+                f"dropping {nitems_to_drop} of {nitems} items"
+            )
+            # use max just in case; nitems_to_drop should always be <= nitems
+            labels_str = ",".join(labels[0 : max(0, nitems - nitems_to_drop)])
 
-        try:
-            config_validator.validate(config_dict)
-        except Exception as e:
-            raise base.ExpectedError(f"Configuration failed validation: {e!r}")
+        settings_version = self._get_settings_version()
 
-        return types.SimpleNamespace(**config_dict)
+        self.evt_settingVersions.set_put(  # type: ignore
+            recommendedSettingsLabels=",".join(labels),
+            recommendedSettingsVersion=settings_version,
+            settingsUrl=f"{self.config_dir.as_uri()}",
+        )
 
-    async def read_config_dir(self) -> None:
-        """Read the config dir and put configurationsAvailable if changed.
+    async def start(self) -> None:
+        """Finish constructing the CSC.
 
-        Output the ``configurationsAvailable`` event (if changed),
-        after updating the ``overrides`` and ``version`` fields.
-        Also update the ``version`` field of ``evt_configurationApplied``,
-        in preparation for the next time the event is output.
+        * If ``initial_summary_state`` is `State.DISABLED` or `State.ENABLED`
+          then call `configure`.
+        * Run `BaseCsc.start`
         """
-        override_filenames = sorted(
-            filepath.name
-            for filepath in self.config_dir.glob("*")
-            if filepath.name.endswith(".yaml") and not filepath.name.startswith("_")
-        )
+        # If starting up in Enabled or Disabled state then the CSC must be
+        # configured now, because it won't be configured by
+        # the start command (do_start method).
+        if self.disabled_or_enabled:
+            default_config_dict = self.config_validator.validate(None)
+            default_config = types.SimpleNamespace(**default_config_dict)
+            await self.configure(config=default_config)
+        await super().start()
 
-        configs_version = self._get_configs_version()
-        self.evt_configurationsAvailable.set_put(  # type: ignore
-            overrides=",".join(override_filenames),
-            version=configs_version,
-        )
-        # Update the version field of configurationApplied, but don't put
-        # the event, because we don't have all the info we need.
-        self.evt_configurationApplied.set(  # type: ignore
-            version=configs_version,
-        )
-
-    async def read_config_dir_loop(self) -> None:
-        while self.summary_state == State.STANDBY:
-            await self.read_config_dir()
-            await asyncio.sleep(self.read_config_dir_interval)
-
-    async def close_tasks(self) -> None:
-        """Shut down pending tasks. Called by `close`."""
-        self.read_config_dir_task.cancel()
-        await super().close_tasks()
-
-    def _get_configs_version(self) -> str:
-        """Get data for evt_configurationsAvailable.version
+    def _get_settings_version(self) -> str:
+        """Get data for evt_settingVersions.recommendedSettingsVersion.
 
         If config_dir is a git repository (as it should be)
         then return detailed git information. Otherwise return "".
@@ -399,9 +344,11 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
     def report_summary_state(self) -> None:
         super().report_summary_state()
-        self.read_config_dir_task.cancel()
         if self.summary_state == State.STANDBY:
-            self.read_config_dir_task = asyncio.create_task(self.read_config_dir_loop())
+            try:
+                self.read_config_dir()
+            except Exception as e:
+                self.log.exception(e)
 
     async def begin_start(self, data: type_hints.BaseDdsDataType) -> None:
         """Begin do_start; configure the CSC before changing state.
@@ -413,48 +360,79 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
         Notes
         -----
-        The ``override`` field must be one of:
+        The ``settingsToApply`` field must be one of:
 
         * The name of a config label or config file
         * The name and version of a config file, formatted as
           ``<file_name>:<version>``, where the version is a git reference,
           such as a git tag or commit hash. This form does not support labels.
         """
-        self.read_config_dir_task.cancel()
-        # Get the most current information
-        await self.read_config_dir()
+        # Get the latest info about the configurations available
+        self.read_config_dir()
 
-        # Get git hash, if relevant
-        override: str = data.configurationOverride  # type: ignore
-        (override_filename, _, git_hash) = override.partition(":")
-
-        # List of (config filename, must exist)
-        files_to_read = ["_init.yaml"]
-        site_filename = f"_{self.site}.yaml"
-        if (self.config_dir / site_filename).is_file():
-            files_to_read.append(site_filename)
-        if override_filename:
-            if override_filename.startswith("_"):
+        # Read the configuration
+        config_name = data.settingsToApply  # type: ignore
+        config_file_path = ""
+        if config_name:
+            name_version = config_name.split(":")
+            if len(name_version) == 2:
+                config_file_name, githash = name_version
+                config_file_path = self.config_dir / config_file_name
+                try:
+                    self.log.debug(
+                        f"config_file_path={config_file_path}; "
+                        f"githash={githash}; config_dir={self.config_dir}"
+                    )
+                    config_yaml: typing.Union[str, bytes] = subprocess.check_output(
+                        args=["git", "show", f"{githash}:./{config_file_name}"],
+                        stderr=subprocess.STDOUT,
+                        cwd=self.config_dir,
+                    )
+                except subprocess.CalledProcessError as e:
+                    raise base.ExpectedError(
+                        f"Could not read config {config_name}: {e.output}"
+                    )
+            elif len(name_version) == 1:
+                githash = (
+                    self.evt_settingVersions.data.recommendedSettingsVersion  # type: ignore
+                )
+                config_file_name = self.config_label_dict.get(config_name, config_name)
+                config_file_path = self.config_dir / config_file_name
+                try:
+                    with open(config_file_path, "r") as f:
+                        config_yaml = f.read()
+                except OSError as e:
+                    raise base.ExpectedError(
+                        f"Cannot read configuration file {config_file_path}: {e}"
+                    )
+            else:
                 raise base.ExpectedError(
-                    f"configurationOverride filename={override_filename!r} must not start with '_'"
+                    f"Could not parse {config_name} as name or name:version"
                 )
 
-            files_to_read.append(override_filename)
-
-        self.log.debug(
-            f"Reading configuration from config_dir{self.config_dir}, "
-            f"git_hash={git_hash!r}, "
-            f"files={files_to_read}"
-        )
-        config = self.read_config_files(
-            config_validator=self.config_validator,
-            config_dir=self.config_dir,
-            files_to_read=files_to_read,
-            git_hash=git_hash,
-        )
+            user_config_dict = yaml.safe_load(config_yaml)
+            # Delete metadata, if present
+            if user_config_dict:
+                user_config_dict.pop("metadata", None)
+        else:
+            user_config_dict = {}
+            config_file_name = ""
+            githash = (
+                self.evt_settingVersions.data.recommendedSettingsVersion  # type: ignore
+            )
+        try:
+            full_config_dict = self.config_validator.validate(user_config_dict)
+        except Exception as e:
+            raise base.ExpectedError(
+                f"config {config_file_path} failed validation: {e}"
+            )
+        config = types.SimpleNamespace(**full_config_dict)
         await self.configure(config)
-        self.evt_configurationApplied.set_put(  # type: ignore
-            configurations=",".join(files_to_read)
+        self.evt_settingsApplied.set_put(  # type: ignore
+            settingsVersion=f"{config_file_name}:{githash}"
+        )
+        self.evt_appliedSettingsMatchStart.set_put(  # type: ignore
+            appliedSettingsMatchStartIsTrue=True, force_output=True
         )
 
     @abc.abstractmethod
@@ -464,7 +442,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         Parameters
         ----------
         config : `object`
-            The configuration, as described by the config schema,
+            The configuration as described by the schema at ``schema_path``,
             as a struct-like object.
 
         Notes
@@ -511,7 +489,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
         For example
 
-            Test/v2
+            Test/v1
         """
         config_pkg = self.get_config_pkg()
         config_env_var_name = f"{config_pkg.upper()}_DIR"
@@ -540,14 +518,20 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     def add_arguments(cls, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "--configdir",
-            help="directory containing configuration files "
-            "(only specify if you are sure the default will not suffice)",
+            help="directory containing configuration files for the start command.",
         )
         if cls.enable_cmdline_state:
+            settings_help = "settings to apply if --state is disabled or enabled"
+            if cls.require_settings:
+                settings_help += "; required if --state is disabled or enabled"
+                settings_default = None
+            else:
+                settings_default = ""
             parser.add_argument(
-                "--override",
-                help="override to apply if --state is disabled or enabled (ignored otherwise)",
-                default="",
+                "--settings",
+                help=settings_help,
+                default=settings_default,
+                dest="settings_to_apply",
             )
 
     @classmethod
@@ -555,5 +539,3 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         cls, args: argparse.Namespace, kwargs: typing.Dict[str, typing.Any]
     ) -> None:
         kwargs["config_dir"] = args.configdir
-        if hasattr(args, "override"):
-            kwargs["override"] = args.override

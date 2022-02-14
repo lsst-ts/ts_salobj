@@ -30,20 +30,25 @@ CONFIG_SCHEMA: typing.Dict[str, typing.Any] = yaml.safe_load(
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_salobj/blob/main/python/lsst/ts/salobj/config_schema.py
 # title must end with one or more spaces followed by the schema version, which must begin with "v"
-title: Test v2
+title: Test v1
 description: Configuration for the TestCsc
 type: object
 properties:
   string0:
     type: string
+    default: default value for string0
   bool0:
     type: boolean
+    default: true
   int0:
     type: integer
+    default: 5
   float0:
     type: number
+    default: 3.14
   intarr0:
     type: array
+    default: [-1, 1]
     items:
       type: integer
   multi_type:
@@ -52,6 +57,7 @@ properties:
         minimum: 1
       - type: string
       - type: "null"
+    default: null
 
 required: [string0, bool0, int0, float0, intarr0, multi_type]
 additionalProperties: false
