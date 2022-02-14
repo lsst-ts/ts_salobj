@@ -48,7 +48,7 @@ To upload data:
 * Call `AsyncS3Bucket.make_key` to construct a key.
 * Call `AsyncS3Bucket.upload` to upload the data. See the doc string for details on getting your data into the required format.
 * Fall back to writing your data to local disk if S3 upload fails.
-* Call ``evt_largeFileObjectAvailable.set_put`` to report the upload.
+* Call ``evt_largeFileObjectAvailable.set_write`` to report the upload.
 
 See ts_FiberSpectrograph for a simple example.
 

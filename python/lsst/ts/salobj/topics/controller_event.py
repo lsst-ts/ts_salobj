@@ -24,8 +24,8 @@ from __future__ import annotations
 __all__ = ["ControllerEvent"]
 
 import typing
+import warnings
 
-from .. import type_hints
 from . import write_topic
 
 if typing.TYPE_CHECKING:
@@ -43,34 +43,15 @@ class ControllerEvent(write_topic.WriteTopic):
         Event topic name
     """
 
+    default_force_output = False
+
     def __init__(self, salinfo: SalInfo, name: str) -> None:
         super().__init__(salinfo=salinfo, name=name, sal_prefix="logevent_")
 
-    def put(
-        self,
-        data: typing.Optional[type_hints.BaseDdsDataType] = None,
-        priority: int = 0,
-    ) -> None:
-        """Output this topic.
-
-        Parameters
-        ----------
-        data : ``self.DataType`` or `None`
-            New message data to replace ``self.data``, if any.
-        priority : `int`, optional
-            Priority; used to set the priority field of events.
-            Ignored for commands and telemetry.
-
-        Raises
-        ------
-        TypeError
-            If ``data`` is not None and not an instance of `DataType`.
-        """
-        self.data.priority = priority  # type: ignore
-        super().put(data)
-
     def set_put(self, *, force_output: bool = False, **kwargs: typing.Any) -> bool:
-        """Set zero or more fields of ``self.data`` and put if changed
+        """DEPRECATED: call write instead.
+
+        Set zero or more fields of ``self.data`` and put if changed
         or if ``force_output`` true.
 
         The data is put if it has never been set (`has_data` False), or this
@@ -97,6 +78,7 @@ class ControllerEvent(write_topic.WriteTopic):
         ValueError
             If the field cannot be set to the specified value.
         """
+        warnings.warn("Deprecated; use write instead", DeprecationWarning)
         did_change = self.set(**kwargs)
         do_output = did_change or force_output
         if do_output:

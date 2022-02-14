@@ -694,10 +694,8 @@ class ReadTopic(BaseTopic):
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
-    def _queue_data(
-        self,
-        data_list: typing.Collection[type_hints.BaseDdsDataType],
-        loop: typing.Optional[asyncio.AbstractEventLoop],
+    async def _queue_data(
+        self, data_list: typing.Collection[type_hints.BaseDdsDataType]
     ) -> None:
         """Queue multiple one or more messages.
 
@@ -705,11 +703,6 @@ class ReadTopic(BaseTopic):
         ----------
         data_list : typing.Collection[type_hints.BaseDdsDataType]
             DDS messages to be queueued.
-        loop : `asyncio.AbstractEventLoop` or `None`
-            Foreground asyncio loop.
-            Specify the loop if and only if running from a background thread.
-            If running from the main asyncio loop specify ``loop = None``
-            (this is done to read historical data while starting).
 
         Also update ``self._current_data`` and fire `self._next_task`
         (if pending).
@@ -717,16 +710,11 @@ class ReadTopic(BaseTopic):
         if not data_list:
             return
         for data in data_list:
-            self._queue_one_item(data)
+            await self._queue_one_item(data)
         self._current_data = data
-        if loop is not None and loop.is_running():
-            # Reading messages in a background thread.
-            loop.call_soon_threadsafe(self._report_next)
-        else:
-            # Reading messages in the main thread.
-            self._report_next()
+        self._report_next()
 
-    def _queue_one_item(self, data: type_hints.BaseDdsDataType) -> None:
+    async def _queue_one_item(self, data: type_hints.BaseDdsDataType) -> None:
         """Add a single message to the Python queue.
 
         Subclasses may override this to modify the message before queuing.

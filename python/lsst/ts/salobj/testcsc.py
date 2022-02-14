@@ -141,33 +141,29 @@ class TestCsc(ConfigurableCsc):
             ret[field] = getattr(data, field)
         return ret
 
-    def do_setArrays(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setArrays(self, data: type_hints.BaseDdsDataType) -> None:
         """Execute the setArrays command."""
         self.assert_enabled()
         self.log.info("executing setArrays")
         data_dict = self.as_dict(data, self.arrays_fields)
-        self.evt_arrays.set(**data_dict)  # type: ignore
-        self.tel_arrays.set(**data_dict)  # type: ignore
-        self.evt_arrays.put()  # type: ignore
-        self.tel_arrays.put()  # type: ignore
+        await self.evt_arrays.set_write(**data_dict)  # type: ignore
+        await self.tel_arrays.set_write(**data_dict)  # type: ignore
 
-    def do_setScalars(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setScalars(self, data: type_hints.BaseDdsDataType) -> None:
         """Execute the setScalars command."""
         self.assert_enabled()
         self.log.info("executing setScalars")
         data_dict = self.as_dict(data, self.scalars_fields)
-        self.evt_scalars.set(**data_dict)  # type: ignore
-        self.tel_scalars.set(**data_dict)  # type: ignore
-        self.evt_scalars.put()  # type: ignore
-        self.tel_scalars.put()  # type: ignore
+        await self.evt_scalars.set_write(**data_dict)  # type: ignore
+        await self.tel_scalars.set_write(**data_dict)  # type: ignore
 
-    def do_fault(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_fault(self, data: type_hints.BaseDdsDataType) -> None:
         """Execute the fault command.
 
         Change the summary state to State.FAULT
         """
         self.log.warning("executing the fault command")
-        self.fault(code=1, report="executing the fault command")
+        await self.fault(code=1, report="executing the fault command")
 
     async def do_wait(self, data: type_hints.BaseDdsDataType) -> None:
         """Execute the wait command by waiting for the specified duration.
@@ -179,7 +175,7 @@ class TestCsc(ConfigurableCsc):
         self.assert_enabled()
         duration: float = data.duration  # type: ignore
         if duration >= 0:
-            self.cmd_wait.ack_in_progress(data, timeout=duration)  # type: ignore
+            await self.cmd_wait.ack_in_progress(data, timeout=duration)  # type: ignore
         await asyncio.sleep(abs(duration))
 
     @property
@@ -253,10 +249,14 @@ class TestCsc(ConfigurableCsc):
         """Assert that two arrays data structs are equal.
 
         The types need not match; each struct can be command, event
-        or telemetry data.
+        or telemetry data, or a dict of field: value.
         """
         # use reversed so boolean0 is not compared first,
         # as a discrepancy there is harder to interpret
+        if isinstance(arrays1, dict):
+            arrays1 = types.SimpleNamespace(**arrays1)
+        if isinstance(arrays2, dict):
+            arrays2 = types.SimpleNamespace(**arrays2)
         for field in reversed(self.arrays_fields):
             field_arr1 = getattr(arrays1, field)
             field_arr2 = getattr(arrays2, field)
@@ -272,8 +272,13 @@ class TestCsc(ConfigurableCsc):
         """Assert that two scalars data structs are equal.
 
         The types need not match; each struct can be command, event
-        or telemetry data.
+        or telemetry data, or a dict of field: value.
         """
+        if isinstance(scalars1, dict):
+            scalars1 = types.SimpleNamespace(**scalars1)
+        if isinstance(scalars2, dict):
+            scalars2 = types.SimpleNamespace(**scalars2)
+
         # use reversed so boolean0 is not compared first,
         # as a discrepancy there is harder to interpret
         for field in reversed(self.scalars_fields):
@@ -287,66 +292,43 @@ class TestCsc(ConfigurableCsc):
                     f"scalars1.{field} = {field_val1} != {field_val2} = scalars2.{field}"
                 )
 
-    def make_random_cmd_arrays(self) -> typing.Any:
-        return self._make_random_arrays(dtype=self.cmd_setArrays.DataType)  # type: ignore
-
-    def make_random_evt_arrays(self) -> typing.Any:
-        return self._make_random_arrays(dtype=self.evt_arrays.DataType)  # type: ignore
-
-    def make_random_tel_arrays(self) -> typing.Any:
-        return self._make_random_arrays(dtype=self.tel_arrays.DataType)  # type: ignore
-
-    def make_random_cmd_scalars(self) -> typing.Any:
-        return self._make_random_scalars(dtype=self.cmd_setScalars.DataType)  # type: ignore
-
-    def make_random_evt_scalars(self) -> typing.Any:
-        return self._make_random_scalars(dtype=self.evt_scalars.DataType)  # type: ignore
-
-    def make_random_tel_scalars(self) -> typing.Any:
-        return self._make_random_scalars(dtype=self.tel_scalars.DataType)  # type: ignore
-
-    def _make_random_arrays(self, dtype: typing.Any) -> typing.Any:
-        """Make random arrays data using numpy.random."""
-        data = dtype()
-        nelts = len(data.boolean0)
-        data.boolean0 = np.random.choice([False, True], size=(nelts,))
+    def make_random_arrays_dict(self) -> typing.Dict[str, typing.Any]:
+        """Make a random arrays data dict."""
+        arrays_dict: typing.Dict[str, typing.Any] = dict()
+        blank_arrays_data = self.evt_arrays.DataType()  # type: ignore
+        nelts = len(blank_arrays_data.boolean0)
+        arrays_dict["boolean0"] = np.random.choice([False, True], size=(nelts,))
         for field in self.int_fields:
             field_type = self.field_type[field]
-            nelts = len(getattr(data, field))
+            nelts = len(getattr(blank_arrays_data, field))
             iinfo = np.iinfo(field_type)
-            field_data = np.random.randint(
+            arrays_dict[field] = np.random.randint(
                 iinfo.min, iinfo.max, size=(nelts,), dtype=field_type
             )
-            setattr(data, field, field_data)
         for field in ("float0", "double0"):
             field_type = self.field_type[field]
-            nelts = len(getattr(data, field))
-            field_data = np.array(
+            nelts = len(getattr(blank_arrays_data, field))
+            arrays_dict[field] = np.array(
                 np.random.uniform(-1e5, 1e5, size=(nelts,)), dtype=field_type
             )
-            setattr(data, field, field_data)
-        return data
+        return arrays_dict
 
-    def _make_random_scalars(self, dtype: typing.Any) -> typing.Any:
-        """Make random data for cmd_setScalars using numpy.random."""
-        data = dtype()
-        # Cast from numpy._bool to bool to avoid a numpy warning
-        data.boolean0 = bool(np.random.choice([False, True]))
+    def make_random_scalars_dict(self) -> typing.Dict[str, typing.Any]:
+        """Make a random arrays data dict."""
+        scalars_dict: typing.Dict[str, typing.Any] = dict()
+        scalars_dict["boolean0"] = bool(np.random.choice([False, True]))
         printable_chars = [c for c in string.printable]
-        data.string0 = "".join(np.random.choice(printable_chars, size=(20,)))
+        scalars_dict["string0"] = "".join(np.random.choice(printable_chars, size=(20,)))
         for field in self.int_fields:
             field_type = self.field_type[field]
             iinfo = np.iinfo(field_type)
-            field_data = np.random.randint(iinfo.min, iinfo.max, dtype=field_type)
-            setattr(data, field, field_data)
+            scalars_dict[field] = np.random.randint(
+                iinfo.min, iinfo.max, dtype=field_type
+            )
         for field in ("float0", "double0"):
             field_type = self.field_type[field]
-            field_data = field_type(np.random.uniform(-1e5, 1e5))
-            setattr(data, field, field_data)
-
-        data.float0 = np.array(np.random.uniform(-1e5, 1e5), dtype=np.single)
-        data.double0 = np.random.uniform(-1e5, 1e5)
-        return data
+            scalars_dict[field] = field_type(np.random.uniform(-1e5, 1e5))
+        return scalars_dict
 
     @staticmethod
     def get_config_pkg() -> str:

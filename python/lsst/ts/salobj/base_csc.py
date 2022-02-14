@@ -130,8 +130,7 @@ class BaseCsc(Controller):
           and is available for the subclass to override.
           If this fails then revert ``self.summary_state``, log an error,
           and acknowledge the command as failed.
-        * Call `handle_summary_state` and `report_summary_state`
-          to handle report the new summary state.
+        * Call `handle_summary_state` to handle the new summary state.
           If this fails then leave the summary state updated
           (since the new value *may* have been reported),
           but acknowledge the command as failed.
@@ -205,7 +204,7 @@ class BaseCsc(Controller):
 
         * Call `set_simulation_mode`. If this fails, set ``self.start_task``
           to the exception, call `stop`, making the CSC unusable, and return.
-        * Call `handle_summary_state` and `report_summary_state`.
+        * Call `handle_summary_state`
         * Set ``self.start_task`` done.
         """
         await super().start()
@@ -218,7 +217,7 @@ class BaseCsc(Controller):
         # in hopes that the CSC can still be used. For instance if an
         # override is invalid, the user can specify a different one.
         await self.handle_summary_state()
-        self.report_summary_state()
+        await self._report_summary_state()
         command = None
         if self._initial_state != self.default_initial_state:
             state_transition_dict = make_state_transition_dict()
@@ -247,7 +246,7 @@ class BaseCsc(Controller):
                     f"Failed in start on state transition command {command}; continuing."
                 )
 
-        self.evt_softwareVersions.put()  # type: ignore
+        await self.evt_softwareVersions.write()  # type: ignore
 
     async def close_tasks(self) -> None:
         """Shut down pending tasks. Called by `close`."""
@@ -521,7 +520,7 @@ class BaseCsc(Controller):
         """
         await self.implement_simulation_mode(simulation_mode)
 
-        self.evt_simulationMode.set_put(mode=simulation_mode, force_output=True)  # type: ignore
+        await self.evt_simulationMode.set_write(mode=simulation_mode, force_output=True)  # type: ignore
 
     async def implement_simulation_mode(self, simulation_mode: int) -> None:
         """Implement going into or out of simulation mode.
@@ -653,7 +652,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    def fault(
+    async def fault(
         self, code: typing.Optional[int], report: str, traceback: str = ""
     ) -> None:
         """Enter the fault state and output the ``errorCode`` event.
@@ -678,7 +677,7 @@ class BaseCsc(Controller):
             self._summary_state = State.FAULT
             if code is not None:
                 try:
-                    self.evt_errorCode.set_put(  # type: ignore
+                    await self.evt_errorCode.set_write(  # type: ignore
                         errorCode=code,
                         errorReport=report,
                         traceback=traceback,
@@ -690,16 +689,16 @@ class BaseCsc(Controller):
                     )
                 self.log.critical(f"Fault! errorCode={code}, errorReport={report!r}")
             try:
-                self.report_summary_state()
+                await self._report_summary_state()
             except Exception:
                 self.log.exception(
-                    "report_summary_state failed while going to FAULT; "
+                    "_report_summary_state failed while going to FAULT; "
                     "some code may not have run."
                 )
-                self.evt_summaryState.set_put(  # type: ignore
+                await self.evt_summaryState.set_write(  # type: ignore
                     summaryState=self._summary_state,
                 )  # type: ignore
-            asyncio.create_task(self.handle_summary_state())
+            await self.handle_summary_state()
         finally:
             self._faulting = False
 
@@ -758,16 +757,16 @@ class BaseCsc(Controller):
         """
         pass
 
-    def report_summary_state(self) -> None:
+    async def _report_summary_state(self) -> None:
         """Report a new value for summary_state, including current state.
 
         Subclasses may wish to override for code that depends on
         the current state (rather than the state transition command
         that got it into that state).
         """
-        self.evt_summaryState.set_put(summaryState=self.summary_state)  # type: ignore
+        await self.evt_summaryState.set_write(summaryState=self.summary_state)  # type: ignore
         if self.summary_state is not State.FAULT:
-            self.evt_errorCode.set_put(errorCode=0, errorReport="", traceback="")  # type: ignore
+            await self.evt_errorCode.set_write(errorCode=0, errorReport="", traceback="")  # type: ignore
 
     async def _do_change_state(
         self,
@@ -819,14 +818,14 @@ class BaseCsc(Controller):
             )
             raise
         await self.handle_summary_state()
-        self.report_summary_state()
+        await self._report_summary_state()
 
     async def _heartbeat_loop(self) -> None:
         """Output heartbeat at regular intervals."""
         while True:
             try:
                 await asyncio.sleep(self.heartbeat_interval)
-                self.evt_heartbeat.put()  # type: ignore
+                await self.evt_heartbeat.write()  # type: ignore
             except asyncio.CancelledError:
                 break
             except Exception as e:

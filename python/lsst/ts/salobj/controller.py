@@ -283,8 +283,8 @@ class Controller:
                 await self.close()
                 return
 
-        self.put_log_level()
-        self.evt_authList.set_put(  # type: ignore
+        await self.put_log_level()
+        await self.evt_authList.set_write(  # type: ignore
             authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
             nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
         )
@@ -372,7 +372,7 @@ class Controller:
         """
         pass
 
-    def do_setAuthList(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setAuthList(self, data: type_hints.BaseDdsDataType) -> None:
         """Update the authorization list.
 
         Parameters
@@ -420,13 +420,13 @@ class Controller:
             # No prefix: replace CSCs.
             self.salinfo.non_authorized_cscs = cscs_set
 
-        self.evt_authList.set_put(  # type: ignore
+        await self.evt_authList.set_write(  # type: ignore
             authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
             nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
             force_output=True,
         )
 
-    def do_setLogLevel(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setLogLevel(self, data: type_hints.BaseDdsDataType) -> None:
         """Set logging level.
 
         Parameters
@@ -435,11 +435,11 @@ class Controller:
             Logging level.
         """
         self.log.setLevel(data.level)  # type: ignore
-        self.put_log_level()
+        await self.put_log_level()
 
-    def put_log_level(self) -> None:
+    async def put_log_level(self) -> None:
         """Output the logLevel event."""
-        self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(), force_output=True)  # type: ignore
+        await self.evt_logLevel.set_write(level=self.log.getEffectiveLevel())  # type: ignore
 
     def _assert_do_methods_present(self) -> None:
         """Assert that all needed do_<name> methods are present."""

@@ -302,7 +302,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         )
 
         configs_version = self._get_configs_version()
-        self.evt_configurationsAvailable.set_put(  # type: ignore
+        await self.evt_configurationsAvailable.set_write(  # type: ignore
             overrides=",".join(override_filenames),
             version=configs_version,
         )
@@ -397,8 +397,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
         return output_dict
 
-    def report_summary_state(self) -> None:
-        super().report_summary_state()
+    async def _report_summary_state(self) -> None:
+        await super()._report_summary_state()
         self.read_config_dir_task.cancel()
         if self.summary_state == State.STANDBY:
             self.read_config_dir_task = asyncio.create_task(self.read_config_dir_loop())
@@ -453,7 +453,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             git_hash=git_hash,
         )
         await self.configure(config)
-        self.evt_configurationApplied.set_put(  # type: ignore
+        await self.evt_configurationApplied.set_write(  # type: ignore
             configurations=",".join(files_to_read)
         )
 

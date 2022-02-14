@@ -495,6 +495,7 @@ help  # print this help
             override = args[0]
         else:
             override = ""
+        print("CscCommander.do_start: run the start command")
         await self.remote.cmd_start.set_start(  # type: ignore
             configurationOverride=override,
         )
@@ -586,8 +587,10 @@ help  # print this help
         if command_name == "help":
             self.print_help()
         elif command_method is not None:
+            print(f"run_command running command method {command_method}")
             coro = command_method(args)
         elif command_name in self.command_dict:
+            print("run_command running command from dict")
             coro = self.run_command_topic(command_name, args)
         else:
             self.output(f"Unrecognized command: {command_name}")
