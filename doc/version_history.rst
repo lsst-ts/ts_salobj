@@ -99,7 +99,7 @@ v6.9.0
 * `Remote` and `SalInfo`: improve retrieval of historical data in one special case:
   reading an indexed SAL component using index=0 in the `Remote` (meaning "read data from all indices").
   Formerly there would be only 1 sample of historical data: the most recent sample output with any index.
-  Now retrieve the most recent sample _for each index_, in the order received.
+  Now retrieve the most recent sample *for each index*, in the order received.
 
 Requirements:
 
