@@ -23,7 +23,6 @@ __all__ = [
     "assertAnglesAlmostEqual",
     "assertRaisesAckError",
     "assertRaisesAckTimeoutError",
-    "assert_black_formatted",
     "set_random_lsst_dds_domain",  # Deprecated
     "set_random_lsst_dds_partition_prefix",
     "modify_environ",
@@ -32,14 +31,12 @@ __all__ = [
 import base64
 import contextlib
 import os
-import subprocess
 import typing
 import warnings
 
 import astropy.coordinates
 
 from lsst.ts import utils
-from . import type_hints
 from .base import AckError, AckTimeoutError
 
 
@@ -112,40 +109,6 @@ def assertRaisesAckTimeoutError(
             raise AssertionError(f"ackcmd.ack={e.ackcmd.ack} instead of {ack}")
         if error is not None and e.ackcmd.error != error:
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
-
-
-def assert_black_formatted(dirpath: type_hints.PathType) -> None:
-    """Assert that all Python files in a directory, or any subdirectory
-    of that directory, are formatted with black.
-
-    To call this from a unit test (see ``tests/test_black.py``)::
-
-        salobj.assert_black_formatted(pathlib.Path(__file__).parents[1])
-
-    Parameters
-    ----------
-    dirpath : `pathlib.Path` or `str`
-        Path to root directory; typically this will be the root
-        directory of a package, such as ts_salobj.
-
-    Raises
-    ------
-    AssertionError
-        If any files are not formatted with ``black``.
-
-    Notes
-    -----
-    For this test to exclude ``version.py``, list it in ``.gitignore``
-    as ``version.py``, rather than by the full path
-    (e.g. not `python/lsst/ts/salobj/version.py`).
-    This may be a bug in black 19.10b0.
-    """
-    result = subprocess.run(
-        ["black", "--check", str(dirpath)],
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise AssertionError(result.stderr)
 
 
 def set_random_lsst_dds_partition_prefix() -> None:
