@@ -32,9 +32,10 @@ v7.0.0
   * Make `BaseCsc.fault` async.
   * Make `BaseScript.set_state` async.
   * Make `Controller.put_log_level` async.
-  * Make `topics.ControllerCommand.ack` and ``ack_in_progress`` async and delete deprecated ``ackinProgress``.
+  * Make `topics.ControllerCommand.ack` and ``ack_in_progress`` async and delete deprecated ``ackInProgress``.
   * `TestCsc`: eliminate the topic-type-specific ``make_random_[cmd/evt/tel]_[arrays/scalars]`` methods.
     Use the new ``make_random_[arrays/scalars]_dict`` methods, instead.
+  * Delete ``assert_black_formatted`` and ``tests/test_black.py``; use pytest-black instead.
 
 * New Deprecations:
 
