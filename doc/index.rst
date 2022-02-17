@@ -91,6 +91,7 @@ Python API reference
 
 .. automodapi:: lsst.ts.salobj
     :no-main-docstr:
+    :skip: StandardValidator
 .. automodapi:: lsst.ts.salobj.topics
     :no-main-docstr:
 
