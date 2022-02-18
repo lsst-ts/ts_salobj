@@ -50,7 +50,7 @@ requirements:
     - setuptools
     - setuptools_scm
     - numpy =1.20
-    - astropy =4.1
+    - astropy >=5
     - jsonschema
     - pyyaml
     - boto3
