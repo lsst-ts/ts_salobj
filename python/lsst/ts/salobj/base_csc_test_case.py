@@ -69,6 +69,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         os.environ["LSST_SITE"] = "test"
 
     def tearDown(self) -> None:
+        if not hasattr(self, "original_lsst_site"):
+            raise RuntimeError("Call super().setUp() in your setUp method")
         if self.original_lsst_site is not None:
             os.environ["LSST_SITE"] = self.original_lsst_site
 
@@ -181,6 +183,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                     await self.assert_next_summary_state(state)
 
             yield
+        except Exception as e:
+            print(f"BaseCscTestCase.make_csc failed: {e!r}")
+            raise
         finally:
             for item in items_to_close:
                 await item.close()

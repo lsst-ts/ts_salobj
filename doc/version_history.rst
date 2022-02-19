@@ -26,6 +26,22 @@ v7.0.0
       Subclasses with ``setUp`` and/or ``tearDown`` methods should call ``super().setUp()`` and/or ``super().tearDown()``.
     * If you have unit tests that do not inherit from `BaseCscTestCase` and construct a configurable CSC, you will have to manage the environment variable yourself.
 
+* Breaking Changes:
+
+  * Eliminate `BaseCsc.report_summary_state`. Use ``handle_summary_state`` instead.
+  * Make `BaseCsc.fault` async.
+  * Make `BaseScript.set_state` async.
+  * Make `Controller.put_log_level` async.
+  * Make `topics.ControllerCommand.ack` and ``ack_in_progress`` async and delete deprecated ``ackInProgress``.
+  * `TestCsc`: eliminate the topic-type-specific ``make_random_[cmd/evt/tel]_[arrays/scalars]`` methods.
+    Use the new ``make_random_[arrays/scalars]_dict`` methods, instead.
+  * Delete ``assert_black_formatted`` and ``tests/test_black.py``; use pytest-black instead.
+
+* New Deprecations:
+
+  * `topics.WriteTopic`: deprecated ``put`` and ``set_put``; use new async methods ``write`` and ``set_write``, instead.
+    This is for future-proofing salobj and is the underlying cause of the non-configuration-related breaking changes and deprecations.
+
 * Eliminate the following deprecated features:
 
     * Configuration schema must be defined in code; salobj will no longer read it from a file:
@@ -99,7 +115,7 @@ v6.9.0
 * `Remote` and `SalInfo`: improve retrieval of historical data in one special case:
   reading an indexed SAL component using index=0 in the `Remote` (meaning "read data from all indices").
   Formerly there would be only 1 sample of historical data: the most recent sample output with any index.
-  Now retrieve the most recent sample _for each index_, in the order received.
+  Now retrieve the most recent sample *for each index*, in the order received.
 
 Requirements:
 

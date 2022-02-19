@@ -12,3 +12,5 @@ html_title = project
 html_short_title = project
 # Avoid warning: Could not find tag file _doxygen/doxygen.tag
 doxylink = {}  # type: ignore
+
+intersphinx_mapping["ts_utils"] = ("https://ts-utils.lsst.io", None)  # type: ignore # noqa

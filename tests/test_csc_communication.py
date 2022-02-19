@@ -84,22 +84,22 @@ class FailInReportFaultCsc(salobj.TestCsc):
         self.doraise = doraise
         self.report_first = report_first
 
-    def report_summary_state(self) -> None:
+    async def _report_summary_state(self) -> None:
         if self.report_first:
-            super().report_summary_state()
+            await super()._report_summary_state()
         if self.summary_state == salobj.State.FAULT:
             if self.doraise:
                 raise RuntimeError(
                     "Intentionally raise an exception when going to the FAULT state"
                 )
             else:
-                self.fault(
+                await self.fault(
                     code=10934,
                     report="a report that will be ignored",
                     traceback="a traceback that will be ignored",
                 )
         if not self.report_first:
-            super().report_summary_state()
+            await super()._report_summary_state()
 
 
 class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
@@ -400,7 +400,6 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
         Note that the bin script calls class method ``amain``.
         """
-        salobj.set_random_lsst_dds_partition_prefix()
         index = self.next_index()
         exec_path = pathlib.Path(__file__).parents[1] / "bin" / "run_test_csc.py"
 
@@ -421,7 +420,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         finally:
             if process.returncode is None:
                 process.terminate()
-                warnings.warn("Killed a process that was not properly terminated")
+                warnings.warn(
+                    "Killed a process that was not properly terminated", RuntimeWarning
+                )
 
     async def test_log_level(self) -> None:
         """Test that specifying a log level to make_csc works."""
@@ -453,8 +454,11 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             assert self.remote.tel_arrays.get() is None
 
             # send the setArrays command with random data
-            cmd_data_sent = self.csc.make_random_cmd_arrays()
-            await self.remote.cmd_setArrays.start(cmd_data_sent, timeout=STD_TIMEOUT)
+            arrays_dict = self.csc.make_random_arrays_dict()
+            await self.remote.cmd_setArrays.set_start(
+                **arrays_dict, timeout=STD_TIMEOUT
+            )
+            cmd_data_sent = self.remote.cmd_setArrays.data
 
             # see if new data was broadcast correctly
             evt_data = await self.remote.evt_arrays.next(
@@ -487,8 +491,11 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             assert self.remote.tel_scalars.get() is None
 
             # send the setScalars command with random data
-            cmd_data_sent = self.csc.make_random_cmd_scalars()
-            await self.remote.cmd_setScalars.start(cmd_data_sent, timeout=STD_TIMEOUT)
+            scalars_dict = self.csc.make_random_scalars_dict()
+            await self.remote.cmd_setScalars.set_start(
+                **scalars_dict, timeout=STD_TIMEOUT
+            )
+            cmd_data_sent = self.remote.cmd_setScalars.data
 
             # see if new data is being broadcast correctly
             evt_data = await self.remote.evt_scalars.next(
@@ -558,7 +565,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
             # if an invalid code is specified then errorCode is not output
             # but the CSC stil goes into a FAULT state
-            self.csc.fault(code="not a valid code", report=report)
+            await self.csc.fault(code="not a valid code", report=report)
             await self.assert_next_summary_state(salobj.State.FAULT)
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_errorCode.next(
@@ -574,7 +581,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             # if code is specified then errorReport is output;
             # first test with report and traceback specified,
             # then without, to make sure those values are not cached
-            self.csc.fault(code=code, report=report, traceback=traceback)
+            await self.csc.fault(code=code, report=report, traceback=traceback)
             await self.assert_next_summary_state(salobj.State.FAULT)
             await self.assert_next_sample(
                 topic=self.remote.evt_errorCode,
@@ -594,7 +601,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
-            self.csc.fault(code=code, report="")
+            await self.csc.fault(code=code, report="")
             await self.assert_next_summary_state(salobj.State.FAULT)
             await self.assert_next_sample(
                 topic=self.remote.evt_errorCode,
@@ -629,7 +636,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     code = 51
                     report = "Report for error code"
                     traceback = "Traceback for error code"
-                    csc.fault(code=code, report=report, traceback=traceback)
+                    await csc.fault(code=code, report=report, traceback=traceback)
 
                     await self.assert_next_summary_state(
                         salobj.State.FAULT, remote=remote

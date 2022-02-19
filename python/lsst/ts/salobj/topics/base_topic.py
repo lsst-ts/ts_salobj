@@ -133,26 +133,9 @@ class BaseTopic(abc.ABC):
         -----
         The preferred way to write a message for a topic is:
 
-        * `RemoteCommand.set_start` to start a command.
-        * `CommandEvent.set_put` to write an event.
-        * `CommandTelemetry.set_put` to write a telemetry message.
-
-        However, it is also possible to use `DataType` to create a message,
-        then write, it as separate operations. For example,
-        assuming we have a `Remote` for SAL component "Test"::
-
-            # The preferred way to issue a command:
-            await = remote.cmd_wait.set_put(duration=2, timeout=5)
-
-            # But an alternative is to first create the command,
-            # then send it, as two separate operations:
-            message = remote.cmd_wait.DataType(duration=2)
-            await remote.cmd_wait.start(message, timeout=5)
-
-            # Or, even more verbosely:
-            message = remote.cmd_wait.DataType()
-            message.duration = 2
-            await remote.cmd_wait.start(message, timeout=5)
+        * `RemoteCommand.start` to start a command.
+        * `CommandEvent.write` to write an event.
+        * `CommandTelemetry.write` to write a telemetry message.
         """
         return self._type.topic_data_class
 

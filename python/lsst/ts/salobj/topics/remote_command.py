@@ -272,6 +272,7 @@ class RemoteCommand(write_topic.WriteTopic):
         min_seq_num = name_ind * seq_num_increment + 1
         max_seq_num = min_seq_num + seq_num_increment - 1
         initial_seq_num = random.randint(min_seq_num, max_seq_num)
+        self._in_start = False
         super().__init__(
             salinfo=salinfo,
             name=name,
@@ -368,7 +369,8 @@ class RemoteCommand(write_topic.WriteTopic):
         -----
         If one or more fields cannot be set, the data may be partially updated.
         """
-        self.data = self.DataType()
+        if not self._in_start:
+            self.data = self.DataType()
         return super().set(**kwargs)
 
     async def set_start(
@@ -468,8 +470,15 @@ class RemoteCommand(write_topic.WriteTopic):
         self.salinfo.assert_started()
         if data is not None:
             self.data = data
-        self.put()
-        seq_num = self.data.private_seqNum
+        # else use the existing data, since it may have been set
+        # via a call to "set"
+
+        try:
+            self._in_start = True
+            data_written = await super().write()
+        finally:
+            self._in_start = False
+        seq_num = data_written.private_seqNum
         if seq_num in self.salinfo._running_cmds:
             raise RuntimeError(
                 f"{self.name} bug: a command with seq_num={seq_num} is already running"
@@ -479,3 +488,17 @@ class RemoteCommand(write_topic.WriteTopic):
         )
         self.salinfo._running_cmds[seq_num] = cmd_info
         return await cmd_info.next_ackcmd(timeout=timeout)
+
+    def put(self, data: typing.Optional[type_hints.BaseDdsDataType] = None) -> None:
+        """An override of WriteTopic.put that is disabled."""
+        raise NotImplementedError("Call start instead")
+
+    async def set_write(
+        self, *, force_output: typing.Optional[bool] = None, **kwargs: typing.Any
+    ) -> write_topic.SetWriteResult:
+        """An override of WriteTopic.set_write that is disabled."""
+        raise NotImplementedError("Call set_start instead")
+
+    async def write(self, **kwargs: typing.Any) -> type_hints.BaseDdsDataType:
+        """An override of WriteTopic.write that is disabled."""
+        raise NotImplementedError("Call start instead")
