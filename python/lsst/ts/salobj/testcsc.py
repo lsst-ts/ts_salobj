@@ -66,7 +66,7 @@ class TestCsc(ConfigurableCsc):
         * `salobj.State.ENABLED` if you want the CSC immediately usable.
         * `salobj.State.STANDBY` if you want full emulation of a CSC.
     override : `str`, optional
-        Configuration override to apply if ``initial_state`` is
+        Configuration override file to apply if ``initial_state`` is
         `State.DISABLED` or `State.ENABLED`.
     simulation_mode : `int`, optional
         Simulation mode. The only allowed value is 0.

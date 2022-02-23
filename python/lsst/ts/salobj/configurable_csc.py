@@ -58,7 +58,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
     override : `str`, optional
-        Configuration override file to use if ``initial_state`` is
+        Configuration override file to apply if ``initial_state`` is
         `State.DISABLED` or `State.ENABLED`.
     simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
@@ -77,9 +77,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     ----------
     config_dir : `pathlib.Path`
         Directory containing configuration files.
-    config_validator : `DefaultingValidator`
-        Validator for configuration files that also sets default values
-        for omitted items.
+    config_validator : `StandardValidator`
+        Validator for configuration files.
     schema_version : `str`
         Configuration schema version, as specified in the schema as the
         final word of the ``title``. Used to find the ``config_dir``.

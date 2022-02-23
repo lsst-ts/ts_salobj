@@ -289,9 +289,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             The desired initial state of the CSC; used to specify
             the ``--state`` command-argument.
         override : `str` or `None`, optional
-            Value for the ``--override`` command-line argument.
-            Only relevant if ``initial_state`` is one of
-            `salobj.State.DISABLED` or `salobj.State.ENABLED`.
+            Value for the ``--override`` command-line argument,
+            which is omitted if override is None.
         cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
         timeout : `float`, optional
@@ -371,8 +370,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         skip_commands : `List` [`str`] or `None`, optional
             List of commands to skip.
         override : `str`, optional
-            Value for the ``configurationOverride`` argument for the ``start``
-            command.
+            Configuration override file to apply when the CSC is taken
+            from state `State.STANDBY` to `State.DISABLED`.
         timeout : `float`, optional
             Time limit for state transition commands (seconds).
 

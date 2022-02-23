@@ -59,7 +59,7 @@ class BaseCsc(Controller):
         in which case you may also want to specify
         ``override`` for a configurable CSC.
     override : `str`, optional
-        Configuration override to apply if ``initial_state`` is
+        Configuration override file to apply if ``initial_state`` is
         `State.DISABLED` or `State.ENABLED`. Ignored if the CSC
         is not configurable.
     simulation_mode : `int`, optional

@@ -107,9 +107,8 @@ async def set_summary_state(
         Remote for the CSC to be enabled.
     state : `State` or `int`
         Desired summary state.
-    override : `str` or `None`
-        override argument for the ``start`` command.
-        Ignored unless the CSC has to be taken from state
+    override : `str`
+        Configuration override file to apply if the CSC is taken from state
         `State.STANDBY` to `State.DISABLED`.
     timeout : `float`
         Timeout for each state transition command and a possible initial

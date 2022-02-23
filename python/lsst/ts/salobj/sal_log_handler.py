@@ -67,7 +67,7 @@ class SalLogHandler(logging.Handler):
                 )
             )
         except Exception as e:
-            print(f"SalLogHandler.emit failed: {e}", file=sys.stderr)
+            print(f"SalLogHandler.emit failed: {e!r}", file=sys.stderr)
         finally:
             # The Python formatter documentation suggests clearing ``exc_text``
             # after calling ``format`` to avoid problems with
