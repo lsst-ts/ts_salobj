@@ -19,9 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import os
 import pathlib
 import unittest
+import typing
 
 import numpy as np
 import pytest
@@ -76,14 +76,15 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
     requires an event loop.
     """
 
-    def setUp(self) -> None:
-        salobj.set_random_lsst_dds_partition_prefix()
-        self.original_lsst_site = os.environ.get("LSST_SITE", None)
-        os.environ["LSST_SITE"] = "test"
+    def run(self, result: typing.Any) -> None:  # type: ignore
+        """Override `run` to set a random LSST_DDS_PARTITION_PREFIX
+        and set LSST_SITE=test for every test.
 
-    def tearDown(self) -> None:
-        if self.original_lsst_site is not None:
-            os.environ["LSST_SITE"] = self.original_lsst_site
+        https://stackoverflow.com/a/11180583
+        """
+        salobj.set_random_lsst_dds_partition_prefix()
+        with utils.modify_environ(LSST_SITE="test"):
+            super().run(result)
 
     async def test_class_attributes(self) -> None:
         assert list(salobj.TestCsc.valid_simulation_modes) == [0]

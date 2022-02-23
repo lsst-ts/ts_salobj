@@ -32,7 +32,6 @@ import shlex
 import sys
 import types
 import typing
-import warnings
 
 from . import domain
 from . import remote
@@ -372,13 +371,6 @@ help  # print this help
             for key, value in data.get_vars().items()
             if self.field_is_public(key)
         }
-
-    def get_rounded_public_fields(
-        self, data: typing.Any, digits: int = 2
-    ) -> typing.Any:
-        """Deprecated version of get_rounded_public_data."""
-        warnings.warn("Use get_rounded_public_data instead", DeprecationWarning)
-        return self.get_rounded_public_data(data=data, digits=digits)
 
     def event_callback(self, data: typing.Any, name: str) -> None:
         """Generic callback for events.

@@ -20,41 +20,23 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = [
-    "assertAnglesAlmostEqual",
     "assertRaisesAckError",
     "assertRaisesAckTimeoutError",
-    "set_random_lsst_dds_domain",  # Deprecated
     "set_random_lsst_dds_partition_prefix",
-    "modify_environ",
 ]
 
 import base64
 import contextlib
 import os
 import typing
-import warnings
 
 import astropy.coordinates
 
-from lsst.ts import utils
 from .base import AckError, AckTimeoutError
-
 
 AngleOrDegType = typing.Union[astropy.coordinates.Angle, float]
 
 
-# TODO DM-31660: Remove this deprecated wrapper
-def assertAnglesAlmostEqual(
-    angle1: AngleOrDegType, angle2: AngleOrDegType, max_diff: AngleOrDegType = 1e-5
-) -> None:
-    """Deprecated version of lsst.ts.utils.assert_angles_almost_equal."""
-    warnings.warn(
-        "Use lsst.ts.utils.assert_angles_almost_equal instead", DeprecationWarning
-    )
-    utils.assert_angles_almost_equal(angle1=angle1, angle2=angle2, max_diff=max_diff)
-
-
-# TODO DM-31660: Remove this deprecated wrapper
 @contextlib.contextmanager
 def assertRaisesAckError(
     ack: typing.Optional[int] = None,
@@ -123,19 +105,3 @@ def set_random_lsst_dds_partition_prefix() -> None:
     """
     random_str = base64.urlsafe_b64encode(os.urandom(12)).decode().replace("=", "_")
     os.environ["LSST_DDS_PARTITION_PREFIX"] = f"test_{random_str}"
-
-
-def set_random_lsst_dds_domain() -> None:
-    """Deprecated version of `set_random_lsst_dds_partition_prefix`."""
-    warnings.warn(
-        "Use set_random_lsst_dds_partition_prefix instead", DeprecationWarning
-    )
-    set_random_lsst_dds_partition_prefix()
-
-
-@contextlib.contextmanager
-def modify_environ(**kwargs: typing.Any) -> typing.Generator[None, None, None]:
-    """Deprecated version of lsst.ts.utils.modify_environ."""
-    warnings.warn("Use lsst.ts.utils.modify_environ instead", DeprecationWarning)
-    with utils.modify_environ(**kwargs):
-        yield

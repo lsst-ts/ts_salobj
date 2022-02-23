@@ -63,16 +63,18 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     _index_iter = utils.index_generator()
 
-    def setUp(self) -> None:
-        testutils.set_random_lsst_dds_partition_prefix()
-        self.original_lsst_site = os.environ.get("LSST_SITE", None)
-        os.environ["LSST_SITE"] = "test"
+    def run(self, result: typing.Any = None) -> None:  # type: ignore
+        """Set a random LSST_DDS_PARTITION_PREFIX
+        and set LSST_SITE=test for every test.
 
-    def tearDown(self) -> None:
-        if not hasattr(self, "original_lsst_site"):
-            raise RuntimeError("Call super().setUp() in your setUp method")
-        if self.original_lsst_site is not None:
-            os.environ["LSST_SITE"] = self.original_lsst_site
+        Unlike setUp, a user cannot forget to override this.
+        (This is also a good place for context managers).
+        """
+        testutils.set_random_lsst_dds_partition_prefix()
+        # set LSST_SITE using os.environ instead of utils.modify_environ
+        # so that check_bin_script works.
+        os.environ["LSST_SITE"] = "test"
+        super().run(result)  # type: ignore
 
     @abc.abstractmethod
     def basic_make_csc(

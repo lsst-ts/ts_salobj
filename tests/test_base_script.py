@@ -22,6 +22,7 @@
 import asyncio
 import logging
 import os
+import pathlib
 import subprocess
 import types
 import typing
@@ -40,6 +41,8 @@ from lsst.ts.idl.enums.Script import ScriptState
 STD_TIMEOUT = 60
 
 index_gen = utils.index_generator()
+
+TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
 
 
 class NonConfigurableScript(salobj.BaseScript):
@@ -75,7 +78,6 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
-        self.datadir = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
         self.index = next(index_gen)
 
     async def configure_and_check(
@@ -569,7 +571,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_script_process(self) -> None:
         """Test running a script as a subprocess."""
-        script_path = os.path.join(self.datadir, "script1")
+        script_path = TEST_DATA_DIR / "script1"
 
         for fail in (None, "fail_run", "fail_cleanup"):
             with self.subTest(fail=fail):
@@ -589,7 +591,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                     remote.evt_logMessage.callback = logcallback
 
                     process = await asyncio.create_subprocess_exec(
-                        script_path, str(index)
+                        str(script_path), str(index)
                     )
                     try:
                         assert process.returncode is None
@@ -658,10 +660,10 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_script_schema_process(self) -> None:
         """Test running a script with --schema as a subprocess."""
-        script_path = os.path.join(self.datadir, "script1")
+        script_path = TEST_DATA_DIR / "script1"
         index = 1  # index is ignored
         process = await asyncio.create_subprocess_exec(
-            script_path,
+            str(script_path),
             str(index),
             "--schema",
             stdout=subprocess.PIPE,

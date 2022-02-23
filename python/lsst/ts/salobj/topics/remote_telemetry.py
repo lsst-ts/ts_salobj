@@ -24,7 +24,6 @@ from __future__ import annotations
 __all__ = ["RemoteTelemetry"]
 
 import typing
-import warnings
 
 from . import read_topic
 
@@ -41,9 +40,6 @@ class RemoteTelemetry(read_topic.ReadTopic):
         SAL component information
     name : `str`
         Telemetry topic name
-    max_history : `int`, optional
-        Deprecated because historical telemetry data is no longer available.
-        Must be 0 (or None, but please don't do that) if specified.
     queue_len : `int`, optional
         Number of elements that can be queued for `get_oldest`.
     """
@@ -52,19 +48,8 @@ class RemoteTelemetry(read_topic.ReadTopic):
         self,
         salinfo: SalInfo,
         name: str,
-        max_history: typing.Optional[int] = None,
         queue_len: int = read_topic.DEFAULT_QUEUE_LEN,
     ) -> None:
-        # TODO DM-26474: remove the max_history argument and this code block.
-        if max_history is not None:
-            if max_history == 0:
-                warnings.warn("max_history is deprecated", DeprecationWarning)
-            else:
-                raise ValueError(
-                    f"max_history={max_history} is deprecated "
-                    "and must be 0 (or None, but please don't do that) if specified"
-                )
-
         super().__init__(
             salinfo=salinfo,
             name=name,
