@@ -119,9 +119,6 @@ class FieldMetadata:
         and both "float" and "double" to `double`.
     array_length : `int`
         Number of elements if an array; None if not an array.
-    str_length : `int`
-        Maximum allowed string length; None if unspecified (no limit)
-        or not a string.
     """
 
     def __init__(
@@ -131,14 +128,12 @@ class FieldMetadata:
         units: typing.Optional[str],
         type_name: str,
         array_length: typing.Optional[int],
-        str_length: typing.Optional[int],
     ):
         self.name = name
         self.description = description
         self.units = units
         self.type_name = type_name
         self.array_length = array_length
-        self.str_length = str_length
 
     def __repr__(self) -> str:
         return (
@@ -146,8 +141,7 @@ class FieldMetadata:
             f"description={repr(self.description)}, "
             f"units={repr(self.units)}, "
             f"type_name={repr(self.type_name)},"
-            f"array_length={self.array_length}"
-            f"str_length={self.str_length})"
+            f"array_length={self.array_length})"
         )
 
     def __str__(self) -> str:
@@ -192,7 +186,7 @@ def parse_idl(name: str, idl_path: type_hints.PathType) -> IdlMetadata:
     )
     topic_end_pattern = re.compile(r"\s};")
     field_pattern = re.compile(
-        fr"\s*(?P<type_name>(?:unsigned )?(?:{type_names_str}))(?:<(?P<str_length>\d+)>)?"
+        rf"\s*(?P<type_name>(?:unsigned )?(?:{type_names_str}))(?:<(?P<str_length>\d+)>)?"
         r"\s+(?P<field_name>[a-zA-Z][a-zA-Z0-9_-]*)(?:\[(?P<array_length>\d+)\])?;"
         r"\s*(?://\s*private)?"
         r'\s*(?://\s+@Metadata=\((?:Units="(?P<units>[^"]*)",)?'
@@ -247,16 +241,12 @@ def parse_idl(name: str, idl_path: type_hints.PathType) -> IdlMetadata:
                     array_length = field_match.group("array_length")
                     if array_length is not None:
                         array_length = int(array_length)
-                    str_length = field_match.group("str_length")
-                    if str_length is not None:
-                        str_length = int(str_length)
                     topic_metadata.field_info[field_name] = FieldMetadata(
                         name=field_name,
                         type_name=field_match.group("type_name"),
                         description=field_match.group("description"),
                         units=field_match.group("units"),
                         array_length=array_length,
-                        str_length=str_length,
                     )
                 elif topic_end_pattern.match(line):
                     topic_metadata = None
