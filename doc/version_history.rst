@@ -36,6 +36,7 @@ v7.0.0
   * `TestCsc`: eliminate the topic-type-specific ``make_random_[cmd/evt/tel]_[arrays/scalars]`` methods.
     Use the new ``make_random_[arrays/scalars]_dict`` methods, instead.
   * Delete ``assert_black_formatted`` and ``tests/test_black.py``; use pytest-black instead.
+  * `IdlMetadata`: eliminate the ``str_length`` field (RFC-827).
 
 * New Deprecations:
 
@@ -50,6 +51,7 @@ v7.0.0
         * Update `check_standard_config_files` to require that the config schema be a module constant.
     
     * `BaseCsc`: class variable ``valid_simulation_modes`` may no longer be None and class variable ``version`` is required.
+    * `CscCommander`: ``get_rounded_public_fields`` is gone; use ``get_rounded_public_data`` with the same arguments.
     * `Remote`: the ``tel_max_history`` constructor argument is gone.
     * `SalInfo`:
 
@@ -57,21 +59,26 @@ v7.0.0
         * The ``truncate_result`` argument of ``make_ackcmd`` and the ``MAX_RESULT_LEN`` constant are gone.
           Don't worry about length limits.
 
-    * `ReadTopic.get`: eliminate the ``flush`` argument.
+    * `topics.ReadTopic.get`: eliminate the ``flush`` argument.
+    * `topics.RemoteTelemetry`: the constructor no longer accepts the ``max_history`` argument.
     * Delete constants ``MJD_MINUS_UNIX_SECONDS`` and ``SECONDS_PER_DAY`` (use the values in ts_utils).
-    * Delete functions (use the versions in ts_utils):
+    * Delete functions (use the same-named version in ts_utils, unless otherwise noted):
 
         * ``angle_diff``
         * ``angle_wrap_center``
         * ``angle_wrap_nonnegative``
+        * ``assertAnglesAlmostEqual``: use ts_utils ``assert_angles_almost_equal``
         * ``astropy_time_from_tai_unix``
+        * ``current_tai``
         * ``index_generator``
         * ``make_done_future``
-        * ``current_tai``
-        * ``tai_from_utc``
+        * ``modify_environ``
+        * ``set_random_lsst_dds_domain``: use ``set_random_lsst_dds_partition_prefix``
         * ``tai_from_utc_unix``
+        * ``tai_from_utc``
         * ``utc_from_tai_unix``
 
+* `CscCommander.make_from_cmd_line`: support index = an IntEnum subclass.
 * Updated ``Jenkinsfile`` to checkout ts_config_ocs.
 
 v6.9.3
