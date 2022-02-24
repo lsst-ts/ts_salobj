@@ -760,14 +760,23 @@ help  # print this help
         """
         parser = argparse.ArgumentParser(f"Run {cls.__name__}")
         if index is True:
-            parser.add_argument("index", type=int, help="Script SAL Component index.")
+            parser.add_argument("index", type=int, help="SAL index.")
+        elif isinstance(index, type) and issubclass(index, enum.IntEnum):
+            # The isinstance check just above prevents errors
+            # when index is an int or bool.
+            choices = [int(item.value) for item in index]  # type: ignore
+            names_str = ", ".join(
+                f"{item.value}: {item.name.lower()}" for item in index  # type: ignore
+            )
+            help_text = f"SAL index, one of: {names_str}"
+            parser.add_argument("index", type=int, help=help_text, choices=choices)
         parser.add_argument(
             "-e", "--enable", action="store_true", help="Enable the CSC?"
         )
         cls.add_arguments(parser)
 
         args = parser.parse_args()
-        if index is True:
+        if hasattr(args, "index"):
             kwargs["index"] = args.index
         elif not index:
             pass
