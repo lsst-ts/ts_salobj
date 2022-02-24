@@ -303,3 +303,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                     log_level_write_speed * u.ct / u.second,
                 )
             )
+
+
+if __name__ == "__main__":
+    unittest.main()
