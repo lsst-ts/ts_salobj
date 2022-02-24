@@ -270,9 +270,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     origin=data.private_origin,
                     identity=data.private_identity,
                     cmdtype=cmdtype,
-                    ack=salobj.SalRetCode.CMD_ACK,
                 )
-                ackcmdwriter.put()
 
                 # Write final ackcmd, after tweaking data if appropriate.
                 ackcmdwriter.set(ack=salobj.SalRetCode.CMD_COMPLETE)
@@ -703,7 +701,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # Specify a negative duration in order to avoid the
             # CMD_INPROGRESS command ack that extends the timeout.
             # This should time out.
-            with salobj.assertRaisesAckTimeoutError(ack=salobj.SalRetCode.CMD_ACK):
+            with salobj.assertRaisesAckTimeoutError():
                 await self.remote.cmd_wait.set_start(duration=-2, timeout=0.5)
 
     async def test_controller_command_get_next(self) -> None:
@@ -1307,26 +1305,18 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             ackcmd1 = await self.remote.cmd_wait.set_start(
                 duration=duration, wait_done=False, timeout=STD_TIMEOUT
             )
-            assert ackcmd1.ack == salobj.SalRetCode.CMD_ACK
+            assert ackcmd1.ack == salobj.SalRetCode.CMD_INPROGRESS
+            assert ackcmd1.timeout == pytest.approx(duration)
             ackcmd2 = await self.remote.cmd_wait.next_ackcmd(
-                ackcmd1, wait_done=False, timeout=STD_TIMEOUT
+                ackcmd1, wait_done=True, timeout=STD_TIMEOUT
             )
-            assert ackcmd2.ack == salobj.SalRetCode.CMD_INPROGRESS
-            assert ackcmd2.timeout == pytest.approx(duration)
-            ackcmd3 = await self.remote.cmd_wait.next_ackcmd(
-                ackcmd2, wait_done=True, timeout=STD_TIMEOUT
-            )
-            assert ackcmd3.ack == salobj.SalRetCode.CMD_COMPLETE
+            assert ackcmd2.ack == salobj.SalRetCode.CMD_COMPLETE
 
             # Now try a timeout. Specify a negative duration to avoid the
             # CMD_INPROGRESS command ack that extends the timeout.
-            ackcmd1 = await self.remote.cmd_wait.set_start(
-                duration=-5, wait_done=False, timeout=STD_TIMEOUT
-            )
-            assert ackcmd1.ack == salobj.SalRetCode.CMD_ACK
-            with salobj.assertRaisesAckTimeoutError(ack=salobj.SalRetCode.CMD_ACK):
-                await self.remote.cmd_wait.next_ackcmd(
-                    ackcmd1, wait_done=True, timeout=NODATA_TIMEOUT
+            with salobj.assertRaisesAckTimeoutError():
+                await self.remote.cmd_wait.set_start(
+                    duration=-5, wait_done=False, timeout=NODATA_TIMEOUT
                 )
 
     async def test_command_seq_num(self) -> None:

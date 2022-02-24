@@ -64,13 +64,10 @@ class ControllerCommand(read_topic.ReadTopic):
     Each command must be acknowledged by writing an appropriate ``ackcmd``
     message. If you use a callback function to process the command
     then this happens automatically. Otherwise you must call the `ack` method
-    to acknowledge the command yourself, though an initial acknowledgement
-    with ``ack=SalRetCode.CMD_ACK`` is always automatically sent when
-    the command is read.
+    to acknowledge the command yourself.
 
 
-    After the initial acknowledgement with ``ack=SalRetCode.CMD_ACK``,
-    automatic ackowledgement for callback functions works as follows:
+    Automatic ackowledgement for callback functions works as follows:
 
     * If the callback function returns `None` then send a final
       acknowledgement with ``ack=SalRetCode.CMD_COMPLETE``.
@@ -198,10 +195,6 @@ class ControllerCommand(read_topic.ReadTopic):
         """Convert the value to an ``ackcmd`` and queue it."""
         if data.private_seqNum <= 0:
             raise ValueError(f"private_seqNum={data.private_seqNum} must be positive")
-        ack = self.salinfo.make_ackcmd(
-            private_seqNum=data.private_seqNum, ack=sal_enums.SalRetCode.CMD_ACK
-        )
-        self.ack(data, ack)
         super()._queue_one_item(data)
 
     async def _run_callback(self, data: type_hints.BaseDdsDataType) -> None:
