@@ -38,7 +38,13 @@ if typing.TYPE_CHECKING:
 
 
 class AckCmdWriter(write_topic.WriteTopic):
-    """Command Acknowledgement writer."""
+    """ackcmd (command acknowledgement) topic writer.
+
+    Parameters
+    ----------
+    salinfo : `.SalInfo`
+        SAL component information
+    """
 
     def __init__(self, salinfo: SalInfo) -> None:
         super().__init__(
@@ -52,9 +58,9 @@ class ControllerCommand(read_topic.ReadTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     name : `str`
-        Command name
+        Command name, with no prefix, e.g. "start".
     queue_len : `int`, optional
         Number of elements that can be queued for `get_oldest`.
 

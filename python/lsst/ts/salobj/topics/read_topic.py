@@ -204,7 +204,7 @@ class ReadTopic(BaseTopic):
         The maximum number of messages that can be read and not dealt with
         by a callback function or `next` before older messages will be dropped.
     filter_ackcmd : `bool`, optional
-        Filter out cmdack topics so we only see responses to commands
+        Filter out ackcmd topics so we only see responses to commands
         that we sent? This is normally what you want, but it is not wanted
         for SAL/Kafka producers.
         Ignored if ``name`` != "ackcmd".

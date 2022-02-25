@@ -38,9 +38,9 @@ class ControllerTelemetry(write_topic.WriteTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     name : `str`
-        Command name
+        Telemetry topic name, with no prefix.
     """
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:

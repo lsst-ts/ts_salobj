@@ -232,7 +232,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def test_command_isolation(self) -> None:
         """Test that multiple RemoteCommands for one command only see
-        cmdack replies to their own samples.
+        ackcmd replies to their own samples.
         """
         async with salobj.Domain() as domain, salobj.SalInfo(
             domain=domain, name="Test", index=1

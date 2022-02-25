@@ -37,9 +37,9 @@ class RemoteEvent(read_topic.ReadTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     name : `str`
-        Event topic name
+        Event name with no prefix, e.g. "summaryState".
     max_history : `int`, optional
         Maximum number of historical items to read. 1 is typical.
     queue_len : `int`, optional

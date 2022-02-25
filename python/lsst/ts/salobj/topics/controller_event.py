@@ -38,9 +38,9 @@ class ControllerEvent(write_topic.WriteTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     name : `str`
-        Event topic name
+        Event name with no prefix, e.g. "summaryState".
     """
 
     default_force_output = False

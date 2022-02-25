@@ -37,9 +37,9 @@ class RemoteTelemetry(read_topic.ReadTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     name : `str`
-        Telemetry topic name
+        Telemetry topic name, with no prefix.
     queue_len : `int`, optional
         Number of elements that can be queued for `get_oldest`.
     """

@@ -44,7 +44,7 @@ DEFAULT_TIMEOUT = 60 * 60  # default timeout, in seconds
 
 
 class AckCmdReader(read_topic.ReadTopic):
-    """Read the ``ackcmd`` command acknowledgement topic.
+    """ackcmd (command acknowledgement) topic reader.
 
     Parameters
     ----------
@@ -260,9 +260,9 @@ class RemoteCommand(write_topic.WriteTopic):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
+        SAL component information.
     name : `str`
-        Command name
+        Command name, with no prefix, e.g. "start".
     """
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:

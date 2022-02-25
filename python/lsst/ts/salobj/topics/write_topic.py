@@ -74,7 +74,7 @@ class WriteTopic(BaseTopic):
     r"""Base class for topics that are written.
 
     This includes  controller events, controller telemetry, remote commands
-    and ``cmdack`` writers.
+    and ``ackcmd`` writers.
 
     Parameters
     ----------
@@ -87,7 +87,7 @@ class WriteTopic(BaseTopic):
     min_seq_num : `int` or `None`, optional
         Minimum value for the ``private_seqNum`` field. The default is 1.
         If `None` then ``private_seqNum`` is not set; this is needed
-        for the cmdack writer, which sets the field itself.
+        for the ackcmd writer, which sets the field itself.
     max_seq_num : `int`, optional
         Maximum value for ``private_seqNum``, inclusive.
         The default is the maximum allowed positive value
@@ -242,7 +242,7 @@ class WriteTopic(BaseTopic):
         the remaining fields and write the completed message.
 
         If you have all the information for a topic in one place, it is simpler
-        to call `write` to set all of the fields and write the message.
+        to call `set_write` to set all of the fields and write the message.
 
         Parameters
         ----------
