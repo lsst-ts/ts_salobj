@@ -1,5 +1,6 @@
 setupRequired(ts_ddsconfig)  # OpenSplice quality of service file
-setupRequired(ts_idl)  # IDL files and associated enums
+setupRequired(ts_xml)
+setupRequired(ts_idl)  # enums from ts_xml
 setupRequired(ts_utils)
 setupOptional(ts_config_ocs)  # Test configuration files for unit tests
 setupOptional(verify)
