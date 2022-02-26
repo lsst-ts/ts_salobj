@@ -37,6 +37,7 @@ v7.0.0
     Use the new ``make_random_[arrays/scalars]_dict`` methods, instead.
   * Delete ``assert_black_formatted`` and ``tests/test_black.py``; use pytest-black instead.
   * `IdlMetadata`: eliminate the ``str_length`` field (RFC-827).
+  * Modify `topics.BaseTopic`, `topics.ReadTopic`, and `topics.WriteTopic`: use constructor argument ``attr_name`` instead of ``name`` and ``sal_prefix``.
 
 * New Deprecations:
 
