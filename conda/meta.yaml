@@ -55,6 +55,4 @@ requirements:
     - pyyaml
     - boto3
     - moto
-    - ts-ddsconfig
-    - ts-dds
     - ts-utils

@@ -37,12 +37,9 @@ from . import sal_enums
 class BaseMsgType:
     r"""Base DDS sample data type, for type annotations.
 
-    This is missing:
-
-    * _SAL_component_name_\ ID (e.g. ScriptID): only present
-      for indexed SAL components
-    * priority: present for events, but not used
-    * all topic-specific public fields
+    This is missing all topic-specific public fields.
+    It includes private_index, which is only present for indexed
+    SAL components.
     """
     private_revCode: str = ""
     private_sndStamp: float = 0
@@ -50,9 +47,7 @@ class BaseMsgType:
     private_seqNum: int = 0
     private_identity: str = ""
     private_origin: int = 0
-
-    def get_vars(self) -> typing.Dict[str, typing.Any]:
-        raise NotImplementedError()
+    private_index: int = 0
 
 
 # Backwards compatibility

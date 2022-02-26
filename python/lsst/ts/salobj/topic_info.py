@@ -99,7 +99,6 @@ _ACKCMD_FIELDS_LIST = [
         name="result",
         description="Message",
         nelts=1,
-        max_len=256,
         sal_type="string",
         units="unitless",
     ),
@@ -183,6 +182,10 @@ class TopicInfo:
         Dict of field name: field info
     description : str, optional
         Description of topic.
+    partitions : int, optional
+        Number of Kafka partitions.
+        Must be 1 for events, since that makes it easier to get
+        reliable historical data.
 
     Attributes
     ----------
@@ -196,9 +199,12 @@ class TopicInfo:
         Dict of field name: field info
     array_fields : Dict [str, int]
         Dict of field name: array length for array fields
-    str_fields : Dict[str, int]
-        Dict of field name: str length for string fields
-        with a specified max length (other than 1, meaning any length).
+
+    Raises
+    ------
+    ValueError
+        If partitions != 1 for an event,
+        or if partitions < 0 for any topic.
     """
 
     # Cache of (component_name, attr_name): avro schema
@@ -220,12 +226,25 @@ class TopicInfo:
         sal_name: str,
         fields: typing.Dict[str, FieldInfo],
         description: str = "",
+        partitions: int = 1,
     ) -> None:
+        if partitions != 1 and sal_name.startswith("logevent_"):
+            raise ValueError(
+                f"invalid partitions={partitions} for sal_name={sal_name}: "
+                "must be 1 for events"
+            )
+        if partitions < 1:
+            raise ValueError(
+                f"invalid partitions={partitions} for sal_name={sal_name}: "
+                "must be > 0"
+            )
+
         self.component_name = component_name
         self.topic_subname = topic_subname
         self.sal_name = sal_name
         self.fields = fields
         self.description = description
+        self.partitions = partitions
 
         if sal_name == "ackcmd":
             attr_name = "ack_ackcmd"
@@ -245,14 +264,10 @@ class TopicInfo:
         )
         self.avro_subject = f"{self.kafka_name}-value"
         array_fields = dict()
-        str_fields = dict()
         for field_info in self.fields.values():
             if field_info.nelts > 1:
                 array_fields[field_info.name] = field_info.nelts
-            elif field_info.max_len > 1:
-                str_fields[field_info.name] = field_info.max_len
         self.array_fields = array_fields
-        self.str_fields = str_fields
         self._cache_key = (self.component_name, self.attr_name)
 
     @classmethod
@@ -311,7 +326,6 @@ class TopicInfo:
                 model: typing.Any,
                 fields: typing.KeysView[str] = self.fields.keys(),
                 array_fields: typing.Dict[str, int] = self.array_fields,
-                str_fields: typing.Dict[str, int] = self.str_fields,
             ) -> None:
                 """Validate things Kafka does not: array length and str length.
 
@@ -323,10 +337,6 @@ class TopicInfo:
                     Field names
                 array_fields : Dict [str, int]
                     Dict of field name: array length for array fields
-                str_fields : Dict[str, int]
-                    Dict of field name: str length for string fields
-                    with a specified max length (other than 1,
-                    which means no limit).
 
                 Raises
                 ------
@@ -342,13 +352,6 @@ class TopicInfo:
                     raise ValueError(
                         f"Array fields with incorrect length: {bad_arrays}"
                     )
-                bad_strs = [
-                    field_name
-                    for field_name in fields & str_fields
-                    if len(getattr(model, field_name)) > str_fields[field_name]
-                ]
-                if bad_strs:
-                    raise ValueError(f"Str fields with incorrect length: {bad_strs}")
 
             dataclass = dataclasses.make_dataclass(
                 self.attr_name, field_args, namespace={"__post_init__": validate}

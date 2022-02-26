@@ -70,7 +70,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         Unlike setUp, a user cannot forget to override this.
         (This is also a good place for context managers).
         """
-        testutils.set_random_lsst_dds_partition_prefix()
+        testutils.set_random_topic_subname()
         # set LSST_SITE using os.environ instead of utils.modify_environ
         # so that check_bin_script works.
         os.environ["LSST_SITE"] = "test"
@@ -150,7 +150,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         """
         # Redundant with setUp, but preserve in case a subclass
         # forgets to call super().setUp()
-        testutils.set_random_lsst_dds_partition_prefix()
+        testutils.set_random_topic_subname()
         items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
         try:
             self.csc = self.basic_make_csc(
@@ -301,7 +301,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         """
         # Redundant with setUp, but preserve in case a subclass
         # forgets to call super().setUp()
-        testutils.set_random_lsst_dds_partition_prefix()
+        testutils.set_random_topic_subname()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
             raise AssertionError(

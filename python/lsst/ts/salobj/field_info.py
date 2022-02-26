@@ -107,8 +107,6 @@ class FieldInfo:
         SAL data type.
     nelts : int
         For lists: the fixed list length.
-    max_len : int
-        For strings: the max length, or 0 for no limit.
     units : str
         Units, "unitless" if none.
     description : str
@@ -124,7 +122,6 @@ class FieldInfo:
     name: str
     sal_type: str
     nelts: int = 1
-    max_len: int = 1
     units: str = "unitless"
     description: str = ""
     default_scalar_value: typing.Any = dataclasses.field(init=False)
@@ -135,9 +132,6 @@ class FieldInfo:
                 raise ValueError(
                     f"nelts={self.nelts} > 1, but string fields cannot be arrays"
                 )
-        else:
-            if self.max_len > 1:
-                raise ValueError(f"max_len={self.max_len} can only be > 1 for strings")
         python_type = PYTHON_TYPES[self.sal_type]
         self.default_scalar_value = python_type()
 
@@ -149,12 +143,10 @@ class FieldInfo:
         nelts = int(find_optional(element, "Count", "1"))
         units = find_optional(element, "Units", "unitless")
         sal_type = find_required(element, "IDL_Type")
-        max_len = 0
         return FieldInfo(
             name=name,
             sal_type=sal_type,
             nelts=nelts,
-            max_len=max_len,
             units=units,
             description=description,
         )

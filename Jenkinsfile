@@ -50,28 +50,6 @@ pipeline {
                 }
             }
         }
-        stage("Checkout ts_ddsconfig") {
-            steps {
-                script {
-                    sh "docker exec -u saluser \${container_name} sh -c \"" +
-                        "source ~/.setup.sh && " +
-                        "cd /home/saluser/repos/ts_ddsconfig && " +
-                        "/home/saluser/.checkout_repo.sh \${work_branches} && " +
-                        "git pull\""
-                }
-            }
-        }
-        stage("Checkout ts_sal") {
-            steps {
-                script {
-                    sh "docker exec -u saluser \${container_name} sh -c \"" +
-                        "source ~/.setup.sh && " +
-                        "cd /home/saluser/repos/ts_sal && " +
-                        "/home/saluser/.checkout_repo.sh \${work_branches} && " +
-                        "git pull\""
-                }
-            }
-        }
         stage("Checkout ts_xml") {
             steps {
                 script {

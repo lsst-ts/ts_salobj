@@ -39,14 +39,14 @@ index_gen = utils.index_generator()
 
 class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        salobj.set_random_lsst_dds_partition_prefix()
+        salobj.set_random_topic_subname()
 
     async def test_salinfo_constructor(self) -> None:
         with pytest.raises(TypeError):
             salobj.SalInfo(domain=None, name="Test")
 
         async with salobj.Domain() as domain:
-            with pytest.raises(RuntimeError):
+            with pytest.raises(ValueError):
                 salobj.SalInfo(domain=domain, name="invalid_component_name")
 
             for invalid_index in (1.1, "one"):
@@ -147,36 +147,39 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
             # Check that the name_index for a non-indexed component
             # has no :index suffix.
-            salinfo.indexed = False
-            assert salinfo.name_index == "Test"
+            salinfo2 = salobj.SalInfo(domain=domain, name="MTRotator")
+            assert not salinfo2.indexed
+            assert salinfo2.name_index == "MTRotator"
 
-            assert salinfo.partition_prefix == os.environ["LSST_DDS_PARTITION_PREFIX"]
+            assert (
+                salinfo.component_info.topic_subname == os.environ["LSST_TOPIC_SUBNAME"]
+            )
 
-    async def test_salinfo_metadata(self) -> None:
-        """Test some of the metadata in SalInfo.
+    async def test_salinfo_component_info(self) -> None:
+        """Test some of the component info in SalInfo.
 
-        The main tests of the IDL parser are elsewhere.
+        The main tests of ComponentInfo are elsewhere.
         """
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain=domain, name="Test")
 
             # Check some topic and field metadata
-            for topic_name, topic_metadata in salinfo.metadata.topic_info.items():
-                assert topic_name == topic_metadata.sal_name
-                for field_name, field_metadata in topic_metadata.field_info.items():
-                    assert field_name == field_metadata.name
+            for attr_name, topic_info in salinfo.component_info.topics.items():
+                assert attr_name == topic_info.attr_name
+                for field_name, field_info in topic_info.fields.items():
+                    assert field_name == field_info.name
 
-            some_expected_topic_names = (
-                "command_enable",
-                "command_setArrays",
-                "command_setScalars",
-                "logevent_arrays",
-                "logevent_scalars",
-                "arrays",
-                "scalars",
+            some_expected_attr_names = (
+                "cmd_enable",
+                "cmd_setArrays",
+                "cmd_setScalars",
+                "evt_arrays",
+                "evt_scalars",
+                "tel_arrays",
+                "tel_scalars",
             )
-            assert set(some_expected_topic_names).issubset(
-                set(salinfo.metadata.topic_info.keys())
+            assert set(some_expected_attr_names).issubset(
+                salinfo.component_info.topics.keys()
             )
 
     async def test_default_authorize(self) -> None:
@@ -191,10 +194,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                     salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
                     assert salinfo.default_authorize == expected_default_authorize
 
-    async def test_lsst_dds_partition_prefix_required(self) -> None:
-        # Delete LSST_DDS_PARTITION_PREFIX. This should prevent
-        # constructing a Domain
-        with utils.modify_environ(LSST_DDS_PARTITION_PREFIX=None):
+    async def test_lsst_topic_subname_required(self) -> None:
+        # Delete LSST_TOPIC_SUBNAME. This should prevent constructing
+        # a SalInfo.
+        with utils.modify_environ(LSST_TOPIC_SUBNAME=None):
             async with salobj.Domain() as domain:
                 with pytest.raises(RuntimeError):
                     salobj.SalInfo(domain=domain, name="Test", index=1)

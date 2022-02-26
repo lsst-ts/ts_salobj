@@ -26,7 +26,6 @@ __all__ = ["BaseCsc"]
 import argparse
 import asyncio
 import enum
-import os
 import sys
 import typing
 
@@ -193,9 +192,6 @@ class BaseCsc(Controller):
             return "?" if version is None else version
 
         self.evt_softwareVersions.set(  # type: ignore
-            salVersion=format_version(self.salinfo.metadata.sal_version),
-            xmlVersion=format_version(self.salinfo.metadata.xml_version),
-            openSpliceVersion=os.environ.get("OSPL_RELEASE", "?"),
             cscVersion=getattr(self, "version", "?"),
         )
 

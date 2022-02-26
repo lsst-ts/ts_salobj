@@ -1,5 +1,4 @@
 setupRequired(sconsUtils)
-setupRequired(ts_ddsconfig)  # OpenSplice quality of service file
 setupRequired(ts_xml)
 setupRequired(ts_idl)  # enums from ts_xml
 setupRequired(ts_utils)
