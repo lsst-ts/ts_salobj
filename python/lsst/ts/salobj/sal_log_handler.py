@@ -51,14 +51,19 @@ class SalLogHandler(logging.Handler):
         try:
             self.format(record)
             if record.exc_text is not None:
-                traceback = str(record.exc_text.encode("utf-8", "replace"))
+                traceback = record.exc_text.encode("utf-8", "replace").decode(
+                    "latin-1", "replace"
+                )
             else:
                 traceback = ""
             asyncio.create_task(
                 self.controller.evt_logMessage.set_write(  # type: ignore
                     name=record.name,
                     level=record.levelno,
-                    message=record.message.encode("utf-8", "replace"),
+                    # OpenSplice requires latin-1 (utf-8 doesn't work).
+                    message=record.message.encode("utf-8", "replace").decode(
+                        "latin-1", "replace"
+                    ),
                     traceback=traceback,
                     filePath=record.pathname,
                     functionName=record.funcName,
