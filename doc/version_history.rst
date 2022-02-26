@@ -16,33 +16,33 @@ v7.0.0
     * Rename ``start`` command ``settingsToApply`` field to ``configurationOverride``.
     * Rename ``settings_to_apply`` arguments to ``override``.
     * Rename the ``--settings`` CSC command-line argument to ``--override``.
-    * Ignore the ``require_settings`` CSC class constant.
-      The new configuration system makes default configuration site-specific, and the default is usually fine.
+    * Ignore the ``require_settings`` CSC class constant, because the new configuration system makes default configuration site-specific, and the default is usually fine.
 
-* Warning: `ConfigurableCsc` now requires that environment variable ``LSST_SITE`` be defined.
-  As a result:
+* Breaking changes:
 
-    * `BaseCscTestCse`: set environment variable ``LSST_SITE`` in ``setUp`` and restore it in ``tearDown``.
-      Subclasses with ``setUp`` and/or ``tearDown`` methods should call ``super().setUp()`` and/or ``super().tearDown()``.
-    * If you have unit tests that do not inherit from `BaseCscTestCase` and construct a configurable CSC, you will have to manage the environment variable yourself.
+    * `ConfigurableCsc` now requires that environment variable ``LSST_SITE`` be defined.
+       As a result:
 
-* Breaking Changes:
+        * `BaseCscTestCse`: sets and restores environment variable ``LSST_SITE`` by overriding the ``run`` method.
+        * If you have unit tests that do not inherit from `BaseCscTestCase` and construct a configurable CSC, you will have to manage the environment variable yourself.
 
-  * Eliminate `BaseCsc.report_summary_state`. Use ``handle_summary_state`` instead.
   * Make `BaseCsc.fault` async.
   * Make `BaseScript.set_state` async.
   * Make `Controller.put_log_level` async.
+  * Eliminate `BaseCsc.report_summary_state`. Use ``handle_summary_state`` instead.
+  * Change topic writing to be async (`topics.CommandEvent`, `topics.CommandTelemetry` and `topics.WriteTopic`):
+  
+    * Delete the ``put`` and ``set_put`` methods; use new async `write` and `set_write` methods instead.
+    * The ``write`` method has no ``data`` argument; call ``set`` or ``set_write`` to set data.
+
   * Make `topics.ControllerCommand.ack` and ``ack_in_progress`` async and delete deprecated ``ackInProgress``.
-  * `TestCsc`: eliminate the topic-type-specific ``make_random_[cmd/evt/tel]_[arrays/scalars]`` methods.
+  * `TestCsc`: eliminate the ``make_random_[cmd/evt/tel]_[arrays/scalars]`` methods.
     Use the new ``make_random_[arrays/scalars]_dict`` methods, instead.
   * Delete ``assert_black_formatted`` and ``tests/test_black.py``; use pytest-black instead.
   * `IdlMetadata`: eliminate the ``str_length`` field (RFC-827).
-  * Modify `topics.BaseTopic`, `topics.ReadTopic`, and `topics.WriteTopic`: use constructor argument ``attr_name`` instead of ``name`` and ``sal_prefix``.
-
-* New Deprecations:
-
-  * `topics.WriteTopic`: deprecated ``put`` and ``set_put``; use new async methods ``write`` and ``set_write``, instead.
-    This is for future-proofing salobj and is the underlying cause of the non-configuration-related breaking changes and deprecations.
+  * Modify `topics.BaseTopic`, `topics.ReadTopic`, and `topics.WriteTopic`: use constructor argument ``attr_name`` instead of the ``name`` and ``sal_prefix`` arguments.
+  * `SalInfo`: eliminate the ``truncate_result`` argument of ``make_ackcmd``, and the associated ``MAX_RESULT_LEN`` constant.
+    This removes the only checking string length limits that ts_salobj did (RFC-827).
 
 * Eliminate the following deprecated features:
 
@@ -54,12 +54,7 @@ v7.0.0
     * `BaseCsc`: class variable ``valid_simulation_modes`` may no longer be None and class variable ``version`` is required.
     * `CscCommander`: ``get_rounded_public_fields`` is gone; use ``get_rounded_public_data`` with the same arguments.
     * `Remote`: the ``tel_max_history`` constructor argument is gone.
-    * `SalInfo`:
-
-        * The ``makeAckCmd`` method is gone; use ``make_ackcmd``.
-        * The ``truncate_result`` argument of ``make_ackcmd`` and the ``MAX_RESULT_LEN`` constant are gone.
-          Don't worry about length limits.
-
+    * `SalInfo`: eliminate the ``makeAckCmd`` method; use ``make_ackcmd``.
     * `topics.ReadTopic.get`: eliminate the ``flush`` argument.
     * `topics.RemoteTelemetry`: the constructor no longer accepts the ``max_history`` argument.
     * Delete constants ``MJD_MINUS_UNIX_SECONDS`` and ``SECONDS_PER_DAY`` (use the values in ts_utils).
@@ -79,8 +74,12 @@ v7.0.0
         * ``tai_from_utc``
         * ``utc_from_tai_unix``
 
-* `CscCommander.make_from_cmd_line`: support index = an IntEnum subclass.
-* Updated ``Jenkinsfile`` to checkout ts_config_ocs.
+* New deprecations:
+
+    * ``BaseDdsDataType`` type hint is deprecated; use ``BaseMsgType`` instead.
+
+* Enhance `CscCommander.make_from_cmd_line` to support index = an IntEnum subclass.
+* Update ``Jenkinsfile`` to checkout ts_config_ocs.
 
 v6.9.3
 ------
