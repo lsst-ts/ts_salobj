@@ -32,17 +32,14 @@ v7.0.0
   * Make `BaseCsc.fault` async.
   * Make `BaseScript.set_state` async.
   * Make `Controller.put_log_level` async.
+  * Change `topics.CommandEvent`, `topics.CommandTelemetry` and `topics.WriteTopic` ``put`` and ``set_put`` to asynchronous `write` and `set_write`.
+    ``write`` does not support writing a data instance; call ``set`` or ``set_write`` to set data.
   * Make `topics.ControllerCommand.ack` and ``ack_in_progress`` async and delete deprecated ``ackInProgress``.
   * `TestCsc`: eliminate the topic-type-specific ``make_random_[cmd/evt/tel]_[arrays/scalars]`` methods.
     Use the new ``make_random_[arrays/scalars]_dict`` methods, instead.
   * Delete ``assert_black_formatted`` and ``tests/test_black.py``; use pytest-black instead.
   * `IdlMetadata`: eliminate the ``str_length`` field (RFC-827).
   * Modify `topics.BaseTopic`, `topics.ReadTopic`, and `topics.WriteTopic`: use constructor argument ``attr_name`` instead of ``name`` and ``sal_prefix``.
-
-* New Deprecations:
-
-  * `topics.WriteTopic`: deprecated ``put`` and ``set_put``; use new async methods ``write`` and ``set_write``, instead.
-    This is for future-proofing salobj and is the underlying cause of the non-configuration-related breaking changes and deprecations.
 
 * Eliminate the following deprecated features:
 
@@ -79,8 +76,8 @@ v7.0.0
         * ``tai_from_utc``
         * ``utc_from_tai_unix``
 
-* `CscCommander.make_from_cmd_line`: support index = an IntEnum subclass.
-* Updated ``Jenkinsfile`` to checkout ts_config_ocs.
+* Enhance `CscCommander.make_from_cmd_line` to support index = an IntEnum subclass.
+* Update ``Jenkinsfile`` to checkout ts_config_ocs.
 
 v6.9.3
 ------
