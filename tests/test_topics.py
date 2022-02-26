@@ -1195,7 +1195,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         kwargs.get(field, 0)
                     )
 
-            # Make sure put and write are prohibited
+            # Make sure put, set_write, and write are prohibited
             with pytest.raises(NotImplementedError):
                 cmdwriter.put()
             with pytest.raises(NotImplementedError):

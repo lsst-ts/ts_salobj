@@ -49,7 +49,7 @@ class ControllerEvent(write_topic.WriteTopic):
         super().__init__(salinfo=salinfo, attr_name="evt_" + name)
 
     def set_put(self, *, force_output: bool = False, **kwargs: typing.Any) -> bool:
-        """DEPRECATED: call write instead.
+        """DEPRECATED: call set_write instead.
 
         Set zero or more fields of ``self.data`` and put if changed
         or if ``force_output`` true.
@@ -78,7 +78,7 @@ class ControllerEvent(write_topic.WriteTopic):
         ValueError
             If the field cannot be set to the specified value.
         """
-        warnings.warn("Deprecated; use write instead", DeprecationWarning)
+        warnings.warn("Deprecated; use set_write instead", DeprecationWarning)
         did_change = self.set(**kwargs)
         do_output = did_change or force_output
         if do_output:

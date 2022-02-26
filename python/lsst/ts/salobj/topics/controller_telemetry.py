@@ -47,7 +47,9 @@ class ControllerTelemetry(write_topic.WriteTopic):
         super().__init__(salinfo=salinfo, attr_name="tel_" + name)
 
     def set_put(self, **kwargs: typing.Any) -> bool:
-        """Set zero or more fields of ``self.data`` and put the result.
+        """DEPRECATED: call set_write instead.
+
+        Set zero or more fields of ``self.data`` and put the result.
 
         Parameters
         ----------
@@ -68,7 +70,7 @@ class ControllerTelemetry(write_topic.WriteTopic):
         ValueError
             If the field cannot be set to the specified value.
         """
-        warnings.warn("Deprecated; use write instead", DeprecationWarning)
+        warnings.warn("Deprecated; use set_write instead", DeprecationWarning)
         did_change = self.set(**kwargs)
         self.put()
         return did_change
