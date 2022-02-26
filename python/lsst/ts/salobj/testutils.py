@@ -22,6 +22,7 @@
 __all__ = [
     "assertRaisesAckError",
     "assertRaisesAckTimeoutError",
+    "set_random_topic_subname",
     "set_random_lsst_dds_partition_prefix",
 ]
 
@@ -29,6 +30,7 @@ import base64
 import contextlib
 import os
 from collections.abc import Generator
+import warnings
 
 import astropy.coordinates
 
@@ -93,8 +95,8 @@ def assertRaisesAckTimeoutError(
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
 
 
-def set_random_lsst_dds_partition_prefix() -> None:
-    """Set a random value for environment variable LSST_DDS_PARTITION_PREFIX
+def set_random_topic_subname() -> None:
+    """Set a random value for environment variable LSST_TOPIC_SUBNAME
 
     Call this for each unit test method that uses SAL message passing,
     in order to avoid collisions with other tests. Note that pytest
@@ -104,4 +106,10 @@ def set_random_lsst_dds_partition_prefix() -> None:
     be seeded. This avoids collisions with previous test runs.
     """
     random_str = base64.urlsafe_b64encode(os.urandom(12)).decode().replace("=", "_")
-    os.environ["LSST_DDS_PARTITION_PREFIX"] = f"test_{random_str}"
+    os.environ["LSST_TOPIC_SUBNAME"] = f"test_{random_str}"
+
+
+def set_random_lsst_dds_partition_prefix() -> None:
+    """A deprecated synonym for set_random_topic_subname."""
+    warnings.warn("Call set_random_topic_subname instead", DeprecationWarning)
+    set_random_topic_subname()

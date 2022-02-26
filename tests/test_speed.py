@@ -21,6 +21,7 @@
 
 import asyncio
 import contextlib
+import os
 import pathlib
 import time
 import unittest
@@ -29,7 +30,9 @@ from collections.abc import AsyncGenerator
 from unittest.mock import MagicMock
 
 import astropy.units as u
-import ddsutil
+
+from unittest.mock import MagicMock
+
 from lsst.ts import salobj, utils
 
 
@@ -41,6 +44,8 @@ class MockVerify:
 
 try:
     from lsst import verify  # type: ignore
+
+    raise ImportError("TODO: re-enable verify when we decide to use Kafkfa")
 except ImportError:
     warnings.warn(
         "verify could not be imported; measurements will not be uploaded", UserWarning
@@ -66,10 +71,10 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         metrics = (
             verify.Metric(
                 name="salobj.CreateClasses",
-                description="The number of topic classes that dds can create "
-                "(from an IDL file), per second. "
-                "This is measured by creating one of each Test topic. "
-                "Creating classes for topics is done once, at startup time.",
+                description="The number of topic dataclasses salobj can create "
+                "from ts_xml file, per second. "
+                "This is measured by parsing the XML for MTM1M3 "
+                "and then creating a dataclass for each topic.",
                 unit=u.ct / u.second,
             ),
             verify.Metric(
@@ -80,27 +85,27 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 unit=u.ct / u.second,
             ),
             verify.Metric(
-                name="salobj.ReadTest_arrays",
-                description="The rate at which salobj can read Test_arrays samples. "
-                "This represents a fairly large sample.",
+                name="salobj.ReadTest_forceActuatorData",
+                description="The rate at which salobj can read Test_forceActuatorData samples. "
+                "This is one of our largest topics.",
                 unit=u.ct / u.second,
             ),
             verify.Metric(
                 name="salobj.ReadTest_logLevel",
                 description="The rate at which salobj can read Test_logevent_logLevel samples. "
-                "This represents a small sample.",
+                "This is one of our smallest topics.",
                 unit=u.ct / u.second,
             ),
             verify.Metric(
-                name="salobj.WriteTest_arrays",
-                description="The rate at which salobj can write Test_arrays samples. "
-                "This represents a fairly large sample.",
+                name="salobj.WriteTest_forceActuatorData",
+                description="The rate at which salobj can write Test_forceActuatorData samples. "
+                "This is one of our largest topics.",
                 unit=u.ct / u.second,
             ),
             verify.Metric(
                 name="salobj.WriteTest_logLevel",
                 description="The rate at which salobj can write Test_logevent_logLevel samples. "
-                "This represents a small sample.",
+                "This is one of our smallest topics.",
                 unit=u.ct / u.second,
             ),
         )
@@ -112,7 +117,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         cls.verify_job.write(measurements_dir / "speed.json")  # type: ignore
 
     def setUp(self) -> None:
-        salobj.set_random_lsst_dds_partition_prefix()
+        salobj.set_random_topic_subname()
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"
         self.index = next(index_gen)
 
@@ -147,39 +152,36 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 process.kill()
 
     async def test_class_creation_speed(self) -> None:
-        """Test the speed of creating topic classes on the fly."""
-        async with salobj.Domain() as domain:
-            t0 = time.monotonic()
-            async with salobj.SalInfo(domain, "Test", index=self.index) as salinfo:
-                topic_names = (
-                    ["logevent_" + name for name in salinfo.event_names]
-                    + ["command_" + name for name in salinfo.command_names]
-                    + list(salinfo.telemetry_names)
-                )
-                for topic_name in topic_names:
-                    revname = salinfo.revnames.get(topic_name)
-                    ddsutil.make_dds_topic_class(
-                        parsed_idl=salinfo.parsed_idl, revname=revname
-                    )
-                dt = time.monotonic() - t0
-                ntopics = len(topic_names)
-                creation_speed = ntopics / dt
-                print(
-                    f"Created {creation_speed:0.1f} topic classes/sec ({ntopics} topic classes); "
-                    f"total duration {dt:0.2f} seconds."
-                )
-                self.insert_measurement(
-                    verify.Measurement(
-                        "salobj.CreateClasses", creation_speed * u.ct / u.second
-                    )
-                )
+        """Test the speed of creating dataclasses for topics.
+
+        Include the time required to parse the XML for the component.
+        Use MTM1M3 because it has some of the largest topics.
+        """
+        topic_subname = os.environ["LSST_TOPIC_SUBNAME"]
+        t0 = time.monotonic()
+        component_info = salobj.ComponentInfo(
+            topic_subname=topic_subname, name="MTM1M3"
+        )
+        data_classes = [
+            topic_info.make_dataclass() for topic_info in component_info.topics.values()
+        ]
+        dt = time.monotonic() - t0
+        ntopics = len(data_classes)
+        creation_speed = ntopics / dt
+        print(
+            f"Created {creation_speed:0.1f} topic classes/sec ({ntopics} topic classes); "
+            f"total duration {dt:0.2f} seconds."
+        )
+        self.insert_measurement(
+            verify.Measurement("salobj.CreateClasses", creation_speed * u.ct / u.second)
+        )
 
     async def test_command_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
             await remote.evt_summaryState.next(flush=False, timeout=60)
             t0 = time.monotonic()
             num_commands = 1000
-            for i in range(num_commands):
+            for _ in range(num_commands):
                 await remote.cmd_fault.start(timeout=STD_TIMEOUT)
             dt = time.monotonic() - t0
             command_speed = num_commands / dt
@@ -208,7 +210,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             # and to get an initial sequence number.
             data0 = await remote.tel_arrays.next(flush=False, timeout=STD_TIMEOUT)
             t0 = time.monotonic()
-            for i in range(num_samples):
+            for _ in range(num_samples):
                 data = await remote.tel_arrays.next(flush=False, timeout=STD_TIMEOUT)
             dt = time.monotonic() - t0
             arrays_read_speed = num_samples / dt
@@ -222,7 +224,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
 
             self.insert_measurement(
                 verify.Measurement(
-                    "salobj.ReadTest_arrays",
+                    "salobj.ReadTest_forceActuatorData",
                     arrays_read_speed * u.ct / u.second,
                 )
             )
@@ -245,7 +247,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             # output by the write loop (unless data has been lost).
             data0 = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
             t0 = time.monotonic()
-            for i in range(num_samples):
+            for _ in range(num_samples):
                 data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
             dt = time.monotonic() - t0
             log_level_read_speed = num_samples / dt
@@ -271,7 +273,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             num_samples = 1000
 
             t0 = time.monotonic()
-            for i in range(num_samples):
+            for _ in range(num_samples):
                 await controller.tel_arrays.write()
             dt = time.monotonic() - t0
             arrays_write_speed = num_samples / dt
@@ -281,7 +283,8 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
 
             self.insert_measurement(
                 verify.Measurement(
-                    "salobj.WriteTest_arrays", arrays_write_speed * u.ct / u.second
+                    "salobj.WriteTest_forceActuatorData",
+                    arrays_write_speed * u.ct / u.second,
                 )
             )
 

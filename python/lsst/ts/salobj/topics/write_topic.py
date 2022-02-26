@@ -81,7 +81,7 @@ class WriteTopic(BaseTopic):
         SAL component information
     attr_name : `str`
         Topic name with attribute prefix. The prefix must be one of:
-        ``cmd_``, ``evt_``, ``tel_``, or (only for the ackcmd topic) ``ack_``.
+        "cmd_", "evt_", "tel_", or (only for the ackcmd topic) "ack_".
     min_seq_num : `int` or `None`, optional
         Minimum value for the ``private_seqNum`` field. The default is 1.
         If `None` then ``private_seqNum`` is not set; this is needed
@@ -126,24 +126,12 @@ class WriteTopic(BaseTopic):
             self._seq_num_generator = utils.index_generator(
                 imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num
             )
-        # Command topics use a different partition name than
-        # all other topics, including ackcmd, and the partition name
-        # is part of the publisher and subscriber.
-        # This split allows us to create just one subscriber and one publisher
-        # for each Controller or Remote:
-        # `Controller` only needs a cmd_subscriber and data_publisher,
-        # `Remote` only needs a cmd_publisher and data_subscriber.
-        if attr_name.startswith("cmd_"):
-            publisher = salinfo.cmd_publisher
-        else:
-            publisher = salinfo.data_publisher
-        self._writer = publisher.create_datawriter(self._topic, self.qos_set.writer_qos)
         self._has_data = False
         self._data = self.DataType()
         # Record which field names are float, double or array of either,
         # to make it easy to compare float fields with nan equal.
         self._float_field_names = set()
-        for name, value in self._data.get_vars().items():
+        for name, value in vars(self._data).items():
             if isinstance(value, list):
                 # In our SAL schemas arrays are fixed length
                 # and must contain at least one element.
@@ -197,7 +185,6 @@ class WriteTopic(BaseTopic):
         if not self.isopen:
             return
         self.isopen = False
-        self._writer.close()
 
     async def close(self) -> None:
         """Shut down and release resources.
@@ -249,15 +236,27 @@ class WriteTopic(BaseTopic):
         If one or more fields cannot be set, the message data may be
         partially updated.
         """
+        # Always report did_change true if not self.has_data
         did_change = not self.has_data
+
+        # Set a copy of the data, in case any of the data is invalid.
+        data_dict = vars(self.data)
+        unknown_fields = kwargs.keys() - data_dict.keys()
+        if unknown_fields:
+            raise AttributeError(
+                f"{self.attr_name} has no fields {sorted(unknown_fields)}"
+            )
+
         for field_name, value in kwargs.items():
             if value is None:
                 if not hasattr(self.data, field_name):
                     raise AttributeError(f"{self.data} has no attribute {field_name}")
+                # Keep the old value
                 continue
-            old_value = getattr(self.data, field_name)
-            try:
-                if not did_change:
+
+            old_value = data_dict[field_name]
+            if not did_change:
+                try:
                     # array_equal works for sequences of all kinds,
                     # as well as strings and scalars
                     is_float = field_name in self._float_field_names
@@ -266,12 +265,14 @@ class WriteTopic(BaseTopic):
                         value,
                         equal_nan=is_float,  # type: ignore
                     )
-                setattr(self.data, field_name, value)
-            except Exception as e:
-                raise ValueError(
-                    f"Could not set {self.data}.{field_name} to {value!r}"
-                ) from e
-        self._has_data = True
+                except Exception as e:
+                    raise TypeError(
+                        f"Cannot set {self.attr_name}.{field_name}={value!r}; wrong type."
+                    ) from e
+            data_dict[field_name] = value
+        # Check the data by creating a DataType, because no checking is done
+        # when directly setting attributes of a dataclass.
+        self.data = self.DataType(**data_dict)
         return did_change
 
     async def set_write(
@@ -319,9 +320,9 @@ class WriteTopic(BaseTopic):
                 self.default_force_output if force_output is None else force_output
             )
         if do_output:
-            data = self._basic_write()
+            data = await self.write()
         else:
-            data = copy.copy(self.data)
+            data = self.data
         return SetWriteResult(did_change=did_change, was_written=do_output, data=data)
 
     async def write(self) -> type_hints.BaseMsgType:
@@ -334,60 +335,20 @@ class WriteTopic(BaseTopic):
             This can be useful to avoid race conditions
             (as found in RemoteCommand).
         """
-        return self._basic_write()
+        self.salinfo.assert_started()
 
-    def _basic_write(self) -> type_hints.BaseMsgType:
-        """Put self.data after setting the private_x fields.
-
-        Return a copy of the data written.
-        """
-        data = self._prepare_data_to_write()
-        try:
-            self._writer.write(data)
-        except struct.error as e:
-            raise ValueError(
-                f"{self.name} write({data}) failed: one or more fields invalid"
-            ) from e
-        except TypeError as e:
-            raise ValueError(
-                f"{self.name} write({data}) failed: "
-                f"perhaps one or more array fields has been set to a scalar"
-            ) from e
-        except IndexError as e:
-            raise ValueError(
-                f"{self.name} write({data}) failed: "
-                f"probably at least one array field is too short"
-            ) from e
-        return data
-
-    def _prepare_data_to_write(self) -> type_hints.BaseMsgType:
-        """Prepare self.data to be written and return a copy of the result.
-
-        Set the following fields:
-
-        * private_sndStamp
-        * private_origin
-        * private_identity
-        * private_seqNum, if a seq_num_generator is available
-        * salIndex, if self.index is not 0
-
-        Does not check self.salinfo.assert_started()
-
-        Returns
-        -------
-        data : self.DataType
-            A copy of the data that was written.
-            This can be useful to avoid race conditions
-            (as found in RemoteCommand).
-        """
         self.data.private_sndStamp = utils.current_tai()
-        self.data.private_revCode = self.rev_code
         self.data.private_origin = self.salinfo.domain.origin
         self.data.private_identity = self.salinfo.identity
         if self._seq_num_generator is not None:
             self.data.private_seqNum = next(self._seq_num_generator)
-        # when index is 0 use the default of 0 and give senders a chance
-        # to override it.
+        # If index is nonzero then set private_index.
+        # Otherwise the default of 0 is correct,
+        # and the user can override it.
         if self.salinfo.index != 0:
-            self.data.salIndex = self.salinfo.index
-        return copy.copy(self.data)
+            self.data.private_index = self.salinfo.index
+        data_dict = vars(self.data)
+        # Make a copy in case another task changes self.data during write.
+        data = copy.copy(self.data)
+        await self.salinfo.write_data(topic_info=self.topic_info, data_dict=data_dict)
+        return data

@@ -177,7 +177,7 @@ class ControllerCommand(read_topic.ReadTopic):
         return await super().next(flush=False, timeout=timeout)
 
     def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
-        """Convert the value to an ``ackcmd`` and queue it.
+        """Queue the message if it has a valid sequence number.
 
         This override checks for a positive private_seqNum
         and raises ValueError if not.

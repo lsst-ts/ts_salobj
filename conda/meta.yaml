@@ -48,14 +48,5 @@ requirements:
     - kafkit
     - astropy >=5
     - boto3
-    - jsonschema
-    - moto >=5
-    - numpy ~=1.20
-    - python {{ python }}
-    - pyyaml
-    - setuptools
-    - setuptools_scm
-    - ts-dds
-    - ts-ddsconfig
-    - ts-idl {{ idl_version }}
+    - moto
     - ts-utils

@@ -369,7 +369,7 @@ help  # print this help
         """
         return dict(
             (key, value)
-            for key, value in data.get_vars().items()
+            for key, value in vars(data).items()
             if self.field_is_public(key)
         )
 
@@ -381,7 +381,7 @@ help  # print this help
         """
         return {
             key: round_any(value, digits=digits)
-            for key, value in data.get_vars().items()
+            for key, value in vars(data).items()
             if self.field_is_public(key)
         }
 

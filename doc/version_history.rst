@@ -6,8 +6,18 @@
 Version History
 ###############
 
-
 .. Version 8 of salobj will contain the kafka release.
+
+vKafka
+------
+
+* Update to use Kafka instead of DDS to read and write messages.
+
+* Changes that may visibly affect your code:
+
+    * `SalInfo`: you must call ``start`` before writing data.
+    * Messages no longer support the ``get_vars`` method; use the ``vars`` built-in function instead.
+      In other words change ``message.get_vars()`` to ``vars(message)``.
 
 v7.7.0
 ------

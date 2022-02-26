@@ -78,12 +78,8 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
             # Test the softwareVersions event.
             # Assume the string length is the same for each field.
-            metadata = self.csc.salinfo.metadata
             await self.assert_next_sample(
                 topic=self.remote.evt_softwareVersions,
-                xmlVersion=metadata.xml_version,
-                salVersion=metadata.sal_version,
-                openSpliceVersion=os.environ.get("OSPL_RELEASE", "?"),
                 cscVersion=salobj.__version__,
             )
             await self.assert_next_sample(

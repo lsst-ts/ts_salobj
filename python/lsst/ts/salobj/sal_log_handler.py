@@ -64,8 +64,19 @@ class SalLogHandler(logging.Handler):
         message = "(unknown)"
         try:
             self.format(record)
-            message = record.message.encode("utf-8", "replace").decode(
-                "latin-1", "replace"
+            message = record.message
+            asyncio.run_coroutine_threadsafe(
+                coro=self._async_emit(
+                    name=record.name,
+                    level=record.levelno,
+                    message=record.message,
+                    traceback=record.exc_text or "",
+                    filePath=record.pathname,
+                    functionName=record.funcName,
+                    lineNumber=record.lineno,
+                    process=record.process or 0,
+                ),
+                loop=self.loop,
             )
             if threading.get_ident() == self.main_thread_id:
                 new_future: MixedFutureType = asyncio.create_task(
@@ -118,6 +129,15 @@ class SalLogHandler(logging.Handler):
         lineNumber: int,
         process: int,
     ) -> None:
+        if not self.controller.salinfo.running:
+            print(
+                f"SalLogHandler._async_emit of level={level}, "
+                f"message={message!r} not possible: ",
+                f"{self.controller.salinfo} is not running",
+                file=sys.stderr,
+            )
+            return
+
         try:
             await self.controller.evt_logMessage.set_write(  # type: ignore
                 name=name,
