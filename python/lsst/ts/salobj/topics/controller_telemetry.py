@@ -44,7 +44,7 @@ class ControllerTelemetry(write_topic.WriteTopic):
     """
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:
-        super().__init__(salinfo=salinfo, name=name, sal_prefix="")
+        super().__init__(salinfo=salinfo, attr_name="tel_" + name)
 
     def set_put(self, **kwargs: typing.Any) -> bool:
         """Set zero or more fields of ``self.data`` and put the result.

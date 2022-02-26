@@ -164,19 +164,19 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         ) as salinfo:
             for cmd_name in salinfo.command_names:
                 cmd = salobj.topics.BaseTopic(
-                    salinfo=salinfo, name=cmd_name, sal_prefix="command_"
+                    salinfo=salinfo, attr_name="cmd_" + cmd_name
                 )
                 assert cmd.name == cmd_name
 
             for evt_name in salinfo.event_names:
                 evt = salobj.topics.BaseTopic(
-                    salinfo=salinfo, name=evt_name, sal_prefix="logevent_"
+                    salinfo=salinfo, attr_name="evt_" + evt_name
                 )
                 assert evt.name == evt_name
 
             for tel_name in salinfo.telemetry_names:
                 tel = salobj.topics.BaseTopic(
-                    salinfo=salinfo, name=tel_name, sal_prefix=""
+                    salinfo=salinfo, attr_name="tel_" + tel_name
                 )
                 assert tel.name == tel_name
 
@@ -188,46 +188,46 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 for bad_prefix in (
                     "_",
                     "invalid_",
-                    "logevent",  # no trailing underscore
-                    "command",  # no trailing underscore
+                    "ack",  # no trailing underscore
+                    "cmd",  # no trailing underscore
+                    "evt",  # no trailing underscore
+                    "tel",  # no trailing underscore
                 ):
                     with pytest.raises(RuntimeError):
                         salobj.topics.BaseTopic(
-                            salinfo=salinfo, name=good_name, sal_prefix=bad_prefix
+                            salinfo=salinfo, attr_name=bad_prefix + good_name
                         )
 
-            for good_prefix in ("", "command_", "logevent_"):
+            for good_prefix in ("ack_", "cmd_", "evt_", "tel_"):
                 for bad_name in ("", "no_such_topic"):
                     with pytest.raises(RuntimeError):
                         salobj.topics.BaseTopic(
-                            salinfo=salinfo, name=bad_name, sal_prefix=good_prefix
+                            salinfo=salinfo, attr_name=good_prefix + bad_name
                         )
 
             for cmd_name in salinfo.command_names:
-                for non_cmd_prefix in ("", "logevent_"):
+                for non_cmd_prefix in ("ack_", "evt_", "tel_"):
                     with pytest.raises(RuntimeError):
                         salobj.topics.BaseTopic(
-                            salinfo=salinfo,
-                            name=cmd_name,
-                            sal_prefix=non_cmd_prefix,
+                            salinfo=salinfo, attr_name=non_cmd_prefix + cmd_name
                         )
 
             # there is overlap between event and telemetry names
             # so just use the command_ prefix as the invalid prefix
-            non_evt_prefix = "command_"
+            non_evt_prefix = "cmd_"
             for evt_name in salinfo.event_names:
                 with pytest.raises(RuntimeError):
                     salobj.topics.BaseTopic(
-                        salinfo=salinfo, name=evt_name, sal_prefix=non_evt_prefix
+                        salinfo=salinfo, attr_name=non_evt_prefix + evt_name
                     )
 
             # there is overlap between event and telemetry names
             # so just use the command_ prefix as the invalid prefix
-            non_tel_prefix = "command_"
+            non_tel_prefix = "cmd__"
             for tel_name in salinfo.telemetry_names:
                 with pytest.raises(RuntimeError):
                     salobj.topics.BaseTopic(
-                        salinfo=salinfo, name=tel_name, sal_prefix=non_tel_prefix
+                        salinfo=salinfo, attr_name=non_tel_prefix + tel_name
                     )
 
     async def test_command_isolation(self) -> None:
@@ -239,7 +239,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         ) as salinfo:
 
             cmdreader = salobj.topics.ReadTopic(
-                salinfo=salinfo, name="wait", sal_prefix="command_", max_history=0
+                salinfo=salinfo, attr_name="cmd_wait", max_history=0
             )
             cmdwriter = salobj.topics.RemoteCommand(salinfo=salinfo, name="wait")
             cmdtype = salinfo.sal_topic_names.index(cmdwriter.sal_name)
@@ -249,8 +249,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # to test the ``filter_ackcmd`` argument.
             unfiltered_ackcmd_reader = salobj.topics.ReadTopic(
                 salinfo=salinfo,
-                name="wait",
-                sal_prefix="command_",
+                attr_name="cmd_wait",
                 max_history=0,
                 filter_ackcmd=False,
             )
@@ -1212,10 +1211,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # Use a logevent topic because it is not volatile
             # (which might cause the read loop to start too quickly).
             topic = salobj.topics.ReadTopic(
-                salinfo=salinfo,
-                name="scalars",
-                sal_prefix="logevent_",
-                max_history=100,
+                salinfo=salinfo, attr_name="evt_scalars", max_history=100
             )
             with pytest.raises(RuntimeError):
                 topic.has_data
@@ -1238,48 +1234,41 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         ) as salinfo:
             # max_history must not be negative
             for bad_max_history in (-1, -10):
-                for name, sal_prefix in (
-                    ("ackcmd", ""),
-                    ("setScalars", "command_"),
-                    ("scalars", "logevent_"),
-                    ("scalars", ""),
+                for attr_name in (
+                    "ack_ackcmd",
+                    "cmd_setScalars",
+                    "evt_scalars",
+                    "tel_scalars",
                 ):
                     with pytest.raises(ValueError):
                         salobj.topics.ReadTopic(
                             salinfo=salinfo,
-                            name=name,
-                            sal_prefix=sal_prefix,
+                            attr_name=attr_name,
                             max_history=bad_max_history,
                         )
             # queue_len must be be >= MIN_QUEUE_LEN
             for bad_queue_len in (-1, 0, MIN_QUEUE_LEN - 1):
-                for name, sal_prefix in (
-                    ("ackcmd", ""),
-                    ("setScalars", "command_"),
-                    ("scalars", "logevent_"),
-                    ("scalars", ""),
+                for attr_name in (
+                    "ack_ackcmd",
+                    "cmd_setScalars",
+                    "evt_scalars",
+                    "tel_scalars",
                 ):
                     with pytest.raises(ValueError):
                         salobj.topics.ReadTopic(
                             salinfo=salinfo,
-                            name=name,
-                            sal_prefix=sal_prefix,
+                            attr_name=attr_name,
                             max_history=0,
                             queue_len=bad_queue_len,
                         )
 
             # Only events can have non-zero max_history
             for bad_max_history in (1, 10):
-                for name, sal_prefix in (
-                    ("ackcmd", ""),
-                    ("setScalars", "command_"),
-                    ("scalars", ""),
-                ):
+                for name in ("ack_ackcmd", "cmd_setScalars", "tel_scalars"):
                     with pytest.raises(ValueError):
                         salobj.topics.ReadTopic(
                             salinfo=salinfo,
-                            name=name,
-                            sal_prefix=sal_prefix,
+                            attr_name=name,
                             max_history=bad_max_history,
                         )
 
@@ -1291,8 +1280,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             with pytest.raises(ValueError):
                 salobj.topics.ReadTopic(
                     salinfo=salinfo,
-                    name="scalars",
-                    sal_prefix="logevent_",
+                    attr_name="evt_scalars",
                     max_history=bad_max_history,
                     queue_len=queue_len,
                 )
@@ -1310,8 +1298,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 with pytest.warns(UserWarning, match="max_history=.* > history depth"):
                     salobj.topics.ReadTopic(
                         salinfo=salinfo,
-                        name="scalars",
-                        sal_prefix="logevent_",
+                        attr_name="evt_scalars",
                         max_history=warn_max_history,
                         queue_len=warn_max_history + MIN_QUEUE_LEN,
                     )
@@ -1323,8 +1310,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 with pytest.raises(ValueError):
                     salobj.topics.ReadTopic(
                         salinfo=salinfo0,
-                        name="scalars",
-                        sal_prefix="logevent_",
+                        attr_name="evt_scalars",
                         max_history=bad_max_history,
                     )
 
@@ -1578,7 +1564,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             domain=domain, name="Test", index=1
         ) as salinfo:
             write_topic = salobj.topics.WriteTopic(
-                salinfo=salinfo, name="scalars", sal_prefix="logevent_"
+                salinfo=salinfo, attr_name="evt_scalars"
             )
             await salinfo.start()
 

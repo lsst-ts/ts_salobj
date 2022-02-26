@@ -47,9 +47,7 @@ class AckCmdWriter(write_topic.WriteTopic):
     """
 
     def __init__(self, salinfo: SalInfo) -> None:
-        super().__init__(
-            salinfo=salinfo, name="ackcmd", sal_prefix="", min_seq_num=None
-        )
+        super().__init__(salinfo=salinfo, attr_name="ack_ackcmd", min_seq_num=None)
 
 
 class ControllerCommand(read_topic.ReadTopic):
@@ -100,8 +98,7 @@ class ControllerCommand(read_topic.ReadTopic):
     ) -> None:
         super().__init__(
             salinfo=salinfo,
-            name=name,
-            sal_prefix="command_",
+            attr_name="cmd_" + name,
             max_history=0,
             queue_len=queue_len,
         )

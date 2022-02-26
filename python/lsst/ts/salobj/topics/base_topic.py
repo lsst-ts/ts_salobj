@@ -34,9 +34,8 @@ from ..idl_metadata import TopicMetadata
 if typing.TYPE_CHECKING:
     from ..sal_info import SalInfo
 
-# dict of sal_prefix: attr_prefix: the prefix used for
-# Controller and Remote topic attributes.
-_ATTR_PREFIXES = {"": "tel_", "logevent_": "evt_", "command_": "cmd_"}
+# dict of attr prefix: SAL prefix
+_SAL_PREFIXES = {"ack": "", "cmd": "command_", "evt": "logevent_", "tel": ""}
 
 
 class BaseTopic(abc.ABC):
@@ -45,11 +44,10 @@ class BaseTopic(abc.ABC):
     Parameters
     ----------
     salinfo : `.SalInfo`
-        SAL component information
-    name : `str`
-        Topic name, without a "command\_" or "logevent\_" prefix.
-    sal_prefix : `str`
-        SAL topic prefix: one of "command\_", "logevent\_" or ""
+        SAL component information.
+    attr_name : `str`
+        Topic name with attribute prefix. The prefix must be one of:
+        ``cmd_``, ``evt_``, ``tel_``, or (only for the ackcmd topic) ``ack_``.
 
     Raises
     ------
@@ -60,40 +58,44 @@ class BaseTopic(abc.ABC):
     ----------
     salinfo : `.SalInfo`
         The ``salinfo`` constructor argument.
+    attr_name : `str`
+        The attr_name constructor argument: the name of topic attribute
+        in `Controller` and `Remote`. For example: ``evt_summaryState``.
     name : `str`
-        The ``name`` constructor argument.
+        The topic name without any prefix. For example: ``summaryState``.
     sal_name : `str`
-        The topic name used by SAL.
-        For example: "logevent_summaryState".
+        The topic name used by SAL. Commands have prefix ``command_``,
+        events have prefix ``logevent_``, and other topics have no prefix.
+        For example: ``logevent_summaryState``.
     log : `logging.Logger`
         A logger.
     qos_set : `salobj.QosSet`
         Quality of service set.
     volatile : `bool`
         Is this topic volatile (in which case it has no historical data)?
-    attr_name : `str`
-        Name of topic attribute in `Controller` and `Remote`.
-        For example: "evt_summaryState".
     rev_code : `str`
         Revision hash code for the topic.
         This code changes whenever the schema for the topic changes,
-        and it is part of the DDS topic name. For example: "90255bf1"
+        and it is part of the DDS topic name. For example: ``90255bf1``.
     dds_name : `str`
         Name of topic seen by DDS.
-        For example: "Test_logevent_summaryState_90255bf1".
+        For example: ``Test_logevent_summaryState_90255bf1``.
     """
 
-    def __init__(self, *, salinfo: SalInfo, name: str, sal_prefix: str) -> None:
+    def __init__(self, *, salinfo: SalInfo, attr_name: str) -> None:
         try:
             self.salinfo = salinfo
-            self.name = str(name)
+            self.attr_name = attr_name
+
+            attr_prefix, name = attr_name.split("_", 1)
+            if attr_prefix not in _SAL_PREFIXES:
+                raise RuntimeError(
+                    f"Uknown prefix {attr_prefix!r} in attr_name={attr_name!r}"
+                )
+            self.name = name
+            sal_prefix = _SAL_PREFIXES[attr_prefix]
             self.sal_name = sal_prefix + self.name
             self.log = salinfo.log.getChild(self.sal_name)
-
-            attr_prefix = "ack_" if name == "ackcmd" else _ATTR_PREFIXES.get(sal_prefix)
-            if attr_prefix is None:
-                raise ValueError(f"Uknown sal_prefix {sal_prefix!r}")
-            self.attr_name = attr_prefix + name
 
             if name == "ackcmd":
                 self.qos_set = salinfo.domain.ackcmd_qos_set
@@ -106,7 +108,7 @@ class BaseTopic(abc.ABC):
 
             revname = salinfo.revnames.get(self.sal_name)
             if revname is None:
-                raise ValueError(
+                raise RuntimeError(
                     f"Could not find {self.salinfo.name} topic {self.sal_name}"
                 )
             self.dds_name = revname.replace("::", "_")
@@ -120,7 +122,9 @@ class BaseTopic(abc.ABC):
             )
 
         except Exception as e:
-            raise RuntimeError(f"Failed to create topic {salinfo.name}.{name}") from e
+            raise RuntimeError(
+                f"Failed to create topic {salinfo.name}.{attr_name}"
+            ) from e
 
     @property
     def DataType(self) -> typing.Type[type_hints.BaseMsgType]:

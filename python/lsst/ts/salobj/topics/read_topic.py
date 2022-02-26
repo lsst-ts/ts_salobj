@@ -184,10 +184,9 @@ class ReadTopic(BaseTopic):
     ----------
     salinfo : `.SalInfo`
         SAL component information
-    name : `str`
-        Topic name, without a "command\_" or "logevent\_" prefix.
-    sal_prefix : `str`
-        SAL topic prefix: one of "command\_", "logevent\_" or ""
+    attr_name : `str`
+        Topic name with attribute prefix. The prefix must be one of:
+        ``cmd_``, ``evt_``, ``tel_``, or (only for the ackcmd topic) ``ack_``.
     max_history : `int`
         Maximum number of historical items to read:
 
@@ -281,13 +280,12 @@ class ReadTopic(BaseTopic):
         self,
         *,
         salinfo: SalInfo,
-        name: str,
-        sal_prefix: str,
+        attr_name: str,
         max_history: int,
         queue_len: int = DEFAULT_QUEUE_LEN,
         filter_ackcmd: bool = True,
     ) -> None:
-        super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
+        super().__init__(salinfo=salinfo, attr_name=attr_name)
         self.isopen = True
         self._allow_multiple_callbacks = False
         if max_history < 0:
@@ -332,12 +330,12 @@ class ReadTopic(BaseTopic):
         self._callback_tasks: typing.Set[asyncio.Task] = set()
         self._callback_loop_task = utils.make_done_future()
         self.dds_queue_length_checker = QueueCapacityChecker(
-            descr=f"{name} DDS read queue",
+            descr=f"{attr_name} DDS read queue",
             log=self.log,
             queue_len=self.qos_set.reader_qos.history.depth,
         )
         self.python_queue_length_checker = QueueCapacityChecker(
-            descr=f"{name} python read queue", log=self.log, queue_len=queue_len
+            descr=f"{attr_name} python read queue", log=self.log, queue_len=queue_len
         )
         # Command topics use a different a partition name than
         # all other topics, including ackcmd, and the partition name
@@ -346,7 +344,7 @@ class ReadTopic(BaseTopic):
         # for each Controller or Remote:
         # `Controller` only needs a cmd_subscriber and data_publisher,
         # `Remote` only needs a cmd_publisher and data_subscriber.
-        if sal_prefix == "command_":
+        if attr_name.startswith("cmd_"):
             subscriber = salinfo.cmd_subscriber
         else:
             subscriber = salinfo.data_subscriber
@@ -362,7 +360,7 @@ class ReadTopic(BaseTopic):
         queries = []
         if salinfo.index > 0:
             queries.append(f"{salinfo.name}ID = {salinfo.index}")
-        if name == "ackcmd" and filter_ackcmd:
+        if attr_name == "ack_ackcmd" and filter_ackcmd:
             queries += [
                 f"origin = {salinfo.domain.origin}",
                 f"identity = '{salinfo.identity}'",

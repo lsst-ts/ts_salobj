@@ -80,10 +80,9 @@ class WriteTopic(BaseTopic):
     ----------
     salinfo : `.SalInfo`
         SAL component information
-    name : `str`
-        Topic name, without a "command\_" or "logevent\_" prefix.
-    sal_prefix : `str`
-        SAL topic prefix: one of "command\_", "logevent\_" or ""
+    attr_name : `str`
+        Topic name with attribute prefix. The prefix must be one of:
+        ``cmd_``, ``evt_``, ``tel_``, or (only for the ackcmd topic) ``ack_``.
     min_seq_num : `int` or `None`, optional
         Minimum value for the ``private_seqNum`` field. The default is 1.
         If `None` then ``private_seqNum`` is not set; this is needed
@@ -108,17 +107,12 @@ class WriteTopic(BaseTopic):
         self,
         *,
         salinfo: SalInfo,
-        name: str,
-        sal_prefix: str,
+        attr_name: str,
         min_seq_num: typing.Optional[int] = 1,
         max_seq_num: int = MAX_SEQ_NUM,
         initial_seq_num: typing.Optional[int] = None,
     ) -> None:
-        super().__init__(
-            salinfo=salinfo,
-            name=name,
-            sal_prefix=sal_prefix,
-        )
+        super().__init__(salinfo=salinfo, attr_name=attr_name)
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
@@ -137,7 +131,7 @@ class WriteTopic(BaseTopic):
         # for each Controller or Remote:
         # `Controller` only needs a cmd_subscriber and data_publisher,
         # `Remote` only needs a cmd_publisher and data_subscriber.
-        if sal_prefix == "command_":
+        if attr_name.startswith("cmd_"):
             publisher = salinfo.cmd_publisher
         else:
             publisher = salinfo.data_publisher

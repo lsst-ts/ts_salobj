@@ -63,11 +63,7 @@ class AckCmdReader(read_topic.ReadTopic):
         self, salinfo: SalInfo, queue_len: int = read_topic.DEFAULT_QUEUE_LEN
     ) -> None:
         super().__init__(
-            salinfo=salinfo,
-            name="ackcmd",
-            sal_prefix="",
-            max_history=0,
-            queue_len=queue_len,
+            salinfo=salinfo, attr_name="ack_ackcmd", max_history=0, queue_len=queue_len
         )
 
 
@@ -275,8 +271,7 @@ class RemoteCommand(write_topic.WriteTopic):
         self._in_start = False
         super().__init__(
             salinfo=salinfo,
-            name=name,
-            sal_prefix="command_",
+            attr_name="cmd_" + name,
             min_seq_num=min_seq_num,
             max_seq_num=max_seq_num,
             initial_seq_num=initial_seq_num,

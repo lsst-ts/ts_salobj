@@ -55,8 +55,7 @@ class RemoteEvent(read_topic.ReadTopic):
     ) -> None:
         super().__init__(
             salinfo=salinfo,
-            name=name,
-            sal_prefix="logevent_",
+            attr_name="evt_" + name,
             max_history=max_history,
             queue_len=queue_len,
         )

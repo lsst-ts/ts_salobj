@@ -52,8 +52,7 @@ class RemoteTelemetry(read_topic.ReadTopic):
     ) -> None:
         super().__init__(
             salinfo=salinfo,
-            name=name,
-            sal_prefix="",
+            attr_name="tel_" + name,
             max_history=0,
             queue_len=queue_len,
         )

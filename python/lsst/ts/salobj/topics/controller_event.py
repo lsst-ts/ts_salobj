@@ -46,7 +46,7 @@ class ControllerEvent(write_topic.WriteTopic):
     default_force_output = False
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:
-        super().__init__(salinfo=salinfo, name=name, sal_prefix="logevent_")
+        super().__init__(salinfo=salinfo, attr_name="evt_" + name)
 
     def set_put(self, *, force_output: bool = False, **kwargs: typing.Any) -> bool:
         """DEPRECATED: call write instead.
