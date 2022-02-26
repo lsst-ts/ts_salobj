@@ -42,7 +42,7 @@ class AckCmdWriter(write_topic.WriteTopic):
 
     Parameters
     ----------
-    salinfo : `.SalInfo`
+    salinfo : `SalInfo`
         SAL component information
     """
 
@@ -55,7 +55,7 @@ class ControllerCommand(read_topic.ReadTopic):
 
     Parameters
     ----------
-    salinfo : `.SalInfo`
+    salinfo : `SalInfo`
         SAL component information.
     name : `str`
         Command name, with no prefix, e.g. "start".

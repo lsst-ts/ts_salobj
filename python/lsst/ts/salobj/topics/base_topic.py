@@ -43,7 +43,7 @@ class BaseTopic(abc.ABC):
 
     Parameters
     ----------
-    salinfo : `.SalInfo`
+    salinfo : `SalInfo`
         SAL component information.
     attr_name : `str`
         Topic name with attribute prefix. The prefix must be one of:
@@ -56,7 +56,7 @@ class BaseTopic(abc.ABC):
 
     Attributes
     ----------
-    salinfo : `.SalInfo`
+    salinfo : `SalInfo`
         The ``salinfo`` constructor argument.
     attr_name : `str`
         The attr_name constructor argument: the name of topic attribute

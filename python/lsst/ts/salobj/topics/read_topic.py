@@ -182,7 +182,7 @@ class ReadTopic(BaseTopic):
 
     Parameters
     ----------
-    salinfo : `.SalInfo`
+    salinfo : `SalInfo`
         SAL component information
     attr_name : `str`
         Topic name with attribute prefix. The prefix must be one of:

@@ -36,7 +36,7 @@ class RemoteTelemetry(read_topic.ReadTopic):
 
     Parameters
     ----------
-    salinfo : `.SalInfo`
+    salinfo : `SalInfo`
         SAL component information.
     name : `str`
         Telemetry topic name, with no prefix.
