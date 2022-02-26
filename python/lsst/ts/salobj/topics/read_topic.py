@@ -50,7 +50,7 @@ MIN_QUEUE_LEN = 10
 
 _BasicReturnType = typing.Optional[type_hints.AckCmdDataType]
 CallbackType = typing.Callable[
-    [type_hints.BaseDdsDataType],
+    [type_hints.BaseMsgType],
     typing.Union[_BasicReturnType, typing.Awaitable[_BasicReturnType]],
 ]
 
@@ -318,10 +318,10 @@ class ReadTopic(BaseTopic):
                 UserWarning,
             )
         self._max_history = int(max_history)
-        self._data_queue: typing.Deque[type_hints.BaseDdsDataType] = collections.deque(
+        self._data_queue: typing.Deque[type_hints.BaseMsgType] = collections.deque(
             maxlen=queue_len
         )
-        self._current_data: typing.Optional[type_hints.BaseDdsDataType] = None
+        self._current_data: typing.Optional[type_hints.BaseMsgType] = None
         # Task that `next` waits on.
         # Its result is set to the oldest message on the queue.
         # We do this instead of having `next` itself pop the oldest message
@@ -495,7 +495,7 @@ class ReadTopic(BaseTopic):
 
     async def aget(
         self, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Get the most recent message, or wait for data if no data has
         ever been seen (`has_data` False).
 
@@ -550,7 +550,7 @@ class ReadTopic(BaseTopic):
             raise RuntimeError("Not allowed because there is a callback function")
         self._data_queue.clear()
 
-    def get(self) -> typing.Optional[type_hints.BaseDdsDataType]:
+    def get(self) -> typing.Optional[type_hints.BaseMsgType]:
         """Get the most recent message, or `None` if no data has ever been seen
         (`has_data` False).
 
@@ -571,7 +571,7 @@ class ReadTopic(BaseTopic):
 
         return self._current_data
 
-    def get_oldest(self) -> typing.Optional[type_hints.BaseDdsDataType]:
+    def get_oldest(self) -> typing.Optional[type_hints.BaseMsgType]:
         """Pop and return the oldest message from the queue, or `None` if the
         queue is empty.
 
@@ -604,7 +604,7 @@ class ReadTopic(BaseTopic):
 
     async def next(
         self, *, flush: bool, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Pop and return the oldest message from the queue, waiting for data
         if the queue is empty.
 
@@ -647,7 +647,7 @@ class ReadTopic(BaseTopic):
 
     async def _next(
         self, *, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Implement next.
 
         Unlike `next`, this can be called while using a callback function.
@@ -681,7 +681,7 @@ class ReadTopic(BaseTopic):
             task = self._callback_tasks.pop()
             task.cancel()
 
-    async def _run_callback(self, data: type_hints.BaseDdsDataType) -> None:
+    async def _run_callback(self, data: type_hints.BaseMsgType) -> None:
         try:
             # mypy gets upset because self._callback may be None
             # but it's too expensive to check that
@@ -695,13 +695,13 @@ class ReadTopic(BaseTopic):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
     async def _queue_data(
-        self, data_list: typing.Collection[type_hints.BaseDdsDataType]
+        self, data_list: typing.Collection[type_hints.BaseMsgType]
     ) -> None:
         """Queue multiple one or more messages.
 
         Parameters
         ----------
-        data_list : typing.Collection[type_hints.BaseDdsDataType]
+        data_list : typing.Collection[type_hints.BaseMsgType]
             DDS messages to be queueued.
 
         Also update ``self._current_data`` and fire `self._next_task`
@@ -714,7 +714,7 @@ class ReadTopic(BaseTopic):
         self._current_data = data
         self._report_next()
 
-    async def _queue_one_item(self, data: type_hints.BaseDdsDataType) -> None:
+    async def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
         """Add a single message to the Python queue.
 
         Subclasses may override this to modify the message before queuing.

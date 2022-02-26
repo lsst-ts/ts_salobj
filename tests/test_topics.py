@@ -264,7 +264,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # The first three will not complete, the last will.
             nread = 0
 
-            async def reader_callback(data: salobj.BaseDdsDataType) -> None:
+            async def reader_callback(data: salobj.BaseMsgType) -> None:
                 nonlocal nread
 
                 # Write initial ackcmd
@@ -292,7 +292,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             unfiltered_nread = 0
 
-            def unfiltered_reader_callback(data: salobj.BaseDdsDataType) -> None:
+            def unfiltered_reader_callback(data: salobj.BaseMsgType) -> None:
                 nonlocal unfiltered_nread
                 unfiltered_nread += 1
 
@@ -401,7 +401,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def set_scalars(
         self, num_commands: int, assert_none: bool = True
-    ) -> typing.List[salobj.BaseDdsDataType]:
+    ) -> typing.List[salobj.BaseMsgType]:
         """Send the setScalars command repeatedly and return the data sent.
 
         Each command is sent with new random data. Each command triggers
@@ -587,7 +587,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 self.read_topic = read_topic
                 self.nitems = nitems
                 self.name = name
-                self.data: typing.List[salobj.BaseDdsDataType] = []
+                self.data: typing.List[salobj.BaseMsgType] = []
                 self.read_loop_task = asyncio.create_task(self.read_loop())
                 self.ready_to_read = asyncio.Event()
 
@@ -627,14 +627,14 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 assert data == read_data
 
     async def test_callbacks(self) -> None:
-        evt_data_list: typing.List[salobj.BaseDdsDataType] = []
+        evt_data_list: typing.List[salobj.BaseMsgType] = []
 
-        def evt_callback(data: salobj.BaseDdsDataType) -> None:
+        def evt_callback(data: salobj.BaseMsgType) -> None:
             evt_data_list.append(data)
 
-        tel_data_list: typing.List[salobj.BaseDdsDataType] = []
+        tel_data_list: typing.List[salobj.BaseMsgType] = []
 
-        def tel_callback(data: salobj.BaseDdsDataType) -> None:
+        def tel_callback(data: salobj.BaseMsgType) -> None:
             tel_data_list.append(data)
 
         num_commands = 3
@@ -783,7 +783,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             failed_ack = salobj.SalRetCode.CMD_NOPERM
             result = "return failed ackcmd"
 
-            def return_ack(data: salobj.BaseDdsDataType) -> salobj.AckCmdDataType:
+            def return_ack(data: salobj.BaseMsgType) -> salobj.AckCmdDataType:
                 return self.csc.salinfo.make_ackcmd(
                     private_seqNum=data.private_seqNum, ack=failed_ack, result=result
                 )
@@ -801,7 +801,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             msg = "intentional failure"
 
-            def fail_expected_exception(data: salobj.BaseDdsDataType) -> None:
+            def fail_expected_exception(data: salobj.BaseMsgType) -> None:
                 raise salobj.ExpectedError(msg)
 
             await self.check_controller_command_callback_failure(
@@ -817,7 +817,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             msg = "intentional failure"
 
-            def fail_exception(data: salobj.BaseDdsDataType) -> None:
+            def fail_exception(data: salobj.BaseMsgType) -> None:
                 raise Exception(msg)
 
             await self.check_controller_command_callback_failure(
@@ -832,7 +832,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
 
-            def fail_timeout(data: salobj.BaseDdsDataType) -> None:
+            def fail_timeout(data: salobj.BaseMsgType) -> None:
                 raise asyncio.TimeoutError()
 
             await self.check_controller_command_callback_failure(
@@ -845,7 +845,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
 
-            def fail_cancel(data: salobj.BaseDdsDataType) -> None:
+            def fail_cancel(data: salobj.BaseMsgType) -> None:
                 raise asyncio.CancelledError()
 
             await self.check_controller_command_callback_failure(
@@ -1143,7 +1143,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await salinfo.start()
             read_data_list = []
 
-            async def reader_callback(data: salobj.BaseDdsDataType) -> None:
+            async def reader_callback(data: salobj.BaseMsgType) -> None:
                 read_data_list.append(data)
                 ackcmd = cmdreader.salinfo.AckCmdType(
                     private_seqNum=data.private_seqNum,
@@ -1333,7 +1333,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             scalars_dict = self.csc.make_random_scalars_dict()
             callback_data = None
 
-            async def scalars_callback(scalars: salobj.BaseDdsDataType) -> None:
+            async def scalars_callback(scalars: salobj.BaseMsgType) -> None:
                 nonlocal callback_data
                 callback_data = scalars
 
@@ -1355,7 +1355,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             scalars_dict = self.csc.make_random_scalars_dict()
             callback_data = None
 
-            def scalars_callback(scalars: salobj.BaseDdsDataType) -> None:
+            def scalars_callback(scalars: salobj.BaseMsgType) -> None:
                 nonlocal callback_data
                 callback_data = scalars
 

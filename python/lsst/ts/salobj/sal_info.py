@@ -679,7 +679,7 @@ class SalInfo:
                                 for data in full_sd_list
                             }
                             sd_list: typing.Collection[
-                                type_hints.BaseDdsDataType
+                                type_hints.BaseMsgType
                             ] = data_dict.values()
                         else:
                             # Get the max_history most recent samples
@@ -734,7 +734,7 @@ class SalInfo:
     def _blocking_read(
         self,
     ) -> typing.Tuple[
-        typing.Optional[topics.ReadTopic], typing.List[type_hints.BaseDdsDataType]
+        typing.Optional[topics.ReadTopic], typing.List[type_hints.BaseMsgType]
     ]:
         """Read DDS data."""
         conditions = self._waitset.wait(self._wait_timeout)

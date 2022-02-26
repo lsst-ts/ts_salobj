@@ -123,7 +123,7 @@ class BaseTopic(abc.ABC):
             raise RuntimeError(f"Failed to create topic {salinfo.name}.{name}") from e
 
     @property
-    def DataType(self) -> typing.Type[type_hints.BaseDdsDataType]:
+    def DataType(self) -> typing.Type[type_hints.BaseMsgType]:
         """The type (class) for a message of this topic.
 
         When you read or write a message for this topic you are reading

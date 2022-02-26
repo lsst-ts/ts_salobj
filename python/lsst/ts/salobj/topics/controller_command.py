@@ -112,7 +112,7 @@ class ControllerCommand(read_topic.ReadTopic):
             self.salinfo._ackcmd_writer = AckCmdWriter(salinfo=salinfo)
 
     async def ack(
-        self, data: type_hints.BaseDdsDataType, ackcmd: type_hints.AckCmdDataType
+        self, data: type_hints.BaseMsgType, ackcmd: type_hints.AckCmdDataType
     ) -> None:
         """Acknowledge a command by writing a new state.
 
@@ -137,7 +137,7 @@ class ControllerCommand(read_topic.ReadTopic):
         )
 
     async def ack_in_progress(
-        self, data: type_hints.BaseDdsDataType, timeout: float, result: str = ""
+        self, data: type_hints.BaseMsgType, timeout: float, result: str = ""
     ) -> None:
         """Ackowledge this command as "in progress".
 
@@ -160,7 +160,7 @@ class ControllerCommand(read_topic.ReadTopic):
 
     async def next(  # type: ignore[override]  # noqa
         self, *, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Wait for data, returning old data if found.
 
         Unlike `RemoteEvent.next` and `RemoteTelemetry.next`,
@@ -189,7 +189,7 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         return await super().next(flush=False, timeout=timeout)
 
-    async def _queue_one_item(self, data: type_hints.BaseDdsDataType) -> None:
+    async def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
         """Convert the value to an ``ackcmd`` and queue it.
 
         Also acknowledge the command with CMD_ACK.
@@ -202,7 +202,7 @@ class ControllerCommand(read_topic.ReadTopic):
         await self.ack(data, ack)
         await super()._queue_one_item(data)
 
-    async def _run_callback(self, data: type_hints.BaseDdsDataType) -> None:
+    async def _run_callback(self, data: type_hints.BaseMsgType) -> None:
         """Run the callback function, acknowledge the command,
         and start another wait.
 

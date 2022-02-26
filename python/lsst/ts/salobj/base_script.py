@@ -413,7 +413,7 @@ class BaseScript(controller.Controller, abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def set_metadata(self, metadata: type_hints.BaseDdsDataType) -> None:
+    def set_metadata(self, metadata: type_hints.BaseMsgType) -> None:
         """Set metadata fields in the provided struct, given the
         current configuration.
 
@@ -489,7 +489,7 @@ class BaseScript(controller.Controller, abc.ABC):
                 f"Cannot {action}: state={self.state_name} instead of {states_str}"
             )
 
-    async def do_configure(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_configure(self, data: type_hints.BaseMsgType) -> None:
         """Configure the currently loaded script.
 
         Parameters
@@ -564,7 +564,7 @@ class BaseScript(controller.Controller, abc.ABC):
         await self.set_state(ScriptState.CONFIGURED)
         await asyncio.sleep(0.001)
 
-    async def do_run(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_run(self, data: type_hints.BaseMsgType) -> None:
         """Run the script and quit.
 
         The script must have been configured and the group ID set.
@@ -599,7 +599,7 @@ class BaseScript(controller.Controller, abc.ABC):
         await asyncio.sleep(0.001)
         await self._exit()
 
-    async def do_resume(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_resume(self, data: type_hints.BaseMsgType) -> None:
         """Resume the currently paused script.
 
         Parameters
@@ -618,7 +618,7 @@ class BaseScript(controller.Controller, abc.ABC):
             return
         self._pause_future.set_result(None)
 
-    async def do_setCheckpoints(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setCheckpoints(self, data: type_hints.BaseMsgType) -> None:
         """Set or clear the checkpoints at which to pause and stop.
 
         This command is deprecated. Please set the checkpoints
@@ -651,7 +651,7 @@ class BaseScript(controller.Controller, abc.ABC):
         )
         await self._set_checkpoints(pause=data.pause, stop=data.stop)  # type: ignore
 
-    async def do_setGroupId(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setGroupId(self, data: type_hints.BaseMsgType) -> None:
         """Set or clear the group_id attribute.
 
         The script must be in the Configured state.
@@ -673,7 +673,7 @@ class BaseScript(controller.Controller, abc.ABC):
         await self.evt_state.set_write(groupId=data.groupId, force_output=True)  # type: ignore
         self._sub_group_id = 0
 
-    async def do_stop(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_stop(self, data: type_hints.BaseMsgType) -> None:
         """Stop the script.
 
         Parameters

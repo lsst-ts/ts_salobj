@@ -52,7 +52,7 @@ class FailedCallbackCsc(salobj.TestCsc):
         super().__init__(*args, **kwargs)
         self.exc_msg = "do_wait raised an exception on purpose"
 
-    async def do_wait(self, data: salobj.BaseDdsDataType) -> None:
+    async def do_wait(self, data: salobj.BaseMsgType) -> None:
         raise RuntimeError(self.exc_msg)
 
 

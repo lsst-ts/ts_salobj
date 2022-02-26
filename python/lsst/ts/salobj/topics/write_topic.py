@@ -63,7 +63,7 @@ class SetWriteResult:
     """
 
     def __init__(
-        self, did_change: bool, was_written: bool, data: type_hints.BaseDdsDataType
+        self, did_change: bool, was_written: bool, data: type_hints.BaseMsgType
     ) -> None:
         self.did_change = did_change
         self.was_written = was_written
@@ -160,7 +160,7 @@ class WriteTopic(BaseTopic):
         salinfo.add_writer(self)
 
     @property
-    def data(self) -> type_hints.BaseDdsDataType:
+    def data(self) -> type_hints.BaseMsgType:
         """Internally cached message.
 
         Raises
@@ -176,7 +176,7 @@ class WriteTopic(BaseTopic):
         return self._data
 
     @data.setter
-    def data(self, data: type_hints.BaseDdsDataType) -> None:
+    def data(self, data: type_hints.BaseMsgType) -> None:
         if not isinstance(data, self.DataType):
             raise TypeError(f"data={data!r} must be an instance of {self.DataType}")
         self._data = data
@@ -209,7 +209,7 @@ class WriteTopic(BaseTopic):
         """
         self.basic_close()
 
-    def put(self, data: typing.Optional[type_hints.BaseDdsDataType] = None) -> None:
+    def put(self, data: typing.Optional[type_hints.BaseMsgType] = None) -> None:
         """DEPRECATED: call async method `write` instead. Write this topic.
 
         Parameters
@@ -342,7 +342,7 @@ class WriteTopic(BaseTopic):
             did_change=did_change, was_written=do_output, data=copy.copy(self.data)
         )
 
-    async def write(self) -> type_hints.BaseDdsDataType:
+    async def write(self) -> type_hints.BaseMsgType:
         """Write the current data and return a copy of the data written.
 
         Return a copy in order to avoid race conditions.

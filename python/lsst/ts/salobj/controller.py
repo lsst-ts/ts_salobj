@@ -372,7 +372,7 @@ class Controller:
         """
         pass
 
-    async def do_setAuthList(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setAuthList(self, data: type_hints.BaseMsgType) -> None:
         """Update the authorization list.
 
         Parameters
@@ -426,7 +426,7 @@ class Controller:
             force_output=True,
         )
 
-    async def do_setLogLevel(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setLogLevel(self, data: type_hints.BaseMsgType) -> None:
         """Set logging level.
 
         Parameters

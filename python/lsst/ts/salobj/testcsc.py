@@ -141,7 +141,7 @@ class TestCsc(ConfigurableCsc):
             ret[field] = getattr(data, field)
         return ret
 
-    async def do_setArrays(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setArrays(self, data: type_hints.BaseMsgType) -> None:
         """Execute the setArrays command."""
         self.assert_enabled()
         self.log.info("executing setArrays")
@@ -149,7 +149,7 @@ class TestCsc(ConfigurableCsc):
         await self.evt_arrays.set_write(**data_dict)  # type: ignore
         await self.tel_arrays.set_write(**data_dict)  # type: ignore
 
-    async def do_setScalars(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setScalars(self, data: type_hints.BaseMsgType) -> None:
         """Execute the setScalars command."""
         self.assert_enabled()
         self.log.info("executing setScalars")
@@ -157,7 +157,7 @@ class TestCsc(ConfigurableCsc):
         await self.evt_scalars.set_write(**data_dict)  # type: ignore
         await self.tel_scalars.set_write(**data_dict)  # type: ignore
 
-    async def do_fault(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_fault(self, data: type_hints.BaseMsgType) -> None:
         """Execute the fault command.
 
         Change the summary state to State.FAULT
@@ -165,7 +165,7 @@ class TestCsc(ConfigurableCsc):
         self.log.warning("executing the fault command")
         await self.fault(code=1, report="executing the fault command")
 
-    async def do_wait(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_wait(self, data: type_hints.BaseMsgType) -> None:
         """Execute the wait command by waiting for the specified duration.
 
         If duration is negative then wait for abs(duration) but do not

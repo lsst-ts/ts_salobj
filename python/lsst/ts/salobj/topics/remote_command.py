@@ -424,7 +424,7 @@ class RemoteCommand(write_topic.WriteTopic):
 
     async def start(
         self,
-        data: type_hints.BaseDdsDataType = None,
+        data: type_hints.BaseMsgType = None,
         timeout: float = DEFAULT_TIMEOUT,
         wait_done: bool = True,
     ) -> type_hints.AckCmdDataType:
@@ -489,7 +489,7 @@ class RemoteCommand(write_topic.WriteTopic):
         self.salinfo._running_cmds[seq_num] = cmd_info
         return await cmd_info.next_ackcmd(timeout=timeout)
 
-    def put(self, data: typing.Optional[type_hints.BaseDdsDataType] = None) -> None:
+    def put(self, data: typing.Optional[type_hints.BaseMsgType] = None) -> None:
         """An override of WriteTopic.put that is disabled."""
         raise NotImplementedError("Call start instead")
 
@@ -499,6 +499,6 @@ class RemoteCommand(write_topic.WriteTopic):
         """An override of WriteTopic.set_write that is disabled."""
         raise NotImplementedError("Call set_start instead")
 
-    async def write(self, **kwargs: typing.Any) -> type_hints.BaseDdsDataType:
+    async def write(self, **kwargs: typing.Any) -> type_hints.BaseMsgType:
         """An override of WriteTopic.write that is disabled."""
         raise NotImplementedError("Call start instead")

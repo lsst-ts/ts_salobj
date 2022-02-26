@@ -438,7 +438,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def do_disable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_disable(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.ENABLED` to `State.DISABLED`.
 
         Parameters
@@ -448,7 +448,7 @@ class BaseCsc(Controller):
         """
         await self._do_change_state(data, "disable", [State.ENABLED], State.DISABLED)
 
-    async def do_enable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_enable(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.DISABLED` to `State.ENABLED`.
 
         Parameters
@@ -458,7 +458,7 @@ class BaseCsc(Controller):
         """
         await self._do_change_state(data, "enable", [State.DISABLED], State.ENABLED)
 
-    async def do_exitControl(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_exitControl(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.STANDBY` to `State.OFFLINE` and quit.
 
         Parameters
@@ -470,7 +470,7 @@ class BaseCsc(Controller):
 
         asyncio.create_task(self.close())
 
-    async def do_standby(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_standby(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.DISABLED` or `State.FAULT` to
         `State.STANDBY`.
 
@@ -483,7 +483,7 @@ class BaseCsc(Controller):
             data, "standby", [State.DISABLED, State.FAULT], State.STANDBY
         )
 
-    async def do_start(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_start(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.STANDBY` to `State.DISABLED`.
 
         Parameters
@@ -547,7 +547,7 @@ class BaseCsc(Controller):
                 f"This CSC does not support simulation; simulation_mode={simulation_mode} but must be 0"
             )
 
-    async def begin_disable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_disable(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_disable; called before state changes.
 
         Parameters
@@ -557,7 +557,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def begin_enable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_enable(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_enable; called before state changes.
 
         Parameters
@@ -567,7 +567,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def begin_exitControl(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_exitControl(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_exitControl; called before state changes.
 
         Parameters
@@ -577,7 +577,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def begin_standby(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_standby(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_standby; called before the state changes.
 
         Parameters
@@ -587,7 +587,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def begin_start(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_start(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_start; called before state changes.
 
         Parameters
@@ -597,7 +597,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def end_disable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def end_disable(self, data: type_hints.BaseMsgType) -> None:
         """End do_disable; called after state changes
         but before command acknowledged.
 
@@ -608,7 +608,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def end_enable(self, data: type_hints.BaseDdsDataType) -> None:
+    async def end_enable(self, data: type_hints.BaseMsgType) -> None:
         """End do_enable; called after state changes
         but before command acknowledged.
 
@@ -619,7 +619,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def end_exitControl(self, data: type_hints.BaseDdsDataType) -> None:
+    async def end_exitControl(self, data: type_hints.BaseMsgType) -> None:
         """End do_exitControl; called after state changes
         but before command acknowledged.
 
@@ -630,7 +630,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def end_standby(self, data: type_hints.BaseDdsDataType) -> None:
+    async def end_standby(self, data: type_hints.BaseMsgType) -> None:
         """End do_standby; called after state changes
         but before command acknowledged.
 
@@ -641,7 +641,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def end_start(self, data: type_hints.BaseDdsDataType) -> None:
+    async def end_start(self, data: type_hints.BaseMsgType) -> None:
         """End do_start; called after state changes
         but before command acknowledged.
 

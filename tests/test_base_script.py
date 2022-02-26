@@ -67,7 +67,7 @@ class NonConfigurableScript(salobj.BaseScript):
     async def run(self) -> None:
         self.run_called = True
 
-    def set_metadata(self, metadata: salobj.BaseDdsDataType) -> None:
+    def set_metadata(self, metadata: salobj.BaseMsgType) -> None:
         self.set_metadata_called = True
 
 
@@ -585,7 +585,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                     )
                     await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
 
-                    def logcallback(data: salobj.BaseDdsDataType) -> None:
+                    def logcallback(data: salobj.BaseMsgType) -> None:
                         print(f"message={data.message}")
 
                     remote.evt_logMessage.callback = logcallback

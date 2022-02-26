@@ -227,7 +227,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         flush: bool = False,
         timeout: float = STD_TIMEOUT,
         **kwargs: typing.Any,
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Wait for the next data sample for the specified topic,
         check specified fields for equality, and return the data.
 

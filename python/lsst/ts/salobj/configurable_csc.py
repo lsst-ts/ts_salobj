@@ -402,7 +402,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         if self.summary_state == State.STANDBY:
             self.read_config_dir_task = asyncio.create_task(self.read_config_dir_loop())
 
-    async def begin_start(self, data: type_hints.BaseDdsDataType) -> None:
+    async def begin_start(self, data: type_hints.BaseMsgType) -> None:
         """Begin do_start; configure the CSC before changing state.
 
         Parameters
