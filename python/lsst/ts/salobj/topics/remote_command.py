@@ -484,10 +484,6 @@ class RemoteCommand(write_topic.WriteTopic):
         self.salinfo._running_cmds[seq_num] = cmd_info
         return await cmd_info.next_ackcmd(timeout=timeout)
 
-    def put(self, data: typing.Optional[type_hints.BaseMsgType] = None) -> None:
-        """An override of WriteTopic.put that is disabled."""
-        raise NotImplementedError("Call start instead")
-
     async def set_write(
         self, *, force_output: typing.Optional[bool] = None, **kwargs: typing.Any
     ) -> write_topic.SetWriteResult:

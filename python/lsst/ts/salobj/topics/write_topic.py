@@ -26,7 +26,6 @@ __all__ = ["MAX_SEQ_NUM", "SetWriteResult", "WriteTopic"]
 import copy
 import struct
 import typing
-import warnings
 
 import numpy as np
 
@@ -202,30 +201,6 @@ class WriteTopic(BaseTopic):
         since that tracks all topics.
         """
         self.basic_close()
-
-    def put(self, data: typing.Optional[type_hints.BaseMsgType] = None) -> None:
-        """DEPRECATED: call async method `write` instead. Write this topic.
-
-        Parameters
-        ----------
-        data : ``self.DataType`` or `None`
-            New message data to replace ``self.data``, if any.
-
-        Raises
-        ------
-        TypeError
-            If ``data`` is not None and not an instance of `DataType`.
-        """
-        if data is not None:
-            warnings.warn(
-                "put with data is deprecated; call write with kwargs instead",
-                DeprecationWarning,
-            )
-            self.data = data
-        else:
-            warnings.warn("put is deprecated; call write instead", DeprecationWarning)
-
-        self._basic_write()
 
     def set(self, **kwargs: typing.Any) -> bool:
         """Set one or more fields of message data ``self.data``.

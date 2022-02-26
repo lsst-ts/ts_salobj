@@ -24,7 +24,6 @@ from __future__ import annotations
 __all__ = ["ControllerTelemetry"]
 
 import typing
-import warnings
 
 from . import write_topic
 
@@ -45,32 +44,3 @@ class ControllerTelemetry(write_topic.WriteTopic):
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:
         super().__init__(salinfo=salinfo, attr_name="tel_" + name)
-
-    def set_put(self, **kwargs: typing.Any) -> bool:
-        """DEPRECATED: call set_write instead.
-
-        Set zero or more fields of ``self.data`` and put the result.
-
-        Parameters
-        ----------
-        **kwargs : `dict` [`str`, ``any``]
-            The keyword arguments are field name = new value for that field.
-            See `set` for more information about values.
-
-        Returns
-        -------
-        did_change : `bool`
-            True if ``self.data`` was changed, or if this was the first call
-            to `set`.
-
-        Raises
-        ------
-        AttributeError
-            If the topic does not have the specified field.
-        ValueError
-            If the field cannot be set to the specified value.
-        """
-        warnings.warn("Deprecated; use set_write instead", DeprecationWarning)
-        did_change = self.set(**kwargs)
-        self.put()
-        return did_change

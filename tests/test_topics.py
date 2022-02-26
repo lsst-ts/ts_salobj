@@ -940,44 +940,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
                     assert_data_equal(data, input_dict)
 
-        # Write the same data using deprecated `put`, with and without
-        # the `data` arg
-        for args in ([], [write_topic.data]):
-            with self.subTest(args=args):
-                with pytest.warns(DeprecationWarning):
-                    write_topic.put(*args)
-                assert write_topic.has_data
-                assert_data_equal(input_dict, write_topic.data)
-                assert_data_equal(input_dict, write_result.data)
-                data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
-                assert_data_equal(data, input_dict)
-
-        # Write the same data using deprecated `set_put` with and without
-        # kwargs, and (for events) with and without force_output (since only
-        # ControllerEvent supports the `force_output` argument).
-        for kwargs, force_output in itertools.product(
-            (dict(), input_dict.copy()), (False, True, None)
-        ):
-            if force_output is not None:
-                if do_telemetry:
-                    continue  # force_output not supported
-                kwargs["force_output"] = force_output
-                with self.subTest(kwargs=kwargs):
-                    with pytest.warns(DeprecationWarning):
-                        was_written = write_topic.set_put(
-                            **input_dict, force_output=force_output
-                        )
-                    if do_telemetry or force_output:
-                        assert was_written
-                    else:
-                        assert not was_written
-                    assert write_topic.has_data
-                    assert_data_equal(input_dict, write_topic.data)
-                    assert_data_equal(input_dict, write_result.data)
-                    if was_written:
-                        data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
-                        assert_data_equal(data, input_dict)
-
         # Use None for values to write; this just checks
         # that the fields exist without changing them
         none_dict = dict((key, None) for key in input_dict)
@@ -1195,9 +1157,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         kwargs.get(field, 0)
                     )
 
-            # Make sure put, set_write, and write are prohibited
-            with pytest.raises(NotImplementedError):
-                cmdwriter.put()
+            # Make sure set_write and write are prohibited.
             with pytest.raises(NotImplementedError):
                 await cmdwriter.set_write()
             with pytest.raises(NotImplementedError):

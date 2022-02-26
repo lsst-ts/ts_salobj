@@ -24,7 +24,6 @@ from __future__ import annotations
 __all__ = ["ControllerEvent"]
 
 import typing
-import warnings
 
 from . import write_topic
 
@@ -47,40 +46,3 @@ class ControllerEvent(write_topic.WriteTopic):
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:
         super().__init__(salinfo=salinfo, attr_name="evt_" + name)
-
-    def set_put(self, *, force_output: bool = False, **kwargs: typing.Any) -> bool:
-        """DEPRECATED: call set_write instead.
-
-        Set zero or more fields of ``self.data`` and put if changed
-        or if ``force_output`` true.
-
-        The data is put if it has never been set (`has_data` False), or this
-        call changes the value of any field, or ``force_output`` is true.
-
-        Parameters
-        ----------
-        force_output : `bool`, optional
-            If True then output the event, even if no fields have changed.
-        **kwargs : `dict` [`str`, ``any``]
-            The remaining keyword arguments are
-            field name = new value for that field.
-            See `set` for more information about values.
-
-        Returns
-        -------
-        did_put : `bool`
-            True if the data was output, False otherwise
-
-        Raises
-        ------
-        AttributeError
-            If the topic does not have the specified field.
-        ValueError
-            If the field cannot be set to the specified value.
-        """
-        warnings.warn("Deprecated; use set_write instead", DeprecationWarning)
-        did_change = self.set(**kwargs)
-        do_output = did_change or force_output
-        if do_output:
-            self.put(self.data)
-        return do_output
