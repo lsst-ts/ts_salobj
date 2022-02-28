@@ -518,8 +518,8 @@ class BaseScript(controller.Controller, abc.ABC):
           `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
         """
         self.assert_state("configure", [ScriptState.UNCONFIGURED])
+        config_yaml: str = data.config  # type: ignore
         try:
-            config_yaml: str = data.config  # type: ignore
             if self.config_validator is None:
                 if config_yaml:
                     raise RuntimeError(

@@ -6,6 +6,58 @@
 Version History
 ###############
 
+v7.0.0
+------
+
+* Update the way configuration is handled to handle our new standard.
+
+    * Write ``configurationApplied`` and ``configurationsAvailable`` events, instead of the obsolete ``settingsApplied`` and ``settingVersions``.
+    * Stop writing the obsolete ``appliedSettingsMatchStart`` event.
+    * Rename ``start`` command ``settingsToApply`` field to ``configurationOverride``.
+    * Rename ``settings_to_apply`` arguments to ``override``.
+    * Rename the ``--settings`` CSC command-line argument to ``--override``.
+    * Ignore the ``require_settings`` CSC class constant.
+      The new configuration system makes default configuration site-specific, and the default is usually fine.
+
+* Warning: `ConfigurableCsc` now requires that environment variable ``LSST_SITE`` be defined.
+  As a result:
+
+    * `BaseCscTestCse`: set environment variable ``LSST_SITE`` in ``setUp`` and restore it in ``tearDown``.
+      Subclasses with ``setUp`` and/or ``tearDown`` methods should call ``super().setUp()`` and/or ``super().tearDown()``.
+    * If you have unit tests that do not inherit from `BaseCscTestCase` and construct a configurable CSC, you will have to manage the environment variable yourself.
+
+* Eliminate the following deprecated features:
+
+    * Configuration schema must be defined in code; salobj will no longer read it from a file:
+
+        * `ConfigurableCsc`: eliminate the deprecated ``schema_path`` constructor argument.
+        * Update `check_standard_config_files` to require that the config schema be a module constant.
+    
+    * `BaseCsc`: class variable ``valid_simulation_modes`` may no longer be None and class variable ``version`` is required.
+    * `Remote`: the ``tel_max_history`` constructor argument is gone.
+    * `SalInfo`:
+
+        * The ``makeAckCmd`` method is gone; use ``make_ackcmd``.
+        * The ``truncate_result`` argument of ``make_ackcmd`` and the ``MAX_RESULT_LEN`` constant are gone.
+          Don't worry about length limits.
+
+    * `ReadTopic.get`: eliminate the ``flush`` argument.
+    * Delete constants ``MJD_MINUS_UNIX_SECONDS`` and ``SECONDS_PER_DAY`` (use the values in ts_utils).
+    * Delete functions (use the versions in ts_utils):
+
+        * ``angle_diff``
+        * ``angle_wrap_center``
+        * ``angle_wrap_nonnegative``
+        * ``astropy_time_from_tai_unix``
+        * ``index_generator``
+        * ``make_done_future``
+        * ``current_tai``
+        * ``tai_from_utc``
+        * ``tai_from_utc_unix``
+        * ``utc_from_tai_unix``
+
+* Updated ``Jenkinsfile`` to checkout ts_config_ocs.
+
 v6.9.3
 ------
 

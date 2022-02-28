@@ -233,62 +233,18 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert ackcmd.error == 0
             assert ackcmd.result == ""
 
-            warning_regex = "makeAckCmd is deprecated"
-            with pytest.warns(DeprecationWarning, match=warning_regex):
-                ackcmd2 = salinfo.makeAckCmd(private_seqNum=seqNum, ack=ack)
-            assert ackcmd.get_vars() == ackcmd2.get_vars()
-
             # Specify an error code and result
-            for truncate_result in (False, True):
-                with self.subTest(truncate_result=truncate_result):
-                    seqNum = 27
-                    ack = salobj.SalRetCode.CMD_FAILED
-                    error = 127
-                    result = "why not?"
-                    ackcmd = salinfo.make_ackcmd(
-                        private_seqNum=seqNum,
-                        ack=ack,
-                        error=error,
-                        result=result,
-                        truncate_result=truncate_result,
-                    )
-                    assert ackcmd.private_seqNum == seqNum
-                    assert ackcmd.ack == ack
-                    assert ackcmd.error == error
-                    assert ackcmd.result == result
-
-                    with pytest.warns(DeprecationWarning, match=warning_regex):
-                        ackcmd2 = salinfo.makeAckCmd(
-                            private_seqNum=seqNum,
-                            ack=ack,
-                            error=error,
-                            result=result,
-                            truncate_result=truncate_result,
-                        )
-                    assert ackcmd.get_vars() == ackcmd2.get_vars()
-
-            # Test behavior with too-long result strings
             seqNum = 27
             ack = salobj.SalRetCode.CMD_FAILED
             error = 127
-            result = "a" * (salobj.MAX_RESULT_LEN + 5)
-            with pytest.raises(ValueError):
-                salinfo.make_ackcmd(
-                    private_seqNum=seqNum,
-                    ack=ack,
-                    error=error,
-                    result=result,
-                    truncate_result=False,
-                )
+            result = "why not?"
             ackcmd = salinfo.make_ackcmd(
                 private_seqNum=seqNum,
                 ack=ack,
                 error=error,
                 result=result,
-                truncate_result=True,
             )
             assert ackcmd.private_seqNum == seqNum
             assert ackcmd.ack == ack
             assert ackcmd.error == error
-            assert ackcmd.result != result
-            assert ackcmd.result == result[0 : salobj.MAX_RESULT_LEN]
+            assert ackcmd.result == result

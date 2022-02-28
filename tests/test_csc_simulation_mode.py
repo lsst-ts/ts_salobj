@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import os
 import sys
 import typing
 import unittest
@@ -42,6 +43,9 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
+        self.original_lsst_site = os.environ.get("LSST_SITE", None)
+        os.environ["LSST_SITE"] = "test"
+
         # Valid simulation modes that will exercise several things:
         # If 0 is present it is the default,
         # otherwise the first value is the default.
@@ -56,6 +60,10 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
             (0, 1, 4),
             (4, 1, 0),
         )
+
+    def tearDown(self) -> None:
+        if self.original_lsst_site is not None:
+            os.environ["LSST_SITE"] = self.original_lsst_site
 
     def make_csc_class(
         self, modes: typing.Optional[typing.Iterable[int]]
@@ -191,56 +199,12 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
         finally:
             sys.argv[:] = orig_argv
 
-    async def test_none_valid_simulation_modes_simulation_mode(self) -> None:
-        """Test that a CSC that uses the deprecated valid_simulation_modes=None
-        checks simulation mode in start, not the constructor.
-
-        The only valid simulation_mode is 0 because that's what BaseCsc
-        supports and I didn't override that support.
-        """
+    async def test_none_valid_simulation_modes(self) -> None:
+        """Test that valid_simulation_modes=None is an error."""
         TestCscWithDeprecatedSimulation = self.make_csc_class(None)
 
         assert TestCscWithDeprecatedSimulation.valid_simulation_modes is None
 
-        for bad_simulation_mode in (1, 2):
-            index = next(index_gen)
-            warning_regex = "valid_simulation_modes=None is deprecated"
-            with pytest.warns(DeprecationWarning, match=warning_regex):
-                csc = TestCscWithDeprecatedSimulation(
-                    index=index, simulation_mode=bad_simulation_mode
-                )
-            with pytest.raises(salobj.base.ExpectedError):
-                await csc.start_task
-            with pytest.raises(salobj.base.ExpectedError):
-                await csc.done_task
-
-        # Test the one valid simulation mode
         index = next(index_gen)
-        with pytest.warns(DeprecationWarning, match=warning_regex):
-            csc = TestCscWithDeprecatedSimulation(index=index, simulation_mode=0)
-        try:
-            await csc.start_task
-            assert csc.simulation_mode == 0
-        finally:
-            await csc.do_exitControl(data=None)
-            await asyncio.wait_for(csc.done_task, timeout=5)
-
-    async def test_none_valid_simulation_modes_cmdline(self) -> None:
-        """Test that when valid_simulation_modes=None that the command
-        parser does not add the --simulate argument.
-        """
-        TestCscWithDeprecatedSimulation = self.make_csc_class(None)
-
-        assert TestCscWithDeprecatedSimulation.valid_simulation_modes is None
-
-        orig_argv = sys.argv[:]
-        try:
-            index = next(index_gen)
-            # Try 0, the only valid value. This will still fail
-            # because there is no --simulate command-line argument.
-            simulation_mode = 0
-            sys.argv = ["test_csc.py", str(index), "--simulate", str(simulation_mode)]
-            with pytest.raises(SystemExit):
-                TestCscWithDeprecatedSimulation.make_from_cmd_line(index=True)
-        finally:
-            sys.argv[:] = orig_argv
+        with pytest.raises(RuntimeError):
+            TestCscWithDeprecatedSimulation(index=index, simulation_mode=0)

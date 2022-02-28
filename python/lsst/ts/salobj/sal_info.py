@@ -21,7 +21,7 @@ from __future__ import annotations
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["SalInfo", "MAX_RESULT_LEN"]
+__all__ = ["SalInfo"]
 
 import asyncio
 import atexit
@@ -32,7 +32,6 @@ import os
 import time
 import types
 import typing
-import warnings
 
 import dds
 import ddsutil
@@ -43,9 +42,6 @@ from . import sal_enums
 from . import topics
 from . import type_hints
 from .domain import Domain
-
-# Maximum length of the ``result`` field in an ``ackcmd`` topic.
-MAX_RESULT_LEN = 256
 
 # We want SAL logMessage messages for at least INFO level messages,
 # so if the current level is less verbose, set it to INFO.
@@ -435,7 +431,6 @@ class SalInfo:
         error: int = 0,
         result: str = "",
         timeout: float = 0,
-        truncate_result: bool = False,
     ) -> type_hints.AckCmdDataType:
         """Make an AckCmdType object from keyword arguments.
 
@@ -450,35 +445,17 @@ class SalInfo:
             Error code. Should be 0 unless ``ack`` is
             ``salobj.SalRetCode.CMD_FAILED``
         result : `str`
-            More information. This is arbitrary, but limited to
-            `MAX_RESULT_LEN` characters.
+            More information.
         timeout : `float`
             Esimated command duration. This should be specified
             if ``ack`` is ``salobj.SalRetCode.CMD_INPROGRESS``.
-        truncate_result : `bool`
-            What to do if ``result`` is longer than  `MAX_RESULT_LEN`
-            characters:
-
-            * If True then silently truncate ``result`` to `MAX_RESULT_LEN`
-              characters.
-            * If False then raise `ValueError`
 
         Raises
         ------
-        ValueError
-            If ``len(result) > `MAX_RESULT_LEN`` and ``truncate_result``
-            is false.
         RuntimeError
             If the SAL component has no commands (because if there
             are no commands then there is no ackcmd topic).
         """
-        if len(result) > MAX_RESULT_LEN:
-            if truncate_result:
-                result = result[0:MAX_RESULT_LEN]
-            else:
-                raise ValueError(
-                    f"len(result) > MAX_RESULT_LEN={MAX_RESULT_LEN}; result={result}"
-                )
         return self.AckCmdType(
             private_seqNum=private_seqNum,
             ack=ack,
@@ -486,16 +463,6 @@ class SalInfo:
             result=result,
             timeout=timeout,
         )
-
-    def makeAckCmd(
-        self, *args: typing.Any, **kwargs: typing.Any
-    ) -> type_hints.AckCmdDataType:
-        """Deprecated version of make_ackcmd."""
-        # TODO DM-26518: remove this method
-        warnings.warn(
-            "makeAckCmd is deprecated; use make_ackcmd instead.", DeprecationWarning
-        )
-        return self.make_ackcmd(*args, **kwargs)
 
     def parse_metadata(self) -> None:
         """Parse the IDL metadata to generate some attributes.
@@ -513,6 +480,8 @@ class SalInfo:
         event_names = []
         telemetry_names = []
         revnames = {}
+        if not self.metadata.topic_info:
+            raise RuntimeError("Bug! metadata has no topics")
         for topic_metadata in self.metadata.topic_info.values():
             sal_topic_name = topic_metadata.sal_name
             if sal_topic_name.startswith("command_"):
@@ -584,9 +553,9 @@ class SalInfo:
             for writer in self._writer_list:
                 await writer.close()
             while self._running_cmds:
-                private_seqNum, cmd_info = self._running_cmds.popitem()
+                _, cmd_info = self._running_cmds.popitem()
                 try:
-                    cmd_info.abort("shutting down")
+                    cmd_info.close()
                 except Exception:
                     pass
             self.domain.remove_salinfo(self)

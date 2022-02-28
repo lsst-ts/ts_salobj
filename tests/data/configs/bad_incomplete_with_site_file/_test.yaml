@@ -1,0 +1,7 @@
+metadata:
+  arbitrary_key: arbitrary metadata to ignore
+  another_key: more arbitrary metadata to ignore
+bool0: true
+float0: 3.14
+intarr0: [-1, 1]
+multi_type: null
