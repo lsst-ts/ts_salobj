@@ -121,8 +121,8 @@ class Remote:
 
     * Events, each an instance of `topics.RemoteEvent`:
 
-        * ``evt_appliedSettingsMatchStart``
-        * ``evt_errorCode``
+        * ``evt_authList``
+        * ``evt_configurationApplied``
         * ... and so on for all other standard CSC log events
         * ``evt_arrays``
         * ``evt_scalars``

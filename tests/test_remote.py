@@ -100,7 +100,7 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
             )
 
             # remote2 uses the exclude argument
-            exclude = ["appliedSettingsMatchStart", "arrays"]
+            exclude = ["errorCode", "arrays"]
             remote2 = salobj.Remote(
                 domain=domain, name="Test", index=index, exclude=exclude
             )

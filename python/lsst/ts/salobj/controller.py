@@ -160,8 +160,8 @@ class Controller:
 
     * Events, each an instance of `topics.ControllerEvent`:
 
-        * ``evt_appliedSettingsMatchStart``
-        * ``evt_errorCode``
+        * ``evt_authList``
+        * ``evt_configurationApplied``
         * ... and so on for all other standard CSC events
         * ``evt_arrays``
         * ``evt_scalars``
