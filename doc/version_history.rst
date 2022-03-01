@@ -79,6 +79,13 @@ v7.0.0
 * Enhance `CscCommander.make_from_cmd_line` to support index = an IntEnum subclass.
 * Update ``Jenkinsfile`` to checkout ts_config_ocs.
 
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11
+
 v6.9.3
 ------
 
