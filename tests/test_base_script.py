@@ -22,6 +22,7 @@
 import asyncio
 import logging
 import os
+import pathlib
 import subprocess
 import types
 import typing
@@ -40,6 +41,8 @@ from lsst.ts.idl.enums.Script import ScriptState
 STD_TIMEOUT = 60
 
 index_gen = utils.index_generator()
+
+TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
 
 
 class NonConfigurableScript(salobj.BaseScript):
@@ -64,7 +67,7 @@ class NonConfigurableScript(salobj.BaseScript):
     async def run(self) -> None:
         self.run_called = True
 
-    def set_metadata(self, metadata: salobj.BaseDdsDataType) -> None:
+    def set_metadata(self, metadata: salobj.BaseMsgType) -> None:
         self.set_metadata_called = True
 
 
@@ -75,7 +78,6 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:
         salobj.set_random_lsst_dds_partition_prefix()
-        self.datadir = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
         self.index = next(index_gen)
 
     async def configure_and_check(
@@ -239,24 +241,24 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             # check keep_old_reason argument of set_state
             reason = "initial reason"
             additional_reason = "check append"
-            script.set_state(reason=reason)
-            script.set_state(reason=additional_reason, keep_old_reason=True)
+            await script.set_state(reason=reason)
+            await script.set_state(reason=additional_reason, keep_old_reason=True)
             assert script.state.reason == reason + "; " + additional_reason
 
             bad_state = 1 + max(s.value for s in ScriptState)
             with pytest.raises(ValueError):
-                script.set_state(bad_state)
+                await script.set_state(bad_state)
             script.state.state = bad_state
             assert script.state_name == f"UNKNOWN({bad_state})"
             assert not script._is_exiting
 
-            script.set_state(ScriptState.CONFIGURED)
+            await script.set_state(ScriptState.CONFIGURED)
             assert script.state_name == "CONFIGURED"
 
             # check assert_states
             all_states = set(ScriptState)
             for state in ScriptState:
-                script.set_state(state)
+                await script.set_state(state)
                 assert script.state_name == state.name
                 with pytest.raises(salobj.ExpectedError):
                     script.assert_state(
@@ -569,7 +571,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_script_process(self) -> None:
         """Test running a script as a subprocess."""
-        script_path = os.path.join(self.datadir, "script1")
+        script_path = TEST_DATA_DIR / "script1"
 
         for fail in (None, "fail_run", "fail_cleanup"):
             with self.subTest(fail=fail):
@@ -583,13 +585,13 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                     )
                     await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
 
-                    def logcallback(data: salobj.BaseDdsDataType) -> None:
+                    def logcallback(data: salobj.BaseMsgType) -> None:
                         print(f"message={data.message}")
 
                     remote.evt_logMessage.callback = logcallback
 
                     process = await asyncio.create_subprocess_exec(
-                        script_path, str(index)
+                        str(script_path), str(index)
                     )
                     try:
                         assert process.returncode is None
@@ -652,15 +654,16 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                         if process.returncode is None:
                             process.terminate()
                             warnings.warn(
-                                "Killed a process that was not properly terminated"
+                                "Killed a process that was not properly terminated",
+                                RuntimeWarning,
                             )
 
     async def test_script_schema_process(self) -> None:
         """Test running a script with --schema as a subprocess."""
-        script_path = os.path.join(self.datadir, "script1")
+        script_path = TEST_DATA_DIR / "script1"
         index = 1  # index is ignored
         process = await asyncio.create_subprocess_exec(
-            script_path,
+            str(script_path),
             str(index),
             "--schema",
             stdout=subprocess.PIPE,
@@ -677,4 +680,6 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         finally:
             if process.returncode is None:
                 process.terminate()
-                warnings.warn("Killed a process that was not properly terminated")
+                warnings.warn(
+                    "Killed a process that was not properly terminated", RuntimeWarning
+                )

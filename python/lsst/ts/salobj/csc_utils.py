@@ -96,7 +96,7 @@ def get_expected_summary_states(
 async def set_summary_state(
     remote: Remote,
     state: State,
-    settingsToApply: typing.Optional[str] = "",
+    override: typing.Optional[str] = "",
     timeout: float = 30,
 ) -> typing.List[State]:
     """Put a CSC into the specified summary state.
@@ -107,9 +107,8 @@ async def set_summary_state(
         Remote for the CSC to be enabled.
     state : `State` or `int`
         Desired summary state.
-    settingsToApply : `str` or `None`
-        SettingsToApply argument for the ``start`` command.
-        Ignored unless the CSC has to be taken from state
+    override : `str`
+        Configuration override file to apply if the CSC is taken from state
         `State.STANDBY` to `State.DISABLED`.
     timeout : `float`
         Timeout for each state transition command and a possible initial
@@ -131,8 +130,8 @@ async def set_summary_state(
     state = State(state)
     if state == State.FAULT:
         raise ValueError("Cannot go into FAULT state using state transition commands")
-    if settingsToApply is None:
-        settingsToApply = ""
+    if override is None:
+        override = ""
 
     # get current summary state
     try:
@@ -148,9 +147,9 @@ async def set_summary_state(
 
     command_state_list = _STATE_TRANSITION_DICT[(current_state, state)]
 
-    old_settings_to_apply = remote.cmd_start.data.settingsToApply  # type: ignore
+    old_override = remote.cmd_start.data.configurationOverride  # type: ignore
     try:
-        remote.cmd_start.data.settingsToApply = settingsToApply  # type: ignore
+        remote.cmd_start.data.configurationOverride = override  # type: ignore
 
         for command, resulting_state in command_state_list:
             cmd = getattr(remote, f"cmd_{command}")
@@ -162,5 +161,5 @@ async def set_summary_state(
                 ) from e
             states.append(resulting_state)
     finally:
-        remote.cmd_start.data.settingsToApply = old_settings_to_apply  # type: ignore
+        remote.cmd_start.data.configurationOverride = old_override  # type: ignore
     return states

@@ -28,6 +28,7 @@ import numpy as np
 import yaml
 
 from lsst.ts import salobj
+from lsst.ts import utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -35,8 +36,8 @@ STD_TIMEOUT = 60
 
 np.random.seed(47)
 
-TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
-TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
+TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
+TEST_CONFIGS_ROOT = TEST_DATA_DIR / "configs"
 
 
 class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
@@ -65,54 +66,13 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             simulation_mode=simulation_mode,
         )
 
-    async def check_settings_events(self, config_file: str) -> None:
-        """Check the settingsApplied and appliedSettingsMatchStart events.
-
-        Parameters
-        ----------
-        config_file : `str`
-            The name of the config file, or "" if none specified.
-        """
-        # settingsVersion.settingsApplied should start with
-        # the config file name followed by a colon
-        data = await self.assert_next_sample(
-            topic=self.remote.evt_settingsApplied,
-        )
-        desired_prefix = config_file + ":"
-        assert data.settingsVersion[: len(desired_prefix)] == desired_prefix
-
-        # appliedSettingsMatchStartIsTrue.appliedSettingsMatchStartIsTrue
-        # should be True after being configured.
-        await self.assert_next_sample(
-            topic=self.remote.evt_appliedSettingsMatchStart,
-            appliedSettingsMatchStartIsTrue=True,
-        )
-
     async def test_no_config_specified(self) -> None:
+        config_dir = TEST_CONFIGS_ROOT / "good_with_site_file"
         async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+            initial_state=salobj.State.STANDBY, config_dir=config_dir
         ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
-            expected_settings_url = pathlib.Path(TEST_CONFIG_DIR).resolve().as_uri()
-            expected_settings_labels = ",".join(
-                (
-                    "all_fields",
-                    "empty",
-                    "some_fields",
-                    "long_label1_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
-                    "long_label2_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
-                    "long_label3_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
-                    "long_label4_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
-                    "long_label5_in_an_attempt_to_make_recommendedSettingsLabels_go_over_256_chars",
-                )
-            )
-            data = await self.assert_next_sample(
-                topic=self.remote.evt_settingVersions,
-                settingsUrl=expected_settings_url,
-                recommendedSettingsLabels=expected_settings_labels,
-            )
-            assert len(data.recommendedSettingsVersion) > 0
             await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
@@ -122,59 +82,89 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             # Test the softwareVersions event.
             # Assume the string length is the same for each field.
             metadata = self.csc.salinfo.metadata
-            data = await self.assert_next_sample(
+            await self.assert_next_sample(
                 topic=self.remote.evt_softwareVersions,
                 xmlVersion=metadata.xml_version,
                 salVersion=metadata.sal_version,
                 openSpliceVersion=salobj.get_dds_version(),
                 cscVersion=salobj.__version__,
             )
-            await self.check_settings_events("")
+            await self.assert_next_sample(
+                topic=self.remote.evt_configurationApplied,
+                configurations="_init.yaml,_test.yaml",
+            )
+
+    async def test_bad_site(self) -> None:
+        config_dir = TEST_CONFIGS_ROOT / "good_with_site_file"
+        with utils.modify_environ(LSST_SITE="no_such_site"):
+            async with self.make_csc(
+                initial_state=salobj.State.STANDBY,
+                config_dir=config_dir,
+            ):
+                await self.assert_next_summary_state(salobj.State.STANDBY)
+
+                with salobj.assertRaisesAckError():
+                    await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
 
     async def test_default_config_dir(self) -> None:
         async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=None):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            data = await self.remote.evt_settingVersions.next(
-                flush=False, timeout=STD_TIMEOUT
+            expected_config_url = self.csc.config_dir.as_uri()
+            data = await self.assert_next_sample(
+                topic=self.remote.evt_configurationsAvailable,
+                url=expected_config_url,
+                schemaVersion="v2",
             )
-            assert len(data.recommendedSettingsVersion) > 0
-            assert data.settingsUrl[0:8] == "file:///"
-            config_path = pathlib.Path(data.settingsUrl[7:])
-            assert config_path.samefile(self.csc.config_dir)
+            assert len(data.version) > 0
 
-    async def test_empty_label(self) -> None:
-        config_name = "empty"
+    async def test_bad_config_dirs(self) -> None:
+        for bad_config_dir in TEST_CONFIGS_ROOT.glob("bad_*"):
+            async with self.make_csc(
+                initial_state=salobj.State.STANDBY, config_dir=bad_config_dir
+            ):
+                await self.assert_next_summary_state(salobj.State.STANDBY)
+                with salobj.assertRaisesAckError():
+                    await self.remote.cmd_start.set_start(
+                        configurationOverride="", timeout=STD_TIMEOUT
+                    )
+
+    async def test_override_some_fields(self) -> None:
+        """Test an override with some fields set to valid values."""
+        config_dir = TEST_CONFIGS_ROOT / "good_no_site_file"
+        override = "some_fields.yaml"
 
         async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+            initial_state=salobj.State.STANDBY, config_dir=config_dir
         ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
+
+            expected_overrides = ",".join(
+                (
+                    "all_fields.yaml",
+                    "bad_extra_field.yaml",
+                    "bad_field_type.yaml",
+                    "bad_format.yaml",
+                    "empty.yaml",
+                    "some_fields.yaml",
+                )
+            )
+            expected_config_url = pathlib.Path(config_dir).resolve().as_uri()
+            data = await self.assert_next_sample(
+                topic=self.remote.evt_configurationsAvailable,
+                overrides=expected_overrides,
+                url=expected_config_url,
+                schemaVersion="v2",
+            )
+            assert len(data.version) > 0
+
             await self.remote.cmd_start.set_start(
-                settingsToApply=config_name, timeout=STD_TIMEOUT
+                configurationOverride=override, timeout=STD_TIMEOUT
             )
             await self.assert_next_summary_state(salobj.State.DISABLED)
+
             config = self.csc.config
-            for key, expected_value in self.default_dict.items():
-                assert getattr(config, key) == expected_value
-
-            await self.check_settings_events("empty.yaml")
-
-    async def test_some_fields_label(self) -> None:
-        """Test a config with some fields set to valid values."""
-        config_label = "some_fields"
-        config_file = "some_fields.yaml"
-
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
-        ):
-            await self.assert_next_summary_state(salobj.State.STANDBY)
-            await self.remote.cmd_start.set_start(
-                settingsToApply=config_label, timeout=STD_TIMEOUT
-            )
-            await self.assert_next_summary_state(salobj.State.DISABLED)
-            config = self.csc.config
-            config_path = os.path.join(self.csc.config_dir, config_file)
-            with open(config_path, "r") as f:
+            override_path = os.path.join(self.csc.config_dir, override)
+            with open(override_path, "r") as f:
                 config_yaml = f.read()
             config_from_file = yaml.safe_load(config_yaml)
             for key, default_value in self.default_dict.items():
@@ -184,23 +174,27 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
                 else:
                     assert getattr(config, key) == default_value
 
-            await self.check_settings_events(config_file)
+            await self.assert_next_sample(
+                topic=self.remote.evt_configurationApplied,
+                configurations=f"_init.yaml,{override}",
+            )
 
-    async def test_some_fields_file_no_hash(self) -> None:
-        """Test a config specified by filename."""
-        config_file = "some_fields.yaml"
+    async def test_override_with_hash(self) -> None:
+        """Test an override specified by filename:hash."""
+        config_dir = TEST_CONFIGS_ROOT / "good_no_site_file"
+        override = "some_fields.yaml"
 
         async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+            initial_state=salobj.State.STANDBY, config_dir=config_dir
         ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
             await self.remote.cmd_start.set_start(
-                settingsToApply=config_file, timeout=STD_TIMEOUT
+                configurationOverride=f"{override}:HEAD", timeout=STD_TIMEOUT
             )
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
-            config_path = os.path.join(self.csc.config_dir, config_file)
-            with open(config_path, "r") as f:
+            override_path = os.path.join(self.csc.config_dir, override)
+            with open(override_path, "r") as f:
                 config_yaml = f.read()
             config_from_file = yaml.safe_load(config_yaml)
             for key, default_value in self.default_dict.items():
@@ -210,60 +204,73 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
                 else:
                     assert getattr(config, key) == default_value
 
-            await self.check_settings_events(config_file)
+            await self.assert_next_sample(
+                topic=self.remote.evt_configurationApplied,
+                configurations=f"_init.yaml,{override}",
+            )
 
-    async def test_some_fields_file_with_hash(self) -> None:
-        """Test a config specified by filename:hash."""
-        config_file = "some_fields.yaml"
+    async def test_minimal_config_dir(self) -> None:
+        config_dir = TEST_CONFIGS_ROOT / "good_minimal"
 
         async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+            initial_state=salobj.State.STANDBY, config_dir=config_dir
         ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            await self.remote.cmd_start.set_start(
-                settingsToApply=f"{config_file}:HEAD", timeout=STD_TIMEOUT
+            expected_config_url = pathlib.Path(config_dir).resolve().as_uri()
+            data = await self.assert_next_sample(
+                topic=self.remote.evt_configurationsAvailable,
+                overrides="",
+                url=expected_config_url,
+                schemaVersion="v2",
             )
+            assert len(data.version) > 0
+
+            await self.remote.cmd_start.set_start(timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
-            config_path = os.path.join(self.csc.config_dir, config_file)
-            with open(config_path, "r") as f:
-                config_yaml = f.read()
-            config_from_file = yaml.safe_load(config_yaml)
-            for key, default_value in self.default_dict.items():
-                if key in config_from_file:
-                    assert getattr(config, key) == config_from_file[key]
-                    assert getattr(config, key) != default_value
-                else:
-                    assert getattr(config, key) == default_value
-
-            await self.check_settings_events(config_file)
-
-    async def test_all_fields_label(self) -> None:
-        """Test a config with all fields set to valid values."""
-        config_name = "all_fields"
-        config_file = "all_fields.yaml"
-
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
-        ):
-            await self.assert_next_summary_state(salobj.State.STANDBY)
-            await self.remote.cmd_start.set_start(
-                settingsToApply=config_name, timeout=STD_TIMEOUT
-            )
-            await self.assert_next_summary_state(salobj.State.DISABLED)
-            config = self.csc.config
-            config_path = os.path.join(self.csc.config_dir, config_file)
+            config_path = os.path.join(self.csc.config_dir, "_init.yaml")
             with open(config_path, "r") as f:
                 config_yaml = f.read()
             config_from_file = yaml.safe_load(config_yaml)
             for key in self.config_fields:
                 assert getattr(config, key) == config_from_file[key]
 
-            await self.check_settings_events(config_file)
+            await self.assert_next_sample(
+                topic=self.remote.evt_configurationApplied,
+                configurations="_init.yaml",
+            )
+
+    async def test_override_all_fields(self) -> None:
+        """Test an override that sets all fields to valid values."""
+        config_dir = TEST_CONFIGS_ROOT / "good_no_site_file"
+        override = "all_fields.yaml"
+
+        async with self.make_csc(
+            initial_state=salobj.State.STANDBY, config_dir=config_dir
+        ):
+            await self.assert_next_summary_state(salobj.State.STANDBY)
+            await self.remote.cmd_start.set_start(
+                configurationOverride=override, timeout=STD_TIMEOUT
+            )
+            await self.assert_next_summary_state(salobj.State.DISABLED)
+            config = self.csc.config
+            override_path = os.path.join(self.csc.config_dir, override)
+            with open(override_path, "r") as f:
+                config_yaml = f.read()
+            config_from_file = yaml.safe_load(config_yaml)
+            for key in self.config_fields:
+                assert getattr(config, key) == config_from_file[key]
+
+            await self.assert_next_sample(
+                topic=self.remote.evt_configurationApplied,
+                configurations=f"_init.yaml,{override}",
+            )
 
     async def test_invalid_configs(self) -> None:
+        config_dir = TEST_CONFIGS_ROOT / "good_no_site_file"
+
         async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
+            initial_state=salobj.State.STANDBY, config_dir=config_dir
         ):
             await self.assert_next_summary_state(salobj.State.STANDBY)
             for name in ("all_bad_types", "bad_format", "one_bad_type", "extra_field"):
@@ -271,7 +278,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
                 with self.subTest(config_file=config_file):
                     with salobj.assertRaisesAckError(ack=salobj.SalRetCode.CMD_FAILED):
                         await self.remote.cmd_start.set_start(
-                            settingsToApply=config_file, timeout=STD_TIMEOUT
+                            configurationOverride=config_file, timeout=STD_TIMEOUT
                         )
                     data = self.remote.evt_summaryState.get()
                     assert self.csc.summary_state == salobj.State.STANDBY
@@ -279,7 +286,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
             # Make sure the CSC can still be started.
             await self.remote.cmd_start.set_start(
-                settingsToApply="all_fields.yaml", timeout=10
+                configurationOverride="all_fields.yaml", timeout=10
             )
             assert self.csc.summary_state == salobj.State.DISABLED
             await self.assert_next_summary_state(salobj.State.DISABLED)

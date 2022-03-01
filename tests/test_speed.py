@@ -45,7 +45,9 @@ class MockVerify:
 try:
     from lsst import verify  # type: ignore
 except ImportError:
-    warnings.warn("verify could not be imported; measurements will not be uploaded")
+    warnings.warn(
+        "verify could not be imported; measurements will not be uploaded", UserWarning
+    )
     verify = MockVerify
 
 # Long enough to perform any reasonable operation
@@ -200,24 +202,26 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             await salobj.set_summary_state(
                 remote=remote,
                 state=salobj.State.ENABLED,
-                settingsToApply="arrays",
+                override="arrays",
                 timeout=STD_TIMEOUT,
             )
 
             num_samples = 1000
 
-            # Wait for the first sample so we know the writer is running.
-            data = await remote.tel_arrays.next(flush=False, timeout=STD_TIMEOUT)
+            # Wait for the first sample so we know the writer is running
+            # and to get an initial sequence number.
+            data0 = await remote.tel_arrays.next(flush=False, timeout=STD_TIMEOUT)
             t0 = time.monotonic()
             for i in range(num_samples):
                 data = await remote.tel_arrays.next(flush=False, timeout=STD_TIMEOUT)
             dt = time.monotonic() - t0
             arrays_read_speed = num_samples / dt
-            nlost = data.int0[0] - num_samples
+            nlost = data.private_seqNum - data0.private_seqNum - num_samples
             print(
                 f"Read {arrays_read_speed:0.0f} arrays samples/second "
                 f"({num_samples} samples); "
-                f"lost {nlost} samples"
+                f"lost {nlost} samples once started; "
+                f"lost {data0.int0[0]} samples during startup"
             )
 
             self.insert_measurement(
@@ -233,7 +237,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             await salobj.set_summary_state(
                 remote=remote,
                 state=salobj.State.ENABLED,
-                settingsToApply="logLevel",
+                override="logLevel",
                 timeout=STD_TIMEOUT,
             )
 
@@ -243,17 +247,18 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
             # Wait for the next logLevel sample, which is the first one
             # output by the write loop (unless data has been lost).
-            await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
+            data0 = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
             t0 = time.monotonic()
             for i in range(num_samples):
                 data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
             dt = time.monotonic() - t0
             log_level_read_speed = num_samples / dt
-            nlost = data.level - num_samples
+            nlost = data.private_seqNum - data0.private_seqNum - num_samples
             print(
                 f"Read {log_level_read_speed:0.0f} logLevel samples/second "
                 f"({num_samples} samples); "
-                f"lost {nlost} samples"
+                f"lost {nlost} samples once started; "
+                f"lost {data0.level} samples during startup"
             )
 
             self.insert_measurement(
@@ -272,9 +277,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
 
             t0 = time.monotonic()
             for i in range(num_samples):
-                controller.tel_arrays.put()
-                # Free the event loop, since writers usually should.
-                await asyncio.sleep(0)
+                await controller.tel_arrays.write()
             dt = time.monotonic() - t0
             arrays_write_speed = num_samples / dt
             print(
@@ -288,8 +291,8 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             )
 
             t0 = time.monotonic()
-            for i in range(num_samples):
-                controller.evt_logLevel.put()
+            for _ in range(num_samples):
+                await controller.evt_logLevel.write()
                 await asyncio.sleep(0)
             dt = time.monotonic() - t0
             log_level_write_speed = num_samples / dt
@@ -303,3 +306,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                     log_level_write_speed * u.ct / u.second,
                 )
             )
+
+
+if __name__ == "__main__":
+    unittest.main()

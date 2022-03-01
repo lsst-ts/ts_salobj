@@ -39,13 +39,13 @@ from lsst.ts import utils
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 60
 # Timeout for when we expect no new data (seconds).
-NODATA_TIMEOUT = 0.1
+NODATA_TIMEOUT = 0.5
 
 np.random.seed(47)
 
 index_gen = utils.index_generator()
-TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
-TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
+TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
+TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
 
 
 def all_permutations(
@@ -84,22 +84,22 @@ class FailInReportFaultCsc(salobj.TestCsc):
         self.doraise = doraise
         self.report_first = report_first
 
-    def report_summary_state(self) -> None:
+    async def _report_summary_state(self) -> None:
         if self.report_first:
-            super().report_summary_state()
+            await super()._report_summary_state()
         if self.summary_state == salobj.State.FAULT:
             if self.doraise:
                 raise RuntimeError(
                     "Intentionally raise an exception when going to the FAULT state"
                 )
             else:
-                self.fault(
+                await self.fault(
                     code=10934,
                     report="a report that will be ignored",
                     traceback="a traceback that will be ignored",
                 )
         if not self.report_first:
-            super().report_summary_state()
+            await super()._report_summary_state()
 
 
 class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
@@ -368,32 +368,31 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
     async def test_heartbeat(self) -> None:
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             self.csc.heartbeat_interval = 0.1
+            timeout = self.csc.heartbeat_interval * 5
             await self.remote.evt_heartbeat.next(flush=True, timeout=STD_TIMEOUT)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=0.2)
+            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
+            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
+            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
 
     async def test_bin_script_run(self) -> None:
         """Test running the Test CSC from the bin script.
 
         Note that the bin script calls class method ``amain``.
         """
-        for initial_state, settings_to_apply in (
+        for initial_state, override in (
             (None, None),
             (salobj.State.STANDBY, None),
             (salobj.State.DISABLED, "all_fields.yaml"),
             (salobj.State.ENABLED, ""),
         ):
             index = self.next_index()
-            with self.subTest(
-                initial_state=initial_state, settings_to_apply=settings_to_apply
-            ):
+            with self.subTest(initial_state=initial_state, override=override):
                 await self.check_bin_script(
                     name="Test",
                     index=index,
                     exe_name="run_test_csc.py",
                     initial_state=initial_state,
-                    settings_to_apply=settings_to_apply,
+                    override=override,
                 )
 
     async def test_bin_script_version(self) -> None:
@@ -401,7 +400,6 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
         Note that the bin script calls class method ``amain``.
         """
-        salobj.set_random_lsst_dds_partition_prefix()
         index = self.next_index()
         exec_path = pathlib.Path(__file__).parents[1] / "bin" / "run_test_csc.py"
 
@@ -422,7 +420,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         finally:
             if process.returncode is None:
                 process.terminate()
-                warnings.warn("Killed a process that was not properly terminated")
+                warnings.warn(
+                    "Killed a process that was not properly terminated", RuntimeWarning
+                )
 
     async def test_log_level(self) -> None:
         """Test that specifying a log level to make_csc works."""
@@ -454,8 +454,11 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             assert self.remote.tel_arrays.get() is None
 
             # send the setArrays command with random data
-            cmd_data_sent = self.csc.make_random_cmd_arrays()
-            await self.remote.cmd_setArrays.start(cmd_data_sent, timeout=STD_TIMEOUT)
+            arrays_dict = self.csc.make_random_arrays_dict()
+            await self.remote.cmd_setArrays.set_start(
+                **arrays_dict, timeout=STD_TIMEOUT
+            )
+            cmd_data_sent = self.remote.cmd_setArrays.data
 
             # see if new data was broadcast correctly
             evt_data = await self.remote.evt_arrays.next(
@@ -488,8 +491,11 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             assert self.remote.tel_scalars.get() is None
 
             # send the setScalars command with random data
-            cmd_data_sent = self.csc.make_random_cmd_scalars()
-            await self.remote.cmd_setScalars.start(cmd_data_sent, timeout=STD_TIMEOUT)
+            scalars_dict = self.csc.make_random_scalars_dict()
+            await self.remote.cmd_setScalars.set_start(
+                **scalars_dict, timeout=STD_TIMEOUT
+            )
+            cmd_data_sent = self.remote.cmd_setScalars.data
 
             # see if new data is being broadcast correctly
             evt_data = await self.remote.evt_scalars.next(
@@ -559,7 +565,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
             # if an invalid code is specified then errorCode is not output
             # but the CSC stil goes into a FAULT state
-            self.csc.fault(code="not a valid code", report=report)
+            await self.csc.fault(code="not a valid code", report=report)
             await self.assert_next_summary_state(salobj.State.FAULT)
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_errorCode.next(
@@ -575,7 +581,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             # if code is specified then errorReport is output;
             # first test with report and traceback specified,
             # then without, to make sure those values are not cached
-            self.csc.fault(code=code, report=report, traceback=traceback)
+            await self.csc.fault(code=code, report=report, traceback=traceback)
             await self.assert_next_summary_state(salobj.State.FAULT)
             await self.assert_next_sample(
                 topic=self.remote.evt_errorCode,
@@ -595,7 +601,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
-            self.csc.fault(code=code, report="")
+            await self.csc.fault(code=code, report="")
             await self.assert_next_summary_state(salobj.State.FAULT)
             await self.assert_next_sample(
                 topic=self.remote.evt_errorCode,
@@ -630,7 +636,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     code = 51
                     report = "Report for error code"
                     traceback = "Traceback for error code"
-                    csc.fault(code=code, report=report, traceback=traceback)
+                    await csc.fault(code=code, report=report, traceback=traceback)
 
                     await self.assert_next_summary_state(
                         salobj.State.FAULT, remote=remote
@@ -678,5 +684,5 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             await self.check_standard_state_transitions(
                 enabled_commands=("setArrays", "setScalars", "wait"),
                 skip_commands=("fault",),
-                settingsToApply="all_fields",
+                override="all_fields.yaml",
             )

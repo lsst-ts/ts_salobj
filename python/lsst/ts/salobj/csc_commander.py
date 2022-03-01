@@ -32,7 +32,6 @@ import shlex
 import sys
 import types
 import typing
-import warnings
 
 from . import domain
 from . import remote
@@ -194,7 +193,7 @@ class CscCommander:
 
     I have not found a way to write a unit test for this class.
     I tried running a commander in a subprocess but could not figure out
-    how to send multiple commands (the ``suprocess.communicate``
+    how to send multiple commands (the ``subprocess.communicate``
     method only allows sending one item of data).
     Instead I suggest manually running it to control the Test CSC.
 
@@ -373,13 +372,6 @@ help  # print this help
             if self.field_is_public(key)
         }
 
-    def get_rounded_public_fields(
-        self, data: typing.Any, digits: int = 2
-    ) -> typing.Any:
-        """Deprecated version of get_rounded_public_data."""
-        warnings.warn("Use get_rounded_public_data instead", DeprecationWarning)
-        return self.get_rounded_public_data(data=data, digits=digits)
-
     def event_callback(self, data: typing.Any, name: str) -> None:
         """Generic callback for events.
 
@@ -388,7 +380,7 @@ help  # print this help
         """
         self.output(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
 
-    def evt_summaryState_callback(self, data: type_hints.BaseDdsDataType) -> None:
+    def evt_summaryState_callback(self, data: type_hints.BaseMsgType) -> None:
         state_int: int = data.summaryState  # type: ignore
         try:
             state_repr: str = repr(sal_enums.State(state_int))
@@ -492,11 +484,12 @@ help  # print this help
         """Allow the start command to have no arguments."""
         assert len(args) in (0, 1)
         if args:
-            settingsToApply = args[0]
+            override = args[0]
         else:
-            settingsToApply = ""
+            override = ""
+        print("CscCommander.do_start: run the start command")
         await self.remote.cmd_start.set_start(  # type: ignore
-            settingsToApply=settingsToApply,
+            configurationOverride=override,
         )
 
     def get_commands_help(self) -> typing.List[str]:
@@ -586,8 +579,10 @@ help  # print this help
         if command_name == "help":
             self.print_help()
         elif command_method is not None:
+            print(f"run_command running command method {command_method}")
             coro = command_method(args)
         elif command_name in self.command_dict:
+            print("run_command running command from dict")
             coro = self.run_command_topic(command_name, args)
         else:
             self.output(f"Unrecognized command: {command_name}")
@@ -757,14 +752,23 @@ help  # print this help
         """
         parser = argparse.ArgumentParser(f"Run {cls.__name__}")
         if index is True:
-            parser.add_argument("index", type=int, help="Script SAL Component index.")
+            parser.add_argument("index", type=int, help="SAL index.")
+        elif isinstance(index, type) and issubclass(index, enum.IntEnum):
+            # The isinstance check just above prevents errors
+            # when index is an int or bool.
+            choices = [int(item.value) for item in index]  # type: ignore
+            names_str = ", ".join(
+                f"{item.value}: {item.name.lower()}" for item in index  # type: ignore
+            )
+            help_text = f"SAL index, one of: {names_str}"
+            parser.add_argument("index", type=int, help=help_text, choices=choices)
         parser.add_argument(
             "-e", "--enable", action="store_true", help="Enable the CSC?"
         )
         cls.add_arguments(parser)
 
         args = parser.parse_args()
-        if index is True:
+        if hasattr(args, "index"):
             kwargs["index"] = args.index
         elif not index:
             pass

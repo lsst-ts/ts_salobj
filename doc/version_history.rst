@@ -6,6 +6,79 @@
 Version History
 ###############
 
+v7.0.0
+------
+
+* Update the way configuration is handled to handle our new standard.
+
+    * Write ``configurationApplied`` and ``configurationsAvailable`` events, instead of the obsolete ``settingsApplied`` and ``settingVersions``.
+    * Stop writing the obsolete ``appliedSettingsMatchStart`` event.
+    * Rename ``start`` command ``settingsToApply`` field to ``configurationOverride``.
+    * Rename ``settings_to_apply`` arguments to ``override``.
+    * Rename the ``--settings`` CSC command-line argument to ``--override``.
+    * Ignore the ``require_settings`` CSC class constant.
+      The new configuration system makes default configuration site-specific, and the default is usually fine.
+
+* Warning: `ConfigurableCsc` now requires that environment variable ``LSST_SITE`` be defined.
+  As a result:
+
+    * `BaseCscTestCse`: set environment variable ``LSST_SITE`` in ``setUp`` and restore it in ``tearDown``.
+      Subclasses with ``setUp`` and/or ``tearDown`` methods should call ``super().setUp()`` and/or ``super().tearDown()``.
+    * If you have unit tests that do not inherit from `BaseCscTestCase` and construct a configurable CSC, you will have to manage the environment variable yourself.
+
+* Breaking Changes:
+
+  * Eliminate `BaseCsc.report_summary_state`. Use ``handle_summary_state`` instead.
+  * Make `BaseCsc.fault` async.
+  * Make `BaseScript.set_state` async.
+  * Make `Controller.put_log_level` async.
+  * Change `topics.CommandEvent`, `topics.CommandTelemetry` and `topics.WriteTopic` ``put`` and ``set_put`` to asynchronous `write` and `set_write`.
+    ``write`` does not support writing a data instance; call ``set`` or ``set_write`` to set data.
+  * Make `topics.ControllerCommand.ack` and ``ack_in_progress`` async and delete deprecated ``ackInProgress``.
+  * `TestCsc`: eliminate the topic-type-specific ``make_random_[cmd/evt/tel]_[arrays/scalars]`` methods.
+    Use the new ``make_random_[arrays/scalars]_dict`` methods, instead.
+  * Delete ``assert_black_formatted`` and ``tests/test_black.py``; use pytest-black instead.
+  * `IdlMetadata`: eliminate the ``str_length`` field (RFC-827).
+  * Modify `topics.BaseTopic`, `topics.ReadTopic`, and `topics.WriteTopic`: use constructor argument ``attr_name`` instead of ``name`` and ``sal_prefix``.
+
+* Eliminate the following deprecated features:
+
+    * Configuration schema must be defined in code; salobj will no longer read it from a file:
+
+        * `ConfigurableCsc`: eliminate the deprecated ``schema_path`` constructor argument.
+        * Update `check_standard_config_files` to require that the config schema be a module constant.
+    
+    * `BaseCsc`: class variable ``valid_simulation_modes`` may no longer be None and class variable ``version`` is required.
+    * `CscCommander`: ``get_rounded_public_fields`` is gone; use ``get_rounded_public_data`` with the same arguments.
+    * `Remote`: the ``tel_max_history`` constructor argument is gone.
+    * `SalInfo`:
+
+        * The ``makeAckCmd`` method is gone; use ``make_ackcmd``.
+        * The ``truncate_result`` argument of ``make_ackcmd`` and the ``MAX_RESULT_LEN`` constant are gone.
+          Don't worry about length limits.
+
+    * `topics.ReadTopic.get`: eliminate the ``flush`` argument.
+    * `topics.RemoteTelemetry`: the constructor no longer accepts the ``max_history`` argument.
+    * Delete constants ``MJD_MINUS_UNIX_SECONDS`` and ``SECONDS_PER_DAY`` (use the values in ts_utils).
+    * Delete functions (use the same-named version in ts_utils, unless otherwise noted):
+
+        * ``angle_diff``
+        * ``angle_wrap_center``
+        * ``angle_wrap_nonnegative``
+        * ``assertAnglesAlmostEqual``: use ts_utils ``assert_angles_almost_equal``
+        * ``astropy_time_from_tai_unix``
+        * ``current_tai``
+        * ``index_generator``
+        * ``make_done_future``
+        * ``modify_environ``
+        * ``set_random_lsst_dds_domain``: use ``set_random_lsst_dds_partition_prefix``
+        * ``tai_from_utc_unix``
+        * ``tai_from_utc``
+        * ``utc_from_tai_unix``
+
+* Enhance `CscCommander.make_from_cmd_line` to support index = an IntEnum subclass.
+* Update ``Jenkinsfile`` to checkout ts_config_ocs.
+
 v6.9.3
 ------
 
@@ -61,7 +134,7 @@ v6.9.0
 * `Remote` and `SalInfo`: improve retrieval of historical data in one special case:
   reading an indexed SAL component using index=0 in the `Remote` (meaning "read data from all indices").
   Formerly there would be only 1 sample of historical data: the most recent sample output with any index.
-  Now retrieve the most recent sample _for each index_, in the order received.
+  Now retrieve the most recent sample *for each index*, in the order received.
 
 Requirements:
 

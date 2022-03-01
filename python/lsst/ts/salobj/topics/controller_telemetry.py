@@ -36,37 +36,11 @@ class ControllerTelemetry(write_topic.WriteTopic):
 
     Parameters
     ----------
-    salinfo : `.SalInfo`
-        SAL component information
+    salinfo : `SalInfo`
+        SAL component information.
     name : `str`
-        Command name
+        Telemetry topic name, with no prefix.
     """
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:
-        super().__init__(salinfo=salinfo, name=name, sal_prefix="")
-
-    def set_put(self, **kwargs: typing.Any) -> bool:
-        """Set zero or more fields of ``self.data`` and put the result.
-
-        Parameters
-        ----------
-        **kwargs : `dict` [`str`, ``any``]
-            The keyword arguments are field name = new value for that field.
-            See `set` for more information about values.
-
-        Returns
-        -------
-        did_change : `bool`
-            True if ``self.data`` was changed, or if this was the first call
-            to `set`.
-
-        Raises
-        ------
-        AttributeError
-            If the topic does not have the specified field.
-        ValueError
-            If the field cannot be set to the specified value.
-        """
-        did_change = self.set(**kwargs)
-        self.put()
-        return did_change
+        super().__init__(salinfo=salinfo, attr_name="tel_" + name)

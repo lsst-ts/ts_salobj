@@ -44,11 +44,11 @@ DEFAULT_TIMEOUT = 60 * 60  # default timeout, in seconds
 
 
 class AckCmdReader(read_topic.ReadTopic):
-    """Read the ``ackcmd`` command acknowledgement topic.
+    """ackcmd (command acknowledgement) topic reader.
 
     Parameters
     ----------
-    salinfo : `.SalInfo`
+    salinfo : `SalInfo`
         SAL component information
     queue_len : `int`
         Number of elements that can be queued for `get_oldest`.
@@ -63,11 +63,7 @@ class AckCmdReader(read_topic.ReadTopic):
         self, salinfo: SalInfo, queue_len: int = read_topic.DEFAULT_QUEUE_LEN
     ) -> None:
         super().__init__(
-            salinfo=salinfo,
-            name="ackcmd",
-            sal_prefix="",
-            max_history=0,
-            queue_len=queue_len,
+            salinfo=salinfo, attr_name="ack_ackcmd", max_history=0, queue_len=queue_len
         )
 
 
@@ -134,11 +130,6 @@ class CommandInfo:
         )
         self._last_ackcmd: typing.Optional[type_hints.AckCmdDataType] = None
 
-    def abort(self, result: str = "") -> None:
-        """Report command as aborted. Ignored if already done."""
-        if not self._wait_task.done():
-            self._wait_task.cancel()
-
     def add_ackcmd(self, ackcmd: type_hints.AckCmdDataType) -> bool:
         """Add a command acknowledgement to the queue.
 
@@ -152,11 +143,14 @@ class CommandInfo:
         isdone : `bool`
             True if this is a final acknowledgement.
         """
-        # print(f"add_ackcmd; ackcmd.ack={ackcmd.ack}")
         isdone = ackcmd.ack in self.done_ack_codes
         self._ack_queue.append(ackcmd)
         self._next_ack_event.set()
         return isdone
+
+    def close(self) -> None:
+        """Stop pending tasks."""
+        self._wait_task.cancel()
 
     async def next_ackcmd(
         self, timeout: float = DEFAULT_TIMEOUT
@@ -231,7 +225,7 @@ class CommandInfo:
             elapsed_time = time.monotonic() - t0
 
     async def _get_next_ackcmd(self) -> type_hints.AckCmdDataType:
-        """Get the next cmdack sample.
+        """Get the next ackcmd sample.
 
         Returns
         -------
@@ -261,10 +255,10 @@ class RemoteCommand(write_topic.WriteTopic):
 
     Parameters
     ----------
-    salinfo : `.SalInfo`
-        SAL component information
+    salinfo : `SalInfo`
+        SAL component information.
     name : `str`
-        Command name
+        Command name, with no prefix, e.g. "start".
     """
 
     def __init__(self, salinfo: SalInfo, name: str) -> None:
@@ -274,10 +268,10 @@ class RemoteCommand(write_topic.WriteTopic):
         min_seq_num = name_ind * seq_num_increment + 1
         max_seq_num = min_seq_num + seq_num_increment - 1
         initial_seq_num = random.randint(min_seq_num, max_seq_num)
+        self._in_start = False
         super().__init__(
             salinfo=salinfo,
-            name=name,
-            sal_prefix="command_",
+            attr_name="cmd_" + name,
             min_seq_num=min_seq_num,
             max_seq_num=max_seq_num,
             initial_seq_num=initial_seq_num,
@@ -370,7 +364,8 @@ class RemoteCommand(write_topic.WriteTopic):
         -----
         If one or more fields cannot be set, the data may be partially updated.
         """
-        self.data = self.DataType()
+        if not self._in_start:
+            self.data = self.DataType()
         return super().set(**kwargs)
 
     async def set_start(
@@ -424,7 +419,7 @@ class RemoteCommand(write_topic.WriteTopic):
 
     async def start(
         self,
-        data: type_hints.BaseDdsDataType = None,
+        data: type_hints.BaseMsgType = None,
         timeout: float = DEFAULT_TIMEOUT,
         wait_done: bool = True,
     ) -> type_hints.AckCmdDataType:
@@ -470,8 +465,15 @@ class RemoteCommand(write_topic.WriteTopic):
         self.salinfo.assert_started()
         if data is not None:
             self.data = data
-        self.put()
-        seq_num = self.data.private_seqNum
+        # else use the existing data, since it may have been set
+        # via a call to "set"
+
+        try:
+            self._in_start = True
+            data_written = await super().write()
+        finally:
+            self._in_start = False
+        seq_num = data_written.private_seqNum
         if seq_num in self.salinfo._running_cmds:
             raise RuntimeError(
                 f"{self.name} bug: a command with seq_num={seq_num} is already running"
@@ -481,3 +483,13 @@ class RemoteCommand(write_topic.WriteTopic):
         )
         self.salinfo._running_cmds[seq_num] = cmd_info
         return await cmd_info.next_ackcmd(timeout=timeout)
+
+    async def set_write(
+        self, *, force_output: typing.Optional[bool] = None, **kwargs: typing.Any
+    ) -> write_topic.SetWriteResult:
+        """An override of WriteTopic.set_write that is disabled."""
+        raise NotImplementedError("Call set_start instead")
+
+    async def write(self, **kwargs: typing.Any) -> type_hints.BaseMsgType:
+        """An override of WriteTopic.write that is disabled."""
+        raise NotImplementedError("Call start instead")

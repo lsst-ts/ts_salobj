@@ -1,0 +1,8 @@
+metadata:
+  something: arbitrary metadata to ignore
+  something_else: more arbitrary metadata to ignore
+bool0: true
+int0: 5
+float0: 3.14
+intarr0: [-1, 1]
+multi_type: null

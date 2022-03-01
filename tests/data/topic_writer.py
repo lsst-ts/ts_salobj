@@ -32,7 +32,7 @@ from lsst.ts import salobj
 class TopicWriter(salobj.BaseCsc):
     """A simple CSC that writes samples as fast as possible.
 
-    Uses the Test API. Specify settingsToApply:
+    Uses the Test API. Specify override:
 
     * logLevel: to write logLevel events when enabled
     * arrays: to write arrays telemetry when enabled
@@ -49,35 +49,30 @@ class TopicWriter(salobj.BaseCsc):
     """
 
     valid_simulation_modes = [0]
+    version = "none"
 
     def __init__(self, index):
         print(f"TopicWriter: starting with index={index}")
-        super().__init__(name="Test", index=index)
+        for cmd in ("setArrays", "setScalars", "wait"):
+            setattr(self, f"do_{cmd}", self._unsupported_command)
         self.write_task = utils.make_done_future()
         self.is_log_level = False
+        super().__init__(name="Test", index=index)
 
     async def do_fault(self, data):
+        """This command does nothing, to allow timing command overhead."""
         pass
 
     async def begin_start(self, data):
-        if data.settingsToApply == "logLevel":
+        if data.configurationOverride == "logLevel":
             self.is_log_level = True
-        elif data.settingsToApply == "arrays":
+        elif data.configurationOverride == "arrays":
             self.is_log_level = False
         else:
             raise salobj.ExpectedError(
-                f"data.settingsToApply={data.settingsToApply} must be logLevel or arrays"
+                f"data.configurationOverride={data.configurationOverride} must be logLevel or arrays"
             )
-        print(f"TopicWriter: writing {data.settingsToApply}")
-
-    async def do_setArrays(self, data):
-        raise salobj.ExpectedError("Not supported")
-
-    async def do_setScalars(self, data):
-        raise salobj.ExpectedError("Not supported")
-
-    async def do_wait(self, data):
-        raise salobj.ExpectedError("Not supported")
+        print(f"TopicWriter: writing {data.configurationOverride}")
 
     async def handle_summary_state(self):
         if self.summary_state == salobj.State.ENABLED:
@@ -93,16 +88,29 @@ class TopicWriter(salobj.BaseCsc):
         i = 0
         while True:
             self.tel_arrays.data.int0[0] = i
-            self.tel_arrays.put()
-            await asyncio.sleep(0)
+            await self.tel_arrays.write()
             i += 1
+            # Awaiting write doesn't release the event loop
+            # (which surprises me) so release it once in awhile
+            # Pick values that do not slow down the read results
+            # very much and don't lose many initial samples.
+            if i % 20 == 0:
+                await asyncio.sleep(0.0001)
 
     async def write_log_level(self):
         i = 0
         while True:
-            self.evt_logLevel.set_put(level=i)
-            await asyncio.sleep(0)
+            await self.evt_logLevel.set_write(level=i)
             i += 1
+            # Awaiting write doesn't release the event loop
+            # (which surprises me) so release it once in awhile.
+            # Pick values that do not slow down the read results
+            # very much and don't lose many initial samples.
+            if i % 20 == 0:
+                await asyncio.sleep(0.0001)
+
+    async def _unsupported_command(self, data):
+        raise salobj.ExpectedError("Not supported")
 
 
 if __name__ == "__main__":

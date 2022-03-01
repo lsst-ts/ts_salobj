@@ -41,8 +41,8 @@ NODATA_TIMEOUT = 0.1
 np.random.seed(47)
 
 index_gen = utils.index_generator()
-TEST_DATA_DIR = TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data"
-TEST_CONFIG_DIR = TEST_DATA_DIR / "config"
+TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
+TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
 
 
 class FailedCallbackCsc(salobj.TestCsc):
@@ -52,7 +52,7 @@ class FailedCallbackCsc(salobj.TestCsc):
         super().__init__(*args, **kwargs)
         self.exc_msg = "do_wait raised an exception on purpose"
 
-    async def do_wait(self, data: salobj.BaseDdsDataType) -> None:
+    async def do_wait(self, data: salobj.BaseMsgType) -> None:
         raise RuntimeError(self.exc_msg)
 
 
