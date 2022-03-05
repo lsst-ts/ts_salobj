@@ -48,8 +48,10 @@ class SalLogHandler(logging.Handler):
         super().__init__()
 
     def emit(self, record: logging.LogRecord) -> None:
+        message = "(unknown)"
         try:
             self.format(record)
+            message = record.message
             if record.exc_text is not None:
                 traceback = record.exc_text.encode("utf-8", "replace").decode(
                     "latin-1", "replace"
@@ -72,7 +74,10 @@ class SalLogHandler(logging.Handler):
                 )
             )
         except Exception as e:
-            print(f"SalLogHandler.emit failed: {e!r}", file=sys.stderr)
+            print(
+                f"SalLogHandler.emit of message={message!r} failed: {e!r}",
+                file=sys.stderr,
+            )
         finally:
             # The Python formatter documentation suggests clearing ``exc_text``
             # after calling ``format`` to avoid problems with

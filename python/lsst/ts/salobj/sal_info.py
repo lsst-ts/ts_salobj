@@ -657,13 +657,13 @@ class SalInfo:
                             ) from e
                     self.log.debug(f"Read {len(data_list)} history items for {reader}")
                     # All historical data for the specified index
-                    full_sd_list = [
+                    full_data_list = [
                         self._sample_to_data(sd, si)
                         for sd, si in data_list
                         if si.valid_data
                     ]
-                    if len(full_sd_list) < len(data_list):
-                        ninvalid = len(data_list) - len(full_sd_list)
+                    if len(full_data_list) < len(data_list):
+                        ninvalid = len(data_list) - len(full_data_list)
                         self.log.warning(
                             f"Read {ninvalid} invalid late-joiner items from {reader}. "
                             "The invalid items were safely skipped, but please examine "
@@ -676,16 +676,14 @@ class SalInfo:
                             index_field = f"{self.name}ID"
                             data_dict = {
                                 getattr(data, index_field): data
-                                for data in full_sd_list
+                                for data in full_data_list
                             }
-                            sd_list: typing.Collection[
-                                type_hints.BaseMsgType
-                            ] = data_dict.values()
+                            data_list = data_dict.values()
                         else:
                             # Get the max_history most recent samples
-                            sd_list = full_sd_list[-reader.max_history :]
-                        if sd_list:
-                            await reader._queue_data(sd_list)
+                            data_list = full_data_list[-reader.max_history :]
+                        if data_list:
+                            await reader._queue_data(data_list)
             self._read_loop_task = asyncio.create_task(self._read_loop(loop=loop))
             self.start_task.set_result(None)
         except Exception as e:
@@ -715,14 +713,15 @@ class SalInfo:
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 while self.isopen:
-                    reader, sd_list = await loop.run_in_executor(
+                    reader, data_list = await loop.run_in_executor(
                         pool, self._blocking_read
                     )
                     if not self.isopen:
                         break
-                    if reader is None:
+                    if not data_list or reader is None:
                         continue
-                    await reader._queue_data(sd_list)
+                    reader.dds_queue_length_checker.check_nitems(len(data_list))
+                    await reader._queue_data(data_list)
 
         except asyncio.CancelledError:
             raise
@@ -736,7 +735,15 @@ class SalInfo:
     ) -> typing.Tuple[
         typing.Optional[topics.ReadTopic], typing.List[type_hints.BaseMsgType]
     ]:
-        """Read DDS data."""
+        """Read DDS data.
+
+        Return two values:
+
+        * reader : `ReadTopic` or `None`
+            The read topic, or None if no data.
+        * data_list: `list` [`BaseMsgType`]
+            List of messages, or [] if no data.
+        """
         conditions = self._waitset.wait(self._wait_timeout)
         if not self.isopen:
             # shutting down; clean everything up
@@ -748,11 +755,10 @@ class SalInfo:
             # odds are we will only get one value per read,
             # but read more so we can tell if we are falling behind
             data_list = reader._reader.take_cond(condition, reader._data_queue.maxlen)
-            reader.dds_queue_length_checker.check_nitems(len(data_list))
-            sd_list = [
+            data_list = [
                 self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data
             ]
-            return (reader, sd_list)
+            return (reader, data_list)
         return (None, [])
 
     def _sample_to_data(self, sd: dds._Sample, si: dds.SampleInfo) -> dds._Sample:
