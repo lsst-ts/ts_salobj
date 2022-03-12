@@ -36,6 +36,7 @@ from lsst.ts import utils
 from . import base
 from . import type_hints
 from .base_csc import BaseCsc, State
+from .hierarchical_update import hierarchical_update
 from .validator import StandardValidator
 
 
@@ -244,7 +245,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             cannot be parsed as yaml dicts, or produce an invalid configuration
             (one that does not match the schema).
         """
-        config_dict = {}
+        config_dict: typing.Dict[str, typing.Any] = {}
         for filename in files_to_read:
             if not filename:
                 continue
@@ -273,7 +274,12 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
                     f"Could not parse data in {filepath} as a dict: {e!r}"
                 )
             if config_data is not None:
-                config_dict.update(config_data)
+                hierarchical_update(
+                    main=config_dict,
+                    override=config_data,
+                    main_name="config",
+                    override_name=filename,
+                )
 
         # Delete metadata, if present (it is not part of the schema)
         if config_dict:
