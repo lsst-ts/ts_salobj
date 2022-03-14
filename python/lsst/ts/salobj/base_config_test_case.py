@@ -45,28 +45,6 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
       `check_config_files`.
     """
 
-    def get_module_dir(self, module_name: str) -> pathlib.Path:
-        """Get the directory of a python module, by importing the module.
-
-        Parameters
-        ----------
-        module_name : `str`
-            Module name, e.g. "lsst.ts.salobj".
-
-        Returns
-        -------
-        module_dir : `pathlib.Path`
-            Module directory, e.g. ``<package_root>/lsst/ts/salobj``
-
-        Raises
-        ------
-        ModuleNotFoundError
-            If the module is not found.
-        """
-        module = importlib.import_module(module_name)
-        init_path = pathlib.Path(module.__file__)
-        return init_path.parent
-
     def get_schema(
         self,
         csc_package_root: type_hints.PathType,
