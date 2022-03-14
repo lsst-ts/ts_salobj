@@ -86,7 +86,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
                 topic=self.remote.evt_softwareVersions,
                 xmlVersion=metadata.xml_version,
                 salVersion=metadata.sal_version,
-                openSpliceVersion=salobj.get_dds_version(),
+                openSpliceVersion=os.environ.get("OSPL_RELEASE", "?"),
                 cscVersion=salobj.__version__,
             )
             await self.assert_next_sample(

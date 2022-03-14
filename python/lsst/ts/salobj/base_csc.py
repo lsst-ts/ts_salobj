@@ -26,12 +26,12 @@ __all__ = ["BaseCsc"]
 import argparse
 import asyncio
 import enum
+import os
 import sys
 import typing
 
 from lsst.ts import utils
 from . import base
-from . import dds_utils
 from . import type_hints
 from .sal_enums import State
 from .controller import Controller
@@ -195,7 +195,7 @@ class BaseCsc(Controller):
         self.evt_softwareVersions.set(  # type: ignore
             salVersion=format_version(self.salinfo.metadata.sal_version),
             xmlVersion=format_version(self.salinfo.metadata.xml_version),
-            openSpliceVersion=dds_utils.get_dds_version(),
+            openSpliceVersion=os.environ.get("OSPL_RELEASE", "?"),
             cscVersion=getattr(self, "version", "?"),
         )
 
@@ -795,12 +795,12 @@ class BaseCsc(Controller):
             await getattr(self, f"begin_{cmd_name}")(data)
         except base.ExpectedError as e:
             self.log.error(
-                f"beg_{cmd_name} failed; remaining in state {curr_state!r}: {e}"
+                f"begin_{cmd_name} failed; remaining in state {curr_state!r}: {e}"
             )
             raise
         except Exception:
             self.log.exception(
-                f"beg_{cmd_name} failed; remaining in state {curr_state!r}"
+                f"begin_{cmd_name} failed; remaining in state {curr_state!r}"
             )
             raise
         self._summary_state = new_state
@@ -808,7 +808,7 @@ class BaseCsc(Controller):
             await getattr(self, f"end_{cmd_name}")(data)
         except base.ExpectedError as e:
             self.log.error(
-                f"beg_{cmd_name} failed; reverting to state {curr_state!r}: {e}"
+                f"begin_{cmd_name} failed; reverting to state {curr_state!r}: {e}"
             )
             raise
         except Exception:

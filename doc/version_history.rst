@@ -40,6 +40,8 @@ v7.0.0
   * Delete ``assert_black_formatted`` and ``tests/test_black.py``; use pytest-black instead.
   * `IdlMetadata`: eliminate the ``str_length`` field (RFC-827).
   * Modify `topics.BaseTopic`, `topics.ReadTopic`, and `topics.WriteTopic`: use constructor argument ``attr_name`` instead of ``name`` and ``sal_prefix``.
+  * `BaseConfigTestCase`: delete the ``get_module_dir`` method.
+    It is no longer useful and was unsafe.
 
 * Eliminate the following deprecated features:
 
@@ -77,6 +79,8 @@ v7.0.0
         * ``utc_from_tai_unix``
 
 * Enhance `CscCommander.make_from_cmd_line` to support index = an IntEnum subclass.
+* Fix the OpenSplice version reported in the ``softwareVersions`` event.
+  Report the value of environment variable ``OSPL_RELEASE`` instead of the version of the ``dds`` library.
 * Update ``Jenkinsfile`` to checkout ts_config_ocs.
 
 Requirements:

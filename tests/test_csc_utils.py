@@ -118,13 +118,8 @@ class SetSummaryStateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             assert states[0] == initial_state
             assert states[-1] == final_state
             assert self.csc.summary_state == final_state
-            if (
-                initial_state
-                in (
-                    salobj.State.FAULT,
-                    salobj.State.STANDBY,
-                )
-                and final_state in (salobj.State.DISABLED, salobj.State.ENABLED)
+            if (initial_state in (salobj.State.FAULT, salobj.State.STANDBY)) and (
+                final_state in (salobj.State.DISABLED, salobj.State.ENABLED)
             ):
                 # The start command was sent, so check that the configuration
                 # is as specified to the set_summary_state function.
