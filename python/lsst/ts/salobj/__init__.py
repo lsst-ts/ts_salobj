@@ -24,6 +24,7 @@ from .controller import *
 from .remote import *
 from .base_script import *
 from .csc_utils import *
+from .hierarchical_update import *
 from .testutils import *
 from .config_schema import *
 from .testcsc import *
