@@ -607,6 +607,8 @@ Changes:
   for the ``wait_done`` argument to the ``start``, ``set_start``, and ``next_ackcmd`` methods.
 * `BaseCsc` and `CscCommander`: improve the documentation
   for the ``index`` argument to the ``amain`` and ``make_from_cmd_line`` class methods.
+* `Controller`: stop ignoring optional extra commands.
+  ts_xml must now specify the correct commands for each SAL component.
 
 Requirements:
 
