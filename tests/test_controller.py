@@ -83,9 +83,8 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
                     cmd = getattr(controller, "cmd_" + cmd_name)
                     assert cmd.has_callback
 
-        skip_names = salobj.OPTIONAL_COMMAND_NAMES.copy()
         # do_setAuthList and do_setLogLevel are provided by Controller
-        skip_names |= {"setAuthList", "setLogLevel"}
+        skip_names = {"setAuthList", "setLogLevel"}
         for missing_name in command_names:
             if missing_name in skip_names:
                 continue

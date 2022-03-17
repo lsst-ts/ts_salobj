@@ -21,24 +21,17 @@ from __future__ import annotations
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["Controller", "OPTIONAL_COMMAND_NAMES"]
+__all__ = ["Controller"]
 
 import asyncio
 import types
 import typing
 
-from . import base
 from . import type_hints
 from .domain import Domain
 from .sal_info import SalInfo
 from .sal_log_handler import SalLogHandler
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
-
-# Set of generic commands that need not have an associated do_ method.
-# TODO DM-17157: Remove this constant and the code that uses it.
-# This requires ts_xml 10.2 or 11 and ts_sal 6. (It would have been ts_xml 10.1
-# but the MT Hexapod and Rotator had unwanted enterControl commands.)
-OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue", "setSimulationMode"))
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.
@@ -448,11 +441,7 @@ class Controller:
         supported_command_names = [name[3:] for name in do_names]
         if set(command_names) != set(supported_command_names):
             err_msgs = []
-            unsupported_commands = (
-                set(command_names)
-                - set(supported_command_names)
-                - OPTIONAL_COMMAND_NAMES
-            )
+            unsupported_commands = set(command_names) - set(supported_command_names)
             if unsupported_commands:
                 needed_do_str = ", ".join(
                     f"do_{name}" for name in sorted(unsupported_commands)
@@ -481,14 +470,8 @@ class Controller:
             func = getattr(self, do_method_name, None)
             if func is not None:
                 cmd.callback = func
-            elif cmd_name not in OPTIONAL_COMMAND_NAMES:
-                raise RuntimeError(f"Can't find method {do_method_name}")
             else:
-
-                def reject_command(data: typing.Any) -> None:
-                    raise base.ExpectedError("Not supported by this CSC")
-
-                cmd.callback = reject_command
+                raise RuntimeError(f"Can't find method {do_method_name}")
 
     async def __aenter__(self) -> Controller:
         await self.start_task
