@@ -66,14 +66,7 @@ class ControllerCommand(read_topic.ReadTopic):
     -----
     Each command must be acknowledged by writing an appropriate ``ackcmd``
     message. If you use a callback function to process the command
-    then this happens automatically. Otherwise you must call the `ack` method
-    to acknowledge the command yourself, though an initial acknowledgement
-    with ``ack=SalRetCode.CMD_ACK`` is always automatically sent when
-    the command is read.
-
-
-    After the initial acknowledgement with ``ack=SalRetCode.CMD_ACK``,
-    automatic ackowledgement for callback functions works as follows:
+    then this happens automatically, as follows:
 
     * If the callback function returns `None` then send a final
       acknowledgement with ``ack=SalRetCode.CMD_COMPLETE``.
@@ -186,18 +179,15 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         return await super().next(flush=False, timeout=timeout)
 
-    async def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
+    def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
         """Convert the value to an ``ackcmd`` and queue it.
 
-        Also acknowledge the command with CMD_ACK.
+        This override checks for a positive private_seqNum
+        and raises ValueError if not.
         """
         if data.private_seqNum <= 0:
             raise ValueError(f"private_seqNum={data.private_seqNum} must be positive")
-        ack = self.salinfo.make_ackcmd(
-            private_seqNum=data.private_seqNum, ack=sal_enums.SalRetCode.CMD_ACK
-        )
-        await self.ack(data, ack)
-        await super()._queue_one_item(data)
+        super()._queue_one_item(data)
 
     async def _run_callback(self, data: type_hints.BaseMsgType) -> None:
         """Run the callback function, acknowledge the command,

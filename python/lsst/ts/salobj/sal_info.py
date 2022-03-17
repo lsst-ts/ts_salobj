@@ -683,7 +683,7 @@ class SalInfo:
                             # Get the max_history most recent samples
                             data_list = full_data_list[-reader.max_history :]
                         if data_list:
-                            await reader._queue_data(data_list)
+                            reader._queue_data(data_list)
             self._read_loop_task = asyncio.create_task(self._read_loop(loop=loop))
             self.start_task.set_result(None)
         except Exception as e:
@@ -721,7 +721,7 @@ class SalInfo:
                     if not data_list or reader is None:
                         continue
                     reader.dds_queue_length_checker.check_nitems(len(data_list))
-                    await reader._queue_data(data_list)
+                    reader._queue_data(data_list)
 
         except asyncio.CancelledError:
             raise

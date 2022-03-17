@@ -692,9 +692,7 @@ class ReadTopic(BaseTopic):
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
-    async def _queue_data(
-        self, data_list: typing.Collection[type_hints.BaseMsgType]
-    ) -> None:
+    def _queue_data(self, data_list: typing.Collection[type_hints.BaseMsgType]) -> None:
         """Queue multiple one or more messages.
 
         Parameters
@@ -708,11 +706,11 @@ class ReadTopic(BaseTopic):
         if not data_list:
             return
         for data in data_list:
-            await self._queue_one_item(data)
+            self._queue_one_item(data)
         self._current_data = data
         self._report_next()
 
-    async def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
+    def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
         """Add a single message to the Python queue.
 
         Subclasses may override this to modify the message before queuing.
