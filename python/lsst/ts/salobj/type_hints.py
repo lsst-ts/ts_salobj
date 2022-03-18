@@ -63,7 +63,7 @@ BaseDdsDataType = BaseMsgType
 class AckCmdDataType(BaseMsgType):
     """AckCmd topic data type, for type annotations."""
 
-    ack: sal_enums.SalRetCode = sal_enums.SalRetCode.CMD_ACK
+    ack: sal_enums.SalRetCode = sal_enums.SalRetCode.CMD_COMPLETE
     error: int = 0
     result: str = ""
     identity: str = ""

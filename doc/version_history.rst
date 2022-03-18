@@ -28,7 +28,8 @@ v7.0.0
 
 * Breaking Changes:
 
-  * Eliminate `BaseCsc.report_summary_state`. Use ``handle_summary_state`` instead.
+  * Eliminate `BaseCsc.report_summary_state`.
+    Use ``handle_summary_state`` instead.
   * Make `BaseCsc.fault` async.
   * Make `BaseScript.set_state` async.
   * Make `Controller.put_log_level` async.
@@ -39,7 +40,7 @@ v7.0.0
     Use the new ``make_random_[arrays/scalars]_dict`` methods, instead.
   * Delete ``assert_black_formatted`` and ``tests/test_black.py``; use pytest-black instead.
   * `IdlMetadata`: eliminate the ``str_length`` field (RFC-827).
-  * Modify `topics.BaseTopic`, `topics.ReadTopic`, and `topics.WriteTopic`: use constructor argument ``attr_name`` instead of ``name`` and ``sal_prefix``.
+  * Simplify construction of `topics.BaseTopic`, `topics.ReadTopic`, and `topics.WriteTopic`: use constructor argument ``attr_name`` instead of ``name`` and ``sal_prefix``.
   * `BaseConfigTestCase`: delete the ``get_module_dir`` method.
     It is no longer useful and was unsafe.
 
@@ -78,10 +79,13 @@ v7.0.0
         * ``tai_from_utc``
         * ``utc_from_tai_unix``
 
-* Enhance `CscCommander.make_from_cmd_line` to support index = an IntEnum subclass.
-* Fix the OpenSplice version reported in the ``softwareVersions`` event.
-  Report the value of environment variable ``OSPL_RELEASE`` instead of the version of the ``dds`` library.
-* Update ``Jenkinsfile`` to checkout ts_config_ocs.
+* Other changes:
+
+    * Stop acknowledging SAL commands with ``CMD_ACK`` (RFC-831).
+    * Enhance `CscCommander.make_from_cmd_line` to support index = an IntEnum subclass.
+    * Fix the OpenSplice version reported in the ``softwareVersions`` event.
+      Report the value of environment variable ``OSPL_RELEASE`` instead of the version of the ``dds`` library.
+    * Update ``Jenkinsfile`` to checkout ``ts_config_ocs``.
 
 Requirements:
 
