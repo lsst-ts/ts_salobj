@@ -62,9 +62,6 @@ class TestCscCommander(csc_commander.CscCommander):
             name="Test",
             index=index,
             enable=enable,
-            # TODO DM-17157: delete the exclude_command argument.
-            # This requires ts_sal 6/ts_xml 10.
-            exclude_commands=("abort", "enterControl", "setValue"),
         )
 
         def asbool(val: str) -> bool:
@@ -101,13 +98,13 @@ class TestCscCommander(csc_commander.CscCommander):
             if field not in self.array_field_types:
                 raise RuntimeError(f"Unknown field {field}")
             field_type = self.array_field_types[field]
-            vals = [field_type(val) for val in valstr.split(",")]
+            vals = [field_type(val) for val in valstr.split(",")]  # type: ignore
             if len(vals) > ARR_LEN:
                 raise RuntimeError(
                     f"Field {field} has more than {ARR_LEN} values: {vals}"
                 )
             elif len(vals) < ARR_LEN:
                 n_to_append = ARR_LEN - len(vals)
-                vals += [field_type("0")] * n_to_append
+                vals += [field_type("0")] * n_to_append  # type: ignore
             kwargs[field] = vals
         await self.remote.cmd_setArrays.set_start(**kwargs)  # type: ignore

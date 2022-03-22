@@ -50,7 +50,7 @@ MIN_QUEUE_LEN = 10
 
 _BasicReturnType = typing.Optional[type_hints.AckCmdDataType]
 CallbackType = typing.Callable[
-    [type_hints.BaseDdsDataType],
+    [type_hints.BaseMsgType],
     typing.Union[_BasicReturnType, typing.Awaitable[_BasicReturnType]],
 ]
 
@@ -182,12 +182,11 @@ class ReadTopic(BaseTopic):
 
     Parameters
     ----------
-    salinfo : `.SalInfo`
+    salinfo : `SalInfo`
         SAL component information
-    name : `str`
-        Topic name, without a "command\_" or "logevent\_" prefix.
-    sal_prefix : `str`
-        SAL topic prefix: one of "command\_", "logevent\_" or ""
+    attr_name : `str`
+        Topic name with attribute prefix. The prefix must be one of:
+        ``cmd_``, ``evt_``, ``tel_``, or (only for the ackcmd topic) ``ack_``.
     max_history : `int`
         Maximum number of historical items to read:
 
@@ -204,7 +203,7 @@ class ReadTopic(BaseTopic):
         The maximum number of messages that can be read and not dealt with
         by a callback function or `next` before older messages will be dropped.
     filter_ackcmd : `bool`, optional
-        Filter out cmdack topics so we only see responses to commands
+        Filter out ackcmd topics so we only see responses to commands
         that we sent? This is normally what you want, but it is not wanted
         for SAL/Kafka producers.
         Ignored if ``name`` != "ackcmd".
@@ -232,7 +231,7 @@ class ReadTopic(BaseTopic):
     Attributes
     ----------
     isopen : `bool`
-        Is this read topic open? `True` until `close` is called.
+        Is this instance open? `True` until `close` or `basic_close` is called.
     dds_queue_length_checker : `QueueCapacityChecker`
         Queue length checker for the DDS queue.
     python_queue_length_checker : `QueueCapacityChecker`:
@@ -281,13 +280,12 @@ class ReadTopic(BaseTopic):
         self,
         *,
         salinfo: SalInfo,
-        name: str,
-        sal_prefix: str,
+        attr_name: str,
         max_history: int,
         queue_len: int = DEFAULT_QUEUE_LEN,
         filter_ackcmd: bool = True,
     ) -> None:
-        super().__init__(salinfo=salinfo, name=name, sal_prefix=sal_prefix)
+        super().__init__(salinfo=salinfo, attr_name=attr_name)
         self.isopen = True
         self._allow_multiple_callbacks = False
         if max_history < 0:
@@ -318,10 +316,10 @@ class ReadTopic(BaseTopic):
                 UserWarning,
             )
         self._max_history = int(max_history)
-        self._data_queue: typing.Deque[type_hints.BaseDdsDataType] = collections.deque(
+        self._data_queue: typing.Deque[type_hints.BaseMsgType] = collections.deque(
             maxlen=queue_len
         )
-        self._current_data: typing.Optional[type_hints.BaseDdsDataType] = None
+        self._current_data: typing.Optional[type_hints.BaseMsgType] = None
         # Task that `next` waits on.
         # Its result is set to the oldest message on the queue.
         # We do this instead of having `next` itself pop the oldest message
@@ -332,12 +330,12 @@ class ReadTopic(BaseTopic):
         self._callback_tasks: typing.Set[asyncio.Task] = set()
         self._callback_loop_task = utils.make_done_future()
         self.dds_queue_length_checker = QueueCapacityChecker(
-            descr=f"{name} DDS read queue",
+            descr=f"{attr_name} DDS read queue",
             log=self.log,
             queue_len=self.qos_set.reader_qos.history.depth,
         )
         self.python_queue_length_checker = QueueCapacityChecker(
-            descr=f"{name} python read queue", log=self.log, queue_len=queue_len
+            descr=f"{attr_name} python read queue", log=self.log, queue_len=queue_len
         )
         # Command topics use a different a partition name than
         # all other topics, including ackcmd, and the partition name
@@ -346,7 +344,7 @@ class ReadTopic(BaseTopic):
         # for each Controller or Remote:
         # `Controller` only needs a cmd_subscriber and data_publisher,
         # `Remote` only needs a cmd_publisher and data_subscriber.
-        if sal_prefix == "command_":
+        if attr_name.startswith("cmd_"):
             subscriber = salinfo.cmd_subscriber
         else:
             subscriber = salinfo.data_subscriber
@@ -362,7 +360,7 @@ class ReadTopic(BaseTopic):
         queries = []
         if salinfo.index > 0:
             queries.append(f"{salinfo.name}ID = {salinfo.index}")
-        if name == "ackcmd" and filter_ackcmd:
+        if attr_name == "ack_ackcmd" and filter_ackcmd:
             queries += [
                 f"origin = {salinfo.domain.origin}",
                 f"identity = '{salinfo.identity}'",
@@ -495,7 +493,7 @@ class ReadTopic(BaseTopic):
 
     async def aget(
         self, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Get the most recent message, or wait for data if no data has
         ever been seen (`has_data` False).
 
@@ -550,27 +548,12 @@ class ReadTopic(BaseTopic):
             raise RuntimeError("Not allowed because there is a callback function")
         self._data_queue.clear()
 
-    def get(
-        self, flush: typing.Optional[bool] = None
-    ) -> typing.Optional[type_hints.BaseDdsDataType]:
+    def get(self) -> typing.Optional[type_hints.BaseMsgType]:
         """Get the most recent message, or `None` if no data has ever been seen
         (`has_data` False).
 
-        This method does not change which message will be returned by `aget`.
-        If ``flush=False`` this method also does not modify which message
-        will be returned by `get_oldest` and `next`.
-
-        Parameters
-        ----------
-        flush : `bool`, optional
-            Flush the queue? Flushing the queue is deprecated and so
-            is specifying this argument.
-            False (the default) leaves the cache alone, which has no effect
-            on the messages returned by any read method.
-            True affects which messages will be returned by `get_oldest`
-            and `next`. True has no effect if there is a callback function.
-            Note: `None` is treated as `False`, but please do not specify
-            it; it only supported for now to handle deprecation warnings..
+        This method does not change which message will be returned by `aget`,
+        `get_oldest`, and `next`.
 
         Returns
         -------
@@ -583,26 +566,10 @@ class ReadTopic(BaseTopic):
             If the ``salinfo`` has not started reading.
         """
         self.salinfo.assert_started()
-        if flush is None:
-            flush = False
-        else:
-            if flush:
-                warnings.warn(
-                    "flush=True is deprecated for ReadTopic.get",
-                    DeprecationWarning,
-                )
-            else:
-                warnings.warn(
-                    "Specifying a value for the flush argument is deprecated "
-                    "for ReadTopic.get; use the default of False.",
-                    DeprecationWarning,
-                )
 
-        if flush and not self.has_callback:
-            self.flush()
         return self._current_data
 
-    def get_oldest(self) -> typing.Optional[type_hints.BaseDdsDataType]:
+    def get_oldest(self) -> typing.Optional[type_hints.BaseMsgType]:
         """Pop and return the oldest message from the queue, or `None` if the
         queue is empty.
 
@@ -635,7 +602,7 @@ class ReadTopic(BaseTopic):
 
     async def next(
         self, *, flush: bool, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Pop and return the oldest message from the queue, waiting for data
         if the queue is empty.
 
@@ -678,7 +645,7 @@ class ReadTopic(BaseTopic):
 
     async def _next(
         self, *, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Implement next.
 
         Unlike `next`, this can be called while using a callback function.
@@ -712,7 +679,7 @@ class ReadTopic(BaseTopic):
             task = self._callback_tasks.pop()
             task.cancel()
 
-    async def _run_callback(self, data: type_hints.BaseDdsDataType) -> None:
+    async def _run_callback(self, data: type_hints.BaseMsgType) -> None:
         try:
             # mypy gets upset because self._callback may be None
             # but it's too expensive to check that
@@ -725,22 +692,13 @@ class ReadTopic(BaseTopic):
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
-    def _queue_data(
-        self,
-        data_list: typing.Collection[type_hints.BaseDdsDataType],
-        loop: typing.Optional[asyncio.AbstractEventLoop],
-    ) -> None:
+    def _queue_data(self, data_list: typing.Collection[type_hints.BaseMsgType]) -> None:
         """Queue multiple one or more messages.
 
         Parameters
         ----------
-        data_list : typing.Collection[type_hints.BaseDdsDataType]
+        data_list : typing.Collection[type_hints.BaseMsgType]
             DDS messages to be queueued.
-        loop : `asyncio.AbstractEventLoop` or `None`
-            Foreground asyncio loop.
-            Specify the loop if and only if running from a background thread.
-            If running from the main asyncio loop specify ``loop = None``
-            (this is done to read historical data while starting).
 
         Also update ``self._current_data`` and fire `self._next_task`
         (if pending).
@@ -750,14 +708,9 @@ class ReadTopic(BaseTopic):
         for data in data_list:
             self._queue_one_item(data)
         self._current_data = data
-        if loop is not None and loop.is_running():
-            # Reading messages in a background thread.
-            loop.call_soon_threadsafe(self._report_next)
-        else:
-            # Reading messages in the main thread.
-            self._report_next()
+        self._report_next()
 
-    def _queue_one_item(self, data: type_hints.BaseDdsDataType) -> None:
+    def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
         """Add a single message to the Python queue.
 
         Subclasses may override this to modify the message before queuing.

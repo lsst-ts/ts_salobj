@@ -19,11 +19,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["DefaultingValidator"]
+__all__ = [
+    "DefaultingValidator",
+    "StandardValidator",  # specific jsonschema validator
+]
 
 import typing
 
 import jsonschema
+
+
+StandardValidator = jsonschema.Draft7Validator
 
 
 class DefaultingValidator:
@@ -33,7 +39,7 @@ class DefaultingValidator:
     ----------
     schema : `dict`
         Schema against which to validate.
-    ValidatorClass : ``jsonschema.IValidator``, optional
+    ValidatorClass : `jsonschema.protocols.Validator`, optional
         jsonschema validator class, e.g. ``jsonschema.Draft7Validator``.
 
     Notes
@@ -74,16 +80,16 @@ class DefaultingValidator:
     def __init__(
         self,
         schema: typing.Dict[str, typing.Any],
-        # jsonschema 3.2 has no public base class for validators
-        ValidatorClass: jsonschema.Draft7Validator = jsonschema.Draft7Validator,
+        # TODO: remove the type: ignore once we use jsonschema 4
+        StandardValidatorClass: typing.Type[StandardValidator] = StandardValidator,  # type: ignore
     ) -> None:
-        ValidatorClass.check_schema(schema)
-        self.final_validator = ValidatorClass(schema=schema)
+        StandardValidatorClass.check_schema(schema)  # type: ignore
+        self.final_validator = StandardValidatorClass(schema=schema)  # type: ignore
 
-        validate_properties = ValidatorClass.VALIDATORS["properties"]
+        validate_properties = StandardValidatorClass.VALIDATORS["properties"]  # type: ignore
 
         def set_defaults(
-            validator: jsonschema.Draft7Validator,
+            validator: StandardValidatorClass,  # type: ignore
             properties: typing.Dict[str, typing.Any],
             instance: typing.Dict[str, typing.Any],
             schema: typing.Dict[str, typing.Any],
@@ -146,7 +152,7 @@ class DefaultingValidator:
                 yield error
 
         WrappedValidator = jsonschema.validators.extend(
-            ValidatorClass, {"properties": set_defaults}
+            StandardValidatorClass, {"properties": set_defaults}
         )
         WrappedValidator.check_schema(schema)
         self.defaults_validator = WrappedValidator(schema=schema)

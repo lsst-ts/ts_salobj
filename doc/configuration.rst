@@ -35,6 +35,12 @@ Used by `SalInfo`:
 * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec) for waiting for historical (late-joiner) data.
   If, and only if, you are running DDS without a durability service then set this negative to avoid waiting for historical data.
 
+Used by `ConfigurableCsc`:
+
+* ``LSST_SITE`` (required): the site, e.g. "summit", "base", or "tucson".
+  Used to select the site-specific configuration file, if it exists, to supplement ``_init.yaml``.
+  For example if LSST_SITE="summit" then the default CSC configuration (configurationOverride="") is given by reading ``_init.yaml`` followed by ``_summit.yaml`` (if it exists).
+
 Used by `AsyncS3Bucket`:
 
 * ``S3_ENDPOINT_URL``: The endpoint URL for the S3 server, e.g. ``http://foo.bar:9000``.

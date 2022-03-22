@@ -24,12 +24,13 @@ import abc
 import asyncio
 import contextlib
 import enum
+import os
 import pathlib
 import shutil
 import subprocess
 import typing
 
-from . import base
+from lsst.ts import utils
 from . import base_csc
 from . import sal_enums
 from . import testutils
@@ -60,7 +61,20 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
       assuming you have a binary script to run your CSC.
     """
 
-    _index_iter = base.index_generator()
+    _index_iter = utils.index_generator()
+
+    def run(self, result: typing.Any = None) -> None:  # type: ignore
+        """Set a random LSST_DDS_PARTITION_PREFIX
+        and set LSST_SITE=test for every test.
+
+        Unlike setUp, a user cannot forget to override this.
+        (This is also a good place for context managers).
+        """
+        testutils.set_random_lsst_dds_partition_prefix()
+        # set LSST_SITE using os.environ instead of utils.modify_environ
+        # so that check_bin_script works.
+        os.environ["LSST_SITE"] = "test"
+        super().run(result)  # type: ignore
 
     @abc.abstractmethod
     def basic_make_csc(
@@ -131,9 +145,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Time limit for the CSC to start (seconds).
         **kwargs : `dict`, optional
             Extra keyword arguments for `basic_make_csc`.
-            For a configurable CSC this may include ``settings_to_apply``,
+            For a configurable CSC this may include ``override``,
             especially if ``initial_state`` is DISABLED or ENABLED.
         """
+        # Redundant with setUp, but preserve in case a subclass
+        # forgets to call super().setUp()
         testutils.set_random_lsst_dds_partition_prefix()
         items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
         try:
@@ -169,6 +185,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                     await self.assert_next_summary_state(state)
 
             yield
+        except Exception as e:
+            print(f"BaseCscTestCase.make_csc failed: {e!r}")
+            raise
         finally:
             for item in items_to_close:
                 await item.close()
@@ -208,7 +227,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         flush: bool = False,
         timeout: float = STD_TIMEOUT,
         **kwargs: typing.Any,
-    ) -> type_hints.BaseDdsDataType:
+    ) -> type_hints.BaseMsgType:
         """Wait for the next data sample for the specified topic,
         check specified fields for equality, and return the data.
 
@@ -251,7 +270,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         exe_name: str,
         default_initial_state: sal_enums.State = sal_enums.State.STANDBY,
         initial_state: typing.Optional[sal_enums.State] = None,
-        settings_to_apply: typing.Optional[str] = None,
+        override: typing.Optional[str] = None,
         cmdline_args: typing.Sequence[str] = (),
         timeout: float = STD_TIMEOUT,
     ) -> None:
@@ -271,16 +290,17 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         initial_state : `lsst.ts.salobj.State` or `int` or `None`, optional
             The desired initial state of the CSC; used to specify
             the ``--state`` command-argument.
-        settings_to_apply : `str` or `None`, optional
-            Value for the ``--settings`` command-line argument.
-            Only relevant if ``initial_state`` is one of
-            `salobj.State.DISABLED` or `salobj.State.ENABLED`.
+        override : `str` or `None`, optional
+            Value for the ``--override`` command-line argument,
+            which is omitted if override is None.
         cmdline_args : `List` [`str`]
             Additional command-line arguments, such as "--simulate".
         timeout : `float`, optional
             Time limit for the CSC to start and output
             the summaryState event.
         """
+        # Redundant with setUp, but preserve in case a subclass
+        # forgets to call super().setUp()
         testutils.set_random_lsst_dds_partition_prefix()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
@@ -299,8 +319,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 initial_state=default_initial_state,
                 final_state=initial_state,
             )
-        if settings_to_apply is not None:
-            args += ["--settings", settings_to_apply]
+        if override is not None:
+            args += ["--override", override]
         args += cmdline_args
 
         async with Domain() as domain, Remote(
@@ -314,25 +334,23 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             try:
                 for state in expected_states:
                     await self.assert_next_summary_state(state, timeout=timeout)
-                if settings_to_apply is not None and settings_to_apply.endswith(
-                    ".yaml"
-                ):
-                    # The string settings_to_apply is a file name, and so
-                    # should appear in evt_settingsApplied.settingsVersion
-                    data = await self.remote.evt_settingsApplied.next(  # type: ignore
-                        flush=False, timeout=STD_TIMEOUT
+                if override:
+                    # The override should appear in
+                    # evt_configurationApplied.configurations
+                    data = await self.assert_next_sample(
+                        topic=self.remote.evt_configurationApplied,  # type: ignore
                     )
-                    assert data.settingsVersion.startswith(settings_to_apply)
+                    assert override in data.configurations  # type: ignore
             finally:
                 if process.returncode is None:
                     process.terminate()
                     await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
                 else:
-                    print("Warning: suprocess has already quit.")
+                    print("Warning: subprocess had already quit.")
                     try:
                         assert process.stderr is not None  # make mypy happy
-                        data = await process.stderr.read()
-                        print("Subprocess stderr: ", data.decode())
+                        errbytes = await process.stderr.read()
+                        print("Subprocess stderr: ", errbytes.decode())
                     except Exception as e:
                         print(f"Could not read subprocess stderr: {e}")
 
@@ -340,7 +358,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         self,
         enabled_commands: typing.Sequence[str],
         skip_commands: typing.Optional[typing.Sequence[str]] = None,
-        settingsToApply: str = "",
+        override: str = "",
         timeout: float = STD_TIMEOUT,
     ) -> None:
         """Test standard CSC state transitions.
@@ -353,9 +371,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             and "setLogLevel" (which is valid in any state).
         skip_commands : `List` [`str`] or `None`, optional
             List of commands to skip.
-        settingsToApply : `str`, optional
-            Value for the ``settingsToApply`` argument for the ``start``
-            command.
+        override : `str`, optional
+            Configuration override file to apply when the CSC is taken
+            from state `State.STANDBY` to `State.DISABLED`.
         timeout : `float`, optional
             Time limit for state transition commands (seconds).
 
@@ -381,7 +399,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         # Send start; new state is DISABLED.
         await self.remote.cmd_start.set_start(  # type: ignore
-            settingsToApply=settingsToApply, timeout=timeout
+            configurationOverride=override, timeout=timeout
         )
         assert self.csc.summary_state == sal_enums.State.DISABLED
         await self.assert_next_summary_state(sal_enums.State.DISABLED)

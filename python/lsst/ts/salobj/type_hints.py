@@ -21,6 +21,7 @@
 
 __all__ = [
     "AckCmdDataType",
+    "BaseMsgType",
     "BaseDdsDataType",
     "PathType",
 ]
@@ -33,7 +34,7 @@ from . import sal_enums
 
 
 @dataclasses.dataclass
-class BaseDdsDataType:
+class BaseMsgType:
     r"""Base DDS sample data type, for type annotations.
 
     This is missing:
@@ -54,11 +55,15 @@ class BaseDdsDataType:
         raise NotImplementedError()
 
 
+# Backwards compatibility
+BaseDdsDataType = BaseMsgType
+
+
 @dataclasses.dataclass
-class AckCmdDataType(BaseDdsDataType):
+class AckCmdDataType(BaseMsgType):
     """AckCmd topic data type, for type annotations."""
 
-    ack: sal_enums.SalRetCode = sal_enums.SalRetCode.CMD_ACK
+    ack: sal_enums.SalRetCode = sal_enums.SalRetCode.CMD_COMPLETE
     error: int = 0
     result: str = ""
     identity: str = ""

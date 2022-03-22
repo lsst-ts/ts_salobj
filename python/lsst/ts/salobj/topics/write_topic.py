@@ -21,8 +21,9 @@ from __future__ import annotations
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["MAX_SEQ_NUM", "WriteTopic"]
+__all__ = ["MAX_SEQ_NUM", "SetWriteResult", "WriteTopic"]
 
+import copy
 import struct
 import typing
 
@@ -30,7 +31,6 @@ import numpy as np
 
 from lsst.ts import utils
 from .. import type_hints
-from .. import base
 from .base_topic import BaseTopic
 
 if typing.TYPE_CHECKING:
@@ -46,24 +46,46 @@ if typing.TYPE_CHECKING:
 MAX_SEQ_NUM = (1 << 31) - 1
 
 
-class WriteTopic(BaseTopic):
-    r"""Base class for topics that are output.
-
-    This includes  controller events, controller telemetry, remote commands
-    and ``cmdack`` writers.
+class SetWriteResult:
+    """Result from set_write.
 
     Parameters
     ----------
-    salinfo : `.SalInfo`
+    did_change
+        Did the keywords change any values?
+    was_written
+        Was the message written?
+    data
+        The data, after applying keywords.
+        This should be a copy, to avoid race conditions between this
+        call and other code that alters the data.
+    """
+
+    def __init__(
+        self, did_change: bool, was_written: bool, data: type_hints.BaseMsgType
+    ) -> None:
+        self.did_change = did_change
+        self.was_written = was_written
+        self.data = data
+
+
+class WriteTopic(BaseTopic):
+    r"""Base class for topics that are written.
+
+    This includes  controller events, controller telemetry, remote commands
+    and ``ackcmd`` writers.
+
+    Parameters
+    ----------
+    salinfo : `SalInfo`
         SAL component information
-    name : `str`
-        Topic name, without a "command\_" or "logevent\_" prefix.
-    sal_prefix : `str`
-        SAL topic prefix: one of "command\_", "logevent\_" or ""
+    attr_name : `str`
+        Topic name with attribute prefix. The prefix must be one of:
+        ``cmd_``, ``evt_``, ``tel_``, or (only for the ackcmd topic) ``ack_``.
     min_seq_num : `int` or `None`, optional
         Minimum value for the ``private_seqNum`` field. The default is 1.
         If `None` then ``private_seqNum`` is not set; this is needed
-        for the cmdack writer, which sets the field itself.
+        for the ackcmd writer, which sets the field itself.
     max_seq_num : `int`, optional
         Maximum value for ``private_seqNum``, inclusive.
         The default is the maximum allowed positive value
@@ -75,24 +97,21 @@ class WriteTopic(BaseTopic):
     Attributes
     ----------
     isopen : `bool`
-        Is this read topic open? `True` until `close` is called.
+        Is this instance open? `True` until `close` or `basic_close` is called.
     """
+    # Default value for the force_output argument of write
+    default_force_output = True
 
     def __init__(
         self,
         *,
         salinfo: SalInfo,
-        name: str,
-        sal_prefix: str,
+        attr_name: str,
         min_seq_num: typing.Optional[int] = 1,
         max_seq_num: int = MAX_SEQ_NUM,
         initial_seq_num: typing.Optional[int] = None,
     ) -> None:
-        super().__init__(
-            salinfo=salinfo,
-            name=name,
-            sal_prefix=sal_prefix,
-        )
+        super().__init__(salinfo=salinfo, attr_name=attr_name)
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
@@ -101,7 +120,7 @@ class WriteTopic(BaseTopic):
                 typing.Generator[int, None, None]
             ] = None
         else:
-            self._seq_num_generator = base.index_generator(
+            self._seq_num_generator = utils.index_generator(
                 imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num
             )
         # Command topics use a different a partition name than
@@ -111,7 +130,7 @@ class WriteTopic(BaseTopic):
         # for each Controller or Remote:
         # `Controller` only needs a cmd_subscriber and data_publisher,
         # `Remote` only needs a cmd_publisher and data_subscriber.
-        if sal_prefix == "command_":
+        if attr_name.startswith("cmd_"):
             publisher = salinfo.cmd_publisher
         else:
             publisher = salinfo.data_publisher
@@ -134,7 +153,7 @@ class WriteTopic(BaseTopic):
         salinfo.add_writer(self)
 
     @property
-    def data(self) -> type_hints.BaseDdsDataType:
+    def data(self) -> type_hints.BaseMsgType:
         """Internally cached message.
 
         Raises
@@ -150,7 +169,7 @@ class WriteTopic(BaseTopic):
         return self._data
 
     @data.setter
-    def data(self, data: type_hints.BaseDdsDataType) -> None:
+    def data(self, data: type_hints.BaseMsgType) -> None:
         if not isinstance(data, self.DataType):
             raise TypeError(f"data={data!r} must be an instance of {self.DataType}")
         self._data = data
@@ -158,7 +177,11 @@ class WriteTopic(BaseTopic):
 
     @property
     def has_data(self) -> bool:
-        """Has `data` ever been set?"""
+        """Has `data` ever been set?
+
+        Note: a value of true means at least one field has been set,
+        not that all fields have been set.
+        """
         return self._has_data
 
     def basic_close(self) -> None:
@@ -179,54 +202,16 @@ class WriteTopic(BaseTopic):
         """
         self.basic_close()
 
-    def put(
-        self,
-        data: typing.Optional[type_hints.BaseDdsDataType] = None,
-    ) -> None:
-        """Output this topic.
-
-        Parameters
-        ----------
-        data : ``self.DataType`` or `None`
-            New message data to replace ``self.data``, if any.
-
-        Raises
-        ------
-        TypeError
-            If ``data`` is not None and not an instance of `DataType`.
-        """
-        if data is not None:
-            self.data = data
-
-        self.data.private_sndStamp = utils.current_tai()
-        self.data.private_revCode = self.rev_code
-        self.data.private_origin = self.salinfo.domain.origin
-        self.data.private_identity = self.salinfo.identity
-        if self._seq_num_generator is not None:
-            self.data.private_seqNum = next(self._seq_num_generator)
-        # when index is 0 use the default of 0 and give senders a chance
-        # to override it.
-        if self.salinfo.index != 0:
-            setattr(self.data, f"{self.salinfo.name}ID", self.salinfo.index)
-        try:
-            self._writer.write(self.data)
-        except struct.error as e:
-            raise ValueError(
-                f"{self.name} write({self.data}) failed: one or more fields invalid"
-            ) from e
-        except TypeError as e:
-            raise ValueError(
-                f"{self.name} write({self.data}) failed: "
-                f"perhaps one or more array fields has been set to a scalar"
-            ) from e
-        except IndexError as e:
-            raise ValueError(
-                f"{self.name} write({self.data}) failed: "
-                f"probably one or more array fields is too short"
-            ) from e
-
     def set(self, **kwargs: typing.Any) -> bool:
-        """Set one or more fields of message data cache ``self.data``.
+        """Set one or more fields of message data ``self.data``.
+
+        This is useful when accumulating data for a topic in different
+        bits of code. Have each bit of code call `set` to set the fields
+        it knows about. Have the last bit of code call `write` to set
+        the remaining fields and write the completed message.
+
+        If you have all the information for a topic in one place, it is simpler
+        to call `set_write` to set all of the fields and write the message.
 
         Parameters
         ----------
@@ -281,3 +266,85 @@ class WriteTopic(BaseTopic):
                 ) from e
         self._has_data = True
         return did_change
+
+    async def set_write(
+        self, *, force_output: typing.Optional[bool] = None, **kwargs: typing.Any
+    ) -> SetWriteResult:
+        """Set zero or more fields of ``self.data`` and write if changed
+        or if ``force_output`` true.
+
+        Parameters
+        ----------
+        force_output : `bool`, optional
+            If True then write the event, even if no fields have changed.
+            If None (the default), use the class default,
+            which is True for all except ControllerEvent.
+            (The default value is given by class constant
+            ``default_force_output``).
+        **kwargs : `dict` [`str`, ``any``]
+            The remaining keyword arguments are
+            field name = new value for that field.
+            See `set` for more information about values.
+
+        Returns
+        -------
+        result
+            The resulting data and some flags.
+
+        Notes
+        -----
+        The reason there are separate `set_write` and `write` methods is that
+        `write` reliably writes the data, whereas the event version of
+        `set_write` only writes the data if ``kwargs`` changes it,
+        or if ``force_output`` is true.
+        """
+        did_change = self.set(**kwargs)
+        if did_change:
+            do_output = True
+        else:
+            do_output = (
+                self.default_force_output if force_output is None else force_output
+            )
+        if do_output:
+            self._basic_write()
+        return SetWriteResult(
+            did_change=did_change, was_written=do_output, data=copy.copy(self.data)
+        )
+
+    async def write(self) -> type_hints.BaseMsgType:
+        """Write the current data and return a copy of the data written.
+
+        Return a copy in order to avoid race conditions.
+        """
+        self._basic_write()
+        return copy.copy(self.data)
+
+    def _basic_write(self) -> None:
+        """Put self.data after setting the private_x fields."""
+        self.data.private_sndStamp = utils.current_tai()
+        self.data.private_revCode = self.rev_code
+        self.data.private_origin = self.salinfo.domain.origin
+        self.data.private_identity = self.salinfo.identity
+        if self._seq_num_generator is not None:
+            self.data.private_seqNum = next(self._seq_num_generator)
+        # when index is 0 use the default of 0 and give senders a chance
+        # to override it.
+        if self.salinfo.index != 0:
+            setattr(self.data, f"{self.salinfo.name}ID", self.salinfo.index)
+
+        try:
+            self._writer.write(self.data)
+        except struct.error as e:
+            raise ValueError(
+                f"{self.name} write({self.data}) failed: one or more fields invalid"
+            ) from e
+        except TypeError as e:
+            raise ValueError(
+                f"{self.name} write({self.data}) failed: "
+                f"perhaps one or more array fields has been set to a scalar"
+            ) from e
+        except IndexError as e:
+            raise ValueError(
+                f"{self.name} write({self.data}) failed: "
+                f"probably at least one array field is too short"
+            ) from e

@@ -96,40 +96,42 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
             assert salinfo.name_index == f"Test:{index}"
 
-            # expected_commands omits a few commands that TestCsc
-            # does not support, but that are in generics.
-            expected_commands = [
+            # Expected commands; must be complete and sorted alphabetically.
+            expected_commands = (
                 "disable",
                 "enable",
                 "exitControl",
-                "standby",
-                "start",
+                "fault",
                 "setArrays",
+                "setAuthList",
                 "setLogLevel",
                 "setScalars",
-                "fault",
+                "standby",
+                "start",
                 "wait",
-            ]
-            assert set(expected_commands).issubset(set(salinfo.command_names))
+            )
+            assert expected_commands == salinfo.command_names
 
-            # expected_events omits a few events that TestCsc
-            # does not support, but that are in generics.
-            expected_events = [
+            # Expected events; must be complete and sorted alphabetically.
+            expected_events = (
+                "arrays",
+                "authList",
+                "configurationApplied",
+                "configurationsAvailable",
                 "errorCode",
                 "heartbeat",
                 "logLevel",
                 "logMessage",
-                "settingVersions",
-                "simulationMode",
-                "summaryState",
                 "scalars",
-                "arrays",
-            ]
-            assert set(expected_events).issubset(set(salinfo.event_names))
+                "simulationMode",
+                "softwareVersions",
+                "summaryState",
+            )
+            assert expected_events == salinfo.event_names
 
             # telemetry topic names should match; there are no generics
-            expected_telemetry = ["arrays", "scalars"]
-            assert set(expected_telemetry) == set(salinfo.telemetry_names)
+            expected_telemetry = ("arrays", "scalars")
+            assert expected_telemetry == salinfo.telemetry_names
 
             expected_sal_topic_names = ["ackcmd"]
             expected_sal_topic_names += [
@@ -233,62 +235,18 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert ackcmd.error == 0
             assert ackcmd.result == ""
 
-            warning_regex = "makeAckCmd is deprecated"
-            with pytest.warns(DeprecationWarning, match=warning_regex):
-                ackcmd2 = salinfo.makeAckCmd(private_seqNum=seqNum, ack=ack)
-            assert ackcmd.get_vars() == ackcmd2.get_vars()
-
             # Specify an error code and result
-            for truncate_result in (False, True):
-                with self.subTest(truncate_result=truncate_result):
-                    seqNum = 27
-                    ack = salobj.SalRetCode.CMD_FAILED
-                    error = 127
-                    result = "why not?"
-                    ackcmd = salinfo.make_ackcmd(
-                        private_seqNum=seqNum,
-                        ack=ack,
-                        error=error,
-                        result=result,
-                        truncate_result=truncate_result,
-                    )
-                    assert ackcmd.private_seqNum == seqNum
-                    assert ackcmd.ack == ack
-                    assert ackcmd.error == error
-                    assert ackcmd.result == result
-
-                    with pytest.warns(DeprecationWarning, match=warning_regex):
-                        ackcmd2 = salinfo.makeAckCmd(
-                            private_seqNum=seqNum,
-                            ack=ack,
-                            error=error,
-                            result=result,
-                            truncate_result=truncate_result,
-                        )
-                    assert ackcmd.get_vars() == ackcmd2.get_vars()
-
-            # Test behavior with too-long result strings
             seqNum = 27
             ack = salobj.SalRetCode.CMD_FAILED
             error = 127
-            result = "a" * (salobj.MAX_RESULT_LEN + 5)
-            with pytest.raises(ValueError):
-                salinfo.make_ackcmd(
-                    private_seqNum=seqNum,
-                    ack=ack,
-                    error=error,
-                    result=result,
-                    truncate_result=False,
-                )
+            result = "why not?"
             ackcmd = salinfo.make_ackcmd(
                 private_seqNum=seqNum,
                 ack=ack,
                 error=error,
                 result=result,
-                truncate_result=True,
             )
             assert ackcmd.private_seqNum == seqNum
             assert ackcmd.ack == ack
             assert ackcmd.error == error
-            assert ackcmd.result != result
-            assert ackcmd.result == result[0 : salobj.MAX_RESULT_LEN]
+            assert ackcmd.result == result

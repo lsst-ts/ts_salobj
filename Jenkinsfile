@@ -105,6 +105,17 @@ pipeline {
                 }
             }
         }
+        stage("Checkout ts_config_ocs") {
+            steps {
+                script {
+                    sh "docker exec -u saluser \${container_name} sh -c \"" +
+                        "source ~/.setup.sh && " +
+                        "cd /home/saluser/repos/ts_config_ocs && " +
+                        "/home/saluser/.checkout_repo.sh \${work_branches} && " +
+                        "git pull\""
+                }
+            }
+        }
         stage("Running tests") {
             steps {
                 script {

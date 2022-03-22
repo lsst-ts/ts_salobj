@@ -125,12 +125,6 @@ class IdlParserTestCase(unittest.TestCase):
                     else:
                         assert field_metadata.units is None
                         assert field_metadata.description is None
-                    expected_str_length = {
-                        "string0": 20,
-                        "private_revCode": 8,
-                        "private_identity": 128,
-                    }.get(field_name)
-                    assert field_metadata.str_length == expected_str_length
                     assert field_metadata.type_name == field_types[field_name]
                     if sal_topic_name == "command_setArrays":
                         expected_array_length = 5 if field_name.endswith("0") else None

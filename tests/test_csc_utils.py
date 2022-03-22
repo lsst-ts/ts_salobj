@@ -34,10 +34,11 @@ from lsst.ts import utils
 STD_TIMEOUT = 60
 
 index_gen = utils.index_generator()
-TEST_CONFIG_DIR = pathlib.Path(__file__).resolve().parent / "data" / "config"
+TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
+TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
 
 
-class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
+class SetSummaryStateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self,
         initial_state: typing.Union[salobj.State, int],
@@ -111,19 +112,14 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             states = await salobj.set_summary_state(
                 remote=self.remote,
                 state=final_state,
-                settingsToApply="all_fields",
+                override="all_fields.yaml",
                 timeout=STD_TIMEOUT,
             )
             assert states[0] == initial_state
             assert states[-1] == final_state
             assert self.csc.summary_state == final_state
-            if (
-                initial_state
-                in (
-                    salobj.State.FAULT,
-                    salobj.State.STANDBY,
-                )
-                and final_state in (salobj.State.DISABLED, salobj.State.ENABLED)
+            if (initial_state in (salobj.State.FAULT, salobj.State.STANDBY)) and (
+                final_state in (salobj.State.DISABLED, salobj.State.ENABLED)
             ):
                 # The start command was sent, so check that the configuration
                 # is as specified to the set_summary_state function.
@@ -141,17 +137,17 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             for expected_state in states[1:]:
                 await self.assert_next_summary_state(expected_state)
 
-            # If settingsToApply should be applied and the CSC
+            # If override should be applied and the CSC
             # can be restored to its initial state, try again with
-            # settingsToApply = None and "".
+            # override = None and "".
             # Both of these should result in the default configuration.
             if initial_state == salobj.State.STANDBY and final_state in (
                 salobj.State.DISABLED,
                 salobj.State.ENABLED,
             ):
-                # Try again with settingsToApply=None and settingsToApply=""
-                for settingsToApply in (None, ""):
-                    with self.subTest(settingsToApply=settingsToApply):
+                # Try again with override=None and override=""
+                for override in (None, ""):
+                    with self.subTest(override=override):
                         # Reset state to initial state
                         states = await salobj.set_summary_state(
                             remote=self.remote, state=initial_state, timeout=STD_TIMEOUT
@@ -165,7 +161,7 @@ class SetSummaryStateTestCSe(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                         states = await salobj.set_summary_state(
                             remote=self.remote,
                             state=final_state,
-                            settingsToApply=settingsToApply,
+                            override=override,
                             timeout=STD_TIMEOUT,
                         )
                         # Make sure all summaryState events are seen

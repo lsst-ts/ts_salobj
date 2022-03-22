@@ -22,16 +22,14 @@ __all__ = ["BaseConfigTestCase"]
 
 import abc
 import importlib
-import os
 import pathlib
 import typing
 import unittest
 import yaml
 
-import jsonschema
-
 from . import type_hints
-from . import validator
+from .configurable_csc import ConfigurableCsc
+from .validator import StandardValidator
 
 
 class BaseConfigTestCase(metaclass=abc.ABCMeta):
@@ -46,28 +44,6 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
     * Add a method ``test_<foo>`` which calls
       `check_config_files`.
     """
-
-    def get_module_dir(self, module_name: str) -> pathlib.Path:
-        """Get the directory of a python module, by importing the module.
-
-        Parameters
-        ----------
-        module_name : `str`
-            Module name, e.g. "lsst.ts.salobj".
-
-        Returns
-        -------
-        module_dir : `pathlib.Path`
-            Module directory, e.g. ``<package_root>/lsst/ts/salobj``
-
-        Raises
-        ------
-        ModuleNotFoundError
-            If the module is not found.
-        """
-        module = importlib.import_module(module_name)
-        init_path = pathlib.Path(module.__file__)
-        return init_path.parent
 
     def get_schema(
         self,
@@ -164,184 +140,117 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         self,
         config_dir: type_hints.PathType,
         schema: typing.Dict[str, typing.Any],
+        exclude_glob: typing.Optional[str] = None,
     ) -> None:
         """Check all configuration files for a given package.
 
         Parameters
         ----------
         config_dir : `str` or `pathlib.Path`
-            Directory containing config files and ``_labels.yaml``.
+            Directory containing config files.
         schema : `dict`
             Configuration schema.
+        exclude_override_glob : `dict`
+            Glob expression for files to exclude.
+
+        Raises
+        ------
+        AssertionError
+            If the files do not produce a valid schema.
         """
-        config_dir = pathlib.Path(config_dir)
-        assert config_dir.is_dir()
-        assert isinstance(schema, dict)
+        try:
+            config_dir = pathlib.Path(config_dir)
+            assert config_dir.is_dir()
+            assert isinstance(schema, dict)
 
-        config_validator = validator.DefaultingValidator(schema)
-        version = schema["title"].split()[-1]
-        assert version.startswith(
-            "v"
-        ), f"version={version} from schema title {schema['title']} does not start with 'v'"
+            config_validator = StandardValidator(schema)
+            schema_version = schema["title"].split()[-1]
+            assert schema_version.startswith(
+                "v"
+            ), f"version={schema_version} from schema title {schema['title']} does not start with 'v'"
 
-        config_files = config_dir.glob("*.yaml")
+            config_files = list(config_dir.glob("*.yaml"))
+            if exclude_glob:
+                files_to_exclude = set(config_dir.glob(exclude_glob))
+                config_files = [
+                    filename
+                    for filename in config_files
+                    if filename not in files_to_exclude
+                ]
+            found_init = False
+            site_files = []
+            override_files = [""]
+            for filepath in config_files:
+                filename = filepath.name
+                if filename == "_init.yaml":
+                    found_init = True
+                elif filename.startswith("_"):
+                    site_files.append(filepath.name)
+                else:
+                    override_files.append(filepath.name)
+            if not found_init:
+                raise RuntimeError("Failed: no _init.yaml file found")
+            if not site_files:
+                site_files = [""]
 
-        # Check that all config files are valid.
-        bad_config_files = []
-        for config_file in config_files:
-            if config_file.name == "_labels.yaml":
-                continue
-            with open(config_file, "r") as f:
-                config_yaml = f.read()
-            try:
-                config_dict = yaml.safe_load(config_yaml)
-                # Delete metadata, if present
-                if config_dict:
-                    config_dict.pop("metadata", None)
-                config_validator.validate(config_dict)
-            except jsonschema.exceptions.ValidationError as e:
-                print(f"config file {config_file} failed validation: {e}")
-                bad_config_files.append(str(config_file))
-        if bad_config_files:
-            raise AssertionError(
-                f"{len(bad_config_files)} config file(s) failed validation: {bad_config_files}"
-            )
-
-        # Check that all entries in the label dict are valid
-        # and point to existing files.
-        labels_path = config_dir / "_labels.yaml"
-        assert labels_path.is_file()
-        with open(labels_path, "r") as f:
-            labels_yaml = f.read()
-        if labels_yaml:
-            input_dict = yaml.safe_load(labels_yaml)
-            if input_dict is None:
-                input_dict = {}
-            else:
-                assert isinstance(input_dict, dict)
-        else:
-            input_dict = {}
-
-        invalid_labels = []
-        invalid_files = []
-        missing_files = []
-        for label, config_name in input_dict.items():
-            if not label.isidentifier() or label.startswith("_"):
-                invalid_labels.append(label)
-            if config_name.strip().startswith("/") or not config_name.endswith(".yaml"):
-                invalid_files.append(config_name)
-            if not (config_dir / config_name).is_file():
-                missing_files.append(config_name)
-        if invalid_labels:
-            raise AssertionError(f"Invalid labels {invalid_labels} in {labels_path}")
-        if invalid_files:
-            raise AssertionError(
-                f"Labels to invalid file {invalid_files} in {labels_path}"
-            )
-        if missing_files:
-            raise AssertionError(
-                f"Labels to missing files {missing_files} in {labels_path}"
-            )
+            # Check each site and each site with each override file
+            for site_file in site_files:
+                for override_file in override_files:
+                    ConfigurableCsc.read_config_files(
+                        config_validator=config_validator,
+                        config_dir=config_dir,
+                        files_to_read=["_init.yaml", site_file, override_file],
+                    )
+        except Exception as e:
+            raise AssertionError(repr(e)) from e
 
     def check_standard_config_files(
         self,
+        module_name: str,
+        schema_name: str = "CONFIG_SCHEMA",
         sal_name: typing.Optional[str] = None,
-        module_name: typing.Optional[str] = None,
-        package_name: typing.Optional[str] = None,
-        schema_name: typing.Optional[str] = None,
-        schema_subpath: typing.Optional[str] = None,
         config_package_root: typing.Union[str, pathlib.Path, None] = None,
         config_dir: typing.Union[str, pathlib.Path, None] = None,
     ) -> None:
-        """A wrapper around `check_config_files` that handles the most common
-        case.
-
-        Assumptions:
-
-        * The module can be imported, if ``module_name`` specified,
-          else environment variable ``f"{package_name.upper()}_DIR"`` exists.
-          If not, skip the test, because the package is not available.
-        * The schema is a module constant named ``schema_name``,
-          if provided, else the schema is a file found as follows:
-
-            * If ``module_name`` is provided,
-              the module root is n+1 levels above the package,
-              where n is the number of "." in ``module_name``
-            * The schema is in ``module root / "schema" / f"{sal_name}.yaml"``
-              unless you override this with ``schema_subpath``.
+        """A wrapper around `check_config_files` to test salobj packages.
 
         Parameters
         ----------
-        sal_name : `str`
-            SAL component name, e.g. "Watcher".
-        module_name : `str` or `None`, optional
+        module_name : `str`
             Module name, e.g. "lsst.ts.salobj".
-            If not None then get the CSC package root by importing
-            the module and ignore ``package_name``.
-        package_name : `str` or `None`, optional
-            If ``module_name`` is None then specify this argument
-            and get the CSC package root using environment variable
-            ``f"{package_name.upper()}_DIR"``.
-            This is useful for non-python packages or packages that
-            need a special environment to be imported.
-        schema_name : `str` or `None`, optional
+        schema_name : `str`
             Name of schema constant in the module, typically "CONFIG_SCHEMA".
-            If None then look for a schema file instead of a schema constant.
-        schema_subpath : `str` or `None`
-            Schema path relative to csc_package_root.
-            If `None` then use ``f"schema/{sal_name}.yaml"``.
-            Ignored if ``schema_name`` is specified.
+        sal_name : `str` or `None`
+            SAL component name, e.g. "Watcher".
+            Ignored if ``config_dir`` is not None.
+            Used to determine config dir if ``config_dir`` is None.
         config_package_root : `str` or `pathlib.Path` or `None`
             Root directory of configuration package.
-            Within the unit test this will work:
+            Used to determine config dir if ``config_dir`` is None.
+            Within the unit test for a config package, this will work::
 
                 config_package_root = pathlib.Path(__file__).parents[1]
 
-            Ignored if ``schema_name`` or ``config_dir`` is specified.
+            Ignored if ``config_dir`` is specified.
 
         config_dir : `str` or `pathlib.Path` or `None`
-            Directory containing config files and ``_labels.yaml``.
+            Directory containing config files.
             If `None` then a reasonable value is computed;
             this is primarily intended to support unit testing in ts_salobj.
+        exclude_glob : str
+            Glob expression of override files to exclude.
+            For use by salobj unit tests.
         """
-        if module_name is not None and schema_name is not None:
-            try:
-                module = importlib.import_module(module_name)
-            except ImportError:
-                raise unittest.SkipTest(f"Cannot import {module_name}")
-            schema = getattr(module, schema_name)
-        else:
-            if module_name is None:
-                if package_name is None:
-                    raise RuntimeError("Must specify module_name or package_name")
-                else:
-                    env_var = package_name.upper() + "_DIR"
-                    temp_package_root = os.environ.get(env_var)
-                    if temp_package_root is None:
-                        raise unittest.SkipTest(
-                            f"Cannot find package {package_name}; "
-                            f"environment variable {env_var} not defined"
-                        )
-                    csc_package_root: typing.Union[
-                        str, pathlib.Path
-                    ] = temp_package_root
-            else:
-                num_dots = len(module_name.split("."))
-                try:
-                    csc_package_root = self.get_module_dir(module_name).parents[
-                        num_dots
-                    ]
-                except ImportError:
-                    raise unittest.SkipTest(f"Cannot import {module_name}")
-            schema = self.get_schema(
-                csc_package_root=csc_package_root,
-                sal_name=sal_name,
-                schema_subpath=schema_subpath,
-            )
+        try:
+            module = importlib.import_module(module_name)
+        except ImportError:
+            raise unittest.SkipTest(f"Cannot import {module_name}")
+        schema = getattr(module, schema_name)
+
         if config_dir is None:
             if config_package_root is None:
                 raise RuntimeError(
-                    "config_package_root or config_dir must be specified."
+                    "config_package_root must be specified if config_dir is None."
                 )
             if sal_name is None:
                 raise ValueError("sal_name must be specified if config_dir is None")

@@ -315,7 +315,8 @@ class Domain:
             self.participant.close()
         if self.num_read_loops != 0:
             warnings.warn(
-                f"After Domain.close num_read_loops={self.num_read_loops}; it should be 0"
+                f"After Domain.close num_read_loops={self.num_read_loops}; it should be 0",
+                RuntimeWarning,
             )
         self.done_task.set_result(None)
 

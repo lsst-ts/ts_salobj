@@ -23,6 +23,7 @@ from __future__ import annotations
 
 __all__ = ["SalLogHandler"]
 
+import asyncio
 import logging
 import sys
 import typing
@@ -47,25 +48,36 @@ class SalLogHandler(logging.Handler):
         super().__init__()
 
     def emit(self, record: logging.LogRecord) -> None:
+        message = "(unknown)"
         try:
             self.format(record)
+            message = record.message
             if record.exc_text is not None:
-                traceback = str(record.exc_text.encode("utf-8", "replace"))
+                traceback = record.exc_text.encode("utf-8", "replace").decode(
+                    "latin-1", "replace"
+                )
             else:
                 traceback = ""
-            self.controller.evt_logMessage.set_put(  # type: ignore
-                name=record.name,
-                level=record.levelno,
-                message=record.message.encode("utf-8", "replace"),
-                traceback=traceback,
-                filePath=record.pathname,
-                functionName=record.funcName,
-                lineNumber=record.lineno,
-                process=record.process,
-                force_output=True,
+            asyncio.create_task(
+                self.controller.evt_logMessage.set_write(  # type: ignore
+                    name=record.name,
+                    level=record.levelno,
+                    # OpenSplice requires latin-1 (utf-8 doesn't work).
+                    message=record.message.encode("utf-8", "replace").decode(
+                        "latin-1", "replace"
+                    ),
+                    traceback=traceback,
+                    filePath=record.pathname,
+                    functionName=record.funcName,
+                    lineNumber=record.lineno,
+                    process=record.process,
+                )
             )
         except Exception as e:
-            print(f"SalLogHandler.emit failed: {e}", file=sys.stderr)
+            print(
+                f"SalLogHandler.emit of message={message!r} failed: {e!r}",
+                file=sys.stderr,
+            )
         finally:
             # The Python formatter documentation suggests clearing ``exc_text``
             # after calling ``format`` to avoid problems with

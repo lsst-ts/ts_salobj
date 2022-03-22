@@ -33,6 +33,10 @@ def get_dds_version(dds_file: typing.Optional[str] = None) -> str:
 
     If it cannot be determined, return "?".
 
+    Note: do not use this function to determine the OpenSplice version
+    for the softwareVersions event. Use the value of environment variable
+    OSPL_RELEASE for that.
+
     Parameters
     ----------
     dds_file : `str` or `None`, optional

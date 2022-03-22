@@ -21,24 +21,17 @@ from __future__ import annotations
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["Controller", "OPTIONAL_COMMAND_NAMES"]
+__all__ = ["Controller"]
 
 import asyncio
 import types
 import typing
 
-from . import base
 from . import type_hints
 from .domain import Domain
 from .sal_info import SalInfo
 from .sal_log_handler import SalLogHandler
 from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
-
-# Set of generic commands that need not have an associated do_ method.
-# TODO DM-17157: Remove this constant and the code that uses it.
-# This requires ts_xml 10.2 or 11 and ts_sal 6. (It would have been ts_xml 10.1
-# but the MT Hexapod and Rotator had unwanted enterControl commands.)
-OPTIONAL_COMMAND_NAMES = set(("abort", "enterControl", "setValue", "setSimulationMode"))
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.
@@ -98,6 +91,17 @@ class Controller:
         A logger.
     salinfo : `SalInfo`
         SAL info.
+    isopen : `bool`
+        Is this instance open? `True` until `close` is called.
+        The instance is fully closed when done_task is done.
+    start_called : `bool`
+        Has the start method been called?
+        The instance is fully started when start_task is done.
+    done_task : `asyncio.Task`
+        A task which is finished when `close` or `basic_close` is done.
+    start_task : `asyncio.Task`
+        A task which is finished when `start` is done,
+        or to an exception if `start` fails.
     cmd_<command_name> : `topics.ControllerCommand`
         Controller command topic. There is one for each command supported by
         the SAL component.
@@ -149,8 +153,8 @@ class Controller:
 
     * Events, each an instance of `topics.ControllerEvent`:
 
-        * ``evt_appliedSettingsMatchStart``
-        * ``evt_errorCode``
+        * ``evt_authList``
+        * ``evt_configurationApplied``
         * ... and so on for all other standard CSC events
         * ``evt_arrays``
         * ``evt_scalars``
@@ -182,9 +186,7 @@ class Controller:
         do_callbacks: bool = False,
     ) -> None:
         self.isopen = False
-
         self.start_called = False
-        # Task that is set done when the controller is closed
         self.done_task: asyncio.Future = asyncio.Future()
         self._do_callbacks = do_callbacks
 
@@ -274,8 +276,8 @@ class Controller:
                 await self.close()
                 return
 
-        self.put_log_level()
-        self.evt_authList.set_put(  # type: ignore
+        await self.put_log_level()
+        await self.evt_authList.set_write(  # type: ignore
             authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
             nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
         )
@@ -350,7 +352,7 @@ class Controller:
             self.log.exception("Controller.close failed near the end; close continues")
         finally:
             if not self.done_task.done():
-                if exception:
+                if exception is not None:
                     self.done_task.set_exception(exception)
                 else:
                     self.done_task.set_result(None)
@@ -363,7 +365,7 @@ class Controller:
         """
         pass
 
-    def do_setAuthList(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setAuthList(self, data: type_hints.BaseMsgType) -> None:
         """Update the authorization list.
 
         Parameters
@@ -411,13 +413,13 @@ class Controller:
             # No prefix: replace CSCs.
             self.salinfo.non_authorized_cscs = cscs_set
 
-        self.evt_authList.set_put(  # type: ignore
+        await self.evt_authList.set_write(  # type: ignore
             authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
             nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
             force_output=True,
         )
 
-    def do_setLogLevel(self, data: type_hints.BaseDdsDataType) -> None:
+    async def do_setLogLevel(self, data: type_hints.BaseMsgType) -> None:
         """Set logging level.
 
         Parameters
@@ -426,11 +428,11 @@ class Controller:
             Logging level.
         """
         self.log.setLevel(data.level)  # type: ignore
-        self.put_log_level()
+        await self.put_log_level()
 
-    def put_log_level(self) -> None:
+    async def put_log_level(self) -> None:
         """Output the logLevel event."""
-        self.evt_logLevel.set_put(level=self.log.getEffectiveLevel(), force_output=True)  # type: ignore
+        await self.evt_logLevel.set_write(level=self.log.getEffectiveLevel())  # type: ignore
 
     def _assert_do_methods_present(self) -> None:
         """Assert that all needed do_<name> methods are present."""
@@ -439,11 +441,7 @@ class Controller:
         supported_command_names = [name[3:] for name in do_names]
         if set(command_names) != set(supported_command_names):
             err_msgs = []
-            unsupported_commands = (
-                set(command_names)
-                - set(supported_command_names)
-                - OPTIONAL_COMMAND_NAMES
-            )
+            unsupported_commands = set(command_names) - set(supported_command_names)
             if unsupported_commands:
                 needed_do_str = ", ".join(
                     f"do_{name}" for name in sorted(unsupported_commands)
@@ -472,14 +470,8 @@ class Controller:
             func = getattr(self, do_method_name, None)
             if func is not None:
                 cmd.callback = func
-            elif cmd_name not in OPTIONAL_COMMAND_NAMES:
-                raise RuntimeError(f"Can't find method {do_method_name}")
             else:
-
-                def reject_command(data: typing.Any) -> None:
-                    raise base.ExpectedError("Not supported by this CSC")
-
-                cmd.callback = reject_command
+                raise RuntimeError(f"Can't find method {do_method_name}")
 
     async def __aenter__(self) -> Controller:
         await self.start_task

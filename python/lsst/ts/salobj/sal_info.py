@@ -21,7 +21,7 @@ from __future__ import annotations
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["SalInfo", "MAX_RESULT_LEN"]
+__all__ = ["SalInfo"]
 
 import asyncio
 import atexit
@@ -32,7 +32,6 @@ import os
 import time
 import types
 import typing
-import warnings
 
 import dds
 import ddsutil
@@ -43,9 +42,6 @@ from . import sal_enums
 from . import topics
 from . import type_hints
 from .domain import Domain
-
-# Maximum length of the ``result`` field in an ``ackcmd`` topic.
-MAX_RESULT_LEN = 256
 
 # We want SAL logMessage messages for at least INFO level messages,
 # so if the current level is less verbose, set it to INFO.
@@ -105,8 +101,6 @@ class SalInfo:
         Defaults to username@host, but CSCs should use the CSC name:
         * SAL_component_name for a non-indexed SAL component
         * SAL_component_name:index for an indexed SAL component.
-    isopen : `bool`
-        Is this read topic open? `True` until `close` is called.
     log : `logging.Logger`
         A logger.
     partition_prefix : `str`
@@ -116,11 +110,17 @@ class SalInfo:
         A DDS publisher, used to create DDS writers.
     subscriber : ``dds.Subscriber``
         A DDS subscriber, used to create DDS readers.
+    isopen : `bool`
+        Is this instance open? `True` until `close` or `basic_close` is called.
+        This instance is fully closed when done_task is done.
+    start_called : `bool`
+        Has the start method been called?
+        This instance is fully started when start_task is done.
+    done_task : `asyncio.Task`
+        A task which is finished when `close` or `basic_close` is done.
     start_task : `asyncio.Task`
         A task which is finished when `start` is done,
         or to an exception if `start` fails.
-    done_task : `asyncio.Task`
-        A task which is finished when `close` is done.
     command_names : `List` [`str`]
         A tuple of command names without the ``"command_"`` prefix.
     event_names : `List` [`str`]
@@ -187,12 +187,10 @@ class SalInfo:
                 raise TypeError(
                     f"index {index!r} must be an integer, enum.IntEnum, or None"
                 )
-        self.isopen = False
         self.domain = domain
         self.name = name
         self.index = 0 if index is None else index
         self.identity = domain.default_identity
-        self.start_called = False
 
         self.log = logging.getLogger(self.name)
         if self.log.getEffectiveLevel() > MAX_LOG_LEVEL:
@@ -209,8 +207,10 @@ class SalInfo:
                 "Environment variable $LSST_DDS_PARTITION_PREFIX not defined."
             )
 
-        self.start_task: asyncio.Future = asyncio.Future()
+        self.isopen = True
+        self.start_called = False
         self.done_task: asyncio.Future = asyncio.Future()
+        self.start_task: asyncio.Future = asyncio.Future()
 
         # Parse environment variable LSST_DDS_ENABLE_AUTHLIST
         # to determine whether to implement command authorization.
@@ -289,7 +289,6 @@ class SalInfo:
 
         # Make sure the background thread terminates.
         atexit.register(self.basic_close)
-        self.isopen = True
 
     def _ackcmd_callback(self, data: type_hints.AckCmdDataType) -> None:
         if not self._running_cmds:
@@ -432,7 +431,6 @@ class SalInfo:
         error: int = 0,
         result: str = "",
         timeout: float = 0,
-        truncate_result: bool = False,
     ) -> type_hints.AckCmdDataType:
         """Make an AckCmdType object from keyword arguments.
 
@@ -447,35 +445,17 @@ class SalInfo:
             Error code. Should be 0 unless ``ack`` is
             ``salobj.SalRetCode.CMD_FAILED``
         result : `str`
-            More information. This is arbitrary, but limited to
-            `MAX_RESULT_LEN` characters.
+            More information.
         timeout : `float`
             Esimated command duration. This should be specified
             if ``ack`` is ``salobj.SalRetCode.CMD_INPROGRESS``.
-        truncate_result : `bool`
-            What to do if ``result`` is longer than  `MAX_RESULT_LEN`
-            characters:
-
-            * If True then silently truncate ``result`` to `MAX_RESULT_LEN`
-              characters.
-            * If False then raise `ValueError`
 
         Raises
         ------
-        ValueError
-            If ``len(result) > `MAX_RESULT_LEN`` and ``truncate_result``
-            is false.
         RuntimeError
             If the SAL component has no commands (because if there
             are no commands then there is no ackcmd topic).
         """
-        if len(result) > MAX_RESULT_LEN:
-            if truncate_result:
-                result = result[0:MAX_RESULT_LEN]
-            else:
-                raise ValueError(
-                    f"len(result) > MAX_RESULT_LEN={MAX_RESULT_LEN}; result={result}"
-                )
         return self.AckCmdType(
             private_seqNum=private_seqNum,
             ack=ack,
@@ -483,16 +463,6 @@ class SalInfo:
             result=result,
             timeout=timeout,
         )
-
-    def makeAckCmd(
-        self, *args: typing.Any, **kwargs: typing.Any
-    ) -> type_hints.AckCmdDataType:
-        """Deprecated version of make_ackcmd."""
-        # TODO DM-26518: remove this method
-        warnings.warn(
-            "makeAckCmd is deprecated; use make_ackcmd instead.", DeprecationWarning
-        )
-        return self.make_ackcmd(*args, **kwargs)
 
     def parse_metadata(self) -> None:
         """Parse the IDL metadata to generate some attributes.
@@ -510,6 +480,8 @@ class SalInfo:
         event_names = []
         telemetry_names = []
         revnames = {}
+        if not self.metadata.topic_info:
+            raise RuntimeError("Bug! metadata has no topics")
         for topic_metadata in self.metadata.topic_info.values():
             sal_topic_name = topic_metadata.sal_name
             if sal_topic_name.startswith("command_"):
@@ -581,9 +553,9 @@ class SalInfo:
             for writer in self._writer_list:
                 await writer.close()
             while self._running_cmds:
-                private_seqNum, cmd_info = self._running_cmds.popitem()
+                _, cmd_info = self._running_cmds.popitem()
                 try:
-                    cmd_info.abort("shutting down")
+                    cmd_info.close()
                 except Exception:
                     pass
             self.domain.remove_salinfo(self)
@@ -632,10 +604,12 @@ class SalInfo:
         Raises
         ------
         RuntimeError
-            If `start` has already been called.
+            If `start` or `close` have already been called.
         """
         if self.start_called:
             raise RuntimeError("Start already called")
+        if not self.isopen:
+            raise RuntimeError("Already closing or closed")
         self.start_called = True
         try:
             loop = asyncio.get_running_loop()
@@ -683,13 +657,13 @@ class SalInfo:
                             ) from e
                     self.log.debug(f"Read {len(data_list)} history items for {reader}")
                     # All historical data for the specified index
-                    full_sd_list = [
+                    full_data_list = [
                         self._sample_to_data(sd, si)
                         for sd, si in data_list
                         if si.valid_data
                     ]
-                    if len(full_sd_list) < len(data_list):
-                        ninvalid = len(data_list) - len(full_sd_list)
+                    if len(full_data_list) < len(data_list):
+                        ninvalid = len(data_list) - len(full_data_list)
                         self.log.warning(
                             f"Read {ninvalid} invalid late-joiner items from {reader}. "
                             "The invalid items were safely skipped, but please examine "
@@ -702,16 +676,14 @@ class SalInfo:
                             index_field = f"{self.name}ID"
                             data_dict = {
                                 getattr(data, index_field): data
-                                for data in full_sd_list
+                                for data in full_data_list
                             }
-                            sd_list: typing.Collection[
-                                type_hints.BaseDdsDataType
-                            ] = data_dict.values()
+                            data_list = data_dict.values()
                         else:
                             # Get the max_history most recent samples
-                            sd_list = full_sd_list[-reader.max_history :]
-                        if sd_list:
-                            reader._queue_data(sd_list, loop=None)
+                            data_list = full_data_list[-reader.max_history :]
+                        if data_list:
+                            reader._queue_data(data_list)
             self._read_loop_task = asyncio.create_task(self._read_loop(loop=loop))
             self.start_task.set_result(None)
         except Exception as e:
@@ -740,7 +712,17 @@ class SalInfo:
         self.domain.num_read_loops += 1
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                await loop.run_in_executor(pool, self._read_loop_thread, loop)
+                while self.isopen:
+                    reader, data_list = await loop.run_in_executor(
+                        pool, self._blocking_read
+                    )
+                    if not self.isopen:
+                        break
+                    if not data_list or reader is None:
+                        continue
+                    reader.dds_queue_length_checker.check_nitems(len(data_list))
+                    reader._queue_data(data_list)
+
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -748,36 +730,36 @@ class SalInfo:
         finally:
             self.domain.num_read_loops -= 1
 
-    def _read_loop_thread(self, loop: asyncio.AbstractEventLoop) -> None:
-        """Read and process DDS data in a background thread.
+    def _blocking_read(
+        self,
+    ) -> typing.Tuple[
+        typing.Optional[topics.ReadTopic], typing.List[type_hints.BaseMsgType]
+    ]:
+        """Read DDS data.
 
-        Parameters
-        ----------
-        loop : `asyncio.AbstractEventLoop`
-            The main asyncio event loop.
+        Return two values:
+
+        * reader : `ReadTopic` or `None`
+            The read topic, or None if no data.
+        * data_list: `list` [`BaseMsgType`]
+            List of messages, or [] if no data.
         """
-        while self.isopen:
-            conditions = self._waitset.wait(self._wait_timeout)
-            if not self.isopen:
-                # shutting down; clean everything up
-                return
-            for condition in conditions:
-                reader = self._reader_dict.get(condition)
-                if reader is None or not reader.isopen:
-                    continue
-                # odds are we will only get one value per read,
-                # but read more so we can tell if we are falling behind
-                data_list = reader._reader.take_cond(
-                    condition, reader._data_queue.maxlen
-                )
-                reader.dds_queue_length_checker.check_nitems(len(data_list))
-                sd_list = [
-                    self._sample_to_data(sd, si)
-                    for sd, si in data_list
-                    if si.valid_data
-                ]
-                if sd_list:
-                    reader._queue_data(sd_list, loop=loop)
+        conditions = self._waitset.wait(self._wait_timeout)
+        if not self.isopen:
+            # shutting down; clean everything up
+            return (None, [])
+        for condition in conditions:
+            reader = self._reader_dict.get(condition)
+            if reader is None or not reader.isopen:
+                continue
+            # odds are we will only get one value per read,
+            # but read more so we can tell if we are falling behind
+            data_list = reader._reader.take_cond(condition, reader._data_queue.maxlen)
+            data_list = [
+                self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data
+            ]
+            return (reader, data_list)
+        return (None, [])
 
     def _sample_to_data(self, sd: dds._Sample, si: dds.SampleInfo) -> dds._Sample:
         """Process one sample data, sample info pair.
