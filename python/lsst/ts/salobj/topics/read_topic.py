@@ -231,7 +231,8 @@ class ReadTopic(BaseTopic):
     Attributes
     ----------
     isopen : `bool`
-        Is this instance open? `True` until `close` or `basic_close` is called.
+        Is this read topic open? `True` until `close` or `basic_close`
+        is called.
     dds_queue_length_checker : `QueueCapacityChecker`
         Queue length checker for the DDS queue.
     python_queue_length_checker : `QueueCapacityChecker`:
@@ -693,12 +694,12 @@ class ReadTopic(BaseTopic):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
     def _queue_data(self, data_list: typing.Collection[type_hints.BaseMsgType]) -> None:
-        """Queue multiple one or more messages.
+        """Queue messages.
 
         Parameters
         ----------
         data_list : typing.Collection[type_hints.BaseMsgType]
-            DDS messages to be queueued.
+            Messages to be queueued.
 
         Also update ``self._current_data`` and fire `self._next_task`
         (if pending).
