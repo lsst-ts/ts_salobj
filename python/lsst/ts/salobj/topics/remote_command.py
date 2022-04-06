@@ -49,7 +49,7 @@ class AckCmdReader(read_topic.ReadTopic):
     Parameters
     ----------
     salinfo : `SalInfo`
-        SAL component information
+        SAL component information.
     queue_len : `int`
         Number of elements that can be queued for `get_oldest`.
 
@@ -392,7 +392,7 @@ class RemoteCommand(write_topic.WriteTopic):
         wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
             If False then wait only for the first command acknowledgement
-            (typically ``CMD_ACK``). If that acknowledgement is not final
+            If that acknowledgement is not final
             (the ack code is not in ``self.done_ack_codes``),
             then you will almost certainly want to await `next_ackcmd`.
         **kwargs : `dict` [`str`, ``any``]
@@ -441,8 +441,8 @@ class RemoteCommand(write_topic.WriteTopic):
             with a reasonable ``timeout`` value.
         wait_done : `bool`, optional
             If True then wait for final command acknowledgement.
-            If False then wait only for the first command acknowledgement
-            (typically ``CMD_ACK``). If that acknowledgement is not final
+            If False then wait only for the first command acknowledgement.
+            If that acknowledgement is not final
             (the ack code is not in ``self.done_ack_codes``),
             then you will almost certainly want to await `next_ackcmd`.
 
