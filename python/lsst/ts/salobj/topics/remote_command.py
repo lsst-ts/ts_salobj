@@ -476,7 +476,7 @@ class RemoteCommand(write_topic.WriteTopic):
         seq_num = data_written.private_seqNum
         if seq_num in self.salinfo._running_cmds:
             raise RuntimeError(
-                f"{self.name} bug: a command with seq_num={seq_num} is already running"
+                f"{self.attr_name} bug: a command with seq_num={seq_num} is already running"
             )
         cmd_info = CommandInfo(
             remote_command=self, seq_num=seq_num, wait_done=wait_done
