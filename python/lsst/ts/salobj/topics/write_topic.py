@@ -123,7 +123,7 @@ class WriteTopic(BaseTopic):
             self._seq_num_generator = utils.index_generator(
                 imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num
             )
-        # Command topics use a different a partition name than
+        # Command topics use a different partition name than
         # all other topics, including ackcmd, and the partition name
         # is part of the publisher and subscriber.
         # This split allows us to create just one subscriber and one publisher
@@ -142,7 +142,7 @@ class WriteTopic(BaseTopic):
         self._float_field_names = set()
         for name, value in self._data.get_vars().items():
             if isinstance(value, list):
-                # In our DDS schemas arrays are fixed length
+                # In our SAL schemas arrays are fixed length
                 # and must contain at least one element.
                 elt = value[0]
             else:
@@ -314,7 +314,12 @@ class WriteTopic(BaseTopic):
     async def write(self) -> type_hints.BaseMsgType:
         """Write the current data and return a copy of the data written.
 
-        Return a copy in order to avoid race conditions.
+        Returns
+        -------
+        data : self.DataType
+            The data that was written.
+            This can be useful to avoid race conditions
+            (as found in RemoteCommand).
         """
         self._basic_write()
         return copy.copy(self.data)
