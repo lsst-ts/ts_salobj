@@ -6,6 +6,20 @@
 Version History
 ###############
 
+v7.0.1
+------
+
+* Fix some doc strings.
+* `topics.RemoteCommand.start`: improve an error message.
+* ``doc/conf.py``: make linters happier.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11
+
 v7.0.0
 ------
 
