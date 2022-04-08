@@ -405,6 +405,11 @@ class SalInfo:
             return self.name
 
     @property
+    def running(self) -> bool:
+        """Return True if started and not closed."""
+        return self.started and self.isopen
+
+    @property
     def started(self) -> bool:
         """Return True if successfully started, False otherwise."""
         return (
