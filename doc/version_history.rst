@@ -6,6 +6,21 @@
 Version History
 ###############
 
+v7.1.0
+------
+
+* `BaseCsc`: make ``start`` easier to use by making the handling of the initial state occur after ``start`` is done (using the new ``start_phase2`` method).
+  This allows CSCs to write SAL messages in ``start``, after calling ``await super().start()``, without worrying that transitioning to the desired initial state writes contradictory information.
+* `Controller`: add ``start_phase2`` method.
+* `SalLogHandler`: support logging from threads.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11
+
 v7.0.1
 ------
 
