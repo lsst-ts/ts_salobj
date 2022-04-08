@@ -240,6 +240,7 @@ class Controller:
         self.start_called = True
         try:
             await self.start()
+            await self.start_phase2()
         except asyncio.CancelledError:
             self.log.warning("start canceled")
         except Exception as e:
@@ -281,6 +282,13 @@ class Controller:
             authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
             nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
         )
+
+    async def start_phase2(self) -> None:
+        """Additional work after `start` before fully started.
+
+        Used by BaseCsc to transition to handle the initial state.
+        """
+        pass
 
     @property
     def domain(self) -> Domain:

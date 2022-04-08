@@ -211,6 +211,14 @@ class BaseCsc(Controller):
         self._heartbeat_task.cancel()  # Paranoia
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         await self.set_simulation_mode(self.simulation_mode)
+        await self.evt_softwareVersions.write()  # type: ignore
+
+    async def start_phase2(self) -> None:
+        """Handle the initial state.
+
+        Called after `start`.
+        """
+        await super().start_phase2()
 
         # Handle initial state, then transition to the desired state.
         # If this fails then log the exception and continue,
@@ -218,6 +226,7 @@ class BaseCsc(Controller):
         # override is invalid, the user can specify a different one.
         await self.handle_summary_state()
         await self._report_summary_state()
+
         command = None
         if self._initial_state != self.default_initial_state:
             state_transition_dict = make_state_transition_dict()
@@ -245,8 +254,6 @@ class BaseCsc(Controller):
                 self.log.exception(
                     f"Failed in start on state transition command {command}; continuing."
                 )
-
-        await self.evt_softwareVersions.write()  # type: ignore
 
     async def close_tasks(self) -> None:
         """Shut down pending tasks. Called by `close`."""
