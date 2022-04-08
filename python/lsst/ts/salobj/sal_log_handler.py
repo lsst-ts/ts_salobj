@@ -45,6 +45,7 @@ class SalLogHandler(logging.Handler):
 
     def __init__(self, controller: Controller) -> None:
         self.controller = controller
+        self.loop = asyncio.get_running_loop()
         super().__init__()
 
     def emit(self, record: logging.LogRecord) -> None:
@@ -52,30 +53,32 @@ class SalLogHandler(logging.Handler):
         try:
             self.format(record)
             message = record.message
-            if record.exc_text is not None:
-                traceback = record.exc_text.encode("utf-8", "replace").decode(
-                    "latin-1", "replace"
-                )
-            else:
-                traceback = ""
-            asyncio.create_task(
-                self.controller.evt_logMessage.set_write(  # type: ignore
+            asyncio.run_coroutine_threadsafe(
+                coro=self._async_emit(
                     name=record.name,
                     level=record.levelno,
                     # OpenSplice requires latin-1 (utf-8 doesn't work).
                     message=record.message.encode("utf-8", "replace").decode(
                         "latin-1", "replace"
                     ),
-                    traceback=traceback,
+                    traceback=(
+                        ""
+                        if record.exc_text is None
+                        else record.exc_text.encode("utf-8", "replace").decode(
+                            "latin-1", "replace"
+                        )
+                    ),
                     filePath=record.pathname,
                     functionName=record.funcName,
                     lineNumber=record.lineno,
-                    process=record.process,
-                )
+                    process=0 if record.process is None else record.process,
+                ),
+                loop=self.loop,
             )
         except Exception as e:
             print(
-                f"SalLogHandler.emit of message={message!r} failed: {e!r}",
+                f"SalLogHandler.emit of level={record.levelno}, "
+                f"message={message!r} failed: {e!r}",
                 file=sys.stderr,
             )
         finally:
@@ -83,3 +86,32 @@ class SalLogHandler(logging.Handler):
             # after calling ``format`` to avoid problems with
             # multiple formatters that have different exception formats.
             record.exc_text = ""
+
+    async def _async_emit(
+        self,
+        name: str,
+        level: int,
+        message: str,
+        traceback: str,
+        filePath: str,
+        functionName: str,
+        lineNumber: int,
+        process: int,
+    ) -> None:
+        try:
+            await self.controller.evt_logMessage.set_write(  # type: ignore
+                name=name,
+                level=level,
+                message=message,
+                traceback=traceback,
+                filePath=filePath,
+                functionName=functionName,
+                lineNumber=lineNumber,
+                process=process,
+            )
+        except Exception as e:
+            print(
+                f"SalLogHandler._async_emit of level={level}, "
+                f"message={message!r} failed: {e!r}",
+                file=sys.stderr,
+            )
