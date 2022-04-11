@@ -266,6 +266,8 @@ class SalInfo:
         # is call `close` to trigger the guard condition and stop the wait
         self._read_loop_task = utils.make_done_future()
 
+        self._run_kafka_task = utils.make_done_future()
+
         if self.index != 0 and not self.indexed:
             raise ValueError(
                 f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component"
@@ -447,6 +449,7 @@ class SalInfo:
         self._closing = True
         try:
             self._read_loop_task.cancel()
+            self._run_kafka_task.cancel()
             for reader in self._read_topics.values():
                 await reader.close()
             for writer in self._write_topics.values():
