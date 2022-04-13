@@ -218,7 +218,7 @@ class AsyncS3Bucket:
         * ``yyyy``, ``mm``, ``dd`` are the "observing day":
           the year, month and day at TAI date - 12 hours,
           with 4, 2, 2 digits, respectively.
-          The "observing day" does change during nighttime observing
+          The "observing day" does not change during nighttime observing
           at the summit. Year, month and day are determined after rounding
           the date to milliseconds, so the reported observing day
           is consistent with the default value for ``other``.
