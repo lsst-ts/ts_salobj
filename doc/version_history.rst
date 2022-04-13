@@ -12,6 +12,7 @@ v7.1.0
 * `BaseCsc`: make ``start`` easier to use by making the handling of the initial state occur after ``start`` is done (using the new ``start_phase2`` method).
   This allows CSCs to write SAL messages in ``start``, after calling ``await super().start()``, without worrying that transitioning to the desired initial state writes contradictory information.
 * `Controller`: add ``start_phase2`` method.
+* `ConfigurableCsc`: always publish the configurationApplied event when transitioning from STANDBY to DISABLED state.
 * `SalLogHandler`: support logging from threads.
 
 Requirements:
