@@ -433,7 +433,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         # Send exitControl; new state is OFFLINE.
         await self.remote.cmd_exitControl.start(timeout=timeout)  # type: ignore
-        self.csc.summary_state == sal_enums.State.OFFLINE
+        assert self.csc.summary_state == sal_enums.State.OFFLINE
         await self.assert_next_summary_state(sal_enums.State.OFFLINE)
 
     async def check_bad_commands(
