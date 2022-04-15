@@ -459,7 +459,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         )
         await self.configure(config)
         await self.evt_configurationApplied.set_write(  # type: ignore
-            configurations=",".join(files_to_read)
+            configurations=",".join(files_to_read),
+            force_output=True,
         )
 
     @abc.abstractmethod
