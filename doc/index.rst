@@ -7,12 +7,9 @@ lsst.ts.salobj
 ##############
 
 Object-oriented Python interface to `Service Abstraction Layer`_ (SAL) components that uses asyncio for asynchronous communication.
-``ts_salobj`` SAL communication uses the `dds Python library`_, which is part of `Vortex OpenSplice`_.
-You may use the free community edition or the licensed edition of OpenSplice.
+``ts_salobj`` SAL communication use Kafka.
 
 .. _Service Abstraction Layer: https://docushare.lsstcorp.org/docushare/dsweb/Get/Document-21527
-.. _dds Python library: http://download.ist.adlinktech.com/docs/Vortex/html/ospl/PythonDCPSAPIGuide/index.html
-.. _Vortex OpenSplice: https://istkb.adlinktech.com/article/vortex-opensplice-documentation/
 
 .. _lsst.ts.salobj-using:
 
@@ -41,9 +38,7 @@ Important Classes
 * `Remote` supports listening to other SAL components; it can receive events and telemetry and issue commands.
   If your SAL component needs to do this then it should create one `Remote` for each SAL component it wants to interact with.
   See the example above.
-* `Domain` contains the dds domain participant (which includes a cache of topic data) and quality of service objects for the various categories.
-  There should be only one `Domain` per process or unit test method, if practical, though some unit tests create a few more.
-  `Controller` creates and manages a `Domain`, but if you have no controller and wish to construct one or more `Remote`\s then you will have to create and manage a `Domain` yourself.
+* `Domain` contains the origin (for the private_origin field of topics), default identity and weak links to all SalInfo objects that use the domain.
   See :ref:`Cleanup<lsst.ts.salobj-cleanup>` for more information.
 * `BaseScript` is a base class for :ref:`Python SAL Scripts<lsst.ts.salobj_python_sal_scripts>`.
 * `AsyncS3Bucket` is a class for asynchronously uploading and downloading files to/from s3 buckets.
@@ -61,8 +56,9 @@ Cleanup
 
 It is important to call `Controller.close` or `Domain.close` when done with any controller or domain you construct, unless your process is exiting.
 Note that closing a `Domain` automatically cleans up the resources used by all `Remote`\s constructed using that domain.
+You may also close `Remote`\ s directly, if you like, and if you close all `Remote`\ s then there is no need to also close the `Domain`.
 
-Both `Controller` and `Domain` can be used as asynchronous context managers to call ``close`` automatically.
+`Controller`, `Domain`, and `Remote` can all be used as asynchronous context managers to call ``close`` automatically.
 For example:
 
   .. code-block:: python

@@ -7,8 +7,9 @@ install_requires = [
     "numpy",
     "astropy",
     "boto3",
-    "ts-dds",
-    "ts-ddsconfig",
+    "aiohttp",
+    "aiokafka",
+    "kafkit",
     "ts-idl>=1.2",
     "ts-utils",
 ]

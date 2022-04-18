@@ -320,7 +320,7 @@ class Controller:
         -----
         Removes the SAL log handler, calls `close_tasks` to stop
         all background tasks, pauses briefly to allow final SAL messages
-        to be sent, then closes the dds domain.
+        to be sent, then closes the domain.
         """
         if not hasattr(self, "start_task"):
             # Not fully constructed; nothing to do.
@@ -369,7 +369,7 @@ class Controller:
         """Shut down pending tasks. Called by `close`.
 
         Perform all cleanup other than disabling logging to SAL
-        and closing the dds domain.
+        and closing the domain.
         """
         pass
 

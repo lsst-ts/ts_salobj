@@ -133,7 +133,7 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
             # and ignore them.
             scalar_fields = [
                 field
-                for field in self.csc.cmd_setScalars.DataType().get_vars().keys()
+                for field in vars(self.csc.cmd_setScalars.DataType()).keys()
                 if not field.startswith("private_") and field != "TestID"
             ]
             bool_index = scalar_fields.index("boolean0")

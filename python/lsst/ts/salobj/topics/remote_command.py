@@ -67,6 +67,17 @@ class AckCmdReader(read_topic.ReadTopic):
         )
 
 
+# This is already handled by SalInfo._ackcmd_callback
+#     def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
+#         """Queue a message if it is in response to a command I sent."""
+#         if (
+#             data.identity != self.salinfo.identity  # type: ignore
+#             or data.origin != self.salinfo.domain.origin  # type: ignore
+#         ):
+#             return
+#         self._data_queue.append(data)
+
+
 class CommandInfo:
     """Struct to hold information about a command.
 

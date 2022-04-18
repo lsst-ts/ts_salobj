@@ -57,21 +57,12 @@ class SalLogHandler(logging.Handler):
                 coro=self._async_emit(
                     name=record.name,
                     level=record.levelno,
-                    # OpenSplice requires latin-1 (utf-8 doesn't work).
-                    message=record.message.encode("utf-8", "replace").decode(
-                        "latin-1", "replace"
-                    ),
-                    traceback=(
-                        ""
-                        if record.exc_text is None
-                        else record.exc_text.encode("utf-8", "replace").decode(
-                            "latin-1", "replace"
-                        )
-                    ),
+                    message=record.message,
+                    traceback=record.exc_text or "",
                     filePath=record.pathname,
                     functionName=record.funcName,
                     lineNumber=record.lineno,
-                    process=0 if record.process is None else record.process,
+                    process=record.process or 0,
                 ),
                 loop=self.loop,
             )
@@ -98,6 +89,15 @@ class SalLogHandler(logging.Handler):
         lineNumber: int,
         process: int,
     ) -> None:
+        if not self.controller.salinfo.running:
+            print(
+                f"SalLogHandler._async_emit of level={level}, "
+                f"message={message!r} not possible: ",
+                f"{self.controller.salinfo} is not running",
+                file=sys.stderr,
+            )
+            return
+
         try:
             await self.controller.evt_logMessage.set_write(  # type: ignore
                 name=name,

@@ -9,11 +9,12 @@ else:
         __version__ = "?"
 
 from .async_s3_bucket import *
+from .field_info import *
+from .topic_info import *
+from .component_info import *
 from .sal_enums import *
 from .type_hints import *
 from .base import *
-from .dds_utils import *
-from .idl_metadata import *
 from .domain import *
 from .sal_info import *
 from .sal_log_handler import *

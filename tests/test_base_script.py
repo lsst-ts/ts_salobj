@@ -77,7 +77,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
     """
 
     def setUp(self) -> None:
-        salobj.set_random_lsst_dds_partition_prefix()
+        salobj.set_random_topic_subname()
         self.index = next(index_gen)
 
     async def configure_and_check(

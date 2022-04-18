@@ -348,17 +348,19 @@ help  # print this help
             return False
         return True
 
-    def get_public_data(self, data: typing.Any) -> typing.Dict[str, typing.Any]:
-        """Get a dict of field_name: value for public fields of a DDS sample.
+    def get_public_data(
+        self, data: type_hints.BaseMsgType
+    ) -> typing.Dict[str, typing.Any]:
+        """Get a dict of field_name: value for public fields of a message.
 
         Parameters
         ----------
-        data : ``dds_sample``
-            DDS sample.
+        data : `BaseMsgType`
+            Message.
         """
         return dict(
             (key, value)
-            for key, value in data.get_vars().items()
+            for key, value in vars(data).items()
             if self.field_is_public(key)
         )
 
@@ -368,7 +370,7 @@ help  # print this help
         """
         return {
             key: round_any(value, digits=digits)
-            for key, value in data.get_vars().items()
+            for key, value in vars(data).items()
             if self.field_is_public(key)
         }
 

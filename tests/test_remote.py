@@ -19,8 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
-import os
 import unittest
 
 import numpy as np
@@ -33,15 +31,15 @@ from lsst.ts import utils
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 60
 
-HISTORY_TIMEOUT_NAME = "LSST_DDS_HISTORYSYNC"
-INITIAL_HISTORY_TIMEOUT = os.environ.get(HISTORY_TIMEOUT_NAME, None)
-
 np.random.seed(47)
 
 index_gen = utils.index_generator()
 
 
 class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        salobj.set_random_topic_subname()
+
     async def test_constructor_include_exclude(self) -> None:
         """Test the include and exclude arguments for salobj.Remote."""
 
@@ -191,7 +189,6 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
             getattr(remote, f"tel_{name}") for name in remote.salinfo.telemetry_names
         ]:
             assert tel.max_history == 0
-            assert not evt.volatile
 
     async def test_default_max_history(self) -> None:
         """Test default evt_max_history ctor argument."""
@@ -217,36 +214,3 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
         async with salobj.Domain() as domain:
             remote = salobj.Remote(domain=domain, name="Test", index=index, start=False)
             assert not hasattr(remote, "start_task")
-
-    @unittest.skipIf(
-        INITIAL_HISTORY_TIMEOUT is not None and float(INITIAL_HISTORY_TIMEOUT) < 0,
-        f"${HISTORY_TIMEOUT_NAME}={INITIAL_HISTORY_TIMEOUT} < 0",
-    )
-    async def test_negative_lsst_dds_historysync(self) -> None:
-        """Test that setting LSST_DDS_HISTORYSYNC < 0
-        prevents waiting for historical data.
-
-        This setting applies to SalInfo, not Remote,
-        but it requires some topics in order to be tested,
-        and Remote provides topics.
-        """
-        index = next(index_gen)
-        async with salobj.Domain() as domain:
-            # Make a normal remote that waits for historical data.
-            remote1 = salobj.Remote(domain=domain, name="Test", index=index)
-            await asyncio.wait_for(remote1.start_task, timeout=STD_TIMEOUT)
-            assert len(remote1.salinfo.wait_history_isok) > 0
-
-            # Make a remote that does not wait for historical data
-            # by defining the history timeout env variable < 0.
-            os.environ[HISTORY_TIMEOUT_NAME] = "-1"
-            try:
-                remote2 = salobj.Remote(domain=domain, name="Test", index=index)
-                await asyncio.wait_for(remote2.start_task, timeout=STD_TIMEOUT)
-            finally:
-                if INITIAL_HISTORY_TIMEOUT is None:
-                    del os.environ[HISTORY_TIMEOUT_NAME]
-                else:
-                    os.environ[HISTORY_TIMEOUT_NAME] = INITIAL_HISTORY_TIMEOUT
-
-            assert len(remote2.salinfo.wait_history_isok) == 0
