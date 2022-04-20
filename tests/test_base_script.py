@@ -658,6 +658,16 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                                 RuntimeWarning,
                             )
 
+    async def test_amain_bad_kwargs(self) -> None:
+        """Test BaseScript.amain and make_from_cmd_line with invalid kwargs"""
+        bad_kwargs = dict(index=5)  # index is a forbidden key
+        with pytest.raises(RuntimeError):
+            salobj.TestScript.make_from_cmd_line(**bad_kwargs)
+
+        with pytest.raises(SystemExit) as excinfo:
+            await salobj.TestScript.amain(**bad_kwargs)
+        assert excinfo.value.code == 3
+
     async def test_script_schema_process(self) -> None:
         """Test running a script with --schema as a subprocess."""
         script_path = TEST_DATA_DIR / "script1"
