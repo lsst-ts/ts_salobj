@@ -9,9 +9,18 @@ Version History
 v7.1.0
 ------
 
-* `BaseCsc`: make ``start`` easier to use by making the handling of the initial state occur after ``start`` is done (using the new ``start_phase2`` method).
-  This allows CSCs to write SAL messages in ``start``, after calling ``await super().start()``, without worrying that transitioning to the desired initial state writes contradictory information.
+* `BaseCsc`: make ``start`` easier to use by making the handling of the initial state occur after ``start`` is done (using the new ``start_phase2`` `Controller` method).
+  This allows CSCs to write SAL messages in ``start``, after calling ``await super().start()``, without worrying that transitioning to a non-default initial state writes contradictory information.
 * `Controller`: add ``start_phase2`` method.
+* `BaseScript`:
+
+    * Replace optional ``descr`` argument with ``**kwargs`` in the ``amain`` and ``make_from_cmd_line`` class methods.
+      This allows one to define a generic script class that can be used without subclassing, as long as the specifics can be defined by constructor arguments.
+      An example is a script that can control the main or auxiliary telescope scheduler, with a constructor argument that specifies which one to control.
+
+    * Simplify error handling in `BaseScript.amain`.
+      Only return exit codes 0 (success) or 1.
+
 * `ConfigurableCsc`: always publish the configurationApplied event when transitioning from STANDBY to DISABLED state.
 * `SalLogHandler`: support logging from threads.
 
