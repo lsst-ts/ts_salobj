@@ -475,6 +475,10 @@ class SalInfo:
         try:
             self._read_loop_task.cancel()
             self._run_kafka_task.cancel()
+            # Give the tasks time to finish cancelling.
+            # In particular: give the _read_loop time to
+            # decrement self.domain.num_read_loops
+            await asyncio.sleep(0)
             for reader in self._read_topics.values():
                 await reader.close()
             for writer in self._write_topics.values():
