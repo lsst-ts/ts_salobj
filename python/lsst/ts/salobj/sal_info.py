@@ -74,7 +74,7 @@ PRODUCER_WAIT_ACKS = 1
 
 
 class SalInfo:
-    r"""Information for one SAL component
+    r"""Information for one SAL component and index.
 
     Parameters
     ----------
@@ -146,13 +146,31 @@ class SalInfo:
 
     **Usage**
 
-    Call `start` after constructing this `SalInfo` and all `Remote` objects.
-    Until `start` is called no data can be read or written.
+    * Construct a `SalInfo` object for a particular SAL component and index.
+    * Use the object to construct all topics (subclasses of `topics.BaseTopic`)
+      that you want to use with this SAL component and index.
+    * Call `start`.
+    * When you are finished, call `close`, or at least be sure to close
+      the ``domain`` when you are finished with all classes that use it
+      (see Cleanup below).
+
+    You cannot read or write topics constructed with a `SalInfo` object
+    until you call `start`, and once you call `start`, you cannot
+    use the `SalInfo` object to construct any more topics.
+
+    You may use `SalInfo` as an async context manager, but this is primarily
+    useful for cleanup. After you enter the context (create the object)
+    you will still have to create topics and call start.
+    This is different from `Domain`, `Controller`, and `Remote`,
+    which are ready to use when you enter the context.
+
+    **Cleanup**
 
     Each `SalInfo` automatically registers itself with the specified ``domain``
-    for cleanup using a weak reference to avoid circular dependencies.
+    for cleanup, using a weak reference to avoid circular dependencies.
     You may safely close a `SalInfo` before closing its domain,
     and this is recommended if you create and destroy many remotes.
+    In any case, be sure to close the ``domain`` when you are done.
     """
 
     def __init__(
