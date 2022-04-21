@@ -386,7 +386,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             assert script.checkpoints.stop == nonexistent_checkpoint
             resume_data = script.cmd_resume.DataType()
             await script.do_resume(resume_data)
-            await asyncio.wait_for(run_task, 2)
+            await asyncio.wait_for(run_task, timeout=STD_TIMEOUT)
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
             assert script.state.lastCheckpoint == end_checkpoint
             assert script.state.numCheckpoints == 2
@@ -412,7 +412,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             assert script.checkpoints.stop == end_checkpoint
 
             run_data = script.cmd_run.DataType()
-            await asyncio.wait_for(script.do_run(run_data), 2)
+            await asyncio.wait_for(script.do_run(run_data), timeout=STD_TIMEOUT)
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
             assert script.state.lastCheckpoint == end_checkpoint
             assert script.state.numCheckpoints == 2
@@ -506,7 +506,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 await self.configure_and_check(script, fail_cleanup=True)
 
             run_data = script.cmd_run.DataType()
-            await asyncio.wait_for(script.do_run(run_data), 2)
+            await asyncio.wait_for(script.do_run(run_data), timeout=STD_TIMEOUT)
             if fail_run:
                 await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
                 assert script.state.lastCheckpoint == "start"
@@ -664,9 +664,8 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         with pytest.raises(RuntimeError):
             salobj.TestScript.make_from_cmd_line(**bad_kwargs)
 
-        with pytest.raises(SystemExit) as excinfo:
+        with pytest.raises(RuntimeError), pytest.warns(RuntimeWarning):
             await salobj.TestScript.amain(**bad_kwargs)
-        assert excinfo.value.code == 3
 
     async def test_script_schema_process(self) -> None:
         """Test running a script with --schema as a subprocess."""
