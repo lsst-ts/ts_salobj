@@ -31,6 +31,7 @@ import re
 import sys
 import types
 import typing
+import warnings
 
 import yaml
 
@@ -235,22 +236,19 @@ class BaseScript(controller.Controller, abc.ABC):
 
         * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
           or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`.
-        * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
-        * 2 if the final script state is other than DONE, STOPPED, or FAILED,
-            or if the final script state is DONE but script cleanup raises.
-            This should never happen
-        * 3 if make_from_cmd_line raises an exception.
+        * 1 if final state is anything else, or if script.done_task is an
+          exception (which would be raised by the script's cleanup code).
+
+        Issues a RuntimeWarning if script.done_task is an exception
+        and the final script state is anything other than Failed.
+        This should never happen.
 
         Raises
         ------
         RuntimeError
             If ``kwargs`` includes ``index``.
         """
-        try:
-            script = cls.make_from_cmd_line(**kwargs)
-        except Exception as e:
-            print(f"make_from_cmd_line failed: {e!r}; exit with code 3")
-            sys.exit(3)
+        script = cls.make_from_cmd_line(**kwargs)
 
         if script is None:
             # printed schema and exited
@@ -260,20 +258,16 @@ class BaseScript(controller.Controller, abc.ABC):
             await script.done_task
         except Exception as e:
             # The script failed in cleanup
-            if script.state.state == ScriptState.DONE:
-                print(
-                    f"Warning: script.done_task raised {e!r} but script "
-                    "state = Done; exit with code 2"
+            if script.state.state != ScriptState.FAILED:
+                warnings.warn(
+                    f"Script {cls.__name__} failed in cleanup with {e!r}, "
+                    f"but final state {script.state.state!r} != FAILED",
+                    RuntimeWarning,
                 )
-                sys.exit(2)
+            sys.exit(1)
 
-        exit_code = {
-            ScriptState.DONE: 0,
-            ScriptState.STOPPED: 0,
-            ScriptState.FAILED: 1,
-        }.get(script.state.state, 2)
-
-        sys.exit(exit_code)
+        if script.state.state not in {ScriptState.DONE, ScriptState.STOPPED}:
+            sys.exit(1)
 
     @property
     def checkpoints(self) -> typing.Any:
