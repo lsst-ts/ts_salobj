@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import argparse
 import asyncio
-import time
 
 import numpy as np
 
 from lsst.ts import salobj
+from lsst.ts import utils
 
 
 async def measure_read_speed(
@@ -27,27 +27,31 @@ async def measure_read_speed(
     """
     if num_messages < 2:
         raise ValueError(f"num_messages={num_messages} must be >= 2")
-    async with salobj.Domain() as domain:
-        salinfo = salobj.SalInfo(domain=domain, name=component_name, index=sal_index)
+    async with salobj.Domain() as domain, salobj.SalInfo(
+        domain=domain, name=component_name, index=sal_index
+    ) as salinfo:
         topic = salobj.topics.ReadTopic(
             salinfo=salinfo, attr_name=attr_name, max_history=0
         )
+
         await salinfo.start()
         print("Reader is ready")
 
         latencies = np.zeros(num_messages - 1)
 
-        # Wait for the first message (since we don't know when the writer
-        # will start)
+        # Wait for the first message before we measure anything,
+        # since we don't know when the writer will start.
         initial_data = await topic.next(flush=False)
         if initial_data.private_seqNum != 1:
             print(f"Warning: initial seqNum = {initial_data.private_seqNum} != 1")
-        t0 = time.monotonic()
+
+        # Measure speed and latency for the remaining messages.
+        t0 = utils.current_tai()
         for i in range(num_messages - 1):
             data = await topic.next(flush=False)
-            latencies[i] = data.private_rcvStamp - data.private_sndStamp
-        dt = time.monotonic() - t0
-        read_speed = num_messages / dt
+            latencies[i] = utils.current_tai() - data.private_sndStamp
+        dt = utils.current_tai() - t0
+        read_speed = (num_messages - 1) / dt
         num_lost = (
             1 + (data.private_seqNum - initial_data.private_seqNum) - num_messages
         )
@@ -59,9 +63,7 @@ async def measure_read_speed(
         print(f"Lost {num_lost} samples")
 
 
-parser = argparse.ArgumentParser(
-    "Measure the latency of reading messages for one SAL topic"
-)
+parser = argparse.ArgumentParser("Measure read speed and latency for one SAL topic")
 parser.add_argument(
     "component_name_index", help="SAL component name[:sal_index], e.g. Test:1"
 )
