@@ -10,7 +10,11 @@ from lsst.ts import salobj
 
 
 async def measure_write_speed(
-    component_name: str, sal_index: int, attr_name: str, num_messages: int
+    component_name: str,
+    sal_index: int,
+    attr_name: str,
+    interval: float,
+    num_messages: int,
 ) -> None:
     """Measure write speed for a specified SAL component and topic.
 
@@ -23,6 +27,8 @@ async def measure_write_speed(
     attr_name
         Name of SAL topic, with cmd_, evt_, or tel_ prefix,
         e.g. tel_forceActuatorData.
+    interval
+        Interval between messages (seconds)
     num_messages
         Number of messages to write.
     """
@@ -68,7 +74,11 @@ async def measure_write_speed(
         topic.set(**random_data_dict)
 
         t0 = time.monotonic()
-        for _ in range(num_messages):
+        for i in range(num_messages):
+            desired_msg_time = i * interval + t0
+            wait_time = desired_msg_time - time.monotonic()
+            if wait_time > 0:
+                await asyncio.sleep(wait_time)
             await topic.write()
         dt = time.monotonic() - t0
         write_speed = num_messages / dt
@@ -87,6 +97,13 @@ parser.add_argument(
     "topic_attr_name", help="Topic attribute name, e.g. evt_summaryState"
 )
 parser.add_argument(
+    "-i",
+    "--interval",
+    type=float,
+    default=0,
+    help="Interval between each message (seconds)",
+)
+parser.add_argument(
     "-n", "--number", type=int, default=2000, help="Number of messages to write"
 )
 args = parser.parse_args()
@@ -96,6 +113,7 @@ asyncio.run(
         component_name=component_name,
         sal_index=sal_index,
         attr_name=args.topic_attr_name,
+        interval=args.interval,
         num_messages=args.number,
     )
 )
