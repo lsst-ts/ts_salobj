@@ -365,14 +365,15 @@ class TopicInfo:
         avro_schema = self._avro_schema_cache.get(self._cache_key)
 
         if avro_schema is None:
-            avro_schema = {
-                "type": "record",
-                "name": self.sal_name,
-                "namespace": f"lsst.sal.{self.topic_subname}.{self.component_name}",
-                "fields": [
+            avro_schema = dict(
+                type="record",
+                name=self.sal_name,
+                namespace=f"lsst.sal.{self.topic_subname}.{self.component_name}",
+                fields=[
                     field_info.make_avro_schema() for field_info in self.fields.values()
                 ],
-            }
+                description=self.description,
+            )
 
             self._avro_schema_cache[self._cache_key] = avro_schema
 

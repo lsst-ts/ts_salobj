@@ -170,14 +170,15 @@ class FieldInfo:
         """Return an Avro schema for this field."""
         scalar_type = AVRO_TYPES[self.sal_type]
         if self.nelts > 1:
-            return {
-                "name": self.name,
-                "type": {"type": "array", "items": scalar_type},
-                "default": [self.default_scalar_value] * self.nelts,
-            }
+            avro_type: typing.Any = {"type": "array", "items": scalar_type}
+            default: typing.Any = [self.default_scalar_value] * self.nelts
         else:
-            return {
-                "name": self.name,
-                "type": scalar_type,
-                "default": self.default_scalar_value,
-            }
+            avro_type = scalar_type
+            default = self.default_scalar_value
+        return dict(
+            name=self.name,
+            type=avro_type,
+            default=default,
+            description=self.description,
+            units=self.units,
+        )
