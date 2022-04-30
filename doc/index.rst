@@ -73,6 +73,16 @@ For example:
 
 .. _lsst.ts.salobj-contributing:
 
+Running Tests Locally
+---------------------
+
+If running tests in a Docker image, run the image with option ``--network=ts_salobj_default_default``.
+
+To start Kafka, issue this command in ts_salobj's main directory: ``docker-compose up -d zookeeper broker schema-registry``
+
+To stop Kafka completely, issue this command in ts_salobj's main directory: ``docker-compose rm --stop --force broker schema-registry zookeeper``.
+If you stop these processes without removing them, they will retain their data, and if you run them too long, this may eventually use up resources.
+
 Contributing
 ============
 
