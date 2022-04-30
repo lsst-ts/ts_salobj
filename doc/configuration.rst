@@ -23,10 +23,10 @@ Used by `SalInfo`:
   If "0" or undefined, do not enable authorization.
 
 * ``LSST_KAFKA_BROKER_ADDR`` (optional): the address of the Kafka broker.
-  Defaults to the value used by `kafka-aggregator`_, for unit tests.
+  Defaults to ``broker:29092`` (matching the value in file ``docker-compose.yaml``), for unit tests.
 
 * ``LSST_SCHEMA_REGISTRY_URL`` (optional): url of the Confluent schema registry.
-  Defaults to the value used by `kafka-aggregator`_, for unit tests.
+  Defaults to ``http://schema-registry:8081`` (matching the value in file ``docker-compose.yaml``), for unit tests.
 
 Used by `ConfigurableCsc`:
 
@@ -48,10 +48,8 @@ Required LSST Packages
 
 ts_salobj requires the following LSST packages:
 
-* `kafka-aggregator`_ to provide a Kafka system for running unit tests.
 * `ts_utils`_ for time functions and such.
 * `ts_xml`_ for SAL interfaces.
 
-.. _kafka-aggregator: https://kafka-aggregator.lsst.io/
 .. _ts_utils: https://github.com/lsst-ts/ts_utils
 .. _ts_xml: https://github.com/lsst-ts/ts_xml
