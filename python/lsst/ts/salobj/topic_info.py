@@ -248,16 +248,12 @@ class TopicInfo:
 
         if sal_name == "ackcmd":
             attr_name = "ack_ackcmd"
+        elif sal_name.startswith("logevent_"):
+            attr_name = "evt_" + sal_name[9:]
+        elif sal_name.startswith("command_"):
+            attr_name = "cmd_" + sal_name[8:]
         else:
-            split_name = sal_name.split("_", 1)
-            if len(split_name) == 1:
-                attr_name = "tel_" + self.sal_name
-            elif len(split_name) == 2:
-                prefix, brief_name = split_name
-                attr_prefix = {"logevent": "evt_", "command": "cmd_"}[prefix]
-                attr_name = attr_prefix + brief_name
-            else:
-                raise RuntimeError(f"Cannot parse SAL topic name {self.sal_name!r}")
+            attr_name = "tel_" + sal_name
         self.attr_name = attr_name
         self.kafka_name = (
             f"lsst.sal.{self.topic_subname}.{self.component_name}.{self.sal_name}"
