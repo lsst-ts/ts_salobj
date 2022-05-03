@@ -23,6 +23,9 @@ v7.1.0
 
 * `ConfigurableCsc`: always publish the configurationApplied event when transitioning from STANDBY to DISABLED state.
 * `SalLogHandler`: support logging from threads.
+* ``setup.cfg``: specify asyncio_mode=auto.
+* git ignore ``.hypothesis``.
+* Modernize continuous integration ``Jenkinsfile``.
 
 Requirements:
 
