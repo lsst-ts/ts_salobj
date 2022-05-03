@@ -38,7 +38,7 @@ class BaseMsgType:
     r"""Base DDS sample data type, for type annotations.
 
     This is missing all topic-specific public fields.
-    It includes private_index, which is only present for indexed
+    It includes salIndex, which is only present for indexed
     SAL components.
     """
     private_revCode: str = ""
@@ -47,7 +47,7 @@ class BaseMsgType:
     private_seqNum: int = 0
     private_identity: str = ""
     private_origin: int = 0
-    private_index: int = 0
+    salIndex: int = 0
 
 
 # Backwards compatibility

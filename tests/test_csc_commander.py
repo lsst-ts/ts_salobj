@@ -134,7 +134,7 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
             scalar_fields = [
                 field
                 for field in vars(self.csc.cmd_setScalars.DataType()).keys()
-                if not field.startswith("private_") and field != "TestID"
+                if not field.startswith("private_") and field != "salIndex"
             ]
             bool_index = scalar_fields.index("boolean0")
             n_scalar_fields = len(scalar_fields)

@@ -640,20 +640,20 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await self.remote.cmd_wait.start(self.csc.cmd_setScalars.DataType())
 
     async def test_put_id(self) -> None:
-        """Test that one can set the private_index field of a write topic
+        """Test that one can set the salIndex field of a write topic
         if index=0 and not otherwise.
         """
         async with salobj.Controller(name="Test", index=0) as controller0:
             async with salobj.Controller(name="Test", index=1) as controller1:
                 for ind in (0, 1, 2, 3):
                     # for a controller with zero index
-                    # private_index will be whatever you set it to
-                    await controller0.evt_scalars.set_write(private_index=ind)
-                    assert controller0.evt_scalars.data.private_index == ind
+                    # salIndex will be whatever you set it to
+                    await controller0.evt_scalars.set_write(salIndex=ind)
+                    assert controller0.evt_scalars.data.salIndex == ind
                     # for a controller with non-zero index
-                    # private_index always matches that index
-                    await controller1.evt_scalars.set_write(private_index=ind)
-                    assert controller1.evt_scalars.data.private_index == 1
+                    # salIndex always matches that index
+                    await controller1.evt_scalars.set_write(salIndex=ind)
+                    assert controller1.evt_scalars.data.salIndex == 1
 
     async def test_command_timeout(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):

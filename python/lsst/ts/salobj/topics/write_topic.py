@@ -328,11 +328,11 @@ class WriteTopic(BaseTopic):
         self.data.private_identity = self.salinfo.identity
         if self._seq_num_generator is not None:
             self.data.private_seqNum = next(self._seq_num_generator)
-        # If index is nonzero then set private_index.
+        # If index is nonzero then set salIndex.
         # Otherwise the default of 0 is correct,
         # and the user can override it.
         if self.salinfo.index != 0:
-            self.data.private_index = self.salinfo.index
+            self.data.salIndex = self.salinfo.index
         data_dict = vars(self.data)
         # Make a copy in case another task changes self.data during write.
         data = copy.copy(self.data)
