@@ -33,7 +33,7 @@ from .type_hints import BaseMsgType
 
 _PRIVATE_FIELD_LIST = [
     FieldInfo(
-        name="private_index",
+        name="salIndex",
         description="SAL index (only present for indexed SAL components)",
         count=1,
         sal_type="long",
@@ -77,7 +77,7 @@ _PRIVATE_FIELD_LIST = [
     ),
 ]
 # Dict of field_name: FieldInfo for all private fields
-# (including private_index, which is only present for indexed components).
+# (including salIndex, which is only present for indexed components).
 PRIVATE_FIELDS = {info.name: info for info in _PRIVATE_FIELD_LIST}
 
 _ACKCMD_FIELDS_LIST = [
@@ -156,7 +156,7 @@ def make_ackcmd_topic_info(
     """
     fields = PRIVATE_FIELDS.copy()
     if not indexed:
-        del fields["private_index"]
+        del fields["salIndex"]
     fields.update(ACKCMD_FIELDS)
     return TopicInfo(
         component_name=component_name,
@@ -295,7 +295,7 @@ class TopicInfo:
 
         fields = PRIVATE_FIELDS.copy()
         if not indexed:
-            del fields["private_index"]
+            del fields["salIndex"]
         for field_element in element.findall("item"):
             field_info = FieldInfo.from_xml_element(field_element, indexed=indexed)
             if field_info.name in fields:

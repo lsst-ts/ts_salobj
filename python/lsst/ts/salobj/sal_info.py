@@ -752,7 +752,7 @@ class SalInfo:
                         full_data = await self._deserializer.deserialize(raw_data.value)
                         data_dict = full_data["message"]
                         data_dict["private_rcvStamp"] = utils.current_tai()
-                        historical_data_dicts[data_dict["private_index"]] = data_dict
+                        historical_data_dicts[data_dict["salIndex"]] = data_dict
 
                         if raw_data.offset == end_position:
                             # We have read all historical data
@@ -784,7 +784,7 @@ class SalInfo:
                         raw_data = await self._consumer.getone(partition)
                         full_data = await self._deserializer.deserialize(raw_data.value)
                         data_dict = full_data["message"]
-                        if data_dict["private_index"] == self.index:
+                        if data_dict["salIndex"] == self.index:
                             data_dict["private_rcvStamp"] = utils.current_tai()
                             data_dict_queue.append(data_dict)
 
@@ -815,7 +815,7 @@ class SalInfo:
                 read_topic = self._kafka_name_read_topics[raw_data.topic]
                 full_data = await self._deserializer.deserialize(raw_data.value)
                 data_dict = full_data["message"]
-                if self.index != 0 and self.index != data_dict["private_index"]:
+                if self.index != 0 and self.index != data_dict["salIndex"]:
                     continue
                 data_dict["private_rcvStamp"] = utils.current_tai()
                 data = read_topic.DataType(**data_dict)
