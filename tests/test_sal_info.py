@@ -258,16 +258,15 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert ackcmd.result == result
 
     async def test_write_only(self) -> None:
-        index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain=domain, name="Test", index=index, write_only=True
-        ) as salinfo:
+        async with salobj.Domain() as domain:
+            salinfo = salobj.SalInfo(domain=domain, name="Test", write_only=True)
+
             # Cannot add a read topic to a write-only SalInfo
             with pytest.raises(RuntimeError):
                 salobj.topics.ReadTopic(
                     salinfo=salinfo, attr_name="evt_summaryState", max_history=0
                 )
 
-            # Check that starting the SalInfo does not start the read loop
             await salinfo.start()
+            assert salinfo._consumer is None
             assert salinfo._read_loop_task.done()

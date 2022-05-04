@@ -88,18 +88,9 @@ class Controller:
         for each command.
         Cannot be true if ``write_only`` is true.
     write_only : `bool`, optional
-        If true then the Controller will have no command topics
+        If True then the Controller will have no command topics
         and will not read any SAL data.
         Cannot be true if ``do_callbacks`` is true.
-    allow_missing_callbacks : `bool`, optional
-        Allow missing ``do_{command}`` callback methods? Missing method
-        will be replaced with one that raises salobj.ExpectedError.
-        This is intended for mock controllers, which may only support
-        a subset of commands.
-        Cannot be true unless ``do_callbacks`` is true.
-    extra_commands : `set`[`str`]
-        List of valid commands that can be defined in the CSC without
-        being in the interface.
 
     Attributes
     ----------
@@ -131,13 +122,7 @@ class Controller:
     Raises
     ------
     ValueError
-        If ``do_callbacks`` and ``write_only`` are both true, or if
-        ``allow_missing_callbacks`` is true and ``do_callbacks`` is not.
-    TypeError
-        If ``do_callbacks`` true and one or more ``do_{command}`` methods
-        is present that has no corresponding command,
-        or if ``do_callbacks`` true, ``allow_missing_callbacks`` false,
-        and one or more ``do_{command}`` methods is missing.
+        If ``do_callbacks`` and ``write_only`` both true.
 
     Notes
     -----
@@ -222,13 +207,9 @@ class Controller:
         *,
         do_callbacks: bool = False,
         write_only: bool = False,
-        allow_missing_callbacks: bool = False,
-        extra_commands: set[str] = set(),
     ) -> None:
         if do_callbacks and write_only:
             raise ValueError("Cannot specify do_callbacks and write_only both true")
-        if allow_missing_callbacks and not do_callbacks:
-            raise ValueError("allow_missing_callbacks true requires do_callbacks true")
         self.isopen = False
         self.start_called = False
         self.done_task: asyncio.Future = asyncio.Future()
@@ -259,10 +240,7 @@ class Controller:
             if do_callbacks:
                 # This must be called after the cmd_ attributes
                 # have been added.
-                self._assert_do_methods_present(
-                    allow_missing_callbacks=allow_missing_callbacks,
-                    valid_extra_commands=extra_commands,
-                )
+                self._assert_do_methods_present()
 
             for evt_name in self.salinfo.event_names:
                 evt = ControllerEvent(self.salinfo, evt_name)

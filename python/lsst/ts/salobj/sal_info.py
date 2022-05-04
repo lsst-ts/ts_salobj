@@ -86,7 +86,7 @@ class SalInfo:
     index : `int`, optional
         Component index; 0 or None if this component is not indexed.
     write_only : `bool`
-        If false this SalInfo will not subscribe to any topics.
+        If False this SalInfo will not subscribe to any topics.
 
     Raises
     ------
@@ -455,11 +455,15 @@ class SalInfo:
             return
         self.isopen = False
         self._read_loop_task.cancel()
+        if self._consumer is not None:
+            asyncio.create_task(self._consumer.stop())
         for reader in self._read_topics.values():
             reader.basic_close()
         for writer in self._write_topics.values():
             writer.basic_close()
         self.domain.remove_salinfo(self)
+        if self._producer is not None:
+            asyncio.create_task(self._producer.stop())
 
     async def close(self, cancel_run_kafka_task: bool = True) -> None:
         """Shut down and clean up resources.
@@ -477,6 +481,8 @@ class SalInfo:
             self._read_loop_task.cancel()
             if cancel_run_kafka_task:
                 self._run_kafka_task.cancel()
+            if self._consumer is not None:
+                await self._consumer.stop()
             # Give the tasks time to finish cancelling.
             # In particular: give the _read_loop time to
             # decrement self.domain.num_read_loops
@@ -486,13 +492,16 @@ class SalInfo:
             for writer in self._write_topics.values():
                 await writer.close()
             while self._running_cmds:
-                private_seqNum, cmd_info = self._running_cmds.popitem()
+                _, cmd_info = self._running_cmds.popitem()
                 try:
                     cmd_info.close()
                 except Exception:
                     pass
             self.domain.remove_salinfo(self)
-        except Exception:
+            if self._producer is not None:
+                await self._producer.stop()
+        except Exception as e:
+            print(f"SalInfo.close failed: {e!r}")
             self.log.exception("close failed")
         finally:
             self._closing = False
@@ -515,6 +524,8 @@ class SalInfo:
         """
         if self.start_called:
             raise RuntimeError("Cannot add topics after the start called")
+        if self.write_only:
+            raise RuntimeError("Cannot add read topics to a write-only SalInfo")
         if topic.attr_name in self._read_topics:
             raise ValueError(f"Read topic {topic.attr_name} already present")
         self._read_topics[topic.topic_info.attr_name] = topic
@@ -604,13 +615,20 @@ class SalInfo:
                         executor=executor, func=self._blocking_create_topics
                     )
 
-                async with AIOKafkaProducer(
+                self._producer = AIOKafkaProducer(
                     bootstrap_servers=self.kafka_broker_addr,
                     acks=PRODUCER_WAIT_ACKS,
-                ) as self._producer, AIOKafkaConsumer(
-                    *read_topic_kafka_names,
-                    bootstrap_servers=self.kafka_broker_addr,
-                ) as self._consumer:
+                )
+                await self._producer.start()
+                if self.write_only:
+                    self.start_task.set_result(None)
+                    await asyncio.Future()
+                else:
+                    self._consumer = AIOKafkaConsumer(
+                        *read_topic_kafka_names,
+                        bootstrap_servers=self.kafka_broker_addr,
+                    )
+                    await self._consumer.start()
                     self._read_loop_task = asyncio.create_task(self._read_loop())
                     await self._read_loop_task
         except asyncio.CancelledError:
