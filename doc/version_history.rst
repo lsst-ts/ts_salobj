@@ -11,7 +11,12 @@ v7.1.0
 
 * `BaseCsc`: make ``start`` easier to use by making the handling of the initial state occur after ``start`` is done (using the new ``start_phase2`` `Controller` method).
   This allows CSCs to write SAL messages in ``start``, after calling ``await super().start()``, without worrying that transitioning to a non-default initial state writes contradictory information.
-* `Controller`: add ``start_phase2`` method.
+* `ConfigurableCsc`: always publish the configurationApplied event when transitioning from STANDBY to DISABLED state.
+* `Controller`:
+
+    * Add ``write_only`` constructor argument.
+    * Add ``start_phase2`` method.
+
 * `BaseScript`:
 
     * Replace optional ``descr`` argument with ``**kwargs`` in the ``amain`` and ``make_from_cmd_line`` class methods.
@@ -21,7 +26,7 @@ v7.1.0
     * Simplify error handling in `BaseScript.amain`.
       Only return exit codes 0 (success) or 1.
 
-* `ConfigurableCsc`: always publish the configurationApplied event when transitioning from STANDBY to DISABLED state.
+* `SalInfo`: add ``write_only`` constructor argument.
 * `SalLogHandler`: support logging from threads.
 * ``setup.cfg``: specify asyncio_mode=auto.
 * git ignore ``.hypothesis``.
