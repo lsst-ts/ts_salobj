@@ -96,3 +96,23 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
         extra_names = list(command_names) + ["extra_command"]
         with pytest.raises(TypeError):
             ControllerWithDoMethods(extra_names)
+
+    async def test_write_only_true(self) -> None:
+        index = next(index_gen)
+        # Build a controller and check that callbacks are asigned.
+        async with salobj.Controller(
+            name="Test", index=index, write_only=True
+        ) as controller:
+            for name in controller.salinfo.command_names:
+                assert not hasattr(controller, f"cmd_{name}")
+
+            for name in controller.salinfo.event_names:
+                assert hasattr(controller, f"evt_{name}")
+
+            for name in controller.salinfo.telemetry_names:
+                assert hasattr(controller, f"tel_{name}")
+
+        with pytest.raises(ValueError):
+            salobj.Controller(
+                name="Test", index=index, do_callbacks=True, write_only=True
+            )
