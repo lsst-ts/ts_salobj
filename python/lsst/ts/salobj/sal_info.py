@@ -26,6 +26,7 @@ __all__ = ["SalInfo"]
 import asyncio
 import atexit
 import collections
+from concurrent.futures import ThreadPoolExecutor
 import enum
 import itertools
 import logging
@@ -460,7 +461,7 @@ class SalInfo:
             writer.basic_close()
         self.domain.remove_salinfo(self)
 
-    async def close(self) -> None:
+    async def close(self, cancel_run_kafka_task: bool = True) -> None:
         """Shut down and clean up resources.
 
         May be called multiple times. The first call closes the SalInfo;
@@ -474,7 +475,8 @@ class SalInfo:
         self._closing = True
         try:
             self._read_loop_task.cancel()
-            self._run_kafka_task.cancel()
+            if cancel_run_kafka_task:
+                self._run_kafka_task.cancel()
             # Give the tasks time to finish cancelling.
             # In particular: give the _read_loop time to
             # decrement self.domain.num_read_loops
@@ -573,36 +575,40 @@ class SalInfo:
                 self._deserializer = Deserializer(registry=registry)
 
                 # A list of Kafka topic names for creating the consumer.
-                kafka_topic_names: typing.List[str] = []
+                read_topic_kafka_names: typing.List[str] = []
                 # A list of TopicInfo for read topics for which historical
                 # data is wanted.
                 read_history_topic_infos: typing.List[TopicInfo] = []
                 for read_topic in self._read_topics.values():
                     avro_schema = read_topic.topic_info.make_avro_schema()
-                    schema_id = await registry.register_schema(
+                    await registry.register_schema(
                         schema=avro_schema, subject=read_topic.topic_info.avro_subject
                     )
-                    kafka_topic_names.append(read_topic.topic_info.kafka_name)
+                    read_topic_kafka_names.append(read_topic.topic_info.kafka_name)
                     if read_topic.max_history > 0:
                         read_history_topic_infos.append(read_topic.topic_info)
 
                 for write_topic in self._write_topics.values():
                     avro_schema = write_topic.topic_info.make_avro_schema()
-                    schema_id = await registry.register_schema(
-                        schema=avro_schema, subject=write_topic.topic_info.avro_subject
-                    )
-                    self._serializers[write_topic.attr_name] = Serializer(
-                        schema=avro_schema, schema_id=schema_id
+                    self._serializers[
+                        write_topic.attr_name
+                    ] = await Serializer.register(
+                        registry=registry,
+                        schema=avro_schema,
+                        subject=write_topic.topic_info.avro_subject,
                     )
 
-                # Create topics
-                self._blocking_create_topics()
+                loop = asyncio.get_running_loop()
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    loop.run_in_executor(
+                        executor=executor, func=self._blocking_create_topics
+                    )
 
                 async with AIOKafkaProducer(
                     bootstrap_servers=self.kafka_broker_addr,
                     acks=PRODUCER_WAIT_ACKS,
                 ) as self._producer, AIOKafkaConsumer(
-                    *kafka_topic_names,
+                    *read_topic_kafka_names,
                     bootstrap_servers=self.kafka_broker_addr,
                 ) as self._consumer:
                     self._read_loop_task = asyncio.create_task(self._read_loop())
@@ -617,7 +623,7 @@ class SalInfo:
             self.log.exception("_run_kafka failed")
             raise
         finally:
-            await asyncio.create_task(self.close())
+            await self.close(cancel_run_kafka_task=False)
 
     def _blocking_create_topics(self) -> None:
         """Create missing Kafka topics."""
