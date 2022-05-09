@@ -105,7 +105,7 @@ class FieldInfo:
         Field name
     sal_type : str
         SAL data type.
-    nelts : int
+    count : int
         For lists: the fixed list length.
     units : str
         Units, "unitless" if none.
@@ -121,17 +121,17 @@ class FieldInfo:
 
     name: str
     sal_type: str
-    nelts: int = 1
+    count: int = 1
     units: str = "unitless"
     description: str = ""
     default_scalar_value: typing.Any = dataclasses.field(init=False)
 
     def __post_init__(self) -> None:
         if self.sal_type == "string":
-            if self.nelts > 1:
-                raise ValueError(
-                    f"nelts={self.nelts} > 1, but string fields cannot be arrays"
-                )
+            if self.count > 1:
+                # string fields cannot be arrays; emulate ts_sal
+                # and ignore count > 1 for string fields
+                self.count = 1
         python_type = PYTHON_TYPES[self.sal_type]
         self.default_scalar_value = python_type()
 
@@ -140,13 +140,13 @@ class FieldInfo:
         """Construct a FieldInfo from an XML element."""
         name = find_required(element, "EFDB_Name")
         description = find_optional(element, "Description", "")
-        nelts = int(find_optional(element, "Count", "1"))
+        count = int(find_optional(element, "Count", "1"))
         units = find_optional(element, "Units", "unitless")
         sal_type = find_required(element, "IDL_Type")
         return FieldInfo(
             name=name,
             sal_type=sal_type,
-            nelts=nelts,
+            count=count,
             units=units,
             description=description,
         )
@@ -156,10 +156,10 @@ class FieldInfo:
     ) -> typing.Tuple[str, typing.Type[typing.Any], dataclasses.Field]:
         """Create field data for dataclasses.make_dataclasses."""
         scalar_type = PYTHON_TYPES[self.sal_type]
-        if self.nelts > 1:
+        if self.count > 1:
             dtype: typing.Type[typing.Any] = typing.List[scalar_type]  # type: ignore
             field: dataclasses.Field = dataclasses.field(
-                default_factory=lambda: [self.default_scalar_value] * self.nelts  # type: ignore
+                default_factory=lambda: [self.default_scalar_value] * self.count  # type: ignore
             )
         else:
             dtype = scalar_type
@@ -169,9 +169,9 @@ class FieldInfo:
     def make_avro_schema(self) -> typing.Dict[str, typing.Any]:
         """Return an Avro schema for this field."""
         scalar_type = AVRO_TYPES[self.sal_type]
-        if self.nelts > 1:
+        if self.count > 1:
             avro_type: typing.Any = {"type": "array", "items": scalar_type}
-            default: typing.Any = [self.default_scalar_value] * self.nelts
+            default: typing.Any = [self.default_scalar_value] * self.count
         else:
             avro_type = scalar_type
             default = self.default_scalar_value
