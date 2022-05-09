@@ -36,6 +36,42 @@ services:
       CONFLUENT_METRICS_ENABLE: 'true'
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
 
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    hostname: kafdrop
+    container_name: kafdrop
+    depends_on:
+      - zookeeper
+      - broker
+      - schema-registry
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "broker:29092"
+      JVM_OPTS: "-Xms32M -Xmx64M"
+      SERVER_SERVLET_CONTEXTPATH: "/"
+      CMD_ARGS: "--message.format=AVRO --schemaregistry.connect=http://schema-registry:8081"
+
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:5.5.3
+    hostname: control-center
+    container_name: control-center
+    depends_on:
+      - zookeeper
+      - broker
+      - schema-registry
+    ports:
+      - "9021:9021"
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'broker:29092'
+      CONTROL_CENTER_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      CONTROL_CENTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+      CONFLUENT_METRICS_TOPIC_REPLICATION: 1
+      PORT: 9021
+
   schema-registry:
     image: confluentinc/cp-schema-registry:5.5.3
     hostname: schema-registry
@@ -47,6 +83,23 @@ services:
       - "8081:8081"
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_MASTER_ELIGIBILITY: "true"
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:29092'
+
+  internal-schema-registry:
+    image: confluentinc/cp-schema-registry:5.5.3
+    hostname: internal-schema-registry
+    container_name: internal-schema-registry
+    depends_on:
+      - zookeeper
+      - broker
+    ports:
+      - "28081:28081"
+    environment:
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:28081
+      SCHEMA_REGISTRY_HOST_NAME: internal-schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _internal_schemas
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: internal-schema-registry
       SCHEMA_REGISTRY_MASTER_ELIGIBILITY: "true"
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:29092'
 
