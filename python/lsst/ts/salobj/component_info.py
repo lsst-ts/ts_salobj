@@ -38,6 +38,9 @@ class ComponentInfo:
     ----------
     name : `str`
         SAL component name.
+    topic_subname : `str`
+        Sub-namespace for Kafka topic names.
+
 
     Attributes
     ----------
