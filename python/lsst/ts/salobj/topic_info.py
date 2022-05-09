@@ -35,28 +35,28 @@ _PRIVATE_FIELD_LIST = [
     FieldInfo(
         name="private_index",
         description="SAL index (only present for indexed SAL components)",
-        nelts=1,
+        count=1,
         sal_type="long",
         units="unitless",
     ),
     FieldInfo(
         name="private_sndStamp",
         description="Time of instance publication",
-        nelts=1,
+        count=1,
         sal_type="double",
         units="second",
     ),
     FieldInfo(
         name="private_rcvStamp",
         description="Time of instance reception",
-        nelts=1,
+        count=1,
         sal_type="double",
         units="second",
     ),
     FieldInfo(
         name="private_seqNum",
         description="Sequence number",
-        nelts=1,
+        count=1,
         sal_type="long",
         units="unitless",
     ),
@@ -64,14 +64,14 @@ _PRIVATE_FIELD_LIST = [
         name="private_identity",
         description="Identity of publisher: "
         "SAL component name for a CSC or user@host for a user",
-        nelts=1,
+        count=1,
         sal_type="string",
         units="unitless",
     ),
     FieldInfo(
         name="private_origin",
         description="Process ID of publisher",
-        nelts=1,
+        count=1,
         sal_type="long",
         units="unitless",
     ),
@@ -84,49 +84,49 @@ _ACKCMD_FIELDS_LIST = [
     FieldInfo(
         name="ack",
         description="Acknowledgement code",
-        nelts=1,
+        count=1,
         sal_type="long",
         units="unitless",
     ),
     FieldInfo(
         name="error",
         description="An error code; only relevant if ack=FAILED",
-        nelts=1,
+        count=1,
         sal_type="long",
         units="unitless",
     ),
     FieldInfo(
         name="result",
         description="Message",
-        nelts=1,
+        count=1,
         sal_type="string",
         units="unitless",
     ),
     FieldInfo(
         name="identity",
         description="private_identity field of the command being acknowledged",
-        nelts=1,
+        count=1,
         sal_type="string",
         units="unitless",
     ),
     FieldInfo(
         name="origin",
         description="private_origin field of the command being acknowledged",
-        nelts=1,
+        count=1,
         sal_type="long",
         units="unitless",
     ),
     FieldInfo(
         name="cmdtype",
         description="Index of command in alphabetical list of commands, with 0 being the first",
-        nelts=1,
+        count=1,
         sal_type="long",
         units="unitless",
     ),
     FieldInfo(
         name="timeout",
         description="Estimated remaining duration of command; only relevant if ack=INPROGRESS",
-        nelts=1,
+        count=1,
         sal_type="double",
         units="second",
     ),
@@ -261,8 +261,8 @@ class TopicInfo:
         self.avro_subject = f"{self.kafka_name}-value"
         array_fields = dict()
         for field_info in self.fields.values():
-            if field_info.nelts > 1:
-                array_fields[field_info.name] = field_info.nelts
+            if field_info.count > 1:
+                array_fields[field_info.name] = field_info.count
         self.array_fields = array_fields
         self._cache_key = (self.component_name, self.attr_name)
 
