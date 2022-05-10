@@ -72,6 +72,8 @@ class SalInfo:
         SAL component name.
     index : `int`, optional
         Component index; 0 or None if this component is not indexed.
+    write_only : `bool`
+        If false this SalInfo will not subscribe to any topics.
 
     Raises
     ------
@@ -198,7 +200,11 @@ class SalInfo:
     """
 
     def __init__(
-        self, domain: Domain, name: str, index: typing.Optional[int] = 0
+        self,
+        domain: Domain,
+        name: str,
+        index: typing.Optional[int] = 0,
+        write_only: bool = False,
     ) -> None:
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
@@ -210,6 +216,7 @@ class SalInfo:
         self.domain = domain
         self.name = name
         self.index = 0 if index is None else index
+        self.write_only = write_only
         self.identity = domain.default_identity
 
         self.log = logging.getLogger(self.name)
@@ -606,6 +613,8 @@ class SalInfo:
         """
         if self.start_called:
             raise RuntimeError("Cannot add topics after the start called")
+        if self.write_only:
+            raise RuntimeError("Cannot add a read topic to a write-only SalInfo")
         if topic._read_condition in self._reader_dict:
             raise RuntimeError(f"{topic} already added")
         self._reader_dict[topic._read_condition] = topic
@@ -636,6 +645,8 @@ class SalInfo:
         if not self.isopen:
             raise RuntimeError("Already closing or closed")
         self.start_called = True
+        if self.write_only:
+            return
         try:
             loop = asyncio.get_running_loop()
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:

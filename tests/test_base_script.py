@@ -495,7 +495,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         Parameters
         ----------
         fail_run : `bool`
-            If True then fail in the script's ``run`` method,
+            If true then fail in the script's ``run`` method,
             else fail in the script's ``cleanup`` method.
         """
         wait_time = 0.1

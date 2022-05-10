@@ -82,8 +82,13 @@ class Controller:
         A value is required if the component is indexed.
     do_callbacks : `bool`, optional
         Set ``do_<name>`` methods as callbacks for commands?
-        If True then there must be exactly one ``do_<name>`` method
+        If true then there must be exactly one ``do_<name>`` method
         for each command.
+        Cannot be true if ``write_only`` is true.
+    write_only : `bool`, optional
+        If true then the Controller will have no command topics
+        and will not read any SAL data.
+        Cannot be true if ``do_callbacks`` is true.
 
     Attributes
     ----------
@@ -111,6 +116,11 @@ class Controller:
     tel_<telemetry_name> : `topics.ControllerTelemetry`
         Controller telemetry topic. There is one for each telemetry topic
         supported by the SAL component.
+
+    Raises
+    ------
+    ValueError
+        If ``do_callbacks`` and ``write_only`` both true.
 
     Notes
     -----
@@ -184,7 +194,10 @@ class Controller:
         index: typing.Optional[int] = None,
         *,
         do_callbacks: bool = False,
+        write_only: bool = False,
     ) -> None:
+        if do_callbacks and write_only:
+            raise ValueError("Cannot specify do_callbacks and write_only both true")
         self.isopen = False
         self.start_called = False
         self.done_task: asyncio.Future = asyncio.Future()
@@ -192,20 +205,23 @@ class Controller:
 
         domain = Domain()
         try:
-            self.salinfo = SalInfo(domain=domain, name=name, index=index)
+            self.salinfo = SalInfo(
+                domain=domain, name=name, index=index, write_only=write_only
+            )
             new_identity = self.salinfo.name_index
             self.salinfo.identity = new_identity
             domain.default_identity = new_identity
             self.log = self.salinfo.log
 
+            if not write_only:
+                for cmd_name in self.salinfo.command_names:
+                    cmd = ControllerCommand(self.salinfo, cmd_name)
+                    setattr(self, cmd.attr_name, cmd)
+
             if do_callbacks:
                 # This must be called after the cmd_ attributes
                 # have been added.
                 self._assert_do_methods_present()
-
-            for cmd_name in self.salinfo.command_names:
-                cmd = ControllerCommand(self.salinfo, cmd_name)
-                setattr(self, cmd.attr_name, cmd)
 
             for evt_name in self.salinfo.event_names:
                 evt = ControllerEvent(self.salinfo, evt_name)
@@ -250,7 +266,6 @@ class Controller:
 
     async def start(self) -> None:
         """Finish construction."""
-
         # Allow each remote constructor to begin running its start method.
         await asyncio.sleep(0)
 

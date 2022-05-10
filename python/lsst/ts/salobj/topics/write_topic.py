@@ -276,7 +276,7 @@ class WriteTopic(BaseTopic):
         Parameters
         ----------
         force_output : `bool`, optional
-            If True then write the event, even if no fields have changed.
+            If true then write the event, even if no fields have changed.
             If None (the default), use the class default,
             which is True for all except ControllerEvent.
             (The default value is given by class constant
