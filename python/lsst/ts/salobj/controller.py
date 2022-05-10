@@ -82,11 +82,11 @@ class Controller:
         A value is required if the component is indexed.
     do_callbacks : `bool`, optional
         Set ``do_<name>`` methods as callbacks for commands?
-        If True then there must be exactly one ``do_<name>`` method
+        If true then there must be exactly one ``do_<name>`` method
         for each command.
         Cannot be true if ``write_only`` is true.
     write_only : `bool`, optional
-        If True then the Controller will have no command topics
+        If true then the Controller will have no command topics
         and will not read any SAL data.
         Cannot be true if ``do_callbacks`` is true.
 

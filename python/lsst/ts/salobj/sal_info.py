@@ -73,7 +73,7 @@ class SalInfo:
     index : `int`, optional
         Component index; 0 or None if this component is not indexed.
     write_only : `bool`
-        If False this SalInfo will not subscribe to any topics.
+        If false this SalInfo will not subscribe to any topics.
 
     Raises
     ------
