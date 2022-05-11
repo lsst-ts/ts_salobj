@@ -45,7 +45,6 @@ struct logevent_scalars_0ad55b18 {
 	  float	float0;
 	  double	double0;
 	  string<20>	string0;
-	  long	priority;
 	};
 #pragma keylist logevent_scalars_0ad55b18 TestID
 };

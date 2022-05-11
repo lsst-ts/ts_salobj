@@ -45,7 +45,6 @@ struct logevent_scalars_0ad55b18 {  // @Metadata=(Description="Description of lo
 	  float	float0; // @Metadata=(Units="unitless",Description="Description of float0")
 	  double	double0; // @Metadata=(Units="unitless",Description="Description of double0")
 	  string<20>	string0; // @Metadata=(Units="unitless",Description="Description of string0")
-	  long	priority; // @Metadata=(Units="unitless",Description="Description of priority")
 	};
 #pragma keylist logevent_scalars_0ad55b18 SimpleID
 };
