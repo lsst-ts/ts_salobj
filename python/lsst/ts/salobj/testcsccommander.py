@@ -45,6 +45,9 @@ class TestCscCommander(csc_commander.CscCommander):
         Names of topics (telemetry or events) to not support.
         Topic names must not have a ``tel_`` or ``evt_`` prefix.
         If `None` or empty then no topics are excluded.
+    fields_to_ignore : `List` [`str`], optional
+        SAL topic fields names to ignore when specifying command parameters,
+        and when printing events and telemetry.
     """
 
     def __init__(
@@ -62,6 +65,8 @@ class TestCscCommander(csc_commander.CscCommander):
             name="Test",
             index=index,
             enable=enable,
+            exclude=exclude,
+            fields_to_ignore=fields_to_ignore,
         )
 
         def asbool(val: str) -> bool:
