@@ -527,8 +527,7 @@ class SalInfo:
             ] = f"{self.name}::{sal_topic_name}_{topic_metadata.version_hash}"
 
         # Examine last topic (or any topic) to see if component is indexed.
-        indexed_field_name = f"{self.name}ID"
-        self.indexed = indexed_field_name in topic_metadata.field_info
+        self.indexed = "salIndex" in topic_metadata.field_info
 
         self.command_names = tuple(command_names)
         self.event_names = tuple(event_names)
@@ -709,9 +708,8 @@ class SalInfo:
                     if reader.max_history > 0:
                         if self.index == 0 and self.indexed:
                             # Get the most recent sample for each index
-                            index_field = f"{self.name}ID"
                             data_dict = {
-                                getattr(data, index_field): data
+                                getattr(data, "salIndex"): data
                                 for data in full_data_list
                             }
                             data_list = data_dict.values()

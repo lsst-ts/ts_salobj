@@ -64,7 +64,7 @@ class IdlParserTestCase(unittest.TestCase):
 
         # Dict of field name: expected type name
         field_types = dict(
-            TestID="long",
+            salIndex="long",
             private_revCode="string",
             private_sndStamp="double",
             private_rcvStamp="double",
@@ -111,7 +111,7 @@ class IdlParserTestCase(unittest.TestCase):
                     if has_metadata:
                         if field_metadata.name.endswith("Stamp"):
                             expected_units: typing.Optional[str] = "second"
-                        elif field_metadata.name == "TestID":
+                        elif field_metadata.name == "salIndex":
                             expected_units = None
                         else:
                             expected_units = "unitless"
@@ -163,7 +163,7 @@ class IdlParserTestCase(unittest.TestCase):
 
         # Dict of field name: expected type name
         field_types = dict(
-            TestID="long",
+            salIndex="long",
             private_revCode="string",
             private_sndStamp="double",
             private_rcvStamp="double",

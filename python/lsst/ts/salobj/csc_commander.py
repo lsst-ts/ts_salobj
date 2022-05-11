@@ -340,9 +340,7 @@ help  # print this help
         """Return True if the specified field name is public,
         False otherwise.
         """
-        if name.startswith("private_"):
-            return False
-        if name == f"{self.remote.salinfo.name}ID":
+        if name.startswith("private_") or name == "salIndex":
             return False
         if name in self.fields_to_ignore:
             return False
