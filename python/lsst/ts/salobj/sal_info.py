@@ -574,7 +574,7 @@ class SalInfo:
         * self._deserializer
         * self._serializers
 
-        Register schema and create missing topics.
+        Register schemas and create missing topics.
 
         Wait for the read loop to finish.
         """
@@ -621,7 +621,8 @@ class SalInfo:
                 )
                 await self._producer.start()
                 if self.write_only:
-                    self.start_task.set_result(None)
+                    if not self.start_task.done():
+                        self.start_task.set_result(None)
                     await asyncio.Future()
                 else:
                     self._consumer = AIOKafkaConsumer(
@@ -745,7 +746,8 @@ class SalInfo:
 
             # At this point we have know where each topic starts.
             # It is safe to let others use this object.
-            self.start_task.set_result(None)
+            if not self.start_task.done():
+                self.start_task.set_result(None)
             await asyncio.sleep(0)
 
             if not self.indexed:
