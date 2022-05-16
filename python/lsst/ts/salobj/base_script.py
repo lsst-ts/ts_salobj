@@ -153,9 +153,12 @@ class BaseScript(controller.Controller, abc.ABC):
             description=str(descr),
             help=str(help),
         )
-        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
     async def start(self) -> None:
+        await super().start()
+        self._heartbeat_task.cancel()  # Paranoia
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+
         remote_names = set()
         remote_start_tasks = []
         for salinfo in self.domain.salinfo_set:
@@ -163,8 +166,6 @@ class BaseScript(controller.Controller, abc.ABC):
                 continue
             remote_names.add(f"{salinfo.name}:{salinfo.index}")
             remote_start_tasks.append(salinfo.start_task)
-
-        await super().start()
         await asyncio.gather(*remote_start_tasks)
 
         await self.evt_state.set_write(state=ScriptState.UNCONFIGURED)  # type: ignore
