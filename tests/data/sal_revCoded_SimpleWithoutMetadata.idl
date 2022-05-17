@@ -1,6 +1,6 @@
 module Simple {
 struct command_setArrays_0dd79125 {
-	  long	TestID;	//private
+	  long	salIndex;	//private
 	  string<8>	private_revCode;
 	  double	private_sndStamp;
 	  double	private_rcvStamp;
@@ -19,14 +19,14 @@ struct command_setArrays_0dd79125 {
 	  float	float0[5];
 	  double	double0[5];
 	};
-#pragma keylist command_setArrays_0dd79125 TestID
-#pragma keylist command_setArrays_1234abcd TestID
+#pragma keylist command_setArrays_0dd79125 salIndex
+#pragma keylist command_setArrays_1234abcd salIndex
 	 const long arrays_Int0ValueEnum_Zero=0;
 	 const long arrays_Int0ValueEnum_Two=2;
 	 const long arrays_Int0ValueEnum_Four=04;
 	 const long arrays_Int0ValueEnum_Five=0x05;
 struct logevent_scalars_0ad55b18 {
-	  long	TestID;	//private
+	  long	salIndex;	//private
 	  string<8>	private_revCode;
 	  double	private_sndStamp;
 	  double	private_rcvStamp;
@@ -45,7 +45,6 @@ struct logevent_scalars_0ad55b18 {
 	  float	float0;
 	  double	double0;
 	  string<20>	string0;
-	  long	priority;
 	};
-#pragma keylist logevent_scalars_0ad55b18 TestID
+#pragma keylist logevent_scalars_0ad55b18 salIndex
 };

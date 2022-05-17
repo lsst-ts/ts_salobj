@@ -9,6 +9,12 @@ Version History
 v7.1.0
 ------
 
+* Update for ts_sal 6.2, which is required:
+
+  * Remove all references to the "priority" field (RFC-848).
+  * Rename "{component_name}ID" fields to "salIndex" (RFC-849).
+
+
 * `BaseCsc`: make ``start`` easier to use by making the handling of the initial state occur after ``start`` is done (using the new ``start_phase2`` `Controller` method).
   This allows CSCs to write SAL messages in ``start``, after calling ``await super().start()``, without worrying that transitioning to a non-default initial state writes contradictory information.
 * `ConfigurableCsc`: always publish the configurationApplied event when transitioning from STANDBY to DISABLED state.
@@ -37,7 +43,7 @@ Requirements:
 * ts_ddsconfig
 * ts_idl 2
 * ts_utils 1.1
-* IDL files for Test and Script generated from ts_xml 11
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 6.2
 
 v7.0.1
 ------
