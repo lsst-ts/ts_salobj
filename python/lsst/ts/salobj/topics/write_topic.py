@@ -81,7 +81,7 @@ class WriteTopic(BaseTopic):
         SAL component information
     attr_name : `str`
         Topic name with attribute prefix. The prefix must be one of:
-        "cmd_", "evt_", "tel_", or (only for the ackcmd topic) "ack_".
+        ``cmd_``, ``evt_``, ``tel_``, or (only for the ackcmd topic) ``ack_``.
     min_seq_num : `int` or `None`, optional
         Minimum value for the ``private_seqNum`` field. The default is 1.
         If `None` then ``private_seqNum`` is not set; this is needed
