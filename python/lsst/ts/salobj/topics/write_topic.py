@@ -270,25 +270,23 @@ class WriteTopic(BaseTopic):
     async def set_write(
         self, *, force_output: typing.Optional[bool] = None, **kwargs: typing.Any
     ) -> SetWriteResult:
-        """Set zero or more fields of ``self.data`` and write if changed
-        or if ``force_output`` true.
+        """Set zero or more fields of ``self.data`` and write the data if any
+        of the specified fields have changed or if ``force_output`` is true.
 
         Parameters
         ----------
         force_output : `bool`, optional
             If true then write the event, even if no fields have changed.
-            If None (the default), use the class default,
-            which is True for all except ControllerEvent.
-            (The default value is given by class constant
-            ``default_force_output``).
+            If None (the default), use the class default, which is False
+            for `ControllerEvent` and True for `ControllerTelemetry`.
         **kwargs : `dict` [`str`, ``any``]
-            The remaining keyword arguments are
-            field name = new value for that field.
-            See `set` for more information about values.
+            ``field_name=new_value`` for fields you wish to set. Unspecified
+            fields retain their current value, which may have been set by
+            earlier calls to `set` or `set_write`.
 
         Returns
         -------
-        result
+        result : `SetWriteResult`
             The resulting data and some flags.
 
         Notes
@@ -297,6 +295,9 @@ class WriteTopic(BaseTopic):
         `write` reliably writes the data, whereas the event version of
         `set_write` only writes the data if ``kwargs`` changes it,
         or if ``force_output`` is true.
+
+        The default value for force_output is specified by class constant
+        ``default_force_output``.
         """
         did_change = self.set(**kwargs)
         if did_change:
