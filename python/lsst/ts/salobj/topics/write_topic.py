@@ -179,8 +179,10 @@ class WriteTopic(BaseTopic):
     def has_data(self) -> bool:
         """Has `data` ever been set?
 
-        Note: a value of true means at least one field has been set,
-        not that all fields have been set.
+        A value of true simply means that `set` or `set_write` has been called
+        at least once since the topic was constructed. All public fields will
+        have their default value until they are set to something else.
+        (Private fields are automatically set when the message is written.)
         """
         return self._has_data
 
@@ -207,8 +209,10 @@ class WriteTopic(BaseTopic):
 
         This is useful when accumulating data for a topic in different
         bits of code. Have each bit of code call `set` to set the fields
-        it knows about. Have the last bit of code call `write` to set
-        the remaining fields and write the completed message.
+        it knows about. Have the last bit of code call `set_write` (with
+        ``force_output=True``, for events) to set the remaining fields
+        and write the completed message. Or set all fields with `set`
+        and then call `write` to write the message.
 
         If you have all the information for a topic in one place, it is simpler
         to call `set_write` to set all of the fields and write the message.
@@ -270,33 +274,39 @@ class WriteTopic(BaseTopic):
     async def set_write(
         self, *, force_output: typing.Optional[bool] = None, **kwargs: typing.Any
     ) -> SetWriteResult:
-        """Set zero or more fields of ``self.data`` and write if changed
-        or if ``force_output`` true.
+        """Set zero or more fields of ``self.data`` and perhaps write the
+        message (see ``force_output`` for details).
 
         Parameters
         ----------
         force_output : `bool`, optional
-            If true then write the event, even if no fields have changed.
-            If None (the default), use the class default,
-            which is True for all except ControllerEvent.
-            (The default value is given by class constant
-            ``default_force_output``).
+            If false, only write the message if this call changes any of the
+            specified fields, or if `has_data` is false.
+            If true, always write the message.
+            If `None` (the default), use the class default, which is:
+
+            * `False` for events (`ControllerEvent`)
+            * `True` for telemetry (`ControllerTelemetry`)
+            * `True` for generic write topics (`WriteTopic`, this class).
+
         **kwargs : `dict` [`str`, ``any``]
-            The remaining keyword arguments are
-            field name = new value for that field.
-            See `set` for more information about values.
+            ``field_name=new_value`` for fields you wish to set. Unspecified
+            fields retain their current value, which may have been set by
+            earlier calls to `set` or `set_write`.
 
         Returns
         -------
-        result
+        result : `SetWriteResult`
             The resulting data and some flags.
 
         Notes
         -----
         The reason there are separate `set_write` and `write` methods is that
-        `write` reliably writes the data, whereas the event version of
-        `set_write` only writes the data if ``kwargs`` changes it,
-        or if ``force_output`` is true.
+        `write` reliably writes the message, whereas `set_write` may not
+        (for details, see ``force_output`` above).
+
+        The default value for force_output is specified by class constant
+        ``default_force_output``.
         """
         did_change = self.set(**kwargs)
         if did_change:
