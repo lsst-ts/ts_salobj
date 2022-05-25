@@ -252,9 +252,9 @@ class SalInfo:
             )
         self.default_authorize = authorize_str == "1"
         if self.default_authorize:
-            self.log.debug("Enabling authlist-based command authorization")
+            self.log.info("Enabling authlist-based command authorization")
         else:
-            self.log.debug("Disabling authlist-based command authorization")
+            self.log.info("Disabling authlist-based command authorization")
 
         self.authorized_users: typing.Set[str] = set()
         self.non_authorized_cscs: typing.Set[str] = set()
