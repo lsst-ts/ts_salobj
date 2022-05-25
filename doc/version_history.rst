@@ -9,11 +9,10 @@ Version History
 v7.1.0
 ------
 
-* Update for ts_sal 6.2, which is required:
+* Update for ts_sal 7, which is required:
 
   * Remove all references to the "priority" field (RFC-848).
   * Rename "{component_name}ID" fields to "salIndex" (RFC-849).
-
 
 * `BaseCsc`: make ``start`` easier to use by making the handling of the initial state occur after ``start`` is done (using the new ``start_phase2`` `Controller` method).
   This allows CSCs to write SAL messages in ``start``, after calling ``await super().start()``, without worrying that transitioning to a non-default initial state writes contradictory information.
@@ -32,7 +31,11 @@ v7.1.0
     * Simplify error handling in `BaseScript.amain`.
       Only return exit codes 0 (success) or 1.
 
-* `SalInfo`: add ``write_only`` constructor argument.
+* `SalInfo`:
+
+    * Add ``write_only`` constructor argument.
+    * Log whether authorization support is enabled at INFO level, instead of DEBUG level.
+
 * `SalLogHandler`: support logging from threads.
 * ``setup.cfg``: specify asyncio_mode=auto.
 * git ignore ``.hypothesis``.
@@ -43,7 +46,7 @@ Requirements:
 * ts_ddsconfig
 * ts_idl 2
 * ts_utils 1.1
-* IDL files for Test and Script generated from ts_xml 11 using ts_sal 6.2
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
 
 v7.0.1
 ------
