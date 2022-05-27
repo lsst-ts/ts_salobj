@@ -46,6 +46,7 @@ requirements:
     - aiohttp
     - aiokafka
     - kafkit
+    - numpy =1.22
     - astropy >=5
     - boto3
     - moto
