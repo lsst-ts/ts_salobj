@@ -49,7 +49,7 @@ requirements:
     - aiohttp
     - aiokafka
     - kafkit
-    - numpy =1.20
+    - numpy =1.22
     - astropy >=5
     - jsonschema
     - pyyaml

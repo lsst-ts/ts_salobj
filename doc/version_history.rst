@@ -20,18 +20,45 @@ vKafka
 v7.1.0
 ------
 
-* `BaseCsc`: make ``start`` easier to use by making the handling of the initial state occur after ``start`` is done (using the new ``start_phase2`` method).
-  This allows CSCs to write SAL messages in ``start``, after calling ``await super().start()``, without worrying that transitioning to the desired initial state writes contradictory information.
-* `Controller`: add ``start_phase2`` method.
+* Update for ts_sal 7, which is required:
+
+  * Remove all references to the "priority" field (RFC-848).
+  * Rename "{component_name}ID" fields to "salIndex" (RFC-849).
+
+* `BaseCsc`: make ``start`` easier to use by making the handling of the initial state occur after ``start`` is done (using the new ``start_phase2`` `Controller` method).
+  This allows CSCs to write SAL messages in ``start``, after calling ``await super().start()``, without worrying that transitioning to a non-default initial state writes contradictory information.
 * `ConfigurableCsc`: always publish the configurationApplied event when transitioning from STANDBY to DISABLED state.
+* `Controller`:
+
+    * Add ``write_only`` constructor argument.
+    * Add ``start_phase2`` method.
+
+* `BaseScript`:
+
+    * Replace optional ``descr`` argument with ``**kwargs`` in the ``amain`` and ``make_from_cmd_line`` class methods.
+      This allows one to define a generic script class that can be used without subclassing, as long as the specifics can be defined by constructor arguments.
+      An example is a script that can control the main or auxiliary telescope scheduler, with a constructor argument that specifies which one to control.
+
+    * Simplify error handling in `BaseScript.amain`.
+      Only return exit codes 0 (success) or 1.
+
+* `SalInfo`:
+
+    * Add ``write_only`` constructor argument.
+    * Log whether authorization support is enabled at INFO level, instead of DEBUG level.
+
 * `SalLogHandler`: support logging from threads.
+* ``setup.cfg``: specify asyncio_mode=auto.
+* git ignore ``.hypothesis``.
+* Modernize continuous integration ``Jenkinsfile``.
+* Start using pyproject.toml.
 
 Requirements:
 
 * ts_ddsconfig
 * ts_idl 2
 * ts_utils 1.1
-* IDL files for Test and Script generated from ts_xml 11
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
 
 v7.0.1
 ------
@@ -91,7 +118,7 @@ v7.0.0
 
         * `ConfigurableCsc`: eliminate the deprecated ``schema_path`` constructor argument.
         * Update `check_standard_config_files` to require that the config schema be a module constant.
-    
+
     * `BaseCsc`: class variable ``valid_simulation_modes`` may no longer be None and class variable ``version`` is required.
     * `CscCommander`: ``get_rounded_public_fields`` is gone; use ``get_rounded_public_data`` with the same arguments.
     * `Remote`: the ``tel_max_history`` constructor argument is gone.
