@@ -37,10 +37,9 @@ v7.1.0
     * Log whether authorization support is enabled at INFO level, instead of DEBUG level.
 
 * `SalLogHandler`: support logging from threads.
-* ``setup.cfg``: specify asyncio_mode=auto.
-* git ignore ``.hypothesis``.
 * Modernize continuous integration ``Jenkinsfile``.
 * Start using pyproject.toml.
+* Use entry_points instead of bin scripts.
 
 Requirements:
 
