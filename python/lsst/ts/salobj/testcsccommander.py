@@ -19,8 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["TestCscCommander"]
+__all__ = ["TestCscCommander", "command_test_csc"]
 
+import asyncio
 import typing
 
 import numpy as np
@@ -108,3 +109,8 @@ class TestCscCommander(csc_commander.CscCommander):
                 vals += [field_type("0")] * n_to_append  # type: ignore
             kwargs[field] = vals
         await self.remote.cmd_setArrays.set_start(**kwargs)  # type: ignore
+
+
+def command_test_csc() -> None:
+    """Command the CSC Commander from the command line."""
+    asyncio.run(TestCscCommander.amain(index=True))

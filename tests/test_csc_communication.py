@@ -390,7 +390,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 await self.check_bin_script(
                     name="Test",
                     index=index,
-                    exe_name="run_test_csc.py",
+                    exe_name="run_test_csc",
                     initial_state=initial_state,
                     override=override,
                 )
@@ -401,7 +401,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         Note that the bin script calls class method ``amain``.
         """
         index = self.next_index()
-        exec_path = pathlib.Path(__file__).parents[1] / "bin" / "run_test_csc.py"
+        exec_path = pathlib.Path(__file__).parents[1] / "bin" / "run_test_csc"
 
         process = await asyncio.create_subprocess_exec(
             str(exec_path),
