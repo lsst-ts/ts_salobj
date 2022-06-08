@@ -53,7 +53,7 @@ requirements:
     - python
     - setuptools
     - setuptools_scm
-    - numpy =1.20
+    - numpy ~=1.20
     - astropy >=5
     - jsonschema
     - pyyaml
