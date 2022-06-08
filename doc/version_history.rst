@@ -37,9 +37,9 @@ v7.1.0
     * Log whether authorization support is enabled at INFO level, instead of DEBUG level.
 
 * `SalLogHandler`: support logging from threads.
-* ``setup.cfg``: specify asyncio_mode=auto.
-* git ignore ``.hypothesis``.
 * Modernize continuous integration ``Jenkinsfile``.
+* Start using pyproject.toml.
+* Use entry_points instead of bin scripts.
 
 Requirements:
 
@@ -106,7 +106,7 @@ v7.0.0
 
         * `ConfigurableCsc`: eliminate the deprecated ``schema_path`` constructor argument.
         * Update `check_standard_config_files` to require that the config schema be a module constant.
-    
+
     * `BaseCsc`: class variable ``valid_simulation_modes`` may no longer be None and class variable ``version`` is required.
     * `CscCommander`: ``get_rounded_public_fields`` is gone; use ``get_rounded_public_data`` with the same arguments.
     * `Remote`: the ``tel_max_history`` constructor argument is gone.
