@@ -40,6 +40,7 @@ v7.1.0
 * Modernize continuous integration ``Jenkinsfile``.
 * Start using pyproject.toml.
 * Use entry_points instead of bin scripts.
+* Unpin the numpy version to be able to build with Python 3.10.
 
 Requirements:
 
