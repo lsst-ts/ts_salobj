@@ -64,7 +64,7 @@ class IdlParserTestCase(unittest.TestCase):
 
         # Dict of field name: expected type name
         field_types = dict(
-            TestID="long",
+            salIndex="long",
             private_revCode="string",
             private_sndStamp="double",
             private_rcvStamp="double",
@@ -83,7 +83,6 @@ class IdlParserTestCase(unittest.TestCase):
             unsignedLong0="unsigned long",
             float0="float",
             double0="double",
-            priority="long",
         )
 
         for sal_topic_name, topic_metadata in metadata.topic_info.items():
@@ -103,9 +102,7 @@ class IdlParserTestCase(unittest.TestCase):
                 expected_field_names = set(field_types.keys())
                 if sal_topic_name == "command_setArrays":
                     expected_field_names = set(
-                        name
-                        for name in expected_field_names
-                        if name not in ("string0", "priority")
+                        name for name in expected_field_names if name != "string0"
                     )
 
                 assert set(topic_metadata.field_info.keys()) == expected_field_names
@@ -114,7 +111,7 @@ class IdlParserTestCase(unittest.TestCase):
                     if has_metadata:
                         if field_metadata.name.endswith("Stamp"):
                             expected_units: typing.Optional[str] = "second"
-                        elif field_metadata.name == "TestID":
+                        elif field_metadata.name == "salIndex":
                             expected_units = None
                         else:
                             expected_units = "unitless"
@@ -166,7 +163,7 @@ class IdlParserTestCase(unittest.TestCase):
 
         # Dict of field name: expected type name
         field_types = dict(
-            TestID="long",
+            salIndex="long",
             private_revCode="string",
             private_sndStamp="double",
             private_rcvStamp="double",
@@ -185,13 +182,7 @@ class IdlParserTestCase(unittest.TestCase):
             unsignedLong0="unsigned long",
             float0="float",
             double0="double",
-            priority="long",
         )
-
-        # The private_host field is deprecated but may still exist
-        topic_metadata = metadata.topic_info["scalars"]
-        if "private_host" in topic_metadata.field_info:
-            field_types["private_host"] = "long"
 
         # Check some details of arrays topics, including data type,
         # array length and string length.
@@ -203,8 +194,6 @@ class IdlParserTestCase(unittest.TestCase):
 
                 expected_field_names = set(field_types.keys())
                 expected_field_names.remove("string0")  # only in scalars
-                if not topic_name.startswith("logevent_"):
-                    expected_field_names.remove("priority")
                 assert set(topic_metadata.field_info.keys()) == expected_field_names
                 for field_metadata in topic_metadata.field_info.values():
                     if field_metadata.name[-1] != "0":
@@ -222,8 +211,6 @@ class IdlParserTestCase(unittest.TestCase):
                 for deprecated_field in ("char0", "octet0"):
                     topic_metadata.field_info.pop(deprecated_field, None)
                 expected_field_names = set(field_types.keys())
-                if not topic_name.startswith("logevent_"):
-                    expected_field_names.remove("priority")
                 assert set(topic_metadata.field_info.keys()) == expected_field_names
                 for field_metadata in topic_metadata.field_info.values():
                     assert field_metadata.array_length is None

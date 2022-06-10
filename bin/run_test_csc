@@ -20,14 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""A command-line script to interact with a Test CSC.
+"""An example of how to run a CSC"""
+from lsst.ts.salobj import run_test_csc
 
-For most CSCs running a commander can be quite dangerous
-so please pick a script name that is not easily confused
-with the script that runs the CSC.
-"""
-import asyncio
-
-from lsst.ts import salobj
-
-asyncio.run(salobj.TestCscCommander.amain(index=True))
+run_test_csc()

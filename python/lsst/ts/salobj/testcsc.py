@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["TestCsc"]
+__all__ = ["TestCsc", "run_test_csc"]
 
 import asyncio
 import string
@@ -336,3 +336,8 @@ class TestCsc(ConfigurableCsc):
 
     async def configure(self, config: types.SimpleNamespace) -> None:
         self.config = config
+
+
+def run_test_csc() -> None:
+    """Run the Test CSC from the command line."""
+    asyncio.run(TestCsc.amain(index=True))

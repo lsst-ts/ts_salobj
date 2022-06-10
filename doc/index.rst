@@ -6,6 +6,11 @@
 lsst.ts.salobj
 ##############
 
+.. image:: https://img.shields.io/badge/GitHub-gray.svg
+    :target: https://github.com/lsst-ts/ts_salobj
+.. image:: https://img.shields.io/badge/Jira-gray.svg
+    :target: https://jira.lsstcorp.org/issues/?jql=project%3DDM%20AND%20labels%3Dts_salobj
+
 Object-oriented Python interface to `Service Abstraction Layer`_ (SAL) components that uses asyncio for asynchronous communication.
 ``ts_salobj`` SAL communication uses the `dds Python library`_, which is part of `Vortex OpenSplice`_.
 You may use the free community edition or the licensed edition of OpenSplice.
@@ -81,7 +86,7 @@ Contributing
 ============
 
 ``lsst.ts.salobj`` is developed at https://github.com/lsst-ts/ts_salobj.
-You can find Jira issues for this module using `labels=ts_salobj <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20labels%20%20%3D%20ts_salobj>`_.
+You can find Jira issues for this module using `project=DM and labels=ts_salobj <https://jira.lsstcorp.org/issues/?jql=project%3DDM%20AND%20labels%3Dts_salobj>`_.
 
 
 .. _lsst.ts.salobj-pyapi:

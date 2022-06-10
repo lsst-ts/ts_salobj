@@ -306,8 +306,8 @@ class RemoteCommand(write_topic.WriteTopic):
             the command issues a ``CMD_INPROGRESS`` acknowledgement
             with a reasonable ``timeout`` value.
         wait_done : `bool`, optional
-            If True then wait for final command acknowledgement.
-            If False then wait only for the next command acknowledgement
+            If true then wait for final command acknowledgement.
+            If false then wait only for the next command acknowledgement
             If that acknowledgement is not final
             (the ack code is not in ``self.done_ack_codes``),
             then you will almost certainly want to await `next_ackcmd` again.
@@ -390,8 +390,8 @@ class RemoteCommand(write_topic.WriteTopic):
             the command issues a ``CMD_INPROGRESS`` acknowledgement
             with a reasonable ``timeout`` value.
         wait_done : `bool`, optional
-            If True then wait for final command acknowledgement.
-            If False then wait only for the first command acknowledgement
+            If true then wait for final command acknowledgement.
+            If false then wait only for the first command acknowledgement
             If that acknowledgement is not final
             (the ack code is not in ``self.done_ack_codes``),
             then you will almost certainly want to await `next_ackcmd`.
@@ -440,8 +440,8 @@ class RemoteCommand(write_topic.WriteTopic):
             the command issues a ``CMD_INPROGRESS`` acknowledgement
             with a reasonable ``timeout`` value.
         wait_done : `bool`, optional
-            If True then wait for final command acknowledgement.
-            If False then wait only for the first command acknowledgement.
+            If true then wait for final command acknowledgement.
+            If false then wait only for the first command acknowledgement.
             If that acknowledgement is not final
             (the ack code is not in ``self.done_ack_codes``),
             then you will almost certainly want to await `next_ackcmd`.

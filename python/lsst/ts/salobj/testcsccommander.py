@@ -19,8 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["TestCscCommander"]
+__all__ = ["TestCscCommander", "command_test_csc"]
 
+import asyncio
 import typing
 
 import numpy as np
@@ -45,6 +46,9 @@ class TestCscCommander(csc_commander.CscCommander):
         Names of topics (telemetry or events) to not support.
         Topic names must not have a ``tel_`` or ``evt_`` prefix.
         If `None` or empty then no topics are excluded.
+    fields_to_ignore : `List` [`str`], optional
+        SAL topic fields names to ignore when specifying command parameters,
+        and when printing events and telemetry.
     """
 
     def __init__(
@@ -52,16 +56,14 @@ class TestCscCommander(csc_commander.CscCommander):
         index: typing.Optional[int],
         enable: bool = False,
         exclude: typing.Optional[typing.Sequence[str]] = None,
-        fields_to_ignore: typing.Sequence[str] = (
-            "ignored",
-            "value",
-            "priority",
-        ),
+        fields_to_ignore: typing.Sequence[str] = ("ignored", "value"),
     ) -> None:
         super().__init__(
             name="Test",
             index=index,
             enable=enable,
+            exclude=exclude,
+            fields_to_ignore=fields_to_ignore,
         )
 
         def asbool(val: str) -> bool:
@@ -108,3 +110,8 @@ class TestCscCommander(csc_commander.CscCommander):
                 vals += [field_type("0")] * n_to_append  # type: ignore
             kwargs[field] = vals
         await self.remote.cmd_setArrays.set_start(**kwargs)  # type: ignore
+
+
+def command_test_csc() -> None:
+    """Command the CSC Commander from the command line."""
+    asyncio.run(TestCscCommander.amain(index=True))

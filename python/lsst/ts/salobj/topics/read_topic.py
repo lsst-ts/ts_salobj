@@ -360,7 +360,7 @@ class ReadTopic(BaseTopic):
         ]
         queries = []
         if salinfo.index > 0:
-            queries.append(f"{salinfo.name}ID = {salinfo.index}")
+            queries.append(f"salIndex = {salinfo.index}")
         if attr_name == "ack_ackcmd" and filter_ackcmd:
             queries += [
                 f"origin = {salinfo.domain.origin}",

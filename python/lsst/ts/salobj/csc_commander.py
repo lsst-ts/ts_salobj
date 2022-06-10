@@ -240,7 +240,7 @@ class CscCommander:
         enable: bool = False,
         exclude: typing.Optional[typing.Sequence[str]] = None,
         exclude_commands: typing.Sequence[str] = (),
-        fields_to_ignore: typing.Sequence[str] = ("ignored", "value", "priority"),
+        fields_to_ignore: typing.Sequence[str] = ("ignored", "value"),
         telemetry_fields_to_not_compare: typing.Sequence[str] = ("timestamp",),
     ) -> None:
         self.domain = domain.Domain()
@@ -340,9 +340,7 @@ help  # print this help
         """Return True if the specified field name is public,
         False otherwise.
         """
-        if name.startswith("private_"):
-            return False
-        if name == f"{self.remote.salinfo.name}ID":
+        if name.startswith("private_") or name == "salIndex":
             return False
         if name in self.fields_to_ignore:
             return False

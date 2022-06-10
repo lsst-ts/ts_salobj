@@ -31,6 +31,7 @@ import re
 import sys
 import types
 import typing
+import warnings
 
 import yaml
 
@@ -175,31 +176,25 @@ class BaseScript(controller.Controller, abc.ABC):
         )
 
     @classmethod
-    def make_from_cmd_line(
-        cls, descr: typing.Optional[str] = None
-    ) -> typing.Union[BaseScript, None]:
+    def make_from_cmd_line(cls, **kwargs: typing.Any) -> typing.Union[BaseScript, None]:
         """Make a script from command-line arguments.
 
         Return None if ``--schema`` specified.
 
         Parameters
         ----------
-        descr : `str`, optional
-            Short description of what the script does, for operator display.
-            Leave at None if the script already has a description, which is
-            the most common case. Primarily intended for unit tests,
-            e.g. running ``TestScript``.
+        kwargs :
+            Keyword arguments for the script constructor.
+            Must not include ``index``.
 
-
-        Notes
-        -----
-        The final return code will be:
-
-        * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
-          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`
-        * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
-        * 2 otherwise (which should never happen)
+        Raises
+        ------
+        RuntimeError
+            If ``kwargs`` includes ``index``.
         """
+        if "index" in kwargs:
+            raise RuntimeError(f"index must not appear in kwargs={kwargs}")
+
         parser = argparse.ArgumentParser(f"Run {cls.__name__} from the command line")
         parser.add_argument(
             "index",
@@ -214,49 +209,65 @@ class BaseScript(controller.Controller, abc.ABC):
             "The index argument is ignored, though it is still required.",
         )
         args = parser.parse_args()
-        kwargs = dict(index=args.index)
-        if descr is not None:
-            kwargs["descr"] = descr
+
         if args.schema:
             schema = cls.get_schema()
             if schema is not None:
                 print(yaml.safe_dump(schema))
             return None
-        return cls(**kwargs)
+
+        return cls(index=args.index, **kwargs)
 
     @classmethod
-    async def amain(cls, descr: typing.Optional[str] = None) -> None:
+    async def amain(cls, **kwargs: typing.Any) -> None:
         """Run the script from the command line.
 
         Parameters
         ----------
-        descr : `str`, optional
-            Short description of what the script does, for operator display.
-            Leave at None if the script already has a description, which is
-            the most common case. Primarily intended for unit tests,
-            e.g. running ``TestScript``.
-
+        kwargs :
+            Keyword arguments for the script constructor.
+            Must not include ``index``.
+            Ignored (other than testing for ``index``)
+            if the command specifies ``--schema``.
 
         Notes
         -----
         The final return code will be:
 
         * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
-          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`
-        * 1 if final state is `lsst.ts.idl.enums.Script.ScriptState.FAILED`
-        * 2 otherwise (which should never happen)
+          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`.
+        * 1 if final state is anything else, or if script.done_task is an
+          exception (which would be raised by the script's cleanup code).
+
+        Issues a RuntimeWarning if script.done_task is an exception
+        and the final script state is anything other than Failed.
+        This should never happen.
+
+        Raises
+        ------
+        RuntimeError
+            If ``kwargs`` includes ``index``.
         """
-        script = cls.make_from_cmd_line(descr=descr)
+        script = cls.make_from_cmd_line(**kwargs)
+
         if script is None:
             # printed schema and exited
             return
-        await script.done_task
-        return_code = {
-            ScriptState.DONE: 0,
-            ScriptState.STOPPED: 0,
-            ScriptState.FAILED: 1,
-        }.get(script.state.state, 2)
-        sys.exit(return_code)
+
+        try:
+            await script.done_task
+        except Exception as e:
+            # The script failed in cleanup
+            if script.state.state != ScriptState.FAILED:
+                warnings.warn(
+                    f"Script {cls.__name__} failed in cleanup with {e!r}, "
+                    f"but final state {script.state.state!r} != FAILED",
+                    RuntimeWarning,
+                )
+            sys.exit(1)
+
+        if script.state.state not in {ScriptState.DONE, ScriptState.STOPPED}:
+            sys.exit(1)
 
     @property
     def checkpoints(self) -> typing.Any:
@@ -315,11 +326,11 @@ class BaseScript(controller.Controller, abc.ABC):
         reason : `str`, optional
             Reason for state change. `None` for no new reason.
         keep_old_reason : `bool`
-            If True, keep old reason; append the ``reason`` argument after ";"
+            If true, keep old reason; append the ``reason`` argument after ";"
             if it is is a non-empty string.
-            If False replace with ``reason``, or "" if ``reason`` is `None`.
+            If false replace with ``reason``, or "" if ``reason`` is `None`.
         force_output : `bool`, optional
-            If True the output even if not changed.
+            If true the output even if not changed.
 
         Notes
         -----
@@ -394,7 +405,8 @@ class BaseScript(controller.Controller, abc.ABC):
             self._run_task.cancel()
         if self._pause_future is not None:
             self._pause_future.cancel()
-        # self.done_task is handled by Controller.close
+        # Controller.close sets self.done_task to result=None if successful,
+        # or to the exception if close raises.
 
     @abc.abstractmethod
     async def configure(self, config: types.SimpleNamespace) -> None:

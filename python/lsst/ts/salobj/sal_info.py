@@ -72,6 +72,8 @@ class SalInfo:
         SAL component name.
     index : `int`, optional
         Component index; 0 or None if this component is not indexed.
+    write_only : `bool`
+        If false this SalInfo will not subscribe to any topics.
 
     Raises
     ------
@@ -154,13 +156,31 @@ class SalInfo:
 
     **Usage**
 
-    Call `start` after constructing this `SalInfo` and all `Remote` objects.
-    Until `start` is called no data will be read.
+    * Construct a `SalInfo` object for a particular SAL component and index.
+    * Use the object to construct all topics (subclasses of `topics.BaseTopic`)
+      that you want to use with this SAL component and index.
+    * Call `start`.
+    * When you are finished, call `close`, or at least be sure to close
+      the ``domain`` when you are finished with all classes that use it
+      (see Cleanup below).
+
+    You cannot read topics constructed with a `SalInfo` object
+    until you call `start`, and once you call `start`, you cannot
+    use the `SalInfo` object to construct any more topics.
+
+    You may use `SalInfo` as an async context manager, but this is primarily
+    useful for cleanup. After you enter the context (create the object)
+    you will still have to create topics and call start.
+    This is different from `Domain`, `Controller`, and `Remote`,
+    which are ready to use when you enter the context.
+
+    **Cleanup**
 
     Each `SalInfo` automatically registers itself with the specified ``domain``
-    for cleanup using a weak reference to avoid circular dependencies.
+    for cleanup, using a weak reference to avoid circular dependencies.
     You may safely close a `SalInfo` before closing its domain,
     and this is recommended if you create and destroy many remotes.
+    In any case, be sure to close the ``domain`` when you are done.
 
     **DDS Partition Names**
 
@@ -171,14 +191,20 @@ class SalInfo:
     * ``suffix`` = "cmd" for command topics, and "data" for all other topics,
       including ``ackcmd``.
 
-    The idea is that each `Remote` and `Controller` should have just one
-    subscriber and one publisher, and that the durability service for
-    a `Controller` will not read topics that a controller writes:
-    events, telemetry, and the ``ackcmd`` topic.
+    The idea is that each `Controller` and `Remote` should have just one
+    subscriber and one publisher, and that the durability service
+    will only read topics that the object reads, not topics that it writes.
+    Thus the durability service for `Controller` will only read commands,
+    and the durability service for `Remote` will read everything but commands
+    (events, telemetry and the ``ackcmd`` topic).
     """
 
     def __init__(
-        self, domain: Domain, name: str, index: typing.Optional[int] = 0
+        self,
+        domain: Domain,
+        name: str,
+        index: typing.Optional[int] = 0,
+        write_only: bool = False,
     ) -> None:
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
@@ -190,6 +216,7 @@ class SalInfo:
         self.domain = domain
         self.name = name
         self.index = 0 if index is None else index
+        self.write_only = write_only
         self.identity = domain.default_identity
 
         self.log = logging.getLogger(self.name)
@@ -225,9 +252,9 @@ class SalInfo:
             )
         self.default_authorize = authorize_str == "1"
         if self.default_authorize:
-            self.log.debug("Enabling authlist-based command authorization")
+            self.log.info("Enabling authlist-based command authorization")
         else:
-            self.log.debug("Disabling authlist-based command authorization")
+            self.log.info("Disabling authlist-based command authorization")
 
         self.authorized_users: typing.Set[str] = set()
         self.non_authorized_cscs: typing.Set[str] = set()
@@ -405,6 +432,11 @@ class SalInfo:
             return self.name
 
     @property
+    def running(self) -> bool:
+        """Return True if started and not closed."""
+        return self.started and self.isopen
+
+    @property
     def started(self) -> bool:
         """Return True if successfully started, False otherwise."""
         return (
@@ -495,8 +527,7 @@ class SalInfo:
             ] = f"{self.name}::{sal_topic_name}_{topic_metadata.version_hash}"
 
         # Examine last topic (or any topic) to see if component is indexed.
-        indexed_field_name = f"{self.name}ID"
-        self.indexed = indexed_field_name in topic_metadata.field_info
+        self.indexed = "salIndex" in topic_metadata.field_info
 
         self.command_names = tuple(command_names)
         self.event_names = tuple(event_names)
@@ -581,6 +612,8 @@ class SalInfo:
         """
         if self.start_called:
             raise RuntimeError("Cannot add topics after the start called")
+        if self.write_only:
+            raise RuntimeError("Cannot add a read topic to a write-only SalInfo")
         if topic._read_condition in self._reader_dict:
             raise RuntimeError(f"{topic} already added")
         self._reader_dict[topic._read_condition] = topic
@@ -611,6 +644,8 @@ class SalInfo:
         if not self.isopen:
             raise RuntimeError("Already closing or closed")
         self.start_called = True
+        if self.write_only:
+            return
         try:
             loop = asyncio.get_running_loop()
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
@@ -673,9 +708,8 @@ class SalInfo:
                     if reader.max_history > 0:
                         if self.index == 0 and self.indexed:
                             # Get the most recent sample for each index
-                            index_field = f"{self.name}ID"
                             data_dict = {
-                                getattr(data, index_field): data
+                                getattr(data, "salIndex"): data
                                 for data in full_data_list
                             }
                             data_list = data_dict.values()
