@@ -58,5 +58,5 @@ requirements:
     - jsonschema
     - pyyaml
     - boto3
-    - moto
+    - moto >=3
     - ts-utils
