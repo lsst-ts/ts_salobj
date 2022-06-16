@@ -17,6 +17,18 @@ vKafka
     * Messages no longer support the ``get_vars`` method; use the ``vars`` built-in function instead.
       In other words change ``message.get_vars()`` to ``vars(message)``.
 
+v7.1.1
+------
+
+* Pin the version of moto to be larger than or equal to 3.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
 v7.1.0
 ------
 
