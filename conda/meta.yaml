@@ -58,7 +58,7 @@ requirements:
     - jsonschema
     - pyyaml
     - boto3
-    - moto
+    - moto >=3
     - ts-ddsconfig
     - ts-dds
     - ts-utils
