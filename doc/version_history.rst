@@ -17,6 +17,25 @@ vKafka
     * Messages no longer support the ``get_vars`` method; use the ``vars`` built-in function instead.
       In other words change ``message.get_vars()`` to ``vars(message)``.
 
+v7.1.2
+------
+
+* Refine `stream_as_generator`:
+
+  * Simplify the code to use loop.run_in_executor instead of being clever.
+    (This also makes it compatible with Windows.)
+  * Remove the now-unusable `encoding` argument.
+  * Add a new `exit_str` argument.
+
+* Fix CI ``Jenkinsfile``: change HOME to WHOME everywhere except final cleanup.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
 v7.1.1
 ------
 
