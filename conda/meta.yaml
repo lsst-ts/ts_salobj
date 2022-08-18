@@ -49,6 +49,7 @@ requirements:
     - aiohttp
     - aiokafka
     - kafkit
+    - confluent_kafka
     - numpy ~=1.20
     - astropy >=5
     - boto3
