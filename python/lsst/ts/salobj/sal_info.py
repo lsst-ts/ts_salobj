@@ -25,10 +25,12 @@ __all__ = ["SalInfo"]
 
 import asyncio
 import atexit
+import base64
 import collections
 from concurrent.futures import ThreadPoolExecutor
 import enum
 import itertools
+import json
 import logging
 import os
 import time
@@ -37,12 +39,20 @@ import types
 import typing
 import warnings
 
-import aiohttp
-from aiokafka import AIOKafkaConsumer, AIOKafkaProducer, TopicPartition
+from confluent_kafka import (
+    OFFSET_BEGINNING,
+    Consumer,
+    KafkaException,
+    Message,
+    Producer,
+    TopicPartition,
+)
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.error import KafkaError
-from kafkit.registry.aiohttp import RegistryApi
-from kafkit.registry import Deserializer, Serializer
+from confluent_kafka.schema_registry import SchemaRegistryClient, Schema
+from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
+from confluent_kafka.serialization import MessageField, SerializationContext
+from fastavro.read import SchemaResolutionError
 
 from lsst.ts import utils
 from .topic_info import TopicInfo
@@ -70,8 +80,16 @@ DEFAULT_LSST_SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
 # limit_per_host argument for aiohttp.TCPConnector
 LIMIT_PER_HOST = 20
 
-# Number of acks to wait for when sending Kafka data.
+# Maximum number of sequential errors reading data from Kafka
+MAX_SEQUENTIAL_READ_ERRORS = 2
+
+# Number of _deserializers_and_contexts to wait for when sending Kafka data.
 PRODUCER_WAIT_ACKS = 1
+
+
+def get_random_string() -> str:
+    """Get a random string."""
+    return base64.urlsafe_b64encode(os.urandom(12)).decode().replace("=", "_")
 
 
 class SalInfo:
@@ -141,11 +159,17 @@ class SalInfo:
     <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
     follow the link for details:
 
+    * ``LSST_TOPIC_SUBNAME`` (required): a component of Kafka
+      topic names and schema namespaces.
     * ``LSST_DDS_ENABLE_AUTHLIST`` (optional): if set to "1"
       enable authlist-based command authorization.
       If "0" or undefined, do not enable authorization.
-    * ``LSST_TOPIC_SUBNAME`` (required): a component of Kafka
-      topic names and schema namespaces.
+    * ``LSST_KAFKA_BROKER_ADDR`` (optional): address of Kafka broker.
+      Defaults to ``broker:29092`` (matching the value in file
+      ``docker-compose.yaml``), for unit tests.
+    * ``LSST_SCHEMA_REGISTRY_URL`` (optional): url of the Confluent schema
+      registry. Defaults to ``http://schema-registry:8081`` (matching the
+      value in file ``docker-compose.yaml``), for unit tests.
 
     **Usage**
 
@@ -180,7 +204,7 @@ class SalInfo:
         self,
         domain: Domain,
         name: str,
-        index: int | None = 0,
+        index: None | int = 0,
         write_only: bool = False,
     ) -> None:
         if not isinstance(domain, Domain):
@@ -194,12 +218,37 @@ class SalInfo:
         self._closing = False
         self.domain = domain
         self.index = 0 if index is None else index
+        self.loop = asyncio.get_running_loop()
+        self.pool = ThreadPoolExecutor(max_workers=1000)
         self.write_only = write_only
         self.identity = domain.default_identity
         self.start_called = False
+        self.on_assign_called = False
 
-        self._consumer: typing.Optional[AIOKafkaConsumer] = None
-        self._producer: typing.Optional[AIOKafkaProducer] = None
+        # Dict of kafka_name: Kafka partition offset of first new data
+        # for topics for which we want historical data
+        # and historical data is available (offset > 0).
+        self._history_offsets: dict[str, int] = dict()
+
+        # Dict of kafka topic name: dict of index: data
+        # Only used for indexed components.
+        self._history_index_data: dict[
+            str, dict[int, type_hints.BaseDdsDataType]
+        ] = collections.defaultdict(dict)
+
+        self._consumer: None | Consumer = None
+        self._producer: None | Producer = None
+
+        # Dict of kafka topic name: (deserializer, serialization context)
+        # for read topics.
+        self.deserializers_and_contexts: dict[
+            str, tuple[AvroDeserializer, SerializationContext]
+        ] = dict()
+        # Dict of kafka topic name: (serializer, serialization context)
+        # for write topics.
+        self._serializers_and_contexts: dict[
+            str, tuple[AvroSerializer, SerializationContext]
+        ] = dict()
 
         topic_subname = os.environ.get("LSST_TOPIC_SUBNAME", None)
         if not topic_subname:
@@ -264,30 +313,24 @@ class SalInfo:
         else:
             self.log.debug("Disabling authlist-based command authorization")
 
-        self.authorized_users: typing.Set[str] = set()
-        self.non_authorized_cscs: typing.Set[str] = set()
+        self.authorized_users: set[str] = set()
+        self.non_authorized_cscs: set[str] = set()
 
-        # Dict of topic attr name: ReadTopic
-        self._read_topics: typing.Dict[str, topics.ReadTopic] = dict()
+        # Dict of topic kafka name: ReadTopic
+        self._read_topics: dict[str, topics.ReadTopic] = dict()
 
-        # Dict of topic attr name: WriteTopic
-        self._write_topics: typing.Dict[str, topics.WriteTopic] = dict()
-
-        # Dict of kafka topic name: ReadTopic
-        self._kafka_name_read_topics: typing.Dict[str, topics.ReadTopic] = dict()
-
-        # Dict of write topic attr_name: Serializer
-        self._serializers: typing.Dict[str, Serializer] = dict()
+        # Dict of topic kafka name: WriteTopic
+        self._write_topics: dict[str, topics.WriteTopic] = dict()
 
         # dict of private_seqNum: salobj.topics.CommandInfo
-        self._running_cmds: typing.Dict[int, topics.CommandInfo] = dict()
+        self._running_cmds: dict[int, topics.CommandInfo] = dict()
         # the first RemoteCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdReader
         # and set its callback to self._ackcmd_callback
-        self._ackcmd_reader: topics.AckCmdReader | None = None
+        self._ackcmd_reader: None | topics.AckCmdReader = None
         # the first ControllerCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdWriter
-        self._ackcmd_writer: topics.AckCmdWriter | None = None
+        self._ackcmd_writer: None | topics.AckCmdWriter = None
         # wait_timeout is a failsafe for shutdown; normally all you have to do
         # is call `close` to trigger the guard condition and stop the wait
         self._read_loop_task = utils.make_done_future()
@@ -322,10 +365,8 @@ class SalInfo:
     async def _ackcmd_callback(self, data: type_hints.AckCmdDataType) -> None:
         if not self._running_cmds:
             return
-        if data.identity != self.identity or data.origin != self.domain.origin:
-            # This ackcmd is for a command issued by a different Remote,
-            # so ignore it.
-            return
+        # Note: we could check identity and origin here, but by
+        # doing it in AckCmdReader we avoid queueing unwanted data.
         cmd_info = self._running_cmds.get(data.private_seqNum, None)
         if cmd_info is None:
             return
@@ -396,6 +437,12 @@ class SalInfo:
         if not self.started:
             raise RuntimeError("Not started")
 
+    def assert_running(self) -> None:
+        """Raise RuntimeError if not running."""
+        if not self.running:
+            msg = "Not started" if not self.started else "No longer open"
+            raise RuntimeError(msg)
+
     def make_ackcmd(
         self,
         private_seqNum: int,
@@ -456,14 +503,13 @@ class SalInfo:
         self.isopen = False
         self._read_loop_task.cancel()
         if self._consumer is not None:
-            asyncio.create_task(self._consumer.stop())
+            self._consumer.close()
         for reader in self._read_topics.values():
             reader.basic_close()
         for writer in self._write_topics.values():
             writer.basic_close()
         self.domain.remove_salinfo(self)
-        if self._producer is not None:
-            asyncio.create_task(self._producer.stop())
+        self._close_kafka()
 
     async def close(self, cancel_run_kafka_task: bool = True) -> None:
         """Shut down and clean up resources.
@@ -482,7 +528,7 @@ class SalInfo:
             if cancel_run_kafka_task:
                 self._run_kafka_task.cancel()
             if self._consumer is not None:
-                await self._consumer.stop()
+                self._consumer.close()
             # Give the tasks time to finish cancelling.
             # In particular: give the _read_loop time to
             # decrement self.domain.num_read_loops
@@ -498,8 +544,7 @@ class SalInfo:
                 except Exception:
                     pass
             self.domain.remove_salinfo(self)
-            if self._producer is not None:
-                await self._producer.stop()
+            self._close_kafka()
         except Exception as e:
             print(f"SalInfo.close failed: {e!r}")
             self.log.exception("close failed")
@@ -526,10 +571,9 @@ class SalInfo:
             raise RuntimeError("Cannot add topics after the start called")
         if self.write_only:
             raise RuntimeError("Cannot add read topics to a write-only SalInfo")
-        if topic.attr_name in self._read_topics:
+        if topic.topic_info.kafka_name in self._read_topics:
             raise ValueError(f"Read topic {topic.attr_name} already present")
-        self._read_topics[topic.topic_info.attr_name] = topic
-        self._kafka_name_read_topics[topic.topic_info.kafka_name] = topic
+        self._read_topics[topic.topic_info.kafka_name] = topic
 
     def add_writer(self, topic: topics.WriteTopic) -> None:
         """Add a WriteTopic, so it can be closed by `close`.
@@ -541,9 +585,11 @@ class SalInfo:
         """
         if self.start_called:
             raise RuntimeError("Cannot add topics after the start called")
-        if topic.attr_name in self._write_topics:
-            raise ValueError(f"Write topic {topic.attr_name} already present")
-        self._write_topics[topic.attr_name] = topic
+        if topic.topic_info.kafka_name in self._write_topics:
+            raise ValueError(
+                f"Write topic {topic.topic_info.kafka_name} already present"
+            )
+        self._write_topics[topic.topic_info.kafka_name] = topic
 
     async def start(self) -> None:
         """Start the read loop.
@@ -571,71 +617,32 @@ class SalInfo:
 
         * self._consumer
         * self._producer
-        * self._deserializer
-        * self._serializers
+        * self._deserializers_and_contexts
+        * self._serializers_and_contexts
 
         Register schemas and create missing topics.
 
         Wait for the read loop to finish.
         """
         try:
-            async with aiohttp.TCPConnector(
-                limit_per_host=LIMIT_PER_HOST
-            ) as connector, aiohttp.ClientSession(connector=connector) as session:
-                registry = RegistryApi(url=self.schema_registry_url, session=session)
-                self._deserializer = Deserializer(registry=registry)
+            # Create Kafka topics, serializers, and deserializers.
+            # Set self._serializers_and_contexts and
+            # self._deserializers_and_contexts.
+            await self.loop.run_in_executor(self.pool, func=self._blocking_setup_kafka)
 
-                # A list of Kafka topic names for creating the consumer.
-                read_topic_kafka_names: typing.List[str] = []
-                # A list of TopicInfo for read topics for which historical
-                # data is wanted.
-                read_history_topic_infos: typing.List[TopicInfo] = []
-                for read_topic in self._read_topics.values():
-                    avro_schema = read_topic.topic_info.make_avro_schema()
-                    await registry.register_schema(
-                        schema=avro_schema, subject=read_topic.topic_info.avro_subject
-                    )
-                    read_topic_kafka_names.append(read_topic.topic_info.kafka_name)
-                    if read_topic.max_history > 0:
-                        read_history_topic_infos.append(read_topic.topic_info)
-
-                for write_topic in self._write_topics.values():
-                    avro_schema = write_topic.topic_info.make_avro_schema()
-                    self._serializers[
-                        write_topic.attr_name
-                    ] = await Serializer.register(
-                        registry=registry,
-                        schema=avro_schema,
-                        subject=write_topic.topic_info.avro_subject,
-                    )
-
-                loop = asyncio.get_running_loop()
-                with ThreadPoolExecutor(max_workers=1) as executor:
-                    loop.run_in_executor(
-                        executor=executor, func=self._blocking_create_topics
-                    )
-
-                self._producer = AIOKafkaProducer(
-                    bootstrap_servers=self.kafka_broker_addr,
-                    acks=PRODUCER_WAIT_ACKS,
-                )
-                await self._producer.start()
-                if self.write_only:
-                    if not self.start_task.done():
-                        self.start_task.set_result(None)
-                    await asyncio.Future()
-                else:
-                    self._consumer = AIOKafkaConsumer(
-                        *read_topic_kafka_names,
-                        bootstrap_servers=self.kafka_broker_addr,
-                    )
-                    await self._consumer.start()
-                    self._read_loop_task = asyncio.create_task(self._read_loop())
-                    await self._read_loop_task
+            if not self._read_topics:
+                # Note: if there are read topics,
+                # self.start_task is set done in self._read_loop
+                if not self.start_task.done():
+                    self.start_task.set_result(None)
+                await asyncio.Future()
+            else:
+                self._read_loop_task = asyncio.create_task(self._read_loop())
+                await self._read_loop_task
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f"_run_kafka failed: {e!r}")
+            print(f"{self}._run_kafka failed: {e!r}")
             traceback.print_exc()
             if not self.start_task.done():
                 self.start_task.set_exception(e)
@@ -644,38 +651,343 @@ class SalInfo:
         finally:
             await self.close(cancel_run_kafka_task=False)
 
+    def _blocking_setup_kafka(self) -> None:
+        """Set up Kafka.
+
+        Create topics in the Kafka broker.
+        Register topic schemas with the Kafka schema registry.
+        CCreate serializers and deserializers.
+        Create a consumer if there are any read topics.
+        Create a producer if there are any write topics.
+
+        Set the following attributes:
+
+        * _consumer, if there are any read topics
+        * _producer, if there are any write topics
+        * _deserializers_and_contexts
+        * _serializers_and_contexts
+        """
+        self._blocking_create_topics()
+        self._schema_registry_client = SchemaRegistryClient(
+            dict(url=self.schema_registry_url)
+        )
+        self._blocking_register_schema(
+            schema_registry_client=self._schema_registry_client
+        )
+        self._blocking_create_deserializers(
+            schema_registry_client=self._schema_registry_client
+        )
+        self._blocking_create_serializers(
+            schema_registry_client=self._schema_registry_client
+        )
+
+        self._blocking_create_producer()
+        self._blocking_create_consumer()
+
     def _blocking_create_topics(self) -> None:
-        """Create missing Kafka topics."""
-        # Dict of kafka topic name: topic_info
-        topic_info_dict = {
+        """Create missing Kafka topics for this SAL component."""
+        # A dict of kafka_name: topic_info.
+        # This elides duplicate names between self._read_topics
+        # and self._write_topics
+        topic_infos = {
             topic.topic_info.kafka_name: topic.topic_info
             for topic in itertools.chain(
                 self._read_topics.values(), self._write_topics.values()
             )
         }
-        new_topics_info = [
+        if not topic_infos:
+            return
+
+        # List of NewTopic instances, one per non-duplicate topic
+        new_topic_list = [
             NewTopic(
-                topic_info.kafka_name,
+                topic=topic_info.kafka_name,
                 num_partitions=topic_info.partitions,
                 replication_factor=1,
             )
-            for topic_info in topic_info_dict.values()
+            for topic_info in topic_infos.values()
         ]
-        broker_client = AdminClient({"bootstrap.servers": self.kafka_broker_addr})
-        if new_topics_info:
-            create_result = broker_client.create_topics(new_topics_info)
-            for topic_name, future in create_result.items():
-                exception = future.exception()
-                if exception is None:
-                    continue
-                elif (
-                    isinstance(exception.args[0], KafkaError)
-                    and exception.args[0].code() == KafkaError.TOPIC_ALREADY_EXISTS
-                ):
-                    pass
+        # Create all topics for the SAL component, ignoring the exception
+        # raised if the topic already exists. Two alternatives are:
+        # * Get a list of all topics and only create missing topics.
+        #   That works, but the list of existing topics is likely to be long,
+        #   because it will include topics for all SAL components seen so far.
+        # * Rely on automatic registration of new topics.
+        #   That has two problems: we can't set non-default num_partitions,
+        #   and it can cause ugly warnings.
+        broker_client = AdminClient(
+            {"bootstrap.servers": self.kafka_broker_addr, "api.version.request": True}
+        )
+        create_result = broker_client.create_topics(new_topic_list)
+        for kafka_name, future in create_result.items():
+            exception = future.exception()
+            if exception is None:
+                # Topic created; that's good
+                continue
+            elif (
+                isinstance(exception.args[0], KafkaError)
+                and exception.args[0].code() == KafkaError.TOPIC_ALREADY_EXISTS
+            ):
+                # Topic already exists; that's fine
+                pass
+            else:
+                self.log.exception(
+                    f"Failed to create topic {kafka_name}: {exception!r}"
+                )
+                raise exception
+        # The existence of the poll method is not documented, but failing
+        # to call it causes tests/test_speed.py test_write to fail.
+        broker_client.poll(1)
+
+    def _blocking_create_consumer(self) -> None:
+        """Create self._consumer and subscribe to topics.
+
+        Also schedule self._blocking_on_assign_callback to fire when partitions
+        are assigned (since the task cannot be done earlier).
+
+        A no-op if there are no read topics.
+        """
+        if not self._read_topics:
+            return
+
+        self._consumer = Consumer(
+            {
+                "group.id": get_random_string(),
+                "bootstrap.servers": self.kafka_broker_addr,
+                "allow.auto.create.topics": False,
+            }
+        )
+
+        read_topic_names = list(self._read_topics.keys())
+        self._consumer.subscribe(
+            read_topic_names, on_assign=self._blocking_on_assign_callback
+        )
+
+    def _blocking_create_producer(self) -> None:
+        """Create self._producer.
+
+        A no-op if there are not write topics.
+        """
+        if not self._write_topics:
+            return
+
+        self._producer = Producer(
+            {
+                "acks": PRODUCER_WAIT_ACKS,
+                "queue.buffering.max.ms": 0,
+                "bootstrap.servers": self.kafka_broker_addr,
+            }
+        )
+        # Work around https://github.com/confluentinc/
+        # confluent-kafka-dotnet/issues/701
+        # a 1 second delay in the first message for a topic.
+        self._producer.list_topics()
+
+    def _blocking_register_schema(
+        self, schema_registry_client: SchemaRegistryClient
+    ) -> None:
+        """Register Avro schemas for all topics."""
+        for topic in itertools.chain(
+            self._read_topics.values(), self._write_topics.values()
+        ):
+            topic_info = topic.topic_info
+            schema = Schema(json.dumps(topic_info.make_avro_schema()), "AVRO")
+            schema_registry_client.register_schema(topic_info.avro_subject, schema)
+
+    def _blocking_create_deserializers(
+        self, schema_registry_client: SchemaRegistryClient
+    ) -> None:
+        """Create Kafka deserializers for read topics.
+
+        Set self._deserializers_and_contexts
+        """
+        # Use a temporary variable to accumlate the info,
+        # because this runs in a background thread
+        deserializers_and_contexts = {
+            topic.topic_info.kafka_name: (
+                AvroDeserializer(
+                    schema_registry_client=schema_registry_client,
+                    schema_str=json.dumps(topic.topic_info.make_avro_schema()),
+                ),
+                SerializationContext(
+                    topic=topic.topic_info.kafka_name, field=MessageField.VALUE
+                ),
+            )
+            for topic in self._read_topics.values()
+        }
+        self._deserializers_and_contexts = deserializers_and_contexts
+
+    def _blocking_create_serializers(
+        self, schema_registry_client: SchemaRegistryClient
+    ) -> None:
+        """Create Kafka serializers for write topics.
+
+        Set self._serializers_and_contexts
+        """
+        # Use a temporary variable to accumlate the info,
+        # because this runs in a background thread
+        serializers_and_contexts = {
+            topic.topic_info.kafka_name: (
+                AvroSerializer(
+                    schema_registry_client=schema_registry_client,
+                    schema_str=json.dumps(topic.topic_info.make_avro_schema()),
+                    conf={"auto.register.schemas": False},
+                ),
+                SerializationContext(
+                    topic=topic.topic_info.kafka_name, field=MessageField.VALUE
+                ),
+            )
+            for topic in self._write_topics.values()
+        }
+        self._serializers_and_contexts = serializers_and_contexts
+
+    def _blocking_on_assign_callback(
+        self, consumer: Consumer, partitions: list[TopicPartition]
+    ) -> None:
+        """Set partition offsets to read historical data.
+
+        Intended as the Consumer.subscribe on_assign callback function.
+
+        Parameters
+        ----------
+        consumer
+            Kafka consumer (ignored).
+        partitions
+            List of TopicPartitions assigned to self._consumer.
+
+        Notes
+        -----
+        Read the current low and high watermarks for each topic.
+        For topics that want history and have existing data,
+        record the high watermark in ``self._history_position``.
+        Adjust the offset of the partitions to get the desired
+        amount of historical data.
+
+        Note: the on_assign callback must call self._consumer.assign
+        with all partitions passed in, and it also must set the ``offset``
+        attribute of each of these partitions, regardless if whether want
+        historical data for that topic.
+        """
+        if self.on_assign_called:
+            self.log.warning("on_assign called again; we may lose some data")
+            # We must call self._consumer.assign in order to continue reading,
+            # but do not want any more historical data.
+            read_history_topics = set()
+        else:
+            self.on_assign_called = True
+            # Kafka topic names for topics for which we want history
+            read_history_topics = {
+                read_topic.topic_info.kafka_name
+                for read_topic in self._read_topics.values()
+                if read_topic.max_history > 0
+            }
+
+        assert self._consumer is not None  # Make mypy happy
+
+        # Local copy of self._history_offsets
+        # (needed because this code runs in a thread)
+        history_offsets: dict[str, int] = dict()
+
+        for partition in partitions:
+            min_offset, max_offset = self._consumer.get_watermark_offsets(
+                partition, cached=False
+            )
+            # print(
+            #     f"{self.index} {partition.topic} "
+            #     f"{min_offset=}, {max_offset=}"
+            # )
+            if max_offset <= 0:
+                # No data yet written, and we want all new data.
+                # Use OFFSET_BEGINNING in case new data arrives
+                # while we are assigning.
+                partition.offset = OFFSET_BEGINNING
+                continue
+
+            if partition.topic not in read_history_topics:
+                # No historical data wanted; start from now
+                partition.offset = max_offset
+            else:
+                if self.indexed:
+                    max_history = MAX_HISTORY_READ
                 else:
-                    print(f"Failed to create topic {topic_name}: {exception!r}")
-                    raise exception
+                    max_history = self._read_topics[partition.topic].max_history
+                desired_offset = max_offset - max_history
+                if desired_offset <= min_offset:
+                    desired_offset = OFFSET_BEGINNING
+                partition.offset = desired_offset
+            history_offsets[partition.topic] = max_offset - 1
+
+        # Sort of like seek, but simpler
+        self._consumer.assign(partitions)
+        # print(f"{self.index} assign:")
+        # for partition in partitions:
+        #     print(f"  {partition}")
+
+        self._history_offsets = history_offsets
+        # print(f"{self.index} {history_offsets=}")
+
+        # Give threads time to work
+        if not self.start_task.done():
+            self.loop.call_soon_threadsafe(self.start_task.set_result, None)
+
+    def _blocking_write(
+        self,
+        topic_info: TopicInfo,
+        data_dict: dict[str, typing.Any],
+        future: asyncio.Future,
+    ) -> None:
+        """Write a Kafka message and wait for acknowledgement.
+
+        kafka_name : `str`
+            Kafka topic name.
+        raw_data : `bytes`
+            Raw data to write.
+        future : `asyncio.Future`
+            Future to set done when the data has been acknowledged.
+        """
+        assert self._producer is not None  # Make mypy happy
+
+        kafka_name = topic_info.kafka_name
+        serializer, serialization_context = self._serializers_and_contexts[kafka_name]
+        raw_data = serializer(data_dict, serialization_context)
+
+        t0 = time.monotonic()
+
+        def callback(err: KafkaError, _: Message) -> None:
+            if err:
+                self.loop.call_soon_threadsafe(
+                    future.set_exception, KafkaException(err)
+                )
+            else:
+                self.loop.call_soon_threadsafe(future.set_result, None)
+                dt = time.monotonic() - t0
+                if dt > 0.1:
+                    print(
+                        f"warning: {self.index} write {kafka_name} took {dt:0.2f} seconds"
+                    )
+                # else:
+                #     print(
+                #         f"{data_dict['private_sndStamp']:0.2f} {self.index} "
+                #         f"write {kafka_name} took {dt:0.2f} seconds"
+                #     )
+
+        self._producer.produce(kafka_name, raw_data, on_delivery=callback)
+        self._producer.flush()
+
+    def _close_kafka(self) -> None:
+        """Close the Kafka objects and shut down self.pool.
+
+        Destroying the Kafka objects prevents pytest from accumulating
+        threads as it runs.
+        """
+        if self._producer is not None:
+            self._producer.purge()
+        self._producer = None
+        self._consumer = None
+        self._serializers_and_contexts = dict()
+        self._deserializers_and_contexts = dict()
+        self._schema_registry_client = None
+        self.pool.shutdown(cancel_futures=True)
 
     async def _read_loop(self) -> None:
         """Read and process messages."""
@@ -684,174 +996,118 @@ class SalInfo:
             self.log.error("No consumer; quitting")
             return
         try:
-            # Prepare to read historical data
-            read_history_topic_infos = [
-                read_topic.topic_info
-                for read_topic in self._read_topics.values()
-                if read_topic.max_history > 0
-            ]
-
-            # Dict of attr_name: Kafka position
-            # for topics for which we want historical data
-            # and historical data is available (position > 0)
-            position_dict: typing.Dict[str, int] = dict()
-
+            # Read historial and new data
             read_history_start_monotonic = time.monotonic()
 
-            if read_history_topic_infos:
-                # Historical data is wanted for one or more topics.
+            sequential_read_errors = 0
 
-                # Dict of topic attr_name: TopicPartition
-                topic_partitions: typing.Dict[str, TopicPartition] = dict()
-                for topic_info in read_history_topic_infos:
-                    partition_ids = self._consumer.partitions_for_topic(
-                        topic_info.kafka_name
-                    )
-                    # Handling multiple partitions is too much effort
-                    if len(partition_ids) > 1:
-                        self.log.warning(
-                            f"More than one partition for {topic_info.kafka_name}; "
-                            "cannot get late-joiner data"
-                        )
-                        continue
-                    partition_id = list(partition_ids)[0]
-                    topic_partitions[topic_info.attr_name] = TopicPartition(
-                        topic_info.kafka_name, partition_id
-                    )
-
-                # Seek back for all topics for which we want
-                # historical data.
-                # If the component is indexed then we read a lot of
-                # historical messages, to try to get the most recent
-                # message for each SAL index. We only need to go back
-                # ReadTopic.max_history message for non-indexed
-                # components.
-                for attr_name, partition in topic_partitions.items():
-                    if not self.indexed:
-                        max_history = self._read_topics[attr_name].max_history
-                        assert max_history > 0
-                    else:
-                        max_history = MAX_HISTORY_READ
-
-                    position = await self._consumer.position(partition)
-                    if position == 0:
-                        # No historical data is available
-                        continue
-                    position_dict[attr_name] = position
-
-                    self._consumer.seek(
-                        partition=partition,
-                        offset=max(0, position - max_history),
-                    )
-
-            # At this point we have know where each topic starts.
-            # It is safe to let others use this object.
-            if not self.start_task.done():
-                self.start_task.set_result(None)
-            await asyncio.sleep(0)
-
-            if not self.indexed:
-                # We don't need to read the historical data because
-                # it will safely show up in the first regular read.
-                # Free the event loop now so other tasks can run
-                # (including Controller assigning a SalLogHandler).
-                await asyncio.sleep(0)
-
-            elif self.index == 0:
-                # An indexed component with index=0.
-                # Record the most recent value for each index in
-                # historical_data_dicts (starting with the oldest),
-                # resulting in the most recent message for each index.
-                # Feed those messages to the reader.
-                for attr_name, position in position_dict.items():
-                    read_topic = self._read_topics[attr_name]
-                    partition = topic_partitions[attr_name]
-
-                    # Dict of SAL index: historical data dict
-                    historical_data_dicts: typing.Dict[
-                        int, typing.Dict[str, typing.Any]
-                    ] = dict()
-
-                    end_position = position - 1
-                    while True:
-                        raw_data = await self._consumer.getone(partition)
-                        full_data = await self._deserializer.deserialize(raw_data.value)
-                        data_dict = full_data["message"]
-                        data_dict["private_rcvStamp"] = utils.current_tai()
-                        historical_data_dicts[data_dict["salIndex"]] = data_dict
-
-                        if raw_data.offset == end_position:
-                            # We have read all historical data
-                            # for this topic
-                            break
-
-                    data_list = [
-                        read_topic.DataType(**data_dict)
-                        for data_dict in historical_data_dicts.values()
-                    ]
-                    read_topic._queue_data(data_list)
-            else:
-                # An indexed component with non-zero SAL index.
-                # Read the history and ignore all messages
-                # with a different SAL index.
-                for attr_name, position in position_dict.items():
-                    # Read all the history, accumulating the
-                    # read_topic.max_history most recent messages
-                    read_topic = self._read_topics[attr_name]
-                    partition = topic_partitions[attr_name]
-
-                    end_position = position - 1
-                    # A queue of the max_history most recent
-                    # messages with this SAL index
-                    data_dict_queue: typing.Deque[
-                        typing.Dict[str, typing.Any]
-                    ] = collections.deque(maxlen=read_topic.max_history)
-                    while True:
-                        raw_data = await self._consumer.getone(partition)
-                        full_data = await self._deserializer.deserialize(raw_data.value)
-                        data_dict = full_data["message"]
-                        if data_dict["salIndex"] == self.index:
-                            data_dict["private_rcvStamp"] = utils.current_tai()
-                            data_dict_queue.append(data_dict)
-
-                        if raw_data.offset == end_position:
-                            # We have read all historical data
-                            # for this topic
-                            break
-
-                    if data_dict_queue:
-                        data_list = [
-                            read_topic.DataType(**data_dict)
-                            for data_dict in data_dict_queue
-                        ]
-                        read_topic._queue_data(data_list)
-
-            read_history_duration = time.monotonic() - read_history_start_monotonic
-
-            # Note: this is a bit of a cheat for a non-indexed
-            # SAL component, because the historical data is
-            # actually going to be the first sample seen
-            # in the normal read loop below. I think it beats
-            # duplicating that read code.
-            self.log.info(
-                f"Reading historic data took {read_history_duration:0.2f} seconds"
-            )
-
-            async for raw_data in self._consumer:  # type: ignore
-                read_topic = self._kafka_name_read_topics[raw_data.topic]
-                full_data = await self._deserializer.deserialize(raw_data.value)
-                data_dict = full_data["message"]
-                if self.index != 0 and self.index != data_dict["salIndex"]:
+            while True:
+                message = await self.loop.run_in_executor(
+                    self.pool, self._consumer.poll, 0.1
+                )
+                if message is None:
                     continue
+                message_error = message.error()
+                if message_error is not None:
+                    sequential_read_errors += 1
+                    self.log.warning(
+                        f"Ignoring Kafka message with error {message_error!r}"
+                    )
+                    if sequential_read_errors > MAX_SEQUENTIAL_READ_ERRORS:
+                        raise RuntimeError("Too many sequential read errors; giving up")
+                    continue
+
+                kafka_name = message.topic()
+                if kafka_name is None:
+                    sequential_read_errors += 1
+                    self.log.warning("Ignoring Kafka message with null topic name")
+                    if sequential_read_errors > MAX_SEQUENTIAL_READ_ERRORS:
+                        raise RuntimeError("Too many sequential read errors; giving up")
+                    continue
+
+                sequential_read_errors = 0
+
+                # print(
+                #     f"{self.index} read {kafka_name}\n"
+                #     f"serialized={message.value()}"
+                # )
+
+                read_topic = self._read_topics[kafka_name]
+
+                deserializer, context = self._deserializers_and_contexts[kafka_name]
+                try:
+                    data_dict = deserializer(message.value(), context)
+                except SchemaResolutionError as e:
+                    self.log.error(
+                        f"failed to deserialized {kafka_name} {message.value()}: {e!r}"
+                    )
+                    raise
                 data_dict["private_rcvStamp"] = utils.current_tai()
                 data = read_topic.DataType(**data_dict)
-                read_topic._queue_data([data])
+
+                # print(
+                #     f"{utils.current_tai():0.2f} "
+                #     f"{self.index} read {kafka_name} with index="
+                #     f"{data_dict.get('salIndex')}, offset={message.offset()}"
+                # )
+
+                history_offset = self._history_offsets.get(kafka_name)
+                if history_offset is None:
+                    if self.index != 0 and self.index != data.salIndex:
+                        # Ignore data with mismatched index
+                        # print(
+                        #     f"{self.index} ignore new {kafka_name}; "
+                        #     f"mismatched index={data.salIndex}"
+                        # )
+                        continue
+
+                    # This is the normal case once we've read all history
+                    # print(f"{self.index} queue new {kafka_name} data")
+                    read_topic._queue_data([data])
+                    continue
+
+                offset = message.offset()
+                if offset is None:
+                    raise RuntimeError(
+                        f"Cannot get offset of message for topic {kafka_name}"
+                    )
+
+                if self.indexed and (self.index == 0 or self.index == data.salIndex):
+                    self._history_index_data[kafka_name][data.salIndex] = data
+
+                if offset >= history_offset:
+                    # We're done with history for this topic
+                    del self._history_offsets[kafka_name]
+
+                    if self.indexed:
+                        # Publish the most recent historical message seen
+                        # for each index (data with mis-matched index
+                        # was not put into index_data, so it's all valid).
+                        index_data = self._history_index_data.pop(kafka_name, None)
+                        if index_data is not None:
+                            for hist_data in index_data.values():
+                                # print(
+                                #     f"{self.index} queue hist {kafka_name} "
+                                #     f"with index={hist_data.salIndex}"
+                                # )
+                                read_topic._queue_data([hist_data])
+                    else:
+                        read_topic._queue_data([data])
+
+                    if not self._history_offsets:
+                        read_history_duration = (
+                            time.monotonic() - read_history_start_monotonic
+                        )
+                        self.log.info(
+                            f"Reading historic data took {read_history_duration:0.2f} seconds"
+                        )
+
         except asyncio.CancelledError:
             if not self.start_task.done():
                 self.start_task.cancel()
             raise
         except Exception as e:
-            print(f"read_loop failed: {e!r}")
+            print(f"{self} read_loop failed: {e!r}")
             traceback.print_exc()
             if not self.start_task.done():
                 self.start_task.set_exception(e)
@@ -861,7 +1117,7 @@ class SalInfo:
             self.domain.num_read_loops -= 1
 
     async def write_data(
-        self, topic_info: TopicInfo, data_dict: typing.Dict[str, typing.Any]
+        self, topic_info: TopicInfo, data_dict: dict[str, typing.Any]
     ) -> None:
         """Write a message.
 
@@ -872,14 +1128,16 @@ class SalInfo:
         data_dict : dict[str, Any]
             Message to write, as a dict that matches the Avro topic schema.
         """
+        self.assert_running()
+
         try:
-            serializer = self._serializers[topic_info.attr_name]
-            data_bytes = serializer(data_dict)
-            assert self._producer is not None  # make mypy happy
-            await self._producer.send_and_wait(topic_info.kafka_name, value=data_bytes)
-        except Exception as e:
-            print(f"write_data {topic_info.attr_name} failed: {e!r}")
-            traceback.print_exc()
+            future = self.loop.create_future()
+            await self.loop.run_in_executor(
+                self.pool, self._blocking_write, topic_info, data_dict, future
+            )
+            await future
+
+        except Exception:
             self.log.exception(
                 f"write_data(topic_info={topic_info}, data_dict={data_dict} failed"
             )
@@ -892,9 +1150,9 @@ class SalInfo:
 
     async def __aexit__(
         self,
-        type: typing.Type[BaseException] | None,
-        value: BaseException | None,
-        traceback: types.TracebackType | None,
+        type: None | BaseException,
+        value: None | BaseException,
+        traceback: None | types.TracebackType,
     ) -> None:
         await self.close()
 
