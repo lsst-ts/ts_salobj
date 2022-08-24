@@ -777,8 +777,12 @@ class SalInfo:
                 List of messages.
         """
         conditions = self._waitset.wait(self._wait_timeout)
+
         ret: list[tuple[topics.ReadTopic, list[type_hints.BaseMsgType]]] = []
         for condition in conditions:
+            if not self.isopen:
+                # shutting down; discard any read data and quit
+                return []
             reader = self._reader_dict.get(condition)
             if reader is None or not reader.isopen:
                 continue
@@ -788,12 +792,8 @@ class SalInfo:
             data_list = [
                 self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data
             ]
-            if not data_list:
+            if data_list:
                 ret.append((reader, data_list))
-
-        if not self.isopen:
-            # shutting down; clean everything up
-            return []
 
         return ret
 
