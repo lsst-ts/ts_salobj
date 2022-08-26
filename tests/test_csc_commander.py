@@ -32,7 +32,7 @@ from lsst.ts import salobj
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.
-STD_TIMEOUT = 60
+STD_TIMEOUT = 20
 
 np.random.seed(47)
 

@@ -32,7 +32,7 @@ from lsst.ts import utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
-STD_TIMEOUT = 60
+STD_TIMEOUT = 20
 
 index_gen = utils.index_generator()
 

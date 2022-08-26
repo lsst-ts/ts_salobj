@@ -42,7 +42,7 @@ from .csc_utils import get_expected_summary_states
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.
-STD_TIMEOUT = 60
+STD_TIMEOUT = 20
 
 
 class BaseCscTestCase(metaclass=abc.ABCMeta):
