@@ -78,7 +78,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def basic_make_csc(
         self,
-        initial_state: sal_enums.State | int,
+        initial_state: None | sal_enums.State | int,
         config_dir: str | pathlib.Path | None,
         simulation_mode: int,
         **kwargs: typing.Any,
@@ -107,7 +107,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     @contextlib.asynccontextmanager
     async def make_csc(
         self,
-        initial_state: sal_enums.State = sal_enums.State.STANDBY,
+        initial_state: None | sal_enums.State | int = None,
         config_dir: str | pathlib.Path | None = None,
         simulation_mode: int = 0,
         log_level: int | None = None,
@@ -118,19 +118,13 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         The csc is accessed as ``self.csc`` and the remote as ``self.remote``.
 
-        The topics in `self.remote` will queue all telemetry and events
-        from when the CSC is constructed, with one exception:
-        self.remote.evt_summaryState will only have the final summary state,
-        because earlier values are read and checked against the expected
-        startup states. (The final summary state is left queued for backwards
-        compatibility.)
-
         Parameters
         ----------
         name : `str`
             Name of SAL component.
         initial_state : `lsst.ts.salobj.State` or `int`, optional
-            The initial state of the CSC. Defaults to STANDBY.
+            The initial state of the CSC.
+            If None use the CSC's default initial state.
         config_dir : `str`, optional
             Directory of configuration files, or `None` (the default)
             for the standard configuration directory (obtained from
@@ -172,6 +166,13 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             items_to_close.append(self.csc)
 
             # Create and start the remote
+            await asyncio.wait_for(self.csc.start_task, timeout=timeout)
+            if log_level is not None:
+                self.csc.log.setLevel(log_level)
+            print("CSC has started")
+
+            # Start the remote after the CSC is fully started
+            # so that the remote sees only the final state
             self.remote = Remote(
                 domain=self.csc.domain,
                 name=self.csc.salinfo.name,
@@ -180,29 +181,18 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             items_to_close.append(self.remote)
             await asyncio.wait_for(self.remote.start_task, timeout=timeout)
 
-            # Allow the CSC to start.
-            self.csc.delay_start_event.set()
-            await asyncio.wait_for(self.csc.start_task, timeout=timeout)
+            async def wait_for_summary_state():
+                while True:
+                    summary_state = self.remote.evt_summaryState.get()
+                    if summary_state is not None:
+                        return summary_state
+                    await asyncio.sleep(0.1)
 
-            if log_level is not None:
-                self.csc.log.setLevel(log_level)
-
-            await asyncio.wait_for(
-                asyncio.gather(self.csc.start_task, self.remote.start_task),
-                timeout=timeout,
-            )
-
-            if initial_state != self.csc.default_initial_state:
-                assert initial_state is not None
-                # Check all expected summary states expect the final state.
-                # That is omitted for backwards compatibility.
-                expected_states = get_expected_summary_states(
-                    initial_state=self.csc.default_initial_state,
-                    final_state=initial_state,
-                )[:-1]
-                for state in expected_states:
-                    await self.assert_next_summary_state(state)
-
+            summary_state = await asyncio.wait_for(wait_for_summary_state(), timeout=2)
+            if initial_state is None:
+                assert summary_state.summaryState == self.csc.default_initial_state
+            else:
+                assert summary_state.summaryState == initial_state
             yield
         except Exception as e:
             print(f"BaseCscTestCase.make_csc failed: {e!r}")

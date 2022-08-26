@@ -61,8 +61,9 @@ class BaseCsc(Controller):
         at startup (before starting the heartbeat loop)?
         Defaults to False in order to speed up unit tests,
         but `amain` sets it true.
-    initial_state : `State` or `int`, optional
+    initial_state : `State`, `int` or `None`, optional
         Initial state for this CSC.
+        If None use the class attribute ``default_initial_state``.
         Typically `State.STANDBY` (or `State.OFFLINE` for an
         externally commandable CSC) but can also be
         `State.DISABLED`, or `State.ENABLED`,
@@ -177,9 +178,8 @@ class BaseCsc(Controller):
     def __init__(
         self,
         name: str,
-        index: int | None = None,
+        index: None | int = None,
         check_if_duplicate: bool = False,
-        initial_state: State = State.STANDBY,
         override: str = "",
         simulation_mode: int = 0,
         allow_missing_callbacks: bool = False,
@@ -193,6 +193,8 @@ class BaseCsc(Controller):
 
         # Cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
+        if initial_state is None:
+            initial_state = self.default_initial_state
         initial_state = State(initial_state)
         if initial_state == State.FAULT:
             raise ValueError("initial_state cannot be FAULT")
