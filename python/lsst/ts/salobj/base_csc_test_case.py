@@ -41,7 +41,7 @@ from .topics.read_topic import ReadTopic
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.
-STD_TIMEOUT = 60
+STD_TIMEOUT = 20
 
 
 class BaseCscTestCase(metaclass=abc.ABCMeta):
