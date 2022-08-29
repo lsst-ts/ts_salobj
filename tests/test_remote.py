@@ -57,119 +57,124 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
                 f"tel_{name}" for name in all_telemetry_names
             )
 
-            # specify neither include nor exclude;
-            # the remote should have all topics
-            async with salobj.Remote(
+            # remote0 specifies neither include nor exclude;
+            # it should have everything
+            remote0 = salobj.Remote(
                 domain=domain, name="Test", index=index, start=False
-            ) as remote:
-                remote_command_names = set(
-                    [name for name in dir(remote) if name.startswith("cmd_")]
-                )
-                assert remote_command_names == all_command_method_names
-                remote_event_names = set(
-                    [name for name in dir(remote) if name.startswith("evt_")]
-                )
-                assert remote_event_names == all_event_method_names
-                remote_telemetry_names = set(
-                    [name for name in dir(remote) if name.startswith("tel_")]
-                )
-                assert remote_telemetry_names == all_telemetry_method_names
+            )
+            remote_command_names = set(
+                [name for name in dir(remote0) if name.startswith("cmd_")]
+            )
+            assert remote_command_names == all_command_method_names
+            remote_event_names = set(
+                [name for name in dir(remote0) if name.startswith("evt_")]
+            )
+            assert remote_event_names == all_event_method_names
+            remote_telemetry_names = set(
+                [name for name in dir(remote0) if name.startswith("tel_")]
+            )
+            assert remote_telemetry_names == all_telemetry_method_names
 
             # specify the include argument
             include = ["errorCode", "scalars"]
-            async with salobj.Remote(
+            remote1 = salobj.Remote(
                 domain=domain, name="Test", index=index, include=include, start=False
-            ) as remote:
-                remote_command_names = set(
-                    [name for name in dir(remote) if name.startswith("cmd_")]
-                )
-                assert remote_command_names == all_command_method_names
-                remote_event_names = set(
-                    [name for name in dir(remote) if name.startswith("evt_")]
-                )
-                assert remote_event_names == set(
-                    f"evt_{name}" for name in include if name in all_event_names
-                )
-                remote_telemetry_names = set(
-                    [name for name in dir(remote) if name.startswith("tel_")]
-                )
-                assert remote_telemetry_names == set(
-                    f"tel_{name}" for name in include if name in all_telemetry_names
-                )
+            )
+            remote1_command_names = set(
+                [name for name in dir(remote1) if name.startswith("cmd_")]
+            )
+            assert remote1_command_names == all_command_method_names
+            remote1_event_names = set(
+                [name for name in dir(remote1) if name.startswith("evt_")]
+            )
+            assert remote1_event_names == set(
+                f"evt_{name}" for name in include if name in all_event_names
+            )
+            remote1_telemetry_names = set(
+                [name for name in dir(remote1) if name.startswith("tel_")]
+            )
+            assert remote1_telemetry_names == set(
+                f"tel_{name}" for name in include if name in all_telemetry_names
+            )
+            await remote1.close()
 
             # specify the exclude argument
             exclude = ["errorCode", "arrays"]
-            async with salobj.Remote(
+            remote2 = salobj.Remote(
                 domain=domain, name="Test", index=index, exclude=exclude, start=False
-            ) as remote:
-                remote_command_names = set(
-                    [name for name in dir(remote) if name.startswith("cmd_")]
-                )
-                assert remote_command_names == all_command_method_names
-                remote_event_names = set(
-                    [name for name in dir(remote) if name.startswith("evt_")]
-                )
-                assert remote_event_names == set(
-                    f"evt_{name}" for name in all_event_names if name not in exclude
-                )
-                remote_telemetry_names = set(
-                    [name for name in dir(remote) if name.startswith("tel_")]
-                )
-                assert remote_telemetry_names == set(
-                    f"tel_{name}" for name in all_telemetry_names if name not in exclude
-                )
+            )
+            remote2_command_names = set(
+                [name for name in dir(remote2) if name.startswith("cmd_")]
+            )
+            assert remote2_command_names == all_command_method_names
+            remote2_event_names = set(
+                [name for name in dir(remote2) if name.startswith("evt_")]
+            )
+            assert remote2_event_names == set(
+                f"evt_{name}" for name in all_event_names if name not in exclude
+            )
+            remote2_telemetry_names = set(
+                [name for name in dir(remote2) if name.startswith("tel_")]
+            )
+            assert remote2_telemetry_names == set(
+                f"tel_{name}" for name in all_telemetry_names if name not in exclude
+            )
+            await remote2.close()
 
-            # omit commands
-            async with salobj.Remote(
+            # remote3 omits commands
+            remote3 = salobj.Remote(
                 domain=domain, name="Test", index=index, readonly=True, start=False
-            ) as remote:
-                remote_command_names = set(
-                    [name for name in dir(remote) if name.startswith("cmd_")]
-                )
-                assert remote_command_names == set()
-                remote_event_names = set(
-                    [name for name in dir(remote) if name.startswith("evt_")]
-                )
-                assert remote_event_names == all_event_method_names
-                remote_telemetry_names = set(
-                    [name for name in dir(remote) if name.startswith("tel_")]
-                )
-                assert remote_telemetry_names == all_telemetry_method_names
+            )
+            remote_command_names = set(
+                [name for name in dir(remote3) if name.startswith("cmd_")]
+            )
+            assert remote_command_names == set()
+            remote_event_names = set(
+                [name for name in dir(remote3) if name.startswith("evt_")]
+            )
+            assert remote_event_names == all_event_method_names
+            remote_telemetry_names = set(
+                [name for name in dir(remote3) if name.startswith("tel_")]
+            )
+            assert remote_telemetry_names == all_telemetry_method_names
+            await remote3.close()
 
-            # specify include=[]
-            async with salobj.Remote(
+            # remote4 uses include=[]
+            remote4 = salobj.Remote(
                 domain=domain, name="Test", index=index, include=[], start=False
-            ) as remote:
-                remote_command_names = set(
-                    [name for name in dir(remote) if name.startswith("cmd_")]
-                )
-                assert remote_command_names == all_command_method_names
-                remote_event_names = set(
-                    [name for name in dir(remote) if name.startswith("evt_")]
-                )
-                assert remote_event_names == set()
-                remote_telemetry_names = set(
-                    [name for name in dir(remote) if name.startswith("tel_")]
-                )
-                assert remote_telemetry_names == set()
+            )
+            remote_command_names = set(
+                [name for name in dir(remote4) if name.startswith("cmd_")]
+            )
+            assert remote_command_names == all_command_method_names
+            remote_event_names = set(
+                [name for name in dir(remote4) if name.startswith("evt_")]
+            )
+            assert remote_event_names == set()
+            remote_telemetry_names = set(
+                [name for name in dir(remote4) if name.startswith("tel_")]
+            )
+            assert remote_telemetry_names == set()
+            await remote4.close()
 
             # specify exclude=[] (though there is no reason to doubt
             # that it will work the same as exclude=None)
-            async with salobj.Remote(
+            remote5 = salobj.Remote(
                 domain=domain, name="Test", index=index, exclude=[], start=False
-            ) as remote:
-                remote_command_names = set(
-                    [name for name in dir(remote) if name.startswith("cmd_")]
-                )
-                assert remote_command_names == all_command_method_names
-                remote_event_names = set(
-                    [name for name in dir(remote) if name.startswith("evt_")]
-                )
-                assert remote_event_names == all_event_method_names
-                remote_telemetry_names = set(
-                    [name for name in dir(remote) if name.startswith("tel_")]
-                )
-                assert remote_telemetry_names == all_telemetry_method_names
+            )
+            remote_command_names = set(
+                [name for name in dir(remote5) if name.startswith("cmd_")]
+            )
+            assert remote_command_names == all_command_method_names
+            remote_event_names = set(
+                [name for name in dir(remote5) if name.startswith("evt_")]
+            )
+            assert remote_event_names == all_event_method_names
+            remote_telemetry_names = set(
+                [name for name in dir(remote5) if name.startswith("tel_")]
+            )
+            assert remote_telemetry_names == all_telemetry_method_names
+            await remote5.close()
 
             # make sure one cannot specify both include and exclude
             with pytest.raises(ValueError):
@@ -197,23 +202,25 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_default_max_history(self) -> None:
         """Test default evt_max_history ctor argument."""
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.Remote(
-            domain=domain, name="Test", index=index, start=False
-        ) as remote:
+        async with salobj.Domain() as domain:
+            remote = salobj.Remote(domain=domain, name="Test", index=index, start=False)
             self.assert_max_history(remote)
+            await remote.close()
 
     async def test_evt_max_history(self) -> None:
         """Test non-default evt_max_history Remote constructor argument."""
         evt_max_history = 0
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.Remote(
-            domain=domain,
-            name="Test",
-            index=index,
-            evt_max_history=evt_max_history,
-            start=False,
-        ) as remote:
+        async with salobj.Domain() as domain:
+            remote = salobj.Remote(
+                domain=domain,
+                name="Test",
+                index=index,
+                evt_max_history=evt_max_history,
+                start=False,
+            )
             self.assert_max_history(remote, evt_max_history=evt_max_history)
+            await remote.close()
 
     async def test_start_false(self) -> None:
         """Test the start argument of Remote."""
@@ -223,3 +230,14 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
             domain=domain, name="Test", index=index, start=False
         ) as remote:
             assert not hasattr(remote, "start_task")
+            await remote.close()
+
+    async def test_repr(self) -> None:
+        index = next(index_gen)
+        async with salobj.Domain() as domain:
+            remote = salobj.Remote(domain=domain, name="Test", index=index, start=False)
+            reprstr = repr(remote)
+            assert "Remote" in reprstr
+            assert f"index={index}" in reprstr
+            assert f"name={remote.salinfo.name}" in reprstr
+            await remote.close()
