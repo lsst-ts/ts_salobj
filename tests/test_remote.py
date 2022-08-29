@@ -61,7 +61,9 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
 
             # remote0 specifies neither include nor exclude;
             # it should have everything
-            remote0 = salobj.Remote(domain=domain, name="Test", index=index)
+            remote0 = salobj.Remote(
+                domain=domain, name="Test", index=index, start=False
+            )
             remote_command_names = set(
                 [name for name in dir(remote0) if name.startswith("cmd_")]
             )
@@ -78,7 +80,7 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
             # remote1 uses the include argument
             include = ["errorCode", "scalars"]
             remote1 = salobj.Remote(
-                domain=domain, name="Test", index=index, include=include
+                domain=domain, name="Test", index=index, include=include, start=False
             )
             remote1_command_names = set(
                 [name for name in dir(remote1) if name.startswith("cmd_")]
@@ -96,11 +98,12 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
             assert remote1_telemetry_names == set(
                 f"tel_{name}" for name in include if name in all_telemetry_names
             )
+            await remote1.close()
 
             # remote2 uses the exclude argument
             exclude = ["errorCode", "arrays"]
             remote2 = salobj.Remote(
-                domain=domain, name="Test", index=index, exclude=exclude
+                domain=domain, name="Test", index=index, exclude=exclude, start=False
             )
             remote2_command_names = set(
                 [name for name in dir(remote2) if name.startswith("cmd_")]
@@ -118,10 +121,11 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
             assert remote2_telemetry_names == set(
                 f"tel_{name}" for name in all_telemetry_names if name not in exclude
             )
+            await remote2.close()
 
             # remote3 omits commands
             remote3 = salobj.Remote(
-                domain=domain, name="Test", index=index, readonly=True
+                domain=domain, name="Test", index=index, readonly=True, start=False
             )
             remote_command_names = set(
                 [name for name in dir(remote3) if name.startswith("cmd_")]
@@ -135,9 +139,12 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
                 [name for name in dir(remote3) if name.startswith("tel_")]
             )
             assert remote_telemetry_names == all_telemetry_method_names
+            await remote3.close()
 
             # remote4 uses include=[]
-            remote4 = salobj.Remote(domain=domain, name="Test", index=index, include=[])
+            remote4 = salobj.Remote(
+                domain=domain, name="Test", index=index, include=[], start=False
+            )
             remote_command_names = set(
                 [name for name in dir(remote4) if name.startswith("cmd_")]
             )
@@ -150,10 +157,13 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
                 [name for name in dir(remote4) if name.startswith("tel_")]
             )
             assert remote_telemetry_names == set()
+            await remote4.close()
 
             # remote5 uses exclude=[] (though there is no reason to doubt
             # that it will work the same as exclude=None)
-            remote5 = salobj.Remote(domain=domain, name="Test", index=index, exclude=[])
+            remote5 = salobj.Remote(
+                domain=domain, name="Test", index=index, exclude=[], start=False
+            )
             remote_command_names = set(
                 [name for name in dir(remote5) if name.startswith("cmd_")]
             )
@@ -166,6 +176,7 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
                 [name for name in dir(remote5) if name.startswith("tel_")]
             )
             assert remote_telemetry_names == all_telemetry_method_names
+            await remote5.close()
 
             # make sure one cannot specify both include and exclude
             with pytest.raises(ValueError):
@@ -194,8 +205,9 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
         """Test default evt_max_history ctor argument."""
         index = next(index_gen)
         async with salobj.Domain() as domain:
-            remote = salobj.Remote(domain=domain, name="Test", index=index)
+            remote = salobj.Remote(domain=domain, name="Test", index=index, start=False)
             self.assert_max_history(remote)
+            await remote.close()
 
     async def test_evt_max_history(self) -> None:
         """Test non-default evt_max_history Remote constructor argument."""
@@ -203,9 +215,14 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
         index = next(index_gen)
         async with salobj.Domain() as domain:
             remote = salobj.Remote(
-                domain=domain, name="Test", index=index, evt_max_history=evt_max_history
+                domain=domain,
+                name="Test",
+                index=index,
+                evt_max_history=evt_max_history,
+                start=False,
             )
             self.assert_max_history(remote, evt_max_history=evt_max_history)
+            await remote.close()
 
     async def test_start_false(self) -> None:
         """Test the start argument of Remote."""
@@ -214,3 +231,14 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
         async with salobj.Domain() as domain:
             remote = salobj.Remote(domain=domain, name="Test", index=index, start=False)
             assert not hasattr(remote, "start_task")
+            await remote.close()
+
+    async def test_repr(self) -> None:
+        index = next(index_gen)
+        async with salobj.Domain() as domain:
+            remote = salobj.Remote(domain=domain, name="Test", index=index, start=False)
+            reprstr = repr(remote)
+            assert "Remote" in reprstr
+            assert f"index={index}" in reprstr
+            assert f"name={remote.salinfo.name}" in reprstr
+            await remote.close()
