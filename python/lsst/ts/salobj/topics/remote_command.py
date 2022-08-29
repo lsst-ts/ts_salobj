@@ -489,7 +489,10 @@ class RemoteCommand(write_topic.WriteTopic):
                 remote_command=self, seq_num=seq_num, wait_done=wait_done
             )
             self.salinfo._running_cmds[seq_num] = cmd_info
-            self._writer.write(data)
+            data_dict = vars(data)
+            await self.salinfo.write_data(
+                topic_info=self.topic_info, data_dict=data_dict
+            )
         finally:
             self._in_start = False
 

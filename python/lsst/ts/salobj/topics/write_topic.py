@@ -337,6 +337,24 @@ class WriteTopic(BaseTopic):
         """
         self.salinfo.assert_started()
 
+        data = self._prepare_data_to_write()
+        data_dict = vars(data)
+        await self.salinfo.write_data(topic_info=self.topic_info, data_dict=data_dict)
+        return data
+
+    def _prepare_data_to_write(self) -> type_hints.BaseMsgType:
+        """Prepare self.data to be written and return a copy of the result.
+
+        Set the following fields:
+
+        * private_sndStamp
+        * private_origin
+        * private_identity
+        * private_seqNum, if a seq_num_generator is available
+        * salIndex, if self.index is not 0
+
+        Does not check self.salinfo.assert_started()
+        """
         self.data.private_sndStamp = utils.current_tai()
         self.data.private_origin = self.salinfo.domain.origin
         self.data.private_identity = self.salinfo.identity
@@ -347,8 +365,4 @@ class WriteTopic(BaseTopic):
         # and the user can override it.
         if self.salinfo.index != 0:
             self.data.salIndex = self.salinfo.index
-        data_dict = vars(self.data)
-        # Make a copy in case another task changes self.data during write.
-        data = copy.copy(self.data)
-        await self.salinfo.write_data(topic_info=self.topic_info, data_dict=data_dict)
-        return data
+        return copy.copy(self.data)
