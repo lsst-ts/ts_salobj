@@ -364,7 +364,7 @@ class TopicInfo:
             avro_schema = dict(
                 type="record",
                 name=self.sal_name,
-                namespace=f"lsst.sal.{self.topic_subname}.{self.component_name}",
+                namespace=f"lsst.sal.{self.component_name}",
                 fields=[
                     field_info.make_avro_schema() for field_info in self.fields.values()
                 ],
