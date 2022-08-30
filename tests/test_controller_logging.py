@@ -81,6 +81,7 @@ class ControllerLoggingTestCase(
 
             info_message = "test info message"
             self.csc.log.info(info_message)
+            # Skip initial messages until we find this new one.
             while True:
                 msg = await self.remote.evt_logMessage.next(
                     flush=False, timeout=STD_TIMEOUT
