@@ -299,9 +299,6 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Time limit for the CSC to start and output
             the summaryState event.
         """
-        # Redundant with setUp, but preserve in case a subclass
-        # forgets to call super().setUp()
-        testutils.set_random_topic_subname()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
             raise AssertionError(
