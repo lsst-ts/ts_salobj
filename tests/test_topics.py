@@ -125,7 +125,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # is enabled by default
             with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST="1"):
                 async with salobj.TestCsc(index=self.next_index()) as csc:
-                    print(f"csc={csc!r}")
                     assert csc.salinfo.default_authorize
                     for cmd_name in csc.salinfo.command_names:
                         cmd = getattr(csc, f"cmd_{cmd_name}")
@@ -231,10 +230,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # * The last is acknowledged normally
             # The first three will not complete, the last will.
             nread = 0
+            cmd_callback_event = asyncio.Event()
 
-            async def reader_callback(data: salobj.BaseMsgType) -> None:
-                nonlocal nread
-
+            async def cmd_reader_callback(data: salobj.BaseMsgType) -> None:
+                nonlocal nread, cmd_callback_event
                 # Write final ackcmd, after tweaking data if appropriate.
                 ackcmdwriter.set(
                     private_seqNum=data.private_seqNum,
@@ -254,28 +253,39 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     ackcmdwriter.set(identity="")
                 await ackcmdwriter.write()
                 nread += 1
+                cmd_callback_event.set()
 
             unfiltered_nread = 0
+            unfiltered_future: asyncio.Future = asyncio.Future()
 
-            def unfiltered_reader_callback(data: salobj.BaseMsgType) -> None:
-                print("unfiltered_reader_callback")
+            def unfiltered_ackcmd_reader_callback(data: salobj.BaseMsgType) -> None:
                 nonlocal unfiltered_nread
                 unfiltered_nread += 1
+                if unfiltered_nread == 4:
+                    unfiltered_future.set_result(None)
 
-            cmdreader.callback = reader_callback
-            unfiltered_ackcmd_reader.callback = unfiltered_reader_callback
+            cmdreader.callback = cmd_reader_callback
+            unfiltered_ackcmd_reader.callback = unfiltered_ackcmd_reader_callback
 
             tasks = []
-            for i in range(4):
-                tasks.append(asyncio.create_task(cmdwriter.start(timeout=STD_TIMEOUT)))
-            await tasks[3]
-            assert not tasks[0].done()  # Origin did not match.
-            assert not tasks[1].done()  # Identity did not match.
-            assert not tasks[2].done()  # No identity.
+            try:
+                for i in range(4):
+                    cmd_callback_event.clear()
+                    tasks.append(asyncio.create_task(cmdwriter.start(timeout=2)))
+                    await asyncio.wait_for(
+                        cmd_callback_event.wait(), timeout=STD_TIMEOUT
+                    )
+                    assert nread == i + 1
+                await tasks[3]
+                assert not tasks[0].done()  # Origin did not match.
+                assert not tasks[1].done()  # Identity did not match.
+                assert not tasks[2].done()  # No identity.
+            finally:
+                for task in tasks:
+                    task.cancel()
+            await asyncio.wait_for(unfiltered_future, timeout=STD_TIMEOUT)
             assert nread == 4
             assert unfiltered_nread == 4
-            for task in tasks:
-                task.cancel()
 
     async def test_controller_telemetry_write(self) -> None:
         """Test ControllerTelemetry.set, write, and set_write."""
@@ -391,7 +401,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         sent_data_list = []
         for _ in range(num_commands):
             scalars_dict = self.csc.make_random_scalars_dict()
-            print(scalars_dict)
             await self.remote.cmd_setScalars.set_start(
                 **scalars_dict, timeout=STD_TIMEOUT
             )
@@ -1076,7 +1085,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             read_data_list = []
 
-            async def reader_callback(data: salobj.BaseMsgType) -> None:
+            async def cmd_reader_callback(data: salobj.BaseMsgType) -> None:
                 read_data_list.append(data)
                 ackcmd = cmdreader.salinfo.AckCmdType(
                     private_seqNum=data.private_seqNum,
@@ -1084,7 +1093,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 )
                 await cmdreader.ack(data=data, ackcmd=ackcmd)
 
-            cmdreader.callback = reader_callback
+            cmdreader.callback = cmd_reader_callback
             kwargs_list: typing.Sequence[typing.Dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
