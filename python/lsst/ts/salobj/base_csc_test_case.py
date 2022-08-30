@@ -333,9 +333,6 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         asyncio.TimeoutError
             If the CSC cannot be started within the specified time limit.
         """
-        # Redundant with setUp, but preserve in case a subclass
-        # forgets to call super().setUp()
-        testutils.set_random_topic_subname()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
             raise AssertionError(
