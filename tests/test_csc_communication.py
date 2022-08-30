@@ -431,16 +431,21 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             initial_state=salobj.State.STANDBY, log_level=logging.DEBUG
         ):
             assert self.csc.log.getEffectiveLevel() == logging.DEBUG
+            # Check that the remote has the same log
+            # (and hence the same effective log level).
+            assert self.remote.salinfo.log is self.csc.log
 
+        max_log_level = salobj.sal_info.MAX_LOG_LEVEL
+        excessive_log_level = max_log_level + 5
         async with self.make_csc(
-            initial_state=salobj.State.STANDBY, log_level=logging.WARNING
+            initial_state=salobj.State.STANDBY, log_level=excessive_log_level
         ):
-            assert self.csc.log.getEffectiveLevel() == logging.WARNING
+            assert self.csc.log.getEffectiveLevel() == excessive_log_level
 
         # At this point log level is WARNING; now check that by default
         # log verbosity is increased (log level decreased) to INFO.
         async with self.make_csc(initial_state=salobj.State.STANDBY):
-            assert self.csc.log.getEffectiveLevel() == logging.INFO
+            assert self.csc.log.getEffectiveLevel() == max_log_level
 
     async def test_setArrays_command(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
