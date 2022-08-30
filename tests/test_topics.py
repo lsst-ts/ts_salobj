@@ -117,6 +117,16 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     assert ackcmd.attr_name == "ack_ackcmd"
                     assert ackcmd.sal_name == "ackcmd"
 
+            # Test command topics with authorization enabled
+            # TODO DM-36605 remove this entire block once authorization
+            # is enabled by default
+            with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST="1"):
+                async with salobj.TestCsc(index=self.next_index()) as csc:
+                    assert csc.salinfo.default_authorize
+                    for cmd_name in csc.salinfo.command_names:
+                        cmd = getattr(csc, f"cmd_{cmd_name}")
+                        assert cmd.authorize
+
     async def test_base_topic_constructor_good(self) -> None:
         async with salobj.Domain() as domain:
             salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
@@ -220,7 +230,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             cmd_callback_event = asyncio.Event()
 
             async def cmd_reader_callback(data: salobj.BaseMsgType) -> None:
-                nonlocal nread
+                nonlocal nread, cmd_callback_event
                 # Write final ackcmd, after tweaking data if appropriate.
                 ackcmdwriter.set(
                     private_seqNum=data.private_seqNum,
@@ -240,16 +250,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     ackcmdwriter.set(identity="")
                 await ackcmdwriter.write()
                 nread += 1
-                await asyncio.sleep(0.1)
                 cmd_callback_event.set()
 
             unfiltered_nread = 0
             unfiltered_future: asyncio.Future = asyncio.Future()
 
-            async def unfiltered_ackcmd_reader_callback(
-                data: salobj.BaseMsgType,
-            ) -> None:
-                print("unfiltered_reader_callback")
+            def unfiltered_ackcmd_reader_callback(data: salobj.BaseMsgType) -> None:
                 nonlocal unfiltered_nread
                 unfiltered_nread += 1
                 if unfiltered_nread == 4:
@@ -263,9 +269,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 for i in range(4):
                     cmd_callback_event.clear()
                     tasks.append(asyncio.create_task(cmdwriter.start(timeout=2)))
-                    await asyncio.wait_for(cmd_callback_event.wait(), timeout=2)
+                    await asyncio.wait_for(
+                        cmd_callback_event.wait(), timeout=STD_TIMEOUT
+                    )
                     assert nread == i + 1
-                    await asyncio.sleep(0.1)
                 await tasks[3]
                 assert not tasks[0].done()  # Origin did not match.
                 assert not tasks[1].done()  # Identity did not match.
@@ -273,7 +280,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             finally:
                 for task in tasks:
                     task.cancel()
-            await asyncio.wait_for(unfiltered_future, timeout=2)
+            await asyncio.wait_for(unfiltered_future, timeout=STD_TIMEOUT)
             assert nread == 4
             assert unfiltered_nread == 4
 
@@ -1077,7 +1084,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             read_data_list = []
 
-            async def reader_callback(data: salobj.BaseMsgType) -> None:
+            async def cmd_reader_callback(data: salobj.BaseMsgType) -> None:
                 read_data_list.append(data)
                 ackcmd = cmdreader.salinfo.AckCmdType(
                     private_seqNum=data.private_seqNum,
@@ -1085,7 +1092,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 )
                 await cmdreader.ack(data=data, ackcmd=ackcmd)
 
-            cmdreader.callback = reader_callback
+            cmdreader.callback = cmd_reader_callback
             kwargs_list: Sequence[dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
