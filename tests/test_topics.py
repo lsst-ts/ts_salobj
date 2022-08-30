@@ -421,7 +421,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.csc.assert_scalars_equal(cmd_data_list[0], tel_data)
 
             # `aget` should not interfere with `next`
-            for i in range(num_commands):
+                print(f"test {i}")
                 evt_data = await self.remote.evt_scalars.next(
                     flush=False, timeout=STD_TIMEOUT
                 )
@@ -595,6 +595,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         evt_data_list: typing.List[salobj.BaseMsgType] = []
         evt_future: asyncio.Future = asyncio.Future()
 
+        evt_data_list: typing.List[salobj.BaseMsgType] = []
+        evt_future: asyncio.Future = asyncio.Future()
+
         async def evt_callback(data: salobj.BaseMsgType) -> None:
             evt_data_list.append(data)
             if len(evt_data_list) == num_commands:
@@ -626,47 +629,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await self.remote.evt_scalars.next(flush=False)
             with pytest.raises(RuntimeError):
                 await self.remote.tel_scalars.next(flush=False)
-
-            cmd_data_list = await self.set_scalars(num_commands=num_commands)
-            await asyncio.wait_for(
-                asyncio.gather(evt_future, tel_future), timeout=STD_TIMEOUT
-            )
-
-            assert len(evt_data_list) == num_commands
-            for cmd_data, evt_data in zip(cmd_data_list, evt_data_list):
-                self.csc.assert_scalars_equal(cmd_data, evt_data)
-
-            assert len(tel_data_list) == num_commands
-            for cmd_data, tel_data in zip(cmd_data_list, tel_data_list):
-                self.csc.assert_scalars_equal(cmd_data, tel_data)
-
-    # TODO DM-37502: modify this to expect construction to raise,
-    # once we drop support for synchronous callback functions.
-    # Possibly combine it with test_callbacks?
-    async def test_synchronous_callbacks(self) -> None:
-        num_commands = 3
-
-        evt_data_list: typing.List[salobj.BaseMsgType] = []
-        evt_future: asyncio.Future = asyncio.Future()
-
-        def evt_callback(data: salobj.BaseMsgType) -> None:
-            evt_data_list.append(data)
-            if len(evt_data_list) == num_commands:
-                evt_future.set_result(None)
-
-        tel_data_list: typing.List[salobj.BaseMsgType] = []
-        tel_future: asyncio.Future = asyncio.Future()
-
-        def tel_callback(data: salobj.BaseMsgType) -> None:
-            tel_data_list.append(data)
-            if len(tel_data_list) == num_commands:
-                tel_future.set_result(None)
-
-        async with self.make_csc(initial_state=salobj.State.ENABLED):
-            with pytest.warns(DeprecationWarning):
-                self.remote.evt_scalars.callback = evt_callback
-            with pytest.warns(DeprecationWarning):
-                self.remote.tel_scalars.callback = tel_callback
 
             cmd_data_list = await self.set_scalars(num_commands=num_commands)
             await asyncio.wait_for(
