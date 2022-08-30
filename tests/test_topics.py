@@ -421,8 +421,17 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.csc.assert_scalars_equal(cmd_data_list[0], evt_data)
             self.csc.assert_scalars_equal(cmd_data_list[0], tel_data)
 
-            # wait for all remaining events to be received
-            await asyncio.sleep(EVENT_DELAY)
+            # the aget should not interfere with next
+            for i in range(num_commands):
+                print(f"test {i}")
+                evt_data = await self.remote.evt_scalars.next(
+                    flush=False, timeout=STD_TIMEOUT
+                )
+                tel_data = await self.remote.tel_scalars.next(
+                    flush=False, timeout=STD_TIMEOUT
+                )
+                self.csc.assert_scalars_equal(cmd_data_list[i], evt_data)
+                self.csc.assert_scalars_equal(cmd_data_list[i], tel_data)
 
             # aget should return the last value seen,
             # no matter now many times it is called
@@ -441,31 +450,21 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_plain_get(self) -> None:
         """Test RemoteEvent.get and RemoteTelemetry.get."""
         async with self.make_csc(initial_state=salobj.State.ENABLED):
-            is_first = True
             for read_topic in (self.remote.evt_scalars, self.remote.tel_scalars):
-                if not is_first:
-                    # Clear out data from previous iteration
-                    read_topic.flush()
+                # Clear out data from previous iteration, if any
+                read_topic.flush()
+
                 num_commands = 3
-                cmd_data_list = await self.set_scalars(
-                    num_commands=num_commands, assert_none=is_first
-                )
-                # wait for all events
-                await asyncio.sleep(EVENT_DELAY)
 
-                # Test that get returns the last value seen,
-                # no matter now many times it is called.
-                # Use flush=False to leave queued data for a later
-                # call to get that will flush the queue.
-                data_list = [read_topic.get() for _ in range(5)]
-                for data in data_list:
-                    assert data is not None
-                    self.csc.assert_scalars_equal(cmd_data_list[-1], data)
+                for _ in range(num_commands):
+                    cmd_data_list = await self.set_scalars(
+                        num_commands=1, assert_none=False
+                    )
 
-                # Make sure the data queue was not flushed.
-                assert read_topic.nqueued == num_commands
-
-                is_first = False
+                    next_data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
+                    get_data = read_topic.get()
+                    self.csc.assert_scalars_equal(cmd_data_list[0], next_data)
+                    self.csc.assert_scalars_equal(cmd_data_list[0], get_data)
 
     async def test_get_oldest(self) -> None:
         """Test that `get_oldest` returns the oldest sample."""
@@ -593,17 +592,24 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 assert data == read_data
 
     async def test_callbacks(self) -> None:
+        num_commands = 3
+
         evt_data_list: typing.List[salobj.BaseMsgType] = []
+        evt_future: asyncio.Future = asyncio.Future()
 
         def evt_callback(data: salobj.BaseMsgType) -> None:
             evt_data_list.append(data)
+            if len(evt_data_list) == num_commands:
+                evt_future.set_result(None)
 
         tel_data_list: typing.List[salobj.BaseMsgType] = []
+        tel_future: asyncio.Future = asyncio.Future()
 
         def tel_callback(data: salobj.BaseMsgType) -> None:
             tel_data_list.append(data)
+            if len(tel_data_list) == num_commands:
+                tel_future.set_result(None)
 
-        num_commands = 3
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             self.remote.evt_scalars.callback = evt_callback
             self.remote.tel_scalars.callback = tel_callback
@@ -624,8 +630,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await self.remote.tel_scalars.next(flush=False)
 
             cmd_data_list = await self.set_scalars(num_commands=num_commands)
-            # give the wait loops time to finish
-            await asyncio.sleep(EVENT_DELAY)
+            await asyncio.wait_for(
+                asyncio.gather(evt_future, tel_future), timeout=STD_TIMEOUT
+            )
 
             assert len(evt_data_list) == num_commands
             for cmd_data, evt_data in zip(cmd_data_list, evt_data_list):
