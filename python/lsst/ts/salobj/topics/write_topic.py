@@ -334,8 +334,13 @@ class WriteTopic(BaseTopic):
             A copy of the data that was written.
             This can be useful to avoid race conditions
             (as found in RemoteCommand).
+
+        Raises
+        ------
+        RuntimeError
+            If not running.
         """
-        self.salinfo.assert_started()
+        self.salinfo.assert_running()
 
         data = self._prepare_data_to_write()
         data_dict = vars(data)
@@ -353,7 +358,7 @@ class WriteTopic(BaseTopic):
         * private_seqNum, if a seq_num_generator is available
         * salIndex, if self.index is not 0
 
-        Does not check self.salinfo.assert_started()
+        Does not check self.salinfo.running
         """
         self.data.private_sndStamp = utils.current_tai()
         self.data.private_origin = self.salinfo.domain.origin

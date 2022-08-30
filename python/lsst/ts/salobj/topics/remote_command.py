@@ -465,11 +465,11 @@ class RemoteCommand(write_topic.WriteTopic):
         lsst.ts.salobj.AckTimeoutError
             If the command times out.
         RuntimeError
-            If the ``salinfo`` has not started reading.
+            If the ``salinfo`` is not running.
         TypeError
             If ``data`` is not None and not an instance of `DataType`.
         """
-        self.salinfo.assert_started()
+        self.salinfo.assert_running()
 
         try:
             self._in_start = True
