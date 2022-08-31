@@ -119,8 +119,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         The csc is accessed as ``self.csc`` and the remote as ``self.remote``.
 
-        Reads and checks all but the last ``summaryState`` event during
-        startup.
+        Note: when this returns, self.remote should have the final
+        summary state of the CSC in its queue, and no earlier values.
 
         Parameters
         ----------
@@ -159,6 +159,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 **kwargs,
             )
             items_to_close.append(self.csc)
+            await asyncio.wait_for(self.csc.start_task, timeout=timeout)
+
+            # Start the remote after the CSC is fully started
+            # so that the remote sees only the final state
             self.remote = Remote(
                 domain=self.csc.domain,
                 name=self.csc.salinfo.name,
@@ -168,21 +172,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             if log_level is not None:
                 self.csc.log.setLevel(log_level)
 
-            await asyncio.wait_for(
-                asyncio.gather(self.csc.start_task, self.remote.start_task),
-                timeout=timeout,
-            )
+            await asyncio.wait_for(self.remote.start_task, timeout=timeout)
 
-            if initial_state != self.csc.default_initial_state:
-                # Check all expected summary states expect the final state.
-                # That is omitted for backwards compatibility.
-                expected_states = get_expected_summary_states(
-                    initial_state=self.csc.default_initial_state,
-                    final_state=initial_state,
-                )[:-1]
-                for state in expected_states:
-                    await self.assert_next_summary_state(state)
-
+            summary_state = await self.remote.evt_summaryState.aget(timeout=STD_TIMEOUT)  # type: ignore
+            assert summary_state.summaryState == initial_state  # type: ignore
             yield
         except Exception as e:
             print(f"BaseCscTestCase.make_csc failed: {e!r}")
@@ -298,9 +291,6 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Time limit for the CSC to start and output
             the summaryState event.
         """
-        # Redundant with setUp, but preserve in case a subclass
-        # forgets to call super().setUp()
-        testutils.set_random_lsst_dds_partition_prefix()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
             raise AssertionError(
