@@ -28,9 +28,9 @@ import types
 import typing
 from collections.abc import Iterable
 
-from .topics import RemoteEvent, RemoteTelemetry, RemoteCommand
 from .domain import Domain
 from .sal_info import SalInfo
+from .topics import RemoteCommand, RemoteEvent, RemoteTelemetry
 
 
 class Remote:

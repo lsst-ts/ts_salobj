@@ -20,13 +20,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pathlib
-import pytest
-import unittest
 import typing
+import unittest
 
 import jsonschema
+import pytest
 import yaml
-
 from lsst.ts import salobj
 
 

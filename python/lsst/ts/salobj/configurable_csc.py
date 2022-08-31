@@ -31,10 +31,9 @@ import types
 import typing
 
 import yaml
-
 from lsst.ts import utils
-from . import base
-from . import type_hints
+
+from . import base, type_hints
 from .base_csc import BaseCsc, State
 from .hierarchical_update import hierarchical_update
 from .validator import StandardValidator

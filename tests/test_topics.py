@@ -31,9 +31,7 @@ from collections.abc import Callable, Iterable, Sequence
 
 import numpy as np
 import pytest
-
-from lsst.ts import utils
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)

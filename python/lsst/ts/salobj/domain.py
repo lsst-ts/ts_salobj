@@ -28,16 +28,14 @@ import os
 import pathlib
 import types
 import typing
-import weakref
 import warnings
+import weakref
 from collections.abc import Sequence
 
 import dds
+from lsst.ts import ddsconfig, idl
 
-from lsst.ts import ddsconfig
-from lsst.ts import idl
-from . import base
-from . import type_hints
+from . import base, type_hints
 
 # Avoid circular imports by only importing SalInfo when type checking
 if typing.TYPE_CHECKING:

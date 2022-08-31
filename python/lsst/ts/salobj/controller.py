@@ -31,7 +31,7 @@ from . import type_hints
 from .domain import Domain
 from .sal_info import SalInfo
 from .sal_log_handler import SalLogHandler
-from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
+from .topics import ControllerCommand, ControllerEvent, ControllerTelemetry
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.

@@ -21,8 +21,8 @@
 __all__ = ["CONFIG_SCHEMA"]
 
 import typing
-import yaml
 
+import yaml
 
 # Config schema for TestCSC
 CONFIG_SCHEMA: dict[str, typing.Any] = yaml.safe_load(

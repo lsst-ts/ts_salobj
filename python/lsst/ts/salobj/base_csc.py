@@ -32,11 +32,11 @@ import typing
 from collections.abc import Sequence
 
 from lsst.ts import utils
-from . import base
-from . import type_hints
-from .sal_enums import State
+
+from . import base, type_hints
 from .controller import Controller
 from .csc_utils import make_state_transition_dict
+from .sal_enums import State
 
 HEARTBEAT_INTERVAL = 1  # seconds
 

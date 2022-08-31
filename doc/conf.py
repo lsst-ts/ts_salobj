@@ -3,8 +3,8 @@
 This configuration only affects single-package Sphinx documentation builds.
 """
 
-from documenteer.conf.pipelinespkg import *  # type: ignore # noqa
 import lsst.ts.salobj  # noqa
+from documenteer.conf.pipelinespkg import *  # type: ignore # noqa
 
 project = "ts_salobj"
 html_theme_options["logotext"] = project  # type: ignore # noqa

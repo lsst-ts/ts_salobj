@@ -29,7 +29,6 @@ from collections.abc import Generator
 
 import jsonschema
 
-
 StandardValidator = jsonschema.Draft7Validator
 
 

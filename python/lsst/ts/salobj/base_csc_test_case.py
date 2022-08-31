@@ -32,14 +32,12 @@ import typing
 from collections.abc import AsyncGenerator, Sequence
 
 from lsst.ts import utils
-from . import base_csc
-from . import sal_enums
-from . import testutils
-from . import type_hints
+
+from . import base_csc, sal_enums, testutils, type_hints
+from .csc_utils import get_expected_summary_states
 from .domain import Domain
 from .remote import Remote
 from .topics.read_topic import ReadTopic
-from .csc_utils import get_expected_summary_states
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.

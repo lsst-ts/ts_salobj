@@ -25,8 +25,7 @@
 
 import asyncio
 
-from lsst.ts import utils
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
 
 
 class TopicWriter(salobj.BaseCsc):

@@ -35,20 +35,16 @@ import warnings
 from collections.abc import Sequence
 
 import yaml
-
 from lsst.ts import utils
-from . import base
-from . import controller
-from .remote import Remote
-from . import type_hints
-from . import validator
 from lsst.ts.idl.enums.Script import (
     MetadataCoordSys,
-    MetadataRotSys,
     MetadataDome,
+    MetadataRotSys,
     ScriptState,
 )
 
+from . import base, controller, type_hints, validator
+from .remote import Remote
 
 HEARTBEAT_INTERVAL = 5  # seconds
 

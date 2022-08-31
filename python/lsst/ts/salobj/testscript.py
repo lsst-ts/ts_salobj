@@ -26,8 +26,8 @@ import types
 import typing
 
 import yaml
-
 from lsst.ts import salobj
+
 from .base_script import BaseScript
 
 

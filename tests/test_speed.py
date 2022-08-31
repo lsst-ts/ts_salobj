@@ -26,14 +26,11 @@ import time
 import unittest
 import warnings
 from collections.abc import AsyncGenerator
+from unittest.mock import MagicMock
 
 import astropy.units as u
 import ddsutil
-
-from unittest.mock import MagicMock
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 
 class MockVerify:

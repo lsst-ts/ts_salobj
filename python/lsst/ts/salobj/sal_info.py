@@ -35,12 +35,9 @@ import typing
 
 import dds
 import ddsutil
-
 from lsst.ts import utils
-from . import idl_metadata
-from . import sal_enums
-from . import topics
-from . import type_hints
+
+from . import idl_metadata, sal_enums, topics, type_hints
 from .domain import Domain
 
 # We want SAL logMessage messages for at least INFO level messages,
