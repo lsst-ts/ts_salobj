@@ -315,10 +315,10 @@ class WriteTopic(BaseTopic):
                 self.default_force_output if force_output is None else force_output
             )
         if do_output:
-            self._basic_write()
-        return SetWriteResult(
-            did_change=did_change, was_written=do_output, data=copy.copy(self.data)
-        )
+            data = self._basic_write()
+        else:
+            data = copy.copy(self.data)
+        return SetWriteResult(did_change=did_change, was_written=do_output, data=data)
 
     async def write(self) -> type_hints.BaseMsgType:
         """Write the current data and return a copy of the data written.
@@ -326,15 +326,56 @@ class WriteTopic(BaseTopic):
         Returns
         -------
         data : self.DataType
-            The data that was written.
+            A copy of the data that was written.
             This can be useful to avoid race conditions
             (as found in RemoteCommand).
         """
-        self._basic_write()
-        return copy.copy(self.data)
+        return self._basic_write()
 
-    def _basic_write(self) -> None:
-        """Put self.data after setting the private_x fields."""
+    def _basic_write(self) -> type_hints.BaseMsgType:
+        """Put self.data after setting the private_x fields.
+
+        Return a copy of the data written.
+        """
+        data = self._prepare_data_to_write()
+        try:
+            self._writer.write(data)
+        except struct.error as e:
+            raise ValueError(
+                f"{self.name} write({data}) failed: one or more fields invalid"
+            ) from e
+        except TypeError as e:
+            raise ValueError(
+                f"{self.name} write({data}) failed: "
+                f"perhaps one or more array fields has been set to a scalar"
+            ) from e
+        except IndexError as e:
+            raise ValueError(
+                f"{self.name} write({data}) failed: "
+                f"probably at least one array field is too short"
+            ) from e
+        return data
+
+    def _prepare_data_to_write(self) -> type_hints.BaseMsgType:
+        """Prepare self.data to be written and return a copy of the result.
+
+        Set the following fields:
+
+        * private_sndStamp
+        * private_origin
+        * private_identity
+        * private_seqNum, if a seq_num_generator is available
+        * salIndex, if self.index is not 0
+
+        Does not check self.salinfo.assert_started()
+
+        Returns
+        -------
+        data : self.DataType
+            A copy of the data that was written.
+            This can be useful to avoid race conditions
+            (as found in RemoteCommand).
+        """
         self.data.private_sndStamp = utils.current_tai()
         self.data.private_revCode = self.rev_code
         self.data.private_origin = self.salinfo.domain.origin
@@ -345,20 +386,4 @@ class WriteTopic(BaseTopic):
         # to override it.
         if self.salinfo.index != 0:
             self.data.salIndex = self.salinfo.index
-
-        try:
-            self._writer.write(self.data)
-        except struct.error as e:
-            raise ValueError(
-                f"{self.name} write({self.data}) failed: one or more fields invalid"
-            ) from e
-        except TypeError as e:
-            raise ValueError(
-                f"{self.name} write({self.data}) failed: "
-                f"perhaps one or more array fields has been set to a scalar"
-            ) from e
-        except IndexError as e:
-            raise ValueError(
-                f"{self.name} write({self.data}) failed: "
-                f"probably at least one array field is too short"
-            ) from e
+        return copy.copy(self.data)
