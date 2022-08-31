@@ -321,6 +321,8 @@ class ReadTopic(BaseTopic):
             maxlen=queue_len
         )
         self._current_data: None | type_hints.BaseMsgType = None
+        # Event that is set when new data arrives. Used by aget.
+        self._new_data_event = asyncio.Event()
         # Task that `next` waits on.
         # Its result is set to the oldest message on the queue.
         # We do this instead of having `next` itself pop the oldest message
@@ -525,9 +527,8 @@ class ReadTopic(BaseTopic):
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")
         if self._current_data is None:
-            if self._next_task.done():
-                self._next_task = asyncio.Future()
-            await asyncio.wait_for(self._next_task, timeout=timeout)
+            self._new_data_event.clear()
+            await asyncio.wait_for(self._new_data_event.wait(), timeout=timeout)
         assert self._current_data is not None  # make mypy happy
         return self._current_data
 
@@ -705,6 +706,7 @@ class ReadTopic(BaseTopic):
         for data in data_list:
             self._queue_one_item(data)
         self._current_data = data
+        self._new_data_event.set()
         self._report_next()
 
     def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
