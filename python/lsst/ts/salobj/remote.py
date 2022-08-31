@@ -26,6 +26,7 @@ __all__ = ["Remote"]
 import asyncio
 import types
 import typing
+from collections.abc import Iterable
 
 from .topics import RemoteEvent, RemoteTelemetry, RemoteCommand
 from .domain import Domain
@@ -137,11 +138,11 @@ class Remote:
         self,
         domain: Domain,
         name: str,
-        index: typing.Optional[int] = None,
+        index: None | int = None,
         *,
         readonly: bool = False,
-        include: typing.Optional[typing.Iterable[str]] = None,
-        exclude: typing.Optional[typing.Iterable[str]] = None,
+        include: None | Iterable[str] = None,
+        exclude: None | Iterable[str] = None,
         evt_max_history: int = 1,
         start: bool = True,
     ) -> None:
@@ -209,8 +210,8 @@ class Remote:
 
     async def __aexit__(
         self,
-        type: typing.Optional[typing.Type[BaseException]],
-        value: typing.Optional[BaseException],
-        traceback: typing.Optional[types.TracebackType],
+        type: None | typing.Type[BaseException],
+        value: None | BaseException,
+        traceback: None | types.TracebackType,
     ) -> None:
         await self.close()

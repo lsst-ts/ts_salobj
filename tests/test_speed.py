@@ -23,9 +23,9 @@ import asyncio
 import contextlib
 import pathlib
 import time
-import typing
 import unittest
 import warnings
+from collections.abc import AsyncGenerator
 
 import astropy.units as u
 import ddsutil
@@ -127,7 +127,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
     @contextlib.asynccontextmanager
     async def make_remote_and_topic_writer(
         self,
-    ) -> typing.AsyncGenerator[salobj.Remote, None]:
+    ) -> AsyncGenerator[salobj.Remote, None]:
         """Make a remote and launch a topic writer in a subprocess.
 
         Return the remote.

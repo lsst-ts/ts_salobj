@@ -25,6 +25,7 @@ import asyncio
 import string
 import types
 import typing
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -107,7 +108,7 @@ class TestCsc(ConfigurableCsc):
     def __init__(
         self,
         index: int,
-        config_dir: typing.Optional[type_hints.PathType] = None,
+        config_dir: None | type_hints.PathType = None,
         initial_state: State = State.STANDBY,
         override: str = "",
         simulation_mode: int = 0,
@@ -122,11 +123,9 @@ class TestCsc(ConfigurableCsc):
             simulation_mode=simulation_mode,
         )
         self.cmd_wait.allow_multiple_callbacks = True  # type: ignore
-        self.config: typing.Optional[types.SimpleNamespace] = None
+        self.config: None | types.SimpleNamespace = None
 
-    def as_dict(
-        self, data: typing.Any, fields: typing.Sequence[str]
-    ) -> typing.Dict[str, typing.Any]:
+    def as_dict(self, data: typing.Any, fields: Sequence[str]) -> dict[str, typing.Any]:
         """Return the specified fields from a data struct as a dict.
 
         Parameters
@@ -179,7 +178,7 @@ class TestCsc(ConfigurableCsc):
         await asyncio.sleep(abs(duration))
 
     @property
-    def field_type(self) -> typing.Dict[str, typing.Any]:
+    def field_type(self) -> dict[str, typing.Any]:
         """Get a dict of field_name: element type."""
         return dict(
             boolean0=bool,
@@ -197,7 +196,7 @@ class TestCsc(ConfigurableCsc):
         )
 
     @property
-    def arrays_fields(self) -> typing.Sequence[str]:
+    def arrays_fields(self) -> Sequence[str]:
         """Get a tuple of the fields in an arrays struct."""
         return (
             "boolean0",
@@ -214,7 +213,7 @@ class TestCsc(ConfigurableCsc):
         )
 
     @property
-    def scalars_fields(self) -> typing.Sequence[str]:
+    def scalars_fields(self) -> Sequence[str]:
         """Get a tuple of the fields in a scalars struct."""
         return (
             "boolean0",
@@ -232,7 +231,7 @@ class TestCsc(ConfigurableCsc):
         )
 
     @property
-    def int_fields(self) -> typing.Sequence[str]:
+    def int_fields(self) -> Sequence[str]:
         """Get a tuple of the integer fields in a struct."""
         return (
             "byte0",
@@ -292,9 +291,9 @@ class TestCsc(ConfigurableCsc):
                     f"scalars1.{field} = {field_val1} != {field_val2} = scalars2.{field}"
                 )
 
-    def make_random_arrays_dict(self) -> typing.Dict[str, typing.Any]:
+    def make_random_arrays_dict(self) -> dict[str, typing.Any]:
         """Make a random arrays data dict."""
-        arrays_dict: typing.Dict[str, typing.Any] = dict()
+        arrays_dict: dict[str, typing.Any] = dict()
         blank_arrays_data = self.evt_arrays.DataType()  # type: ignore
         nelts = len(blank_arrays_data.boolean0)
         arrays_dict["boolean0"] = np.random.choice([False, True], size=(nelts,))
@@ -313,9 +312,9 @@ class TestCsc(ConfigurableCsc):
             )
         return arrays_dict
 
-    def make_random_scalars_dict(self) -> typing.Dict[str, typing.Any]:
+    def make_random_scalars_dict(self) -> dict[str, typing.Any]:
         """Make a random arrays data dict."""
-        scalars_dict: typing.Dict[str, typing.Any] = dict()
+        scalars_dict: dict[str, typing.Any] = dict()
         scalars_dict["boolean0"] = bool(np.random.choice([False, True]))
         printable_chars = [c for c in string.printable]
         scalars_dict["string0"] = "".join(np.random.choice(printable_chars, size=(20,)))

@@ -149,7 +149,7 @@ class ControllerCommand(read_topic.ReadTopic):
         await self.ack(data=data, ackcmd=ackcmd)
 
     async def next(  # type: ignore[override]  # noqa
-        self, *, timeout: typing.Optional[float] = None
+        self, *, timeout: None | float = None
     ) -> type_hints.BaseMsgType:
         """Wait for data, returning old data if found.
 

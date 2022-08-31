@@ -21,7 +21,6 @@
 
 import unittest
 import pathlib
-import typing
 
 from lsst.ts import idl
 from lsst.ts import salobj
@@ -110,7 +109,7 @@ class IdlParserTestCase(unittest.TestCase):
                     assert field_metadata.name == field_name
                     if has_metadata:
                         if field_metadata.name.endswith("Stamp"):
-                            expected_units: typing.Optional[str] = "second"
+                            expected_units: None | str = "second"
                         elif field_metadata.name == "salIndex":
                             expected_units = None
                         else:

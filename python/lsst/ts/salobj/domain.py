@@ -30,6 +30,7 @@ import types
 import typing
 import weakref
 import warnings
+from collections.abc import Sequence
 
 import dds
 
@@ -232,7 +233,7 @@ class Domain:
             raise RuntimeError(f"salinfo {salinfo} already added")
         self._salinfo_set.add(salinfo)
 
-    def make_publisher(self, partition_names: typing.Sequence[str]) -> dds.Publisher:
+    def make_publisher(self, partition_names: Sequence[str]) -> dds.Publisher:
         """Make a dds publisher.
 
         Parameters
@@ -249,7 +250,7 @@ class Domain:
 
         return self.participant.create_publisher(publisher_qos)
 
-    def make_subscriber(self, partition_names: typing.Sequence[str]) -> dds.Subscriber:
+    def make_subscriber(self, partition_names: Sequence[str]) -> dds.Subscriber:
         """Make a dds subscriber.
 
         Parameters
@@ -325,8 +326,8 @@ class Domain:
 
     async def __aexit__(
         self,
-        type: typing.Optional[typing.Type[BaseException]],
-        value: typing.Optional[BaseException],
-        traceback: typing.Optional[types.TracebackType],
+        type: None | typing.Type[BaseException],
+        value: None | BaseException,
+        traceback: None | types.TracebackType,
     ) -> None:
         await self.close()

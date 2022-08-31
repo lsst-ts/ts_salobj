@@ -27,6 +27,7 @@ import pathlib
 import time
 import typing
 import unittest
+from collections.abc import Callable, Iterable, Sequence
 
 import numpy as np
 import pytest
@@ -48,8 +49,8 @@ np.random.seed(47)
 class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self,
-        initial_state: typing.Union[salobj.State, int],
-        config_dir: typing.Union[str, pathlib.Path, None],
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
         simulation_mode: int,
     ) -> salobj.BaseCsc:
         return salobj.TestCsc(
@@ -397,7 +398,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def set_scalars(
         self, num_commands: int, assert_none: bool = True
-    ) -> typing.List[salobj.BaseMsgType]:
+    ) -> list[salobj.BaseMsgType]:
         """Send the setScalars command repeatedly and return the data sent.
 
         Each command is sent with new random data. Each command triggers
@@ -583,7 +584,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 self.read_topic = read_topic
                 self.nitems = nitems
                 self.name = name
-                self.data: typing.List[salobj.BaseMsgType] = []
+                self.data: list[salobj.BaseMsgType] = []
                 self.read_loop_task = asyncio.create_task(self.read_loop())
                 self.ready_to_read = asyncio.Event()
 
@@ -623,12 +624,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 assert data == read_data
 
     async def test_callbacks(self) -> None:
-        evt_data_list: typing.List[salobj.BaseMsgType] = []
+        evt_data_list: list[salobj.BaseMsgType] = []
 
         def evt_callback(data: salobj.BaseMsgType) -> None:
             evt_data_list.append(data)
 
-        tel_data_list: typing.List[salobj.BaseMsgType] = []
+        tel_data_list: list[salobj.BaseMsgType] = []
 
         def tel_callback(data: salobj.BaseMsgType) -> None:
             tel_data_list.append(data)
@@ -850,9 +851,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def check_controller_command_callback_failure(
         self,
-        callback: typing.Callable,
+        callback: Callable,
         ack: salobj.SalRetCode,
-        result_contains: typing.Optional[str] = None,
+        result_contains: None | str = None,
     ) -> None:
         """Check the exception raised by a remote command when the controller
         controller command raises an exception or returns a failed ackcmd.
@@ -1110,12 +1111,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await cmdreader.ack(data=data, ackcmd=ackcmd)
 
             cmdreader.callback = reader_callback
-            kwargs_list: typing.Sequence[typing.Dict[str, typing.Any]] = (
+            kwargs_list: Sequence[dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
                 dict(short0=-3, long0=47),
             )
-            fields: typing.Set[str] = set()
+            fields: set[str] = set()
             for kwargs in kwargs_list:
                 fields.update(kwargs.keys())
 
@@ -1518,12 +1519,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await salinfo.start()
 
             predicted_data_dict = write_topic.DataType().get_vars()
-            kwargs_list: typing.Iterable[typing.Dict[str, typing.Any]] = (
+            kwargs_list: Iterable[dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
                 dict(int0=-3, long0=47),
             )
-            fields: typing.Set[str] = set()
+            fields: set[str] = set()
             for kwargs in kwargs_list:
                 fields.update(kwargs.keys())
 

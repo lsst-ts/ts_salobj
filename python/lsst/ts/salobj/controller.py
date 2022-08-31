@@ -38,7 +38,7 @@ from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
 SHUTDOWN_DELAY = 1
 
 
-def parse_as_prefix_and_set(items_str: str) -> typing.Tuple[str, typing.Set[str]]:
+def parse_as_prefix_and_set(items_str: str) -> tuple[str, set[str]]:
     """Parse a string as an optional +/- prefix and a set of items.
 
     Parameters
@@ -191,7 +191,7 @@ class Controller:
     def __init__(
         self,
         name: str,
-        index: typing.Optional[int] = None,
+        index: None | int = None,
         *,
         do_callbacks: bool = False,
         write_only: bool = False,
@@ -310,7 +310,7 @@ class Controller:
         return self.salinfo.domain
 
     async def close(
-        self, exception: typing.Optional[Exception] = None, cancel_start: bool = True
+        self, exception: None | Exception = None, cancel_start: bool = True
     ) -> None:
         """Shut down, clean up resources and set done_task done.
 
@@ -502,8 +502,8 @@ class Controller:
 
     async def __aexit__(
         self,
-        type: typing.Optional[typing.Type[BaseException]],
-        value: typing.Optional[BaseException],
-        traceback: typing.Optional[types.TracebackType],
+        type: None | typing.Type[BaseException],
+        value: None | BaseException,
+        traceback: None | types.TracebackType,
     ) -> None:
         await self.close()

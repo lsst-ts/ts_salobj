@@ -203,7 +203,7 @@ class SalInfo:
         self,
         domain: Domain,
         name: str,
-        index: typing.Optional[int] = 0,
+        index: None | int = 0,
         write_only: bool = False,
     ) -> None:
         if not isinstance(domain, Domain):
@@ -226,7 +226,7 @@ class SalInfo:
         # Dict of SAL topic name: wait_for_historical_data succeeded
         # for each topic for which wait_for_historical_data was called.
         # This is primarily intended for unit tests.
-        self.wait_history_isok: typing.Dict[str, bool] = dict()
+        self.wait_history_isok: dict[str, bool] = dict()
 
         self.partition_prefix = os.environ.get("LSST_DDS_PARTITION_PREFIX")
         if self.partition_prefix is None:
@@ -256,8 +256,8 @@ class SalInfo:
         else:
             self.log.info("Disabling authlist-based command authorization")
 
-        self.authorized_users: typing.Set[str] = set()
-        self.non_authorized_cscs: typing.Set[str] = set()
+        self.authorized_users: set[str] = set()
+        self.non_authorized_cscs: set[str] = set()
 
         # Publishers and subscribers.
         # Create at need to avoid unnecessary instances.
@@ -269,21 +269,21 @@ class SalInfo:
         self._data_subscriber = None
 
         # dict of private_seqNum: salobj.topics.CommandInfo
-        self._running_cmds: typing.Dict[int, topics.CommandInfo] = dict()
+        self._running_cmds: dict[int, topics.CommandInfo] = dict()
         # dict of dds.ReadCondition: salobj topics.ReadTopic
         # This is needed because read conditions don't store the associated
         # data reader. When a wait on a dds.WaitSet returns a read condition
         # we use this dict to figure out which topic to read.
-        self._reader_dict: typing.Dict[dds.ReadCondition, topics.ReadTopic] = dict()
+        self._reader_dict: dict[dds.ReadCondition, topics.ReadTopic] = dict()
         # list of salobj topics.WriteTopic
-        self._writer_list: typing.List[topics.WriteTopic] = list()
+        self._writer_list: list[topics.WriteTopic] = list()
         # the first RemoteCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdReader
         # and set its callback to self._ackcmd_callback
-        self._ackcmd_reader: typing.Optional[topics.AckCmdReader] = None
+        self._ackcmd_reader: None | topics.AckCmdReader = None
         # the first ControllerCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdWriter
-        self._ackcmd_writer: typing.Optional[topics.AckCmdWriter] = None
+        self._ackcmd_writer: None | topics.AckCmdWriter = None
         # wait_timeout is a failsafe for shutdown; normally all you have to do
         # is call `close` to trigger the guard condition and stop the wait
         self._wait_timeout = dds.DDSDuration(sec=10)
@@ -854,9 +854,9 @@ class SalInfo:
 
     async def __aexit__(
         self,
-        type: typing.Optional[typing.Type[BaseException]],
-        value: typing.Optional[BaseException],
-        traceback: typing.Optional[types.TracebackType],
+        type: None | typing.Type[BaseException],
+        value: None | BaseException,
+        traceback: None | types.TracebackType,
     ) -> None:
         await self.close()
 

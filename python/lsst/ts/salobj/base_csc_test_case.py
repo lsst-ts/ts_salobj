@@ -29,6 +29,7 @@ import pathlib
 import shutil
 import subprocess
 import typing
+from collections.abc import AsyncGenerator, Sequence
 
 from lsst.ts import utils
 from . import base_csc
@@ -79,8 +80,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def basic_make_csc(
         self,
-        initial_state: typing.Union[sal_enums.State, int],
-        config_dir: typing.Union[str, pathlib.Path, None],
+        initial_state: sal_enums.State | int,
+        config_dir: str | pathlib.Path | None,
         simulation_mode: int,
         **kwargs: typing.Any,
     ) -> base_csc.BaseCsc:
@@ -109,12 +110,12 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     async def make_csc(
         self,
         initial_state: sal_enums.State = sal_enums.State.STANDBY,
-        config_dir: typing.Union[str, pathlib.Path, None] = None,
+        config_dir: str | pathlib.Path | None = None,
         simulation_mode: int = 0,
-        log_level: typing.Optional[int] = None,
+        log_level: None | int = None,
         timeout: float = STD_TIMEOUT,
         **kwargs: typing.Any,
-    ) -> typing.AsyncGenerator[None, None]:
+    ) -> AsyncGenerator[None, None]:
         """Create a CSC and remote and wait for them to start,
         after setting a random $LSST_DDS_PARTITION_PREFIX.
 
@@ -151,7 +152,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         # Redundant with setUp, but preserve in case a subclass
         # forgets to call super().setUp()
         testutils.set_random_lsst_dds_partition_prefix()
-        items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
+        items_to_close: list[base_csc.BaseCsc | Remote] = []
         try:
             self.csc = self.basic_make_csc(
                 initial_state=initial_state,
@@ -197,7 +198,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         state: sal_enums.State,
         flush: bool = False,
         timeout: float = STD_TIMEOUT,
-        remote: typing.Optional[Remote] = None,
+        remote: None | Remote = None,
     ) -> None:
         """Wait for and check the next ``summaryState`` event.
 
@@ -269,9 +270,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         index: int,
         exe_name: str,
         default_initial_state: sal_enums.State = sal_enums.State.STANDBY,
-        initial_state: typing.Optional[sal_enums.State] = None,
-        override: typing.Optional[str] = None,
-        cmdline_args: typing.Sequence[str] = (),
+        initial_state: None | sal_enums.State = None,
+        override: None | str = None,
+        cmdline_args: Sequence[str] = (),
         timeout: float = STD_TIMEOUT,
     ) -> None:
         """Test running the CSC command line script.
@@ -356,8 +357,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     async def check_standard_state_transitions(
         self,
-        enabled_commands: typing.Sequence[str],
-        skip_commands: typing.Optional[typing.Sequence[str]] = None,
+        enabled_commands: Sequence[str],
+        skip_commands: None | Sequence[str] = None,
         override: str = "",
         timeout: float = STD_TIMEOUT,
     ) -> None:
@@ -438,8 +439,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     async def check_bad_commands(
         self,
-        bad_commands: typing.Optional[typing.Sequence[str]] = None,
-        good_commands: typing.Optional[typing.Sequence[str]] = None,
+        bad_commands: None | Sequence[str] = None,
+        good_commands: None | Sequence[str] = None,
     ) -> None:
         """Check that bad commands fail.
 

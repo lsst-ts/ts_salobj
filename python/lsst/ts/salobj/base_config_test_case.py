@@ -48,9 +48,9 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
     def get_schema(
         self,
         csc_package_root: type_hints.PathType,
-        sal_name: typing.Optional[str] = None,
-        schema_subpath: typing.Optional[str] = None,
-    ) -> typing.Dict[str, str]:
+        sal_name: None | str = None,
+        schema_subpath: None | str = None,
+    ) -> dict[str, str]:
         """Get the config schema for a package, as a dict.
 
         The schema is expected to be:
@@ -96,7 +96,7 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         self,
         config_package_root: type_hints.PathType,
         sal_name: str,
-        schema: typing.Dict[str, typing.Any],
+        schema: dict[str, typing.Any],
     ) -> pathlib.Path:
         """Get the directory of config files, assuming the standard
         ts_config_x package layout.
@@ -139,8 +139,8 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
     def check_config_files(
         self,
         config_dir: type_hints.PathType,
-        schema: typing.Dict[str, typing.Any],
-        exclude_glob: typing.Optional[str] = None,
+        schema: dict[str, typing.Any],
+        exclude_glob: None | str = None,
     ) -> None:
         """Check all configuration files for a given package.
 
@@ -208,9 +208,9 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         self,
         module_name: str,
         schema_name: str = "CONFIG_SCHEMA",
-        sal_name: typing.Optional[str] = None,
-        config_package_root: typing.Union[str, pathlib.Path, None] = None,
-        config_dir: typing.Union[str, pathlib.Path, None] = None,
+        sal_name: None | str = None,
+        config_package_root: str | pathlib.Path | None = None,
+        config_dir: str | pathlib.Path | None = None,
     ) -> None:
         """A wrapper around `check_config_files` to test salobj packages.
 

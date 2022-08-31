@@ -124,9 +124,9 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     def __init__(
         self,
         name: str,
-        index: typing.Optional[int],
-        config_schema: typing.Dict[str, typing.Any],
-        config_dir: typing.Union[str, pathlib.Path, None] = None,
+        index: None | int,
+        config_schema: dict[str, typing.Any],
+        config_dir: str | pathlib.Path | None = None,
         initial_state: State = State.STANDBY,
         override: str = "",
         simulation_mode: int = 0,
@@ -201,7 +201,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         return self._config_dir
 
     @config_dir.setter
-    def config_dir(self, config_dir: typing.Union[str, pathlib.Path]) -> None:
+    def config_dir(self, config_dir: str | pathlib.Path) -> None:
         config_dir = pathlib.Path(config_dir).resolve()
         if not config_dir.is_dir():
             raise ValueError(
@@ -214,7 +214,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         cls,
         config_validator: StandardValidator,
         config_dir: pathlib.Path,
-        files_to_read: typing.List[str],
+        files_to_read: list[str],
         git_hash: str = "",
     ) -> types.SimpleNamespace:
         """Read a set of configuration files and return the validated config.
@@ -245,7 +245,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             cannot be parsed as yaml dicts, or produce an invalid configuration
             (one that does not match the schema).
         """
-        config_dict: typing.Dict[str, typing.Any] = {}
+        config_dict: dict[str, typing.Any] = {}
         for filename in files_to_read:
             if not filename:
                 continue
@@ -255,7 +255,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             if git_hash:
                 try:
                     # git show must run in the target directory
-                    config_raw_data: typing.Union[str, bytes] = subprocess.check_output(
+                    config_raw_data: str | bytes = subprocess.check_output(
                         args=["git", "show", f"{git_hash}:./{filename}"],
                         stderr=subprocess.STDOUT,
                         cwd=config_dir,
@@ -344,7 +344,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             return ""
         return git_info.decode(errors="replace").strip()
 
-    def _make_config_label_dict(self) -> typing.Dict[str, str]:
+    def _make_config_label_dict(self) -> dict[str, str]:
         """Parse ``self.config_dir/_labels.yaml`` and return the dict.
 
         where the path is relative to ``self.config_dir`` directory.
@@ -558,7 +558,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
     @classmethod
     def add_kwargs_from_args(
-        cls, args: argparse.Namespace, kwargs: typing.Dict[str, typing.Any]
+        cls, args: argparse.Namespace, kwargs: dict[str, typing.Any]
     ) -> None:
         kwargs["config_dir"] = args.configdir
         if hasattr(args, "override"):

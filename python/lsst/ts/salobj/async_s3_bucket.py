@@ -26,6 +26,7 @@ import io
 import os
 import re
 import typing
+from collections.abc import Callable
 
 import astropy.time
 import astropy.units as u
@@ -84,10 +85,10 @@ class AsyncS3Bucket:
         name: str,
         *,
         create: bool = False,
-        profile: typing.Optional[str] = None,
+        profile: None | str = None,
         domock: bool = False,
     ) -> None:
-        self.mock: typing.Optional[moto.core.models.BotocoreEventMockAWS] = None
+        self.mock: None | moto.core.models.BotocoreEventMockAWS = None
         self.profile = profile
         if domock:
             self._start_mock(name)
@@ -169,10 +170,10 @@ class AsyncS3Bucket:
     @staticmethod
     def make_key(
         salname: str,
-        salindexname: typing.Union[str, int, None],
+        salindexname: str | int | None,
         generator: str,
         date: astropy.time.Time,
-        other: typing.Optional[str] = None,
+        other: None | str = None,
         suffix: str = ".dat",
     ) -> str:
         """Make a key for an item of data.
@@ -242,7 +243,7 @@ class AsyncS3Bucket:
         self,
         fileobj: typing.BinaryIO,
         key: str,
-        callback: typing.Optional[typing.Callable[[int], None]] = None,
+        callback: None | Callable[[int], None] = None,
     ) -> None:
         """Upload a file-like object to the bucket.
 
@@ -273,7 +274,7 @@ class AsyncS3Bucket:
         await loop.run_in_executor(None, self._sync_upload, fileobj, key, callback)
 
     async def download(
-        self, key: str, callback: typing.Optional[typing.Callable[[int], None]] = None
+        self, key: str, callback: None | Callable[[int], None] = None
     ) -> io.BytesIO:
         """Download a file-like object from the bucket.
 
@@ -338,12 +339,12 @@ class AsyncS3Bucket:
         self,
         fileobj: typing.BinaryIO,
         key: str,
-        callback: typing.Optional[typing.Callable[[int], None]],
+        callback: None | Callable[[int], None],
     ) -> None:
         self.bucket.upload_fileobj(Fileobj=fileobj, Key=key, Callback=callback)
 
     def _sync_download(
-        self, key: str, callback: typing.Optional[typing.Callable[[int], None]]
+        self, key: str, callback: None | Callable[[int], None]
     ) -> io.BytesIO:
         fileobj = io.BytesIO()
         self.bucket.download_fileobj(Key=key, Fileobj=fileobj, Callback=callback)

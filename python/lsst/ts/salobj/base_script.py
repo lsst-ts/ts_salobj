@@ -32,6 +32,7 @@ import sys
 import types
 import typing
 import warnings
+from collections.abc import Sequence
 
 import yaml
 
@@ -114,11 +115,11 @@ class BaseScript(controller.Controller, abc.ABC):
 
         schema = self.get_schema()
         if schema is None:
-            self.config_validator: typing.Optional[validator.DefaultingValidator] = None
+            self.config_validator: None | validator.DefaultingValidator = None
         else:
             self.config_validator = validator.DefaultingValidator(schema=schema)
-        self._run_task: typing.Optional[asyncio.Future] = None
-        self._pause_future: typing.Optional[asyncio.Future] = None
+        self._run_task: None | asyncio.Future = None
+        self._pause_future: None | asyncio.Future = None
         # Value incremented by `next_supplemented_group_id`
         # and cleared by do_setGroupId.
         self._sub_group_id = 0
@@ -134,7 +135,7 @@ class BaseScript(controller.Controller, abc.ABC):
         self.last_checkpoint = ""
 
         # A dict of state: timestamp (TAI seconds).
-        self.timestamps: typing.Dict[ScriptState, float] = dict()
+        self.timestamps: dict[ScriptState, float] = dict()
 
         self._heartbeat_task: asyncio.Future = asyncio.Future()
 
@@ -176,7 +177,7 @@ class BaseScript(controller.Controller, abc.ABC):
         )
 
     @classmethod
-    def make_from_cmd_line(cls, **kwargs: typing.Any) -> typing.Union[BaseScript, None]:
+    def make_from_cmd_line(cls, **kwargs: typing.Any) -> BaseScript | None:
         """Make a script from command-line arguments.
 
         Return None if ``--schema`` specified.
@@ -312,8 +313,8 @@ class BaseScript(controller.Controller, abc.ABC):
 
     async def set_state(
         self,
-        state: typing.Union[ScriptState, int, None] = None,
-        reason: typing.Optional[str] = None,
+        state: ScriptState | int | None = None,
+        reason: None | str = None,
         keep_old_reason: bool = False,
         force_output: bool = False,
     ) -> None:
@@ -462,7 +463,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def get_schema(cls) -> typing.Optional[typing.Dict[str, typing.Any]]:
+    def get_schema(cls) -> None | dict[str, typing.Any]:
         """Return a jsonschema to validate configuration, as a `dict`.
 
         Please provide default values for all fields for which defaults
@@ -482,7 +483,7 @@ class BaseScript(controller.Controller, abc.ABC):
         """
         pass
 
-    def assert_state(self, action: str, states: typing.Sequence[ScriptState]) -> None:
+    def assert_state(self, action: str, states: Sequence[ScriptState]) -> None:
         """Assert that the current state is in ``states`` and the script
         is not exiting.
 
