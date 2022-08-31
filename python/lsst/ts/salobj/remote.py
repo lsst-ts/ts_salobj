@@ -178,7 +178,10 @@ class Remote:
                 setattr(self, tel.attr_name, tel)
 
             if start:
+                self.start_called = True
                 self.start_task = asyncio.create_task(self.start())
+            else:
+                self.start_called = False
         except Exception:
             self.salinfo.basic_close()
             raise
@@ -204,8 +207,13 @@ class Remote:
         """
         await self.salinfo.close()
 
+    def __repr__(self) -> str:
+        return f"Remote(name={self.salinfo.name}, index={self.salinfo.index})"
+
     async def __aenter__(self) -> Remote:
-        await self.start_task
+        if self.start_called:
+            # The Remote was constructed with start=True (the default)
+            await self.start_task
         return self
 
     async def __aexit__(
