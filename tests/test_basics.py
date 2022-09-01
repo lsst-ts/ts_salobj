@@ -22,7 +22,6 @@
 import getpass
 import os
 import random
-import re
 import socket
 import unittest
 
@@ -134,10 +133,6 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             repr_err = repr(err)
             for item in ("AckError", msg, private_seqNum, ack, error, result):
                 assert str(item) in repr_err
-
-    async def test_get_opensplice_version(self) -> None:
-        ospl_version = salobj.get_opensplice_version()
-        assert re.search(r"^\d+\.\d+\.\d+", ospl_version) is not None
 
     async def test_get_user_host(self) -> None:
         expected_user_host = getpass.getuser() + "@" + socket.getfqdn()
