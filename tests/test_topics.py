@@ -151,7 +151,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # is enabled by default
             with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST="1"):
                 async with salobj.TestCsc(index=self.next_index()) as csc:
-                    print(f"csc={csc!r}")
                     assert csc.salinfo.default_authorize
                     for cmd_name in csc.salinfo.command_names:
                         cmd = getattr(csc, f"cmd_{cmd_name}")
@@ -286,10 +285,13 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 nread += 1
 
             unfiltered_nread = 0
+            unfiltered_future: asyncio.Future = asyncio.Future()
 
             def unfiltered_reader_callback(data: salobj.BaseMsgType) -> None:
                 nonlocal unfiltered_nread
                 unfiltered_nread += 1
+                if unfiltered_nread == 4:
+                    unfiltered_future.set_result(None)
 
             cmdreader.callback = reader_callback
             unfiltered_ackcmd_reader.callback = unfiltered_reader_callback
@@ -301,6 +303,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             assert not tasks[0].done()  # Origin did not match.
             assert not tasks[1].done()  # Identity did not match.
             assert not tasks[2].done()  # No identity.
+            await asyncio.wait_for(unfiltered_future, timeout=STD_TIMEOUT)
             assert nread == 4
             assert unfiltered_nread == 4
             for task in tasks:
@@ -420,7 +423,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         sent_data_list = []
         for _ in range(num_commands):
             scalars_dict = self.csc.make_random_scalars_dict()
-            print(scalars_dict)
             await self.remote.cmd_setScalars.set_start(
                 **scalars_dict, timeout=STD_TIMEOUT
             )
@@ -452,7 +454,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             # `aget` should not interfere with `next`
             for i in range(num_commands):
-                print(f"test {i}")
                 evt_data = await self.remote.evt_scalars.next(
                     flush=False, timeout=STD_TIMEOUT
                 )
