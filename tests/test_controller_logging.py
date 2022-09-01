@@ -81,16 +81,21 @@ class ControllerLoggingTestCase(
 
             self.remote.evt_logMessage.flush()
 
-            # We may still get one or two startup log messages
-            # so read until we see the one we want.
-            info_message = "test info message"
-            self.csc.log.info(info_message)
+            # Read log messages until we see Reading historic;
+            # this should be the last log message from the CSC.
             while True:
                 msg = await self.remote.evt_logMessage.next(
                     flush=False, timeout=STD_TIMEOUT
                 )
-                if msg.message == info_message:
+                if "historic" in msg.message:
                     break
+
+            info_message = "test info message"
+            self.csc.log.info(info_message)
+            msg = await self.remote.evt_logMessage.next(
+                flush=False, timeout=STD_TIMEOUT
+            )
+            assert msg.message == info_message
             assert msg.level == logging.INFO
             assert msg.traceback == ""
 
