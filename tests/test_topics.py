@@ -27,12 +27,11 @@ import pathlib
 import time
 import typing
 import unittest
+from collections.abc import Callable, Iterable, Sequence
 
 import numpy as np
 import pytest
-
-from lsst.ts import utils
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -48,8 +47,8 @@ np.random.seed(47)
 class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self,
-        initial_state: typing.Union[salobj.State, int],
-        config_dir: typing.Union[str, pathlib.Path, None],
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
         simulation_mode: int,
     ) -> salobj.BaseCsc:
         return salobj.TestCsc(
@@ -152,7 +151,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # is enabled by default
             with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST="1"):
                 async with salobj.TestCsc(index=self.next_index()) as csc:
-                    print(f"csc={csc!r}")
                     assert csc.salinfo.default_authorize
                     for cmd_name in csc.salinfo.command_names:
                         cmd = getattr(csc, f"cmd_{cmd_name}")
@@ -287,10 +285,13 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 nread += 1
 
             unfiltered_nread = 0
+            unfiltered_future: asyncio.Future = asyncio.Future()
 
             def unfiltered_reader_callback(data: salobj.BaseMsgType) -> None:
                 nonlocal unfiltered_nread
                 unfiltered_nread += 1
+                if unfiltered_nread == 4:
+                    unfiltered_future.set_result(None)
 
             cmdreader.callback = reader_callback
             unfiltered_ackcmd_reader.callback = unfiltered_reader_callback
@@ -302,6 +303,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             assert not tasks[0].done()  # Origin did not match.
             assert not tasks[1].done()  # Identity did not match.
             assert not tasks[2].done()  # No identity.
+            await asyncio.wait_for(unfiltered_future, timeout=STD_TIMEOUT)
             assert nread == 4
             assert unfiltered_nread == 4
             for task in tasks:
@@ -397,7 +399,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def set_scalars(
         self, num_commands: int, assert_none: bool = True
-    ) -> typing.List[salobj.BaseMsgType]:
+    ) -> list[salobj.BaseMsgType]:
         """Send the setScalars command repeatedly and return the data sent.
 
         Each command is sent with new random data. Each command triggers
@@ -421,7 +423,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         sent_data_list = []
         for _ in range(num_commands):
             scalars_dict = self.csc.make_random_scalars_dict()
-            print(scalars_dict)
             await self.remote.cmd_setScalars.set_start(
                 **scalars_dict, timeout=STD_TIMEOUT
             )
@@ -451,8 +452,16 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.csc.assert_scalars_equal(cmd_data_list[0], evt_data)
             self.csc.assert_scalars_equal(cmd_data_list[0], tel_data)
 
-            # wait for all remaining events to be received
-            await asyncio.sleep(EVENT_DELAY)
+            # `aget` should not interfere with `next`
+            for i in range(num_commands):
+                evt_data = await self.remote.evt_scalars.next(
+                    flush=False, timeout=STD_TIMEOUT
+                )
+                tel_data = await self.remote.tel_scalars.next(
+                    flush=False, timeout=STD_TIMEOUT
+                )
+                self.csc.assert_scalars_equal(cmd_data_list[i], evt_data)
+                self.csc.assert_scalars_equal(cmd_data_list[i], tel_data)
 
             # aget should return the last value seen,
             # no matter now many times it is called
@@ -471,31 +480,21 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_plain_get(self) -> None:
         """Test RemoteEvent.get and RemoteTelemetry.get."""
         async with self.make_csc(initial_state=salobj.State.ENABLED):
-            is_first = True
             for read_topic in (self.remote.evt_scalars, self.remote.tel_scalars):
-                if not is_first:
-                    # Clear out data from previous iteration
-                    read_topic.flush()
+                # Clear out data from previous iteration, if any
+                read_topic.flush()
+
                 num_commands = 3
-                cmd_data_list = await self.set_scalars(
-                    num_commands=num_commands, assert_none=is_first
-                )
-                # wait for all events
-                await asyncio.sleep(EVENT_DELAY)
 
-                # Test that get returns the last value seen,
-                # no matter now many times it is called.
-                # Use flush=False to leave queued data for a later
-                # call to get that will flush the queue.
-                data_list = [read_topic.get() for _ in range(5)]
-                for data in data_list:
-                    assert data is not None
-                    self.csc.assert_scalars_equal(cmd_data_list[-1], data)
+                for _ in range(num_commands):
+                    cmd_data_list = await self.set_scalars(
+                        num_commands=1, assert_none=False
+                    )
 
-                # Make sure the data queue was not flushed.
-                assert read_topic.nqueued == num_commands
-
-                is_first = False
+                    next_data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
+                    get_data = read_topic.get()
+                    self.csc.assert_scalars_equal(cmd_data_list[0], next_data)
+                    self.csc.assert_scalars_equal(cmd_data_list[0], get_data)
 
     async def test_get_oldest(self) -> None:
         """Test that `get_oldest` returns the oldest sample."""
@@ -583,7 +582,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 self.read_topic = read_topic
                 self.nitems = nitems
                 self.name = name
-                self.data: typing.List[salobj.BaseMsgType] = []
+                self.data: list[salobj.BaseMsgType] = []
                 self.read_loop_task = asyncio.create_task(self.read_loop())
                 self.ready_to_read = asyncio.Event()
 
@@ -623,21 +622,30 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 assert data == read_data
 
     async def test_callbacks(self) -> None:
+        num_commands = 3
+
         evt_data_list: typing.List[salobj.BaseMsgType] = []
+        evt_future: asyncio.Future = asyncio.Future()
 
         def evt_callback(data: salobj.BaseMsgType) -> None:
             evt_data_list.append(data)
+            if len(evt_data_list) == num_commands:
+                evt_future.set_result(None)
 
         tel_data_list: typing.List[salobj.BaseMsgType] = []
+        tel_future: asyncio.Future = asyncio.Future()
 
         def tel_callback(data: salobj.BaseMsgType) -> None:
             tel_data_list.append(data)
+            if len(tel_data_list) == num_commands:
+                tel_future.set_result(None)
 
-        num_commands = 3
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             self.remote.evt_scalars.callback = evt_callback
             self.remote.tel_scalars.callback = tel_callback
 
+            # Check methods that are not allowed
+            # when there is a callback function
             with pytest.raises(RuntimeError):
                 self.remote.evt_scalars.get_oldest()
             with pytest.raises(RuntimeError):
@@ -652,8 +660,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await self.remote.tel_scalars.next(flush=False)
 
             cmd_data_list = await self.set_scalars(num_commands=num_commands)
-            # give the wait loops time to finish
-            await asyncio.sleep(EVENT_DELAY)
+            await asyncio.wait_for(
+                asyncio.gather(evt_future, tel_future), timeout=STD_TIMEOUT
+            )
 
             assert len(evt_data_list) == num_commands
             for cmd_data, evt_data in zip(cmd_data_list, evt_data_list):
@@ -850,9 +859,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def check_controller_command_callback_failure(
         self,
-        callback: typing.Callable,
+        callback: Callable,
         ack: salobj.SalRetCode,
-        result_contains: typing.Optional[str] = None,
+        result_contains: None | str = None,
     ) -> None:
         """Check the exception raised by a remote command when the controller
         controller command raises an exception or returns a failed ackcmd.
@@ -1110,12 +1119,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await cmdreader.ack(data=data, ackcmd=ackcmd)
 
             cmdreader.callback = reader_callback
-            kwargs_list: typing.Sequence[typing.Dict[str, typing.Any]] = (
+            kwargs_list: Sequence[dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
                 dict(short0=-3, long0=47),
             )
-            fields: typing.Set[str] = set()
+            fields: set[str] = set()
             for kwargs in kwargs_list:
                 fields.update(kwargs.keys())
 
@@ -1518,12 +1527,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await salinfo.start()
 
             predicted_data_dict = write_topic.DataType().get_vars()
-            kwargs_list: typing.Iterable[typing.Dict[str, typing.Any]] = (
+            kwargs_list: Iterable[dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
                 dict(int0=-3, long0=47),
             )
-            fields: typing.Set[str] = set()
+            fields: set[str] = set()
             for kwargs in kwargs_list:
                 fields.update(kwargs.keys())
 

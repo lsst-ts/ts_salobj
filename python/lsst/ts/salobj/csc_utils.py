@@ -26,14 +26,11 @@ __all__ = [
 ]
 
 import asyncio
-import typing
 
-from .sal_enums import State
 from .remote import Remote
+from .sal_enums import State
 
-StateTransitionDictType = typing.Dict[
-    typing.Tuple[State, State], typing.List[typing.Tuple[str, State]]
-]
+StateTransitionDictType = dict[tuple[State, State], list[tuple[str, State]]]
 
 
 def make_state_transition_dict() -> StateTransitionDictType:
@@ -83,7 +80,7 @@ _STATE_TRANSITION_DICT = make_state_transition_dict()
 
 def get_expected_summary_states(
     initial_state: State, final_state: State
-) -> typing.List[State]:
+) -> list[State]:
     """Return all summary states expected when transitioning from
     one state to another.
     """
@@ -96,9 +93,9 @@ def get_expected_summary_states(
 async def set_summary_state(
     remote: Remote,
     state: State,
-    override: typing.Optional[str] = "",
+    override: None | str = "",
     timeout: float = 30,
-) -> typing.List[State]:
+) -> list[State]:
     """Put a CSC into the specified summary state.
 
     Parameters

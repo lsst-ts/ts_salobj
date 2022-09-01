@@ -27,15 +27,11 @@ import asyncio
 import collections
 import logging
 import random
-import typing
 import time
+import typing
 
-from .. import base
-from .. import sal_enums
-from .. import type_hints
-from . import read_topic
-from . import write_topic
-from . import remote_command
+from .. import base, sal_enums, type_hints
+from . import read_topic, remote_command, write_topic
 
 if typing.TYPE_CHECKING:
     from ..sal_info import SalInfo
@@ -125,10 +121,10 @@ class CommandInfo:
 
         # we should see at most 3 acks, but leave room for one more,
         # just in case
-        self._ack_queue: typing.Deque[type_hints.AckCmdDataType] = collections.deque(
-            maxlen=4
-        )
-        self._last_ackcmd: typing.Optional[type_hints.AckCmdDataType] = None
+        self._ack_queue: collections.deque[
+            type_hints.AckCmdDataType
+        ] = collections.deque(maxlen=4)
+        self._last_ackcmd: None | type_hints.AckCmdDataType = None
 
     def add_ackcmd(self, ackcmd: type_hints.AckCmdDataType) -> bool:
         """Add a command acknowledgement to the queue.
@@ -463,29 +459,33 @@ class RemoteCommand(write_topic.WriteTopic):
             If ``data`` is not None and not an instance of `DataType`.
         """
         self.salinfo.assert_started()
-        if data is not None:
-            self.data = data
-        # else use the existing data, since it may have been set
-        # via a call to "set"
 
         try:
             self._in_start = True
-            data_written = await super().write()
+            if data is not None:
+                self.data = data
+            # else use the existing data, since it may have been set
+            # via a call to "set"
+
+            data = self._prepare_data_to_write()
+
+            seq_num = data.private_seqNum
+            if seq_num in self.salinfo._running_cmds:
+                raise RuntimeError(
+                    f"{self.attr_name} bug: a command with seq_num={seq_num} is already running"
+                )
+            cmd_info = CommandInfo(
+                remote_command=self, seq_num=seq_num, wait_done=wait_done
+            )
+            self.salinfo._running_cmds[seq_num] = cmd_info
+            self._writer.write(data)
         finally:
             self._in_start = False
-        seq_num = data_written.private_seqNum
-        if seq_num in self.salinfo._running_cmds:
-            raise RuntimeError(
-                f"{self.attr_name} bug: a command with seq_num={seq_num} is already running"
-            )
-        cmd_info = CommandInfo(
-            remote_command=self, seq_num=seq_num, wait_done=wait_done
-        )
-        self.salinfo._running_cmds[seq_num] = cmd_info
+
         return await cmd_info.next_ackcmd(timeout=timeout)
 
     async def set_write(
-        self, *, force_output: typing.Optional[bool] = None, **kwargs: typing.Any
+        self, *, force_output: None | bool = None, **kwargs: typing.Any
     ) -> write_topic.SetWriteResult:
         """An override of WriteTopic.set_write that is disabled."""
         raise NotImplementedError("Call set_start instead")

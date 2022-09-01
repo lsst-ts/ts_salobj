@@ -28,12 +28,11 @@ import types
 import typing
 import unittest
 import warnings
+from collections.abc import Iterable
 
 import pytest
 import yaml
-
-from lsst.ts import utils
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
 from lsst.ts.idl.enums.Script import ScriptState
 
 # Long enough to perform any reasonable operation
@@ -53,7 +52,7 @@ class NonConfigurableScript(salobj.BaseScript):
 
     def __init__(self, index: int) -> None:
         super().__init__(index=index, descr="Non-configurable script")
-        self.config: typing.Optional[types.SimpleNamespace] = None
+        self.config: None | types.SimpleNamespace = None
         self.run_called = False
         self.set_metadata_called = False
 
@@ -61,7 +60,7 @@ class NonConfigurableScript(salobj.BaseScript):
     def get_schema(cls) -> None:
         return None
 
-    async def configure(self, config: typing.Optional[types.SimpleNamespace]) -> None:
+    async def configure(self, config: None | types.SimpleNamespace) -> None:
         self.config = config
 
     async def run(self) -> None:
@@ -548,9 +547,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         """
 
         class ScriptWithRemotes(salobj.TestScript):
-            def __init__(
-                self, index: int, remote_indices: typing.Iterable[int]
-            ) -> None:
+            def __init__(self, index: int, remote_indices: Iterable[int]) -> None:
                 super().__init__(index, descr="Script with remotes")
                 remotes = []
                 # use remotes that read history here, to check that

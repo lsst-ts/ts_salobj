@@ -23,12 +23,11 @@ __all__ = ["get_dds_version"]
 
 import pathlib
 import re
-import typing
 
 import dds
 
 
-def get_dds_version(dds_file: typing.Optional[str] = None) -> str:
+def get_dds_version(dds_file: None | str = None) -> str:
     """Get the version of OpenSplice dds library.
 
     If it cannot be determined, return "?".

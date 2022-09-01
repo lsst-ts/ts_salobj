@@ -21,12 +21,11 @@
 
 import typing
 import unittest
+from collections.abc import Iterable
 
 import numpy as np
 import pytest
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 np.random.seed(47)
 
@@ -44,7 +43,7 @@ class ControllerWithDoMethods(salobj.Controller):
         methods.
     """
 
-    def __init__(self, command_names: typing.Iterable[str]) -> None:
+    def __init__(self, command_names: Iterable[str]) -> None:
         index = next(index_gen)
         for name in command_names:
             setattr(self, f"do_{name}", self.mock_do_method)

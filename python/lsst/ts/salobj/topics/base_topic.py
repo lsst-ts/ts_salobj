@@ -149,7 +149,7 @@ class BaseTopic(abc.ABC):
         return self.qos_set.volatile
 
     @property
-    def metadata(self) -> typing.Optional[TopicMetadata]:
+    def metadata(self) -> None | TopicMetadata:
         """Get topic metadata as a `TopicMetadata`, if available,else None."""
         return self.salinfo.metadata.topic_info.get(self.sal_name)
 

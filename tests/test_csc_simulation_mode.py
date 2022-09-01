@@ -23,12 +23,11 @@ import asyncio
 import sys
 import typing
 import unittest
+from collections.abc import Iterable
 
 import numpy as np
 import pytest
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 np.random.seed(47)
 
@@ -66,9 +65,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
             (4, 1, 0),
         )
 
-    def make_csc_class(
-        self, modes: typing.Optional[typing.Iterable[int]]
-    ) -> salobj.TestCsc:
+    def make_csc_class(self, modes: None | Iterable[int]) -> salobj.TestCsc:
         """Make a subclass of TestCsc with specified valid simulation modes"""
 
         class TestCscWithSimulation(salobj.TestCsc):

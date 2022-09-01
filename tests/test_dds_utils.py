@@ -23,7 +23,6 @@ import unittest
 import unittest.mock
 
 import dds
-
 from lsst.ts import salobj
 
 

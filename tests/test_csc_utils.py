@@ -22,12 +22,9 @@
 import itertools
 import pathlib
 import unittest
-import typing
 
 import pytest
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -41,8 +38,8 @@ TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
 class SetSummaryStateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self,
-        initial_state: typing.Union[salobj.State, int],
-        config_dir: typing.Union[str, pathlib.Path, None],
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
         simulation_mode: int,
     ) -> salobj.BaseCsc:
 

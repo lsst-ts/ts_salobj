@@ -25,8 +25,8 @@ import typing
 
 
 def hierarchical_update(
-    main: typing.Dict[str, typing.Any],
-    override: typing.Dict[str, typing.Any],
+    main: dict[str, typing.Any],
+    override: dict[str, typing.Any],
     main_name: str,
     override_name: str,
     prefix: str = "",

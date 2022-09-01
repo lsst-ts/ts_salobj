@@ -28,9 +28,7 @@ import unittest
 
 import numpy as np
 import pytest
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 np.random.seed(47)
 
@@ -48,7 +46,7 @@ class NoIndexCsc(salobj.TestCsc):
         arg2: typing.Any,
         initial_state: salobj.State = salobj.State.STANDBY,
         override: str = "",
-        config_dir: typing.Union[str, pathlib.Path, None] = None,
+        config_dir: str | pathlib.Path | None = None,
     ) -> None:
         super().__init__(
             index=next(index_gen),

@@ -21,14 +21,11 @@
 
 import os
 import pathlib
-import typing
 import unittest
 
 import numpy as np
 import yaml
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -55,8 +52,8 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
     def basic_make_csc(
         self,
-        initial_state: typing.Union[salobj.State, int],
-        config_dir: typing.Union[str, pathlib.Path, None],
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
         simulation_mode: int,
     ) -> salobj.BaseCsc:
         return salobj.TestCsc(

@@ -35,6 +35,10 @@ flake8-max-line-length = 110
 flake8-max-doc-length = 79
 asyncio_mode = "auto"
 
+[tool.isort]
+profile = "black"
+skip = ["__init__.py"]
+
 [tool.mypy]
 disallow_untyped_defs = "True"
 ignore_missing_imports = "True"

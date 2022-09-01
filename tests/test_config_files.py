@@ -24,7 +24,6 @@ import pathlib
 import unittest
 
 import pytest
-
 from lsst.ts import salobj
 
 
