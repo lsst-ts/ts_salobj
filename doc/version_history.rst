@@ -6,6 +6,20 @@
 Version History
 ###############
 
+v7.1.4
+------
+
+* `ReadTopic`: fix ``aget`` to not steal data from ``next``, as documented.
+* `Remote`:
+
+    * Add missing ``start_called`` method; it was documented but not present.
+    * Remote can now be used as an asynchronous context manager, even when constructed with ``start=False``.
+    * Add a ``__repr__`` method.
+
+* Fix a few race conditions in unit tests.
+* Configure pre-commit to run `isort` to sort imports.
+* Modernize type annotations.
+
 v7.1.3
 ------
 
