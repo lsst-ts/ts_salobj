@@ -18,6 +18,49 @@ vKafka
     * `SalInfo`: you must call ``start`` before writing data.
     * Messages no longer support the ``get_vars`` method; use the ``vars`` built-in function instead.
       In other words change ``message.get_vars()`` to ``vars(message)``.
+    * Remove function `get_opensplice_version`.
+
+* `BaseCsc`: stop setting $OSPL_MASTER_PRIORITY; it is not needed for Kafka.
+  Delete constant ``MASTER_PRIORITY_ENV_VAR``.
+
+v7.2.0-prerelease
+-----------------
+
+* `BaseCscTestCase.make_csc`: construct self.remote after the csc is fully started.
+  This will break unit tests that specify a non-default initial state for the CSC and check data for events other than summaryState.
+  Unfortunately it appears to be necessary in order to avoid a race condition between the CSC and remote.
+
+* `ReadTopic`: fix ``aget`` to not steal data from ``next``, as documented.
+  This may break existing code that relied on the incorrect behavior, but it makes the queued data more predictable.
+  
+* `Remote`:
+
+    * Add missing ``start_called`` method; it was documented but not present.
+    * Remote can now be used as an asynchronous context manager, even when constructed with ``start=False``.
+    * Add a ``__repr__`` method.
+
+* Fix a few race conditions in unit tests.
+* Configure pre-commit to run `isort` to sort imports.
+* Modernize type annotations.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
+v7.1.3
+------
+
+* Correctly process all topics if multiple topics updates are available.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
 
 v7.7.0
 ------
