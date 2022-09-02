@@ -27,7 +27,9 @@ import socket
 import unittest
 
 import pytest
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
+
+index_gen = utils.index_generator()
 
 
 class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
@@ -36,8 +38,10 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_assert_raises_ack_error(self) -> None:
         """Test the assertRaisesAckError function."""
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain, "Test", index=1)
+        index = next(index_gen)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain, "Test", index=index
+        ) as salinfo:
             private_seqNum = 5
             ack = 23
             error = -6
@@ -108,8 +112,10 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_ack_error_repr(self) -> None:
         """Test AckError.__str__ and AckError.__repr__"""
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain, "Test", index=1)
+        index = next(index_gen)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain, "Test", index=index
+        ) as salinfo:
             msg = "a message"
             private_seqNum = 5
             ack = 23
