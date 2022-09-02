@@ -176,6 +176,23 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         return await super().next(flush=False, timeout=timeout)
 
+    async def _ack_if_running(
+        self, data: type_hints.BaseMsgType, ackcmd: type_hints.AckCmdDataType
+    ) -> None:
+        """Wrapper around self.ack that logs a warning if not salinfo.running.
+
+        Parameters
+        ----------
+        data : `DataType`
+            Data for the command being acknowledged.
+        ackcmd : `salobj.AckCmdType`
+            Command acknowledgement data.
+        """
+        if not self.salinfo.running:
+            self.log.warning(f"Cannot issue {ackcmd=}; SalInfo is not running")
+            return
+        await self.ack(data=data, ackcmd=ackcmd)
+
     def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
         """Queue the message if it has a valid sequence number.
 
@@ -207,7 +224,7 @@ class ControllerCommand(read_topic.ReadTopic):
                     ack=sal_enums.SalRetCode.CMD_COMPLETE,
                     result="Done",
                 )
-            await self.ack(data, ack)
+            await self._ack_if_running(data, ack)
         except asyncio.CancelledError:
             ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
@@ -215,7 +232,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 error=1,
                 result="Aborted",
             )
-            await self.ack(data, ack)
+            await self._ack_if_running(data, ack)
         except asyncio.TimeoutError:
             ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
@@ -223,7 +240,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 error=1,
                 result="Timeout",
             )
-            await self.ack(data, ack)
+            await self._ack_if_running(data, ack)
         except Exception as e:
             ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
@@ -231,6 +248,6 @@ class ControllerCommand(read_topic.ReadTopic):
                 error=1,
                 result=f"Failed: {e}",
             )
-            await self.ack(data, ack)
+            await self._ack_if_running(data, ack)
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
