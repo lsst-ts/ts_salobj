@@ -60,16 +60,20 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 assert not salinfo.start_task.done()
                 assert not salinfo.done_task.done()
                 assert not salinfo.started
+                assert not salinfo.running
                 with pytest.raises(RuntimeError):
                     salinfo.assert_started()
+                with pytest.raises(RuntimeError):
+                    salinfo.assert_running()
 
                 asyncio.create_task(salinfo.start())
-                # Use a short time limit because there are no topics to read
                 await asyncio.wait_for(salinfo.start_task, timeout=STD_TIMEOUT)
                 assert salinfo.start_task.done()
                 assert not salinfo.done_task.done()
                 assert salinfo.started
+                assert salinfo.running
                 salinfo.assert_started()
+                salinfo.assert_running()
 
                 with pytest.raises(RuntimeError):
                     await salinfo.start()
@@ -78,12 +82,15 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 assert salinfo.start_task.done()
                 assert salinfo.done_task.done()
                 assert salinfo.started
+                assert not salinfo.running
                 salinfo.assert_started()
+                with pytest.raises(RuntimeError):
+                    salinfo.assert_running()
 
-                # Test enum index
-                class SalIndex(enum.IntEnum):
-                    ONE = 1
-                    TWO = 2
+            # Test enum index
+            class SalIndex(enum.IntEnum):
+                ONE = 1
+                TWO = 2
 
             async with salobj.SalInfo(
                 domain=domain, name="Script", index=SalIndex.ONE
@@ -192,8 +199,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 expected_default_authorize = True if env_var_value == "1" else False
                 index = next(index_gen)
                 with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST=env_var_value):
-                    salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
-                    assert salinfo.default_authorize == expected_default_authorize
+                    async with salobj.SalInfo(
+                        domain=domain, name="Test", index=index
+                    ) as salinfo:
+                        assert salinfo.default_authorize == expected_default_authorize
 
     async def test_lsst_topic_subname_required(self) -> None:
         # Delete LSST_TOPIC_SUBNAME. This should prevent constructing
@@ -258,8 +267,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert ackcmd.result == result
 
     async def test_write_only(self) -> None:
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test", write_only=True)
+        index = next(index_gen)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=index, write_only=True
+        ) as salinfo:
 
             # Cannot add a read topic to a write-only SalInfo
             with pytest.raises(RuntimeError):
@@ -267,6 +278,8 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                     salinfo=salinfo, attr_name="evt_summaryState", max_history=0
                 )
 
+            # Check that starting a write-only SalInfo
+            # does not start the read loop
             await salinfo.start()
             assert salinfo._consumer is None
             assert salinfo._read_loop_task.done()
