@@ -52,9 +52,9 @@ BOOL_DICT = {
 
 
 async def stream_as_generator(
-    stream: typing.TextIO, encoding: str = "utf-8"
+    stream: typing.TextIO, exit_str: str = ""
 ) -> typing.AsyncGenerator[str, None]:
-    """Await lines of text from stdin or another input stream.
+    """Await lines of text from stdin or another text input stream.
 
     Example usage:
 
@@ -65,28 +65,27 @@ async def stream_as_generator(
     ----------
     stream : ``stream``
         Stream to read, e.g. `sys.stdin`.
-    encoding : `str`
-        Encoding.
+    exit_str : `str`
+        Exit if this string is seen. Ignored if blank.
 
     Returns
     -------
     line : `str`
-        A line of data, optionally decoded.
-
-    Notes
-    -----
-    Thanks to
-    http://blog.mathieu-leplatre.info/some-python-3-asyncio-snippets.html
+        A non-empty string that is stripped of leading and trailing whitespace,
+        \n, and \r.
     """
     loop = asyncio.get_running_loop()
-    reader = asyncio.StreamReader(loop=loop)
-    reader_protocol = asyncio.StreamReaderProtocol(reader)
-    await loop.connect_read_pipe(lambda: reader_protocol, sys.stdin)
+
     while True:
-        line = await reader.readline()
+        line = await loop.run_in_executor(None, stream.readline)
         if not line:  # EOF.
             break
-        yield line.decode(encoding)
+        stripped_line = line.strip()
+        if not stripped_line:
+            continue
+        if exit_str and stripped_line == exit_str:
+            break
+        yield stripped_line
 
 
 def round_any(
@@ -662,16 +661,11 @@ help  # print this help
             await self.start()
 
             self.print_help()
-            async for line in stream_as_generator(sys.stdin):
+            async for line in stream_as_generator(stream=sys.stdin, exit_str="exit"):
                 # Purge done tasks
                 self.tasks = {task for task in self.tasks if not task.done()}
 
                 # Execute the new command
-                line = line.strip()
-                if not line:
-                    continue
-                if line == "exit":
-                    break
                 task = asyncio.create_task(self._run_command_and_output(line))
                 self.tasks.add(task)
         finally:
