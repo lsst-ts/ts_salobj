@@ -747,15 +747,12 @@ class SalInfo:
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 while self.isopen:
-                    reader, data_list = await loop.run_in_executor(
-                        pool, self._blocking_read
-                    )
+                    reads = await loop.run_in_executor(pool, self._blocking_read)
                     if not self.isopen:
                         break
-                    if not data_list or reader is None:
-                        continue
-                    reader.dds_queue_length_checker.check_nitems(len(data_list))
-                    reader._queue_data(data_list)
+                    for reader, data_list in reads:
+                        reader.dds_queue_length_checker.check_nitems(len(data_list))
+                        reader._queue_data(data_list)
 
         except asyncio.CancelledError:
             raise
@@ -766,23 +763,26 @@ class SalInfo:
 
     def _blocking_read(
         self,
-    ) -> typing.Tuple[
-        typing.Optional[topics.ReadTopic], typing.List[type_hints.BaseMsgType]
-    ]:
+    ) -> list[tuple[topics.ReadTopic, list[type_hints.BaseMsgType]]]:
         """Read DDS data.
 
-        Return two values:
+        Returns
+        -------
+        read_data
+            Read data, as a list of tuples, each with two values:
 
-        * reader : `ReadTopic` or `None`
-            The read topic, or None if no data.
-        * data_list: `list` [`BaseMsgType`]
-            List of messages, or [] if no data.
+            * reader : `ReadTopic`
+                The read topic.
+            * data_list: `list` [`BaseMsgType`]
+                List of messages.
         """
         conditions = self._waitset.wait(self._wait_timeout)
-        if not self.isopen:
-            # shutting down; clean everything up
-            return (None, [])
+
+        ret: list[tuple[topics.ReadTopic, list[type_hints.BaseMsgType]]] = []
         for condition in conditions:
+            if not self.isopen:
+                # shutting down; discard any read data and quit
+                return []
             reader = self._reader_dict.get(condition)
             if reader is None or not reader.isopen:
                 continue
@@ -792,8 +792,10 @@ class SalInfo:
             data_list = [
                 self._sample_to_data(sd, si) for sd, si in data_list if si.valid_data
             ]
-            return (reader, data_list)
-        return (None, [])
+            if data_list:
+                ret.append((reader, data_list))
+
+        return ret
 
     def _sample_to_data(self, sd: dds._Sample, si: dds.SampleInfo) -> dds._Sample:
         """Process one sample data, sample info pair.

@@ -6,6 +6,18 @@
 Version History
 ###############
 
+v7.1.3
+------
+
+* Correctly process all topics if multiple topics updates are available.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
 v7.1.2
 ------
 
