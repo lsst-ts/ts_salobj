@@ -54,45 +54,57 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                     salobj.SalInfo(domain=domain, name="Test", index=invalid_index)
 
             index = next(index_gen)
-            salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
-            assert salinfo.name == "Test"
-            assert salinfo.index == index
-            assert not salinfo.start_task.done()
-            assert not salinfo.done_task.done()
-            assert not salinfo.started
-            with pytest.raises(RuntimeError):
+            async with salobj.SalInfo(
+                domain=domain, name="Test", index=index
+            ) as salinfo:
+                assert salinfo.name == "Test"
+                assert salinfo.index == index
+                assert not salinfo.start_task.done()
+                assert not salinfo.done_task.done()
+                assert not salinfo.started
+                assert not salinfo.running
+                with pytest.raises(RuntimeError):
+                    salinfo.assert_started()
+                with pytest.raises(RuntimeError):
+                    salinfo.assert_running()
+
+                asyncio.create_task(salinfo.start())
+                await asyncio.wait_for(salinfo.start_task, timeout=STD_TIMEOUT)
+                assert salinfo.start_task.done()
+                assert not salinfo.done_task.done()
+                assert salinfo.started
+                assert salinfo.running
                 salinfo.assert_started()
+                salinfo.assert_running()
 
-            asyncio.create_task(salinfo.start())
-            # Use a short time limit because there are no topics to read
-            await asyncio.wait_for(salinfo.start_task, timeout=STD_TIMEOUT)
-            assert salinfo.start_task.done()
-            assert not salinfo.done_task.done()
-            assert salinfo.started
-            salinfo.assert_started()
+                with pytest.raises(RuntimeError):
+                    await salinfo.start()
 
-            with pytest.raises(RuntimeError):
-                await salinfo.start()
-
-            await asyncio.wait_for(salinfo.close(), timeout=STD_TIMEOUT)
-            assert salinfo.start_task.done()
-            assert salinfo.done_task.done()
-            assert salinfo.started
-            salinfo.assert_started()
+                await asyncio.wait_for(salinfo.close(), timeout=STD_TIMEOUT)
+                assert salinfo.start_task.done()
+                assert salinfo.done_task.done()
+                assert salinfo.started
+                assert not salinfo.running
+                salinfo.assert_started()
+                with pytest.raises(RuntimeError):
+                    salinfo.assert_running()
 
             # Test enum index
             class SalIndex(enum.IntEnum):
                 ONE = 1
                 TWO = 2
 
-            salinfo = salobj.SalInfo(domain=domain, name="Script", index=SalIndex.ONE)
-            assert isinstance(salinfo.index, SalIndex)
-            assert salinfo.index == SalIndex.ONE
+            async with salobj.SalInfo(
+                domain=domain, name="Script", index=SalIndex.ONE
+            ) as salinfo:
+                assert isinstance(salinfo.index, SalIndex)
+                assert salinfo.index == SalIndex.ONE
 
     async def test_salinfo_attributes(self) -> None:
-        async with salobj.Domain() as domain:
-            index = next(index_gen)
-            salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
+        index = next(index_gen)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=index
+        ) as salinfo:
 
             assert salinfo.name_index == f"Test:{index}"
 
@@ -160,8 +172,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
         The main tests of ComponentInfo are elsewhere.
         """
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test")
+        index = next(index_gen)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=index
+        ) as salinfo:
 
             # Check some topic and field metadata
             for attr_name, topic_info in salinfo.component_info.topics.items():
@@ -191,8 +205,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 expected_default_authorize = True if env_var_value == "1" else False
                 index = next(index_gen)
                 with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST=env_var_value):
-                    salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
-                    assert salinfo.default_authorize == expected_default_authorize
+                    async with salobj.SalInfo(
+                        domain=domain, name="Test", index=index
+                    ) as salinfo:
+                        assert salinfo.default_authorize == expected_default_authorize
 
     async def test_lsst_topic_subname_required(self) -> None:
         # Delete LSST_TOPIC_SUBNAME. This should prevent constructing
@@ -204,21 +220,22 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_log_level(self) -> None:
         """Test that log level is decreased (verbosity increased) to INFO."""
-        log = logging.getLogger()
-        log.setLevel(logging.WARNING)
         salinfos = []
+        index = next(index_gen)
         async with salobj.Domain() as domain:
             try:
-                # Log level is WARNING; test that log level is decreased
-                # (verbosity increased) to INFO.
-                salinfo = salobj.SalInfo(domain=domain, name="Test")
+                # Start with log level WARNING, and test that creating
+                # a SalInfo increases the verbosity to INFO.
+                log = logging.getLogger()
+                log.setLevel(logging.WARNING)
+                salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
                 salinfos.append(salinfo)
                 assert salinfo.log.getEffectiveLevel() == logging.INFO
 
-                # Start with log level DEBUG and test that log level
-                # is unchanged.
+                # Start with log level DEBUG, and test that creating a SalInfo
+                # does not decreaese the verbosity.
                 salinfo.log.setLevel(logging.DEBUG)
-                salinfo = salobj.SalInfo(domain=domain, name="Test")
+                salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
                 salinfos.append(salinfo)
                 assert salinfo.log.getEffectiveLevel() == logging.DEBUG
             finally:
@@ -226,8 +243,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                     await salinfo.close()
 
     async def test_make_ack_cmd(self) -> None:
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test")
+        index = next(index_gen)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=index
+        ) as salinfo:
 
             # Use all defaults
             seqNum = 55
@@ -255,8 +274,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert ackcmd.result == result
 
     async def test_write_only(self) -> None:
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain=domain, name="Test", write_only=True)
+        index = next(index_gen)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=index, write_only=True
+        ) as salinfo:
 
             # Cannot add a read topic to a write-only SalInfo
             with pytest.raises(RuntimeError):
@@ -264,6 +285,8 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                     salinfo=salinfo, attr_name="evt_summaryState", max_history=0
                 )
 
+            # Check that starting a write-only SalInfo
+            # does not start the read loop
             await salinfo.start()
             assert salinfo._consumer is None
             assert salinfo._read_loop_task.done()
