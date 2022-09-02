@@ -10,6 +10,8 @@ v7.1.4
 ------
 
 * `ReadTopic`: fix ``aget`` to not steal data from ``next``, as documented.
+  This may break existing code that relied on the incorrect behavior, but it makes the queued data more predictable.
+* `BaseCscTestCase.make_csc`: eliminate a possible race condition.
 * `Remote`:
 
     * Add missing ``start_called`` method; it was documented but not present.
@@ -19,6 +21,13 @@ v7.1.4
 * Fix a few race conditions in unit tests.
 * Configure pre-commit to run `isort` to sort imports.
 * Modernize type annotations.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
 
 v7.1.3
 ------
