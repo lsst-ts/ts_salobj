@@ -256,7 +256,7 @@ class TopicInfo:
             attr_name = "tel_" + sal_name
         self.attr_name = attr_name
         self.kafka_name = (
-            f"lsst.sal.{self.topic_subname}.{self.component_name}.{self.sal_name}"
+            f"lsst.{self.topic_subname}.{self.component_name}.{self.sal_name}"
         )
         self.avro_subject = f"{self.kafka_name}-value"
         array_fields = dict()
@@ -364,7 +364,10 @@ class TopicInfo:
             avro_schema = dict(
                 type="record",
                 name=self.sal_name,
-                namespace=f"lsst.sal.{self.component_name}",
+                # TODO DM-36101: remove "kafka-" from the namespace.
+                # It is present to avoid collisions with data generated
+                # by ts_salkafka for DDS-based SAL topics.
+                namespace=f"lsst.sal.kafka-{self.component_name}",
                 fields=[
                     field_info.make_avro_schema() for field_info in self.fields.values()
                 ],
