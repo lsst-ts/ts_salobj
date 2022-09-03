@@ -255,6 +255,15 @@ class SalInfo:
             raise RuntimeError(
                 "You must define environment variable LSST_TOPIC_SUBNAME"
             )
+        # TODO DM-36101: remove this test when we are ready to switch
+        # from DDS-based SAL to Kafka-based SAL, and use
+        # $LSST_TOPIC_SUBNAME="sal" for production code.
+        # Then the EFD ingest code will see the expected topic names.
+        if topic_subname == "sal":
+            raise RuntimeError(
+                "Environment variable LSST_TOPIC_SUBNAME must not have value 'sal', "
+                "because that may interfere with EFD ingest of DDS-based SAL data"
+            )
 
         self.kafka_broker_addr = os.environ.get(
             "LSST_KAFKA_BROKER_ADDR", DEFAULT_LSST_KAFKA_BROKER_ADDR
@@ -631,13 +640,18 @@ class SalInfo:
             await self.loop.run_in_executor(self.pool, func=self._blocking_setup_kafka)
 
             if not self._read_topics:
-                # Note: if there are read topics,
-                # self.start_task is set done in self._read_loop
+                # There are no read topics, so self.start_task has to be
+                # set done here, rather than in self._read_loop_task.
                 if not self.start_task.done():
                     self.start_task.set_result(None)
+                # Keep running until _run_kafka_task is cancelled.
                 await asyncio.Future()
             else:
+                # There are read topics, so self.start_task will be
+                # set done in self._read_loop_task.
                 self._read_loop_task = asyncio.create_task(self._read_loop())
+                # Keep running until the self._read_loop_task and/or
+                # self._run_kafka_task are cancelled.
                 await self._read_loop_task
         except asyncio.CancelledError:
             pass
@@ -688,7 +702,7 @@ class SalInfo:
         """Create missing Kafka topics for this SAL component."""
         # A dict of kafka_name: topic_info.
         # This elides duplicate names between self._read_topics
-        # and self._write_topics
+        # and self._write_topics.
         topic_infos = {
             topic.topic_info.kafka_name: topic.topic_info
             for topic in itertools.chain(
@@ -712,9 +726,11 @@ class SalInfo:
         # * Get a list of all topics and only create missing topics.
         #   That works, but the list of existing topics is likely to be long,
         #   because it will include topics for all SAL components seen so far.
+        #   And we would still have to check for topics that were already
+        #   registered, because topics may be added as we run this code.
         # * Rely on automatic registration of new topics.
-        #   That has two problems: we can't set non-default num_partitions,
-        #   and it can cause ugly warnings.
+        #   That prevents setting non-default configuration (such as
+        #   num_partitions) and it can cause ugly warnings.
         broker_client = AdminClient(
             {"bootstrap.servers": self.kafka_broker_addr, "api.version.request": True}
         )
