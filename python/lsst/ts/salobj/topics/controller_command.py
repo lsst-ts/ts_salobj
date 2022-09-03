@@ -107,6 +107,13 @@ class ControllerCommand(read_topic.ReadTopic):
             Data for the command being acknowledged.
         ackcmd : `salobj.AckCmdType`
             Command acknowledgement data.
+
+        Raises
+        ------
+        RuntimeError
+            If self.salinfo is not running. This may occur at shutdown.
+            (It is much less likely if the SalInfo as not started,
+            because the SalInfo will not have received any commands.)
         """
         # mypy thinks salinfo._ackcmd_writer can be None, but it can't.
         # Testing is expensive, so hide the warnings.
@@ -134,6 +141,13 @@ class ControllerCommand(read_topic.ReadTopic):
             Estimated command duration (sec).
         result : `str`, optional
             Reason for acknowledgement. Typically left "".
+
+        Raises
+        ------
+        RuntimeError
+            If self.salinfo is not running. This may occur at shutdown.
+            (It is much less likely if the SalInfo as not started,
+            because the SalInfo will not have received any commands.)
         """
         ackcmd = self.salinfo.make_ackcmd(
             private_seqNum=data.private_seqNum,
@@ -180,6 +194,12 @@ class ControllerCommand(read_topic.ReadTopic):
         self, data: type_hints.BaseMsgType, ackcmd: type_hints.AckCmdDataType
     ) -> None:
         """Wrapper around self.ack that logs a warning if not salinfo.running.
+
+        This allows methods of this class to safely acknowledge commands,
+        without having to test if the SalInfo is still running.
+        The ack will succeed if it can, and log a warning if it can't.
+        There isn't much else that a ControllerCommand instance can do
+        if a command finishes or fails while the SalInfo is shutting down.
 
         Parameters
         ----------
