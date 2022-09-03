@@ -67,13 +67,19 @@ class AckCmdReader(read_topic.ReadTopic):
         )
 
     def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
-        """Queue a message if it is in response to a command I sent."""
+        """Queue an ackcmd message if its ``identity`` and ``origin`` match
+        the values in self.salinfo.
+
+        Ignore ackcmd messages that have a different ``identity`` or
+        ``origin``, because those are in response to commands sent by
+        a different user (or at least by a different process, or a different
+        salinfo with a different identity).
+        """
         if (
-            data.identity != self.salinfo.identity  # type: ignore
-            or data.origin != self.salinfo.domain.origin  # type: ignore
+            data.identity == self.salinfo.identity  # type: ignore
+            and data.origin == self.salinfo.domain.origin  # type: ignore
         ):
-            return
-        self._data_queue.append(data)
+            self._data_queue.append(data)
 
 
 class CommandInfo:
@@ -467,7 +473,7 @@ class RemoteCommand(write_topic.WriteTopic):
         salobj.AckTimeoutError
             If the command times out.
         RuntimeError
-            If the ``salinfo`` is not running.
+            If ``self.salinfo`` is not running.
         TypeError
             If ``data`` is not None and not an instance of `DataType`.
         """
@@ -485,15 +491,15 @@ class RemoteCommand(write_topic.WriteTopic):
             seq_num = data.private_seqNum
             if seq_num in self.salinfo._running_cmds:
                 raise RuntimeError(
-                    f"{self.attr_name} bug: a command with seq_num={seq_num} is already running"
+                    f"{self.attr_name} a command with seq_num={seq_num} is already running. "
+                    "This may indicate a bug in ts_salobj SalInfo or RemoteCommand."
                 )
             cmd_info = CommandInfo(
                 remote_command=self, seq_num=seq_num, wait_done=wait_done
             )
             self.salinfo._running_cmds[seq_num] = cmd_info
-            data_dict = vars(data)
             await self.salinfo.write_data(
-                topic_info=self.topic_info, data_dict=data_dict
+                topic_info=self.topic_info, data_dict=vars(data)
             )
         finally:
             self._in_start = False
