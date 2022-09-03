@@ -710,6 +710,7 @@ class SalInfo:
             )
         }
         if not topic_infos:
+            self.log.warning(f"{self} has no topics")
             return
 
         # List of NewTopic instances, one per non-duplicate topic
