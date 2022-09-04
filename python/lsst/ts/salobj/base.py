@@ -21,7 +21,6 @@
 
 __all__ = [
     "LOCAL_HOST",
-    "MASTER_PRIORITY_ENV_VAR",
     "MAX_SAL_INDEX",
     "AckError",
     "AckTimeoutError",
@@ -38,11 +37,6 @@ import typing
 from . import sal_enums
 
 LOCAL_HOST = "127.0.0.1"
-
-
-# Name of the environment variable that specifies the Master Priority.
-# See the `Domain` doc string for details.
-MASTER_PRIORITY_ENV_VAR = "OSPL_MASTER_PRIORITY"
 
 # Maximum allowed SAL index (inclusive)
 MAX_SAL_INDEX = (1 << 31) - 1
