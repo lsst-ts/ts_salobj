@@ -26,7 +26,6 @@ __all__ = ["BaseScript"]
 import abc
 import argparse
 import asyncio
-import os
 import re
 import sys
 import types
@@ -135,18 +134,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         self._heartbeat_task: asyncio.Future = asyncio.Future()
 
-        # Speed up script loading time and avoid expensive system alignments
-        # by making sure scripts never become master.
-        # The env var must be set while the `DomainParticipant` is created.
-        initial_master_prority = os.environ.get(base.MASTER_PRIORITY_ENV_VAR, None)
-        os.environ[base.MASTER_PRIORITY_ENV_VAR] = "0"
-        try:
-            super().__init__("Script", index, do_callbacks=True)
-        finally:
-            if initial_master_prority is None:
-                del os.environ[base.MASTER_PRIORITY_ENV_VAR]
-            else:
-                os.environ[base.MASTER_PRIORITY_ENV_VAR] = initial_master_prority
+        super().__init__("Script", index, do_callbacks=True)
 
         self.evt_description.set(  # type: ignore
             classname=type(self).__name__,
