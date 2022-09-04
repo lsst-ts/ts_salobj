@@ -114,13 +114,16 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         timeout: float = STD_TIMEOUT,
         **kwargs: typing.Any,
     ) -> AsyncGenerator[None, None]:
-        """Create a CSC and remote and wait for them to start,
-        after setting a random $LSST_DDS_PARTITION_PREFIX.
+        """Create a CSC and remote and wait for them to start.
 
         The csc is accessed as ``self.csc`` and the remote as ``self.remote``.
 
-        Note: when this returns, self.remote should have the final
-        summary state of the CSC in its queue, and no earlier values.
+        The topics in `self.remote` will queue all telemetry and events
+        from when the CSC is constructed, with one exception:
+        self.remote.evt_summaryState will only have the final summary state,
+        because earlier values are read and checked against the expected
+        startup states. (The final summary state is left queued for backwards
+        compatibility.)
 
         Parameters
         ----------
@@ -147,35 +150,51 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             For a configurable CSC this may include ``override``,
             especially if ``initial_state`` is DISABLED or ENABLED.
         """
-        # Redundant with setUp, but preserve in case a subclass
-        # forgets to call super().setUp()
-        testutils.set_random_lsst_dds_partition_prefix()
-        items_to_close: list[base_csc.BaseCsc | Remote] = []
+        items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
         try:
+            # Create the CSC, but prevent it from starting
+            # until the remote is fully started
             self.csc = self.basic_make_csc(
                 initial_state=initial_state,
                 config_dir=config_dir,
                 simulation_mode=simulation_mode,
                 **kwargs,
             )
+            self.csc.delay_start_event.clear()
             items_to_close.append(self.csc)
-            await asyncio.wait_for(self.csc.start_task, timeout=timeout)
 
-            # Start the remote after the CSC is fully started
-            # so that the remote sees only the final state
+            # Create and start the remote
             self.remote = Remote(
                 domain=self.csc.domain,
                 name=self.csc.salinfo.name,
                 index=self.csc.salinfo.index,
             )
             items_to_close.append(self.remote)
+            await asyncio.wait_for(self.remote.start_task, timeout=timeout)
+
+            # Allow the CSC to start.
+            self.csc.delay_start_event.set()
+            await asyncio.wait_for(self.csc.start_task, timeout=timeout)
+
             if log_level is not None:
                 self.csc.log.setLevel(log_level)
 
-            await asyncio.wait_for(self.remote.start_task, timeout=timeout)
+            await asyncio.wait_for(
+                asyncio.gather(self.csc.start_task, self.remote.start_task),
+                timeout=timeout,
+            )
 
-            summary_state = await self.remote.evt_summaryState.aget(timeout=STD_TIMEOUT)  # type: ignore
-            assert summary_state.summaryState == initial_state  # type: ignore
+            if initial_state != self.csc.default_initial_state:
+                assert initial_state is not None
+                # Check all expected summary states expect the final state.
+                # That is omitted for backwards compatibility.
+                expected_states = get_expected_summary_states(
+                    initial_state=self.csc.default_initial_state,
+                    final_state=initial_state,
+                )[:-1]
+                for state in expected_states:
+                    await self.assert_next_summary_state(state)
+
             yield
         except Exception as e:
             print(f"BaseCscTestCase.make_csc failed: {e!r}")
