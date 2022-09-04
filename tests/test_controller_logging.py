@@ -79,23 +79,14 @@ class ControllerLoggingTestCase(
             )
             assert logLevel.level == logging.INFO
 
-            self.remote.evt_logMessage.flush()
-
-            # Read log messages until we see Reading historic;
-            # this should be the last log message from the CSC.
+            info_message = "test info message"
+            self.csc.log.info(info_message)
             while True:
                 msg = await self.remote.evt_logMessage.next(
                     flush=False, timeout=STD_TIMEOUT
                 )
-                if "historic" in msg.message:
+                if msg.message == info_message:
                     break
-
-            info_message = "test info message"
-            self.csc.log.info(info_message)
-            msg = await self.remote.evt_logMessage.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
-            assert msg.message == info_message
             assert msg.level == logging.INFO
             assert msg.traceback == ""
 
