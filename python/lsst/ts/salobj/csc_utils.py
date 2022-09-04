@@ -82,11 +82,13 @@ _STATE_TRANSITION_DICT = make_state_transition_dict()
 
 
 def get_expected_summary_states(
-    initial_state: State, final_state: State
+    initial_state: State | int, final_state: State | int
 ) -> typing.List[State]:
     """Return all summary states expected when transitioning from
     one state to another.
     """
+    initial_state = State(initial_state)
+    final_state = State(final_state)
     cmd_state_list = _STATE_TRANSITION_DICT[(initial_state, final_state)]
     # cmd_state_list lists the state after each state transition
     # command, but we want the initial state, as well.
@@ -95,7 +97,7 @@ def get_expected_summary_states(
 
 async def set_summary_state(
     remote: Remote,
-    state: State,
+    state: State | int,
     override: typing.Optional[str] = "",
     timeout: float = 30,
 ) -> typing.List[State]:
