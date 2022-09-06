@@ -40,7 +40,7 @@ STD_TIMEOUT = 10
 # Time for events to be output as a result of a command (seconds).
 EVENT_DELAY = 0.1
 # Timeout for when we expect no new data (seconds)
-NODATA_TIMEOUT = 1
+NO_DATA_TIMEOUT = 1
 
 np.random.seed(47)
 
@@ -302,7 +302,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await self.csc.tel_scalars.write()
             data = await self.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.tel_scalars.next(flush=False, timeout=NO_DATA_TIMEOUT)
             self.csc.assert_scalars_equal(data, self.csc.tel_scalars.data)
 
             # put random telemetry data using set_write
@@ -312,7 +312,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             data = await self.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
             self.csc.assert_scalars_equal(data, self.csc.tel_scalars.data)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.tel_scalars.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
     async def test_controller_event_write(self) -> None:
         """Test ControllerEvent.set, write, and set_write.
@@ -341,7 +341,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.csc.assert_scalars_equal(read_data, scalars_dict1)
             rcv_tai0 = utils.current_tai()
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_scalars.next(flush=False, timeout=NO_DATA_TIMEOUT)
             for data in (read_data, self.csc.evt_scalars.data):
                 assert data.private_origin == self.csc.domain.origin
                 assert data.private_sndStamp == pytest.approx(send_tai0, abs=0.5)
@@ -359,7 +359,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             )
             self.csc.assert_scalars_equal(read_data, scalars_dict2)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_scalars.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
     async def test_controller_set_and_write(self) -> None:
         """Test set and write methods of ControllerTelemetry
@@ -409,9 +409,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_aget(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.aget(timeout=NODATA_TIMEOUT)
+                await self.remote.evt_scalars.aget(timeout=NO_DATA_TIMEOUT)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.tel_scalars.aget(timeout=NODATA_TIMEOUT)
+                await self.remote.tel_scalars.aget(timeout=NO_DATA_TIMEOUT)
 
             # start waiting for both events, then trigger multiple events
             evt_task = asyncio.create_task(
@@ -510,7 +510,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             while True:
                 try:
                     evt_data = await self.remote.evt_scalars.next(
-                        flush=False, timeout=NODATA_TIMEOUT
+                        flush=False, timeout=NO_DATA_TIMEOUT
                     )
                     assert evt_data is not None
                     evt_data_list.append(evt_data)
@@ -524,7 +524,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             while True:
                 try:
                     tel_data = await self.remote.tel_scalars.next(
-                        flush=False, timeout=NODATA_TIMEOUT
+                        flush=False, timeout=NO_DATA_TIMEOUT
                     )
                     assert tel_data is not None
                     tel_data_list.append(tel_data)
@@ -710,7 +710,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             # show that get() flushes the queue
             with pytest.raises(asyncio.TimeoutError):
-                await self.csc.cmd_wait.next(timeout=NODATA_TIMEOUT)
+                await self.csc.cmd_wait.next(timeout=NO_DATA_TIMEOUT)
 
             duration = 2
             task2 = asyncio.create_task(
@@ -899,7 +899,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
         assert_data_equal(data, input_dict)
         with pytest.raises(asyncio.TimeoutError):
-            await read_topic.next(flush=False, timeout=NODATA_TIMEOUT)
+            await read_topic.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
         # Write the same data using `write` with kwargs
         # (the above already tested write without kwargs)
@@ -991,7 +991,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
         # Make sure no additional samples were written
         with pytest.raises(asyncio.TimeoutError):
-            await read_topic.next(flush=False, timeout=NODATA_TIMEOUT)
+            await read_topic.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
     async def test_multiple_commands(self) -> None:
         """Test that we can have multiple instances of the same command
@@ -1063,9 +1063,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         ) as salinfo:
             cmdwriter = salobj.topics.RemoteCommand(salinfo=salinfo, name="setScalars")
             with pytest.raises(RuntimeError):
-                await cmdwriter.start(timeout=NODATA_TIMEOUT)
+                await cmdwriter.start(timeout=NO_DATA_TIMEOUT)
             with pytest.raises(RuntimeError):
-                await cmdwriter.set_start(timeout=NODATA_TIMEOUT)
+                await cmdwriter.set_start(timeout=NO_DATA_TIMEOUT)
             await salinfo.close()
 
     async def test_remote_command_set(self) -> None:
@@ -1288,7 +1288,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # CMD_INPROGRESS command ack that extends the timeout.
             with salobj.assertRaisesAckTimeoutError():
                 await self.remote.cmd_wait.set_start(
-                    duration=-5, wait_done=False, timeout=NODATA_TIMEOUT
+                    duration=-5, wait_done=False, timeout=NO_DATA_TIMEOUT
                 )
 
     async def test_command_seq_num(self) -> None:
@@ -1389,7 +1389,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         data1 = await reader1.next(flush=False, timeout=timeout)
                         read_codes1.append(data1.errorCode)
                         if len(read_codes1) >= len(expected_codes1):
-                            timeout = NODATA_TIMEOUT
+                            timeout = NO_DATA_TIMEOUT
                 except asyncio.TimeoutError:
                     if len(read_codes1) < len(expected_codes1):
                         raise
@@ -1399,7 +1399,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         data2 = await reader2.next(flush=False, timeout=timeout)
                         read_codes2.append(data2.errorCode)
                         if len(read_codes2) >= len(expected_codes2):
-                            timeout = NODATA_TIMEOUT
+                            timeout = NO_DATA_TIMEOUT
                 except asyncio.TimeoutError:
                     if len(read_codes2) < len(expected_codes2):
                         raise

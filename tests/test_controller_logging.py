@@ -34,7 +34,7 @@ from lsst.ts import salobj, utils
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 20
 # Timeout for when we expect no new data (seconds).
-NODATA_TIMEOUT = 0.1
+NO_DATA_TIMEOUT = 0.1
 
 np.random.seed(47)
 
@@ -121,7 +121,7 @@ class ControllerLoggingTestCase(
 
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
             await self.remote.cmd_setLogLevel.set_start(
@@ -137,14 +137,14 @@ class ControllerLoggingTestCase(
             self.csc.log.info(info_message)
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
             warn_message = "test warn message"
             self.csc.log.warning(warn_message)
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
             with salobj.assertRaisesAckError():
