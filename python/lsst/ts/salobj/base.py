@@ -54,7 +54,7 @@ MAX_SAL_INDEX = (1 << 31) - 1
 _NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-][a-zA-Z0-9_-]*)(:(?P<index>\d+))?$")
 
 # OpenSplice version; None until get_opensplice_version is first called.
-_OPENSPLICE_VERSION: typing.Optional[str] = None
+_OPENSPLICE_VERSION: None | str = None
 
 
 def _ackcmd_str(ackcmd: typing.Any) -> str:
@@ -153,7 +153,7 @@ def get_user_host() -> str:
     return f"{getpass.getuser()}@{socket.getfqdn()}"
 
 
-def name_to_name_index(name: str) -> typing.Tuple[str, int]:
+def name_to_name_index(name: str) -> tuple[str, int]:
     """Parse a SAL component name of the form name[:index].
 
     Parameters

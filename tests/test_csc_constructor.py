@@ -20,14 +20,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pathlib
-import unittest
 import typing
+import unittest
 
 import numpy as np
 import pytest
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 np.random.seed(47)
 

@@ -26,10 +26,11 @@ __all__ = ["Remote"]
 import asyncio
 import types
 import typing
+from collections.abc import Iterable
 
-from .topics import RemoteEvent, RemoteTelemetry, RemoteCommand
 from .domain import Domain
 from .sal_info import SalInfo
+from .topics import RemoteCommand, RemoteEvent, RemoteTelemetry
 
 
 class Remote:
@@ -137,11 +138,11 @@ class Remote:
         self,
         domain: Domain,
         name: str,
-        index: typing.Optional[int] = None,
+        index: None | int = None,
         *,
         readonly: bool = False,
-        include: typing.Optional[typing.Iterable[str]] = None,
-        exclude: typing.Optional[typing.Iterable[str]] = None,
+        include: None | Iterable[str] = None,
+        exclude: None | Iterable[str] = None,
         evt_max_history: int = 1,
         start: bool = True,
     ) -> None:
@@ -177,7 +178,10 @@ class Remote:
                 setattr(self, tel.attr_name, tel)
 
             if start:
+                self.start_called = True
                 self.start_task = asyncio.create_task(self.start())
+            else:
+                self.start_called = False
         except Exception:
             self.salinfo.basic_close()
             raise
@@ -203,14 +207,19 @@ class Remote:
         """
         await self.salinfo.close()
 
+    def __repr__(self) -> str:
+        return f"Remote(name={self.salinfo.name}, index={self.salinfo.index})"
+
     async def __aenter__(self) -> Remote:
-        await self.start_task
+        if self.start_called:
+            # The Remote was constructed with start=True (the default)
+            await self.start_task
         return self
 
     async def __aexit__(
         self,
-        type: typing.Optional[typing.Type[BaseException]],
-        value: typing.Optional[BaseException],
-        traceback: typing.Optional[types.TracebackType],
+        type: None | typing.Type[BaseException],
+        value: None | BaseException,
+        traceback: None | types.TracebackType,
     ) -> None:
         await self.close()

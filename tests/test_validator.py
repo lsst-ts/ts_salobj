@@ -20,20 +20,19 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pathlib
-import pytest
-import unittest
 import typing
+import unittest
 
 import jsonschema
+import pytest
 import yaml
-
 from lsst.ts import salobj
 
 
 class ValidatorTestCase(unittest.TestCase):
     def setUp(self) -> None:
         # A version of the CONFIG_SCHEMA with added defaults
-        self.schema: typing.Dict[str, typing.Any] = yaml.safe_load(
+        self.schema: dict[str, typing.Any] = yaml.safe_load(
             """
 description: A schema with defaults
 type: object
@@ -71,7 +70,7 @@ additionalProperties: false
         self.validator = salobj.DefaultingValidator(schema=self.schema)
 
     def test_no_config_specified(self) -> None:
-        data_dict: typing.Dict[str, typing.Any] = {}
+        data_dict: dict[str, typing.Any] = {}
         result = self.validator.validate(data_dict)
         # the defaults are hard-coded in schema/Test.yaml
         expected_result = dict(
@@ -90,7 +89,7 @@ additionalProperties: false
 
     def test_all_fields(self) -> None:
         """Test a config with all fields set to a non-default value."""
-        data_dict: typing.Dict[str, typing.Any] = dict(
+        data_dict: dict[str, typing.Any] = dict(
             string0="an arbitrary string",
             bool0=False,
             int0=-47,
@@ -125,7 +124,7 @@ additionalProperties: false
         for name, value in non_default_values.items():
             expected_values = default_values.copy()
             expected_values[name] = value
-            one_item_data_dict: typing.Dict[str, typing.Any] = {name: value}
+            one_item_data_dict: dict[str, typing.Any] = {name: value}
         result = self.validator.validate(one_item_data_dict)
         assert result == expected_values
 

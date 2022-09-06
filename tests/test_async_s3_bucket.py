@@ -25,9 +25,7 @@ import unittest
 import astropy.time
 import moto
 import pytest
-
-from lsst.ts import utils
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
 
 
 class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):

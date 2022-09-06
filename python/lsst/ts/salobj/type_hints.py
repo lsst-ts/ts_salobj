@@ -48,7 +48,7 @@ class BaseMsgType:
     private_origin: int = 0
     salIndex: int = 0
 
-    def get_vars(self) -> typing.Dict[str, typing.Any]:
+    def get_vars(self) -> dict[str, typing.Any]:
         raise NotImplementedError()
 
 
@@ -68,4 +68,4 @@ class AckCmdDataType(BaseMsgType):
     timeout: float = 0
 
 
-PathType = typing.Union[str, pathlib.Path]
+PathType = str | pathlib.Path

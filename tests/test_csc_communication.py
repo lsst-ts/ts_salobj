@@ -28,12 +28,11 @@ import subprocess
 import typing
 import unittest
 import warnings
+from collections.abc import AsyncGenerator, Iterator, Sequence
 
 import numpy as np
 import pytest
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -48,9 +47,7 @@ TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
 TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
 
 
-def all_permutations(
-    items: typing.Sequence[typing.Any],
-) -> typing.Iterator[typing.Any]:
+def all_permutations(items: Sequence[typing.Any]) -> Iterator[typing.Any]:
     """Return all permutations of a list of items and of all sublists,
     including [].
     """
@@ -105,8 +102,8 @@ class FailInReportFaultCsc(salobj.TestCsc):
 class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self,
-        initial_state: typing.Union[salobj.State, int],
-        config_dir: typing.Union[str, pathlib.Path, None],
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
         simulation_mode: int,
     ) -> salobj.BaseCsc:
         return salobj.TestCsc(
@@ -117,9 +114,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         )
 
     @contextlib.asynccontextmanager
-    async def make_remote(
-        self, identity: str
-    ) -> typing.AsyncGenerator[salobj.Remote, None]:
+    async def make_remote(self, identity: str) -> AsyncGenerator[salobj.Remote, None]:
         """Create a remote to talk to self.csc with a specified identity.
 
         Uses the domain created by make_csc.

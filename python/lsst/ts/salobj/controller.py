@@ -31,14 +31,14 @@ from . import type_hints
 from .domain import Domain
 from .sal_info import SalInfo
 from .sal_log_handler import SalLogHandler
-from .topics import ControllerEvent, ControllerTelemetry, ControllerCommand
+from .topics import ControllerCommand, ControllerEvent, ControllerTelemetry
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.
 SHUTDOWN_DELAY = 1
 
 
-def parse_as_prefix_and_set(items_str: str) -> typing.Tuple[str, typing.Set[str]]:
+def parse_as_prefix_and_set(items_str: str) -> tuple[str, set[str]]:
     """Parse a string as an optional +/- prefix and a set of items.
 
     Parameters
@@ -191,7 +191,7 @@ class Controller:
     def __init__(
         self,
         name: str,
-        index: typing.Optional[int] = None,
+        index: None | int = None,
         *,
         do_callbacks: bool = False,
         write_only: bool = False,
@@ -202,6 +202,13 @@ class Controller:
         self.start_called = False
         self.done_task: asyncio.Future = asyncio.Future()
         self._do_callbacks = do_callbacks
+
+        # The start method will pause until this event is set (which it is,
+        # by default). Unit tests may delay `start` by clearing this event
+        # immediately after constructing the Controller, and then setting
+        # it again, when ready for `start` to run.
+        self.delay_start_event = asyncio.Event()
+        self.delay_start_event.set()
 
         domain = Domain()
         try:
@@ -268,6 +275,8 @@ class Controller:
         """Finish construction."""
         # Allow each remote constructor to begin running its start method.
         await asyncio.sleep(0)
+        # Allow unit tests to delay start.
+        await self.delay_start_event.wait()
 
         # Wait for all remote salinfos to start.
         start_tasks = []
@@ -310,7 +319,7 @@ class Controller:
         return self.salinfo.domain
 
     async def close(
-        self, exception: typing.Optional[Exception] = None, cancel_start: bool = True
+        self, exception: None | Exception = None, cancel_start: bool = True
     ) -> None:
         """Shut down, clean up resources and set done_task done.
 
@@ -502,8 +511,8 @@ class Controller:
 
     async def __aexit__(
         self,
-        type: typing.Optional[typing.Type[BaseException]],
-        value: typing.Optional[BaseException],
-        traceback: typing.Optional[types.TracebackType],
+        type: None | typing.Type[BaseException],
+        value: None | BaseException,
+        traceback: None | types.TracebackType,
     ) -> None:
         await self.close()

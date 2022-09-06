@@ -24,7 +24,6 @@ from __future__ import annotations
 __all__ = ["IdlMetadata", "TopicMetadata", "FieldMetadata", "parse_idl"]
 
 import re
-import typing
 
 from . import type_hints
 
@@ -52,9 +51,9 @@ class IdlMetadata:
         self,
         name: str,
         idl_path: type_hints.PathType,
-        sal_version: typing.Optional[str],
-        xml_version: typing.Optional[str],
-        topic_info: typing.Dict[str, TopicMetadata],
+        sal_version: None | str,
+        xml_version: None | str,
+        topic_info: dict[str, TopicMetadata],
     ) -> None:
         self.name = name
         self.idl_path = idl_path
@@ -89,12 +88,12 @@ class TopicMetadata:
     """
 
     def __init__(
-        self, sal_name: str, version_hash: str, description: typing.Optional[str]
+        self, sal_name: str, version_hash: str, description: None | str
     ) -> None:
         self.sal_name = sal_name
         self.version_hash = version_hash
         self.description = description
-        self.field_info: typing.Dict[str, FieldMetadata] = dict()
+        self.field_info: dict[str, FieldMetadata] = dict()
 
     def __repr__(self) -> str:
         return f"TopicMetadata(sal_name={repr(self.sal_name)}, description={self.description})"
@@ -124,10 +123,10 @@ class FieldMetadata:
     def __init__(
         self,
         name: str,
-        description: typing.Optional[str],
-        units: typing.Optional[str],
+        description: None | str,
+        units: None | str,
         type_name: str,
-        array_length: typing.Optional[int],
+        array_length: None | int,
     ):
         self.name = name
         self.description = description

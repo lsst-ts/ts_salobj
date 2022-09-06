@@ -26,9 +26,7 @@ import unittest
 
 import numpy as np
 import pytest
-
-from lsst.ts import utils
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.
@@ -60,8 +58,8 @@ class BasicCscCommander(salobj.TestCscCommander):
 class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self,
-        initial_state: typing.Union[salobj.State, int],
-        config_dir: typing.Union[str, pathlib.Path, None],
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
         simulation_mode: int,
     ) -> salobj.BaseCsc:
         index = self.next_index()

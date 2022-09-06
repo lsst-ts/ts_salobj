@@ -23,17 +23,14 @@ import asyncio
 import contextlib
 import pathlib
 import time
-import typing
 import unittest
 import warnings
+from collections.abc import AsyncGenerator
+from unittest.mock import MagicMock
 
 import astropy.units as u
 import ddsutil
-
-from unittest.mock import MagicMock
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 
 class MockVerify:
@@ -127,7 +124,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
     @contextlib.asynccontextmanager
     async def make_remote_and_topic_writer(
         self,
-    ) -> typing.AsyncGenerator[salobj.Remote, None]:
+    ) -> AsyncGenerator[salobj.Remote, None]:
         """Make a remote and launch a topic writer in a subprocess.
 
         Return the remote.
@@ -154,29 +151,29 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         """Test the speed of creating topic classes on the fly."""
         async with salobj.Domain() as domain:
             t0 = time.monotonic()
-            salinfo = salobj.SalInfo(domain, "Test", index=self.index)
-            topic_names = (
-                ["logevent_" + name for name in salinfo.event_names]
-                + ["command_" + name for name in salinfo.command_names]
-                + list(salinfo.telemetry_names)
-            )
-            for topic_name in topic_names:
-                revname = salinfo.revnames.get(topic_name)
-                ddsutil.make_dds_topic_class(
-                    parsed_idl=salinfo.parsed_idl, revname=revname
+            async with salobj.SalInfo(domain, "Test", index=self.index) as salinfo:
+                topic_names = (
+                    ["logevent_" + name for name in salinfo.event_names]
+                    + ["command_" + name for name in salinfo.command_names]
+                    + list(salinfo.telemetry_names)
                 )
-            dt = time.monotonic() - t0
-            ntopics = len(topic_names)
-            creation_speed = ntopics / dt
-            print(
-                f"Created {creation_speed:0.1f} topic classes/sec ({ntopics} topic classes); "
-                f"total duration {dt:0.2f} seconds."
-            )
-            self.insert_measurement(
-                verify.Measurement(
-                    "salobj.CreateClasses", creation_speed * u.ct / u.second
+                for topic_name in topic_names:
+                    revname = salinfo.revnames.get(topic_name)
+                    ddsutil.make_dds_topic_class(
+                        parsed_idl=salinfo.parsed_idl, revname=revname
+                    )
+                dt = time.monotonic() - t0
+                ntopics = len(topic_names)
+                creation_speed = ntopics / dt
+                print(
+                    f"Created {creation_speed:0.1f} topic classes/sec ({ntopics} topic classes); "
+                    f"total duration {dt:0.2f} seconds."
                 )
-            )
+                self.insert_measurement(
+                    verify.Measurement(
+                        "salobj.CreateClasses", creation_speed * u.ct / u.second
+                    )
+                )
 
     async def test_command_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:

@@ -19,12 +19,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import unittest
 import pathlib
-import typing
+import unittest
 
-from lsst.ts import idl
-from lsst.ts import salobj
+from lsst.ts import idl, salobj
 
 
 class IdlParserTestCase(unittest.TestCase):
@@ -110,7 +108,7 @@ class IdlParserTestCase(unittest.TestCase):
                     assert field_metadata.name == field_name
                     if has_metadata:
                         if field_metadata.name.endswith("Stamp"):
-                            expected_units: typing.Optional[str] = "second"
+                            expected_units: None | str = "second"
                         elif field_metadata.name == "salIndex":
                             expected_units = None
                         else:

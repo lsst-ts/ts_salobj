@@ -30,12 +30,12 @@ import inspect
 import logging
 import typing
 import warnings
+from collections.abc import Awaitable, Callable, Collection
 
 import dds
-
 from lsst.ts import utils
-from .. import base
-from .. import type_hints
+
+from .. import base, type_hints
 from .base_topic import BaseTopic
 
 if typing.TYPE_CHECKING:
@@ -48,10 +48,10 @@ DEFAULT_QUEUE_LEN = 100
 MIN_QUEUE_LEN = 10
 
 
-_BasicReturnType = typing.Optional[type_hints.AckCmdDataType]
-CallbackType = typing.Callable[
+_BasicReturnType = None | type_hints.AckCmdDataType
+CallbackType = Callable[
     [type_hints.BaseMsgType],
-    typing.Union[_BasicReturnType, typing.Awaitable[_BasicReturnType]],
+    _BasicReturnType | Awaitable[_BasicReturnType],
 ]
 
 
@@ -132,8 +132,8 @@ class QueueCapacityChecker:
         self._reset_thresholds = tuple(
             warn_thresh // 2 for warn_thresh in self.warn_thresholds
         )
-        self.warn_threshold: typing.Optional[int] = self.warn_thresholds[0]
-        self.reset_threshold: typing.Optional[int] = None
+        self.warn_threshold: None | int = self.warn_thresholds[0]
+        self.reset_threshold: None | int = None
 
     def check_nitems(self, nitems: int) -> bool:
         """Check the number of items in the queue and log a message
@@ -317,18 +317,20 @@ class ReadTopic(BaseTopic):
                 UserWarning,
             )
         self._max_history = int(max_history)
-        self._data_queue: typing.Deque[type_hints.BaseMsgType] = collections.deque(
+        self._data_queue: collections.deque[type_hints.BaseMsgType] = collections.deque(
             maxlen=queue_len
         )
-        self._current_data: typing.Optional[type_hints.BaseMsgType] = None
+        self._current_data: None | type_hints.BaseMsgType = None
+        # Event that is set when new data arrives. Used by aget.
+        self._new_data_event = asyncio.Event()
         # Task that `next` waits on.
         # Its result is set to the oldest message on the queue.
         # We do this instead of having `next` itself pop the oldest message
         # because it allows multiple callers of `next` to all get the same
         # message, and it avoids a potential race condition with `flush`.
         self._next_task = utils.make_done_future()
-        self._callback: typing.Optional[CallbackType] = None
-        self._callback_tasks: typing.Set[asyncio.Task] = set()
+        self._callback: None | CallbackType = None
+        self._callback_tasks: set[asyncio.Task] = set()
         self._callback_loop_task = utils.make_done_future()
         self.dds_queue_length_checker = QueueCapacityChecker(
             descr=f"{attr_name} DDS read queue",
@@ -396,7 +398,7 @@ class ReadTopic(BaseTopic):
     @property
     def callback(
         self,
-    ) -> typing.Optional[CallbackType]:
+    ) -> None | CallbackType:
         """Callback function, or None if there is not one.
 
         The callback function is called when a new message is received;
@@ -425,7 +427,7 @@ class ReadTopic(BaseTopic):
         return self._callback
 
     @callback.setter
-    def callback(self, func: typing.Optional[CallbackType]) -> None:
+    def callback(self, func: None | CallbackType) -> None:
         self._cancel_callbacks()
 
         if func is None:
@@ -492,9 +494,7 @@ class ReadTopic(BaseTopic):
         """
         self.basic_close()
 
-    async def aget(
-        self, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseMsgType:
+    async def aget(self, timeout: None | float = None) -> type_hints.BaseMsgType:
         """Get the most recent message, or wait for data if no data has
         ever been seen (`has_data` False).
 
@@ -527,9 +527,8 @@ class ReadTopic(BaseTopic):
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")
         if self._current_data is None:
-            if self._next_task.done():
-                self._next_task = asyncio.Future()
-            await asyncio.wait_for(self._next_task, timeout=timeout)
+            self._new_data_event.clear()
+            await asyncio.wait_for(self._new_data_event.wait(), timeout=timeout)
         assert self._current_data is not None  # make mypy happy
         return self._current_data
 
@@ -549,7 +548,7 @@ class ReadTopic(BaseTopic):
             raise RuntimeError("Not allowed because there is a callback function")
         self._data_queue.clear()
 
-    def get(self) -> typing.Optional[type_hints.BaseMsgType]:
+    def get(self) -> None | type_hints.BaseMsgType:
         """Get the most recent message, or `None` if no data has ever been seen
         (`has_data` False).
 
@@ -570,7 +569,7 @@ class ReadTopic(BaseTopic):
 
         return self._current_data
 
-    def get_oldest(self) -> typing.Optional[type_hints.BaseMsgType]:
+    def get_oldest(self) -> None | type_hints.BaseMsgType:
         """Pop and return the oldest message from the queue, or `None` if the
         queue is empty.
 
@@ -602,7 +601,7 @@ class ReadTopic(BaseTopic):
         return None
 
     async def next(
-        self, *, flush: bool, timeout: typing.Optional[float] = None
+        self, *, flush: bool, timeout: None | float = None
     ) -> type_hints.BaseMsgType:
         """Pop and return the oldest message from the queue, waiting for data
         if the queue is empty.
@@ -644,9 +643,7 @@ class ReadTopic(BaseTopic):
             self.flush()
         return await self._next(timeout=timeout)
 
-    async def _next(
-        self, *, timeout: typing.Optional[float] = None
-    ) -> type_hints.BaseMsgType:
+    async def _next(self, *, timeout: None | float = None) -> type_hints.BaseMsgType:
         """Implement next.
 
         Unlike `next`, this can be called while using a callback function.
@@ -693,12 +690,12 @@ class ReadTopic(BaseTopic):
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
-    def _queue_data(self, data_list: typing.Collection[type_hints.BaseMsgType]) -> None:
+    def _queue_data(self, data_list: Collection[type_hints.BaseMsgType]) -> None:
         """Queue messages.
 
         Parameters
         ----------
-        data_list : typing.Collection[type_hints.BaseMsgType]
+        data_list : Collection[type_hints.BaseMsgType]
             Messages to be queueued.
 
         Also update ``self._current_data`` and fire `self._next_task`
@@ -709,6 +706,7 @@ class ReadTopic(BaseTopic):
         for data in data_list:
             self._queue_one_item(data)
         self._current_data = data
+        self._new_data_event.set()
         self._report_next()
 
     def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:

@@ -27,11 +27,8 @@ import asyncio
 import inspect
 import typing
 
-from .. import sal_enums
-from .. import base
-from .. import type_hints
-from . import read_topic
-from . import write_topic
+from .. import base, sal_enums, type_hints
+from . import read_topic, write_topic
 
 if typing.TYPE_CHECKING:
     from ..sal_info import SalInfo
@@ -149,7 +146,7 @@ class ControllerCommand(read_topic.ReadTopic):
         await self.ack(data=data, ackcmd=ackcmd)
 
     async def next(  # type: ignore[override]  # noqa
-        self, *, timeout: typing.Optional[float] = None
+        self, *, timeout: None | float = None
     ) -> type_hints.BaseMsgType:
         """Wait for data, returning old data if found.
 
