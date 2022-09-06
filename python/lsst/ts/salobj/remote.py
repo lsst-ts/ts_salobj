@@ -203,6 +203,9 @@ class Remote:
         """
         await self.salinfo.close()
 
+    def __repr__(self) -> str:
+        return f"Remote(name={self.salinfo.name}, index={self.salinfo.index})"
+
     async def __aenter__(self) -> Remote:
         await self.start_task
         return self

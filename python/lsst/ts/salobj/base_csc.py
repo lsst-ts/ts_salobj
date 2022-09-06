@@ -50,8 +50,9 @@ class BaseCsc(Controller):
         Name of SAL component.
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
-    initial_state : `State` or `int`, optional
+    initial_state : `State`, `int` or `None`, optional
         Initial state for this CSC.
+        If None use the class attribute ``default_initial_state``.
         Typically `State.STANDBY` (or `State.OFFLINE` for an
         externally commandable CSC) but can also be
         `State.DISABLED`, or `State.ENABLED`,
@@ -150,8 +151,8 @@ class BaseCsc(Controller):
     def __init__(
         self,
         name: str,
-        index: typing.Optional[int] = None,
-        initial_state: State = State.STANDBY,
+        index: None | int = None,
+        initial_state: None | State | int = None,
         override: str = "",
         simulation_mode: int = 0,
     ) -> None:
@@ -163,6 +164,8 @@ class BaseCsc(Controller):
 
         # Cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
+        if initial_state is None:
+            initial_state = self.default_initial_state
         initial_state = State(initial_state)
         if initial_state == State.FAULT:
             raise ValueError("initial_state cannot be FAULT")

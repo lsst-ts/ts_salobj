@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import collections
 import copy
 import itertools
 import math
@@ -36,11 +37,11 @@ from lsst.ts import salobj
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
-STD_TIMEOUT = 60
+STD_TIMEOUT = 10
 # Time for events to be output as a result of a command (seconds).
 EVENT_DELAY = 0.1
 # Timeout for when we expect no new data (seconds)
-NODATA_TIMEOUT = 0.1
+NO_DATA_TIMEOUT = 1
 
 np.random.seed(47)
 
@@ -125,7 +126,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # is enabled by default
             with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST="1"):
                 async with salobj.TestCsc(index=self.next_index()) as csc:
-                    print(f"csc={csc!r}")
                     assert csc.salinfo.default_authorize
                     for cmd_name in csc.salinfo.command_names:
                         cmd = getattr(csc, f"cmd_{cmd_name}")
@@ -209,21 +209,22 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         """
         async with salobj.Domain() as domain, salobj.SalInfo(
             domain=domain, name="Test", index=1
-        ) as salinfo, salobj.SalInfo(domain=domain, name="Test", index=1) as salinfo2:
+        ) as salinfo, salobj.SalInfo(domain=domain, name="Test", index=0) as salinfo0:
             cmdreader = salobj.topics.ReadTopic(
                 salinfo=salinfo, attr_name="cmd_wait", max_history=0
             )
             cmdwriter = salobj.topics.RemoteCommand(salinfo=salinfo, name="wait")
             cmdtype = salinfo.sal_topic_names.index(cmdwriter.sal_name)
             ackcmdwriter = salobj.topics.AckCmdWriter(salinfo=salinfo)
-            await salinfo.start()
 
             # Also make an ackcmd reader that sees all ackcmd messages
             # (including those triggered by other users).
             unfiltered_ackcmd_reader = salobj.topics.ReadTopic(
-                salinfo=salinfo2, attr_name="cmd_wait", max_history=0
+                salinfo=salinfo0, attr_name="ack_ackcmd", max_history=0
             )
-            await salinfo2.start()
+            await asyncio.wait_for(
+                asyncio.gather(salinfo.start(), salinfo0.start()), timeout=STD_TIMEOUT
+            )
 
             # Send and acknowledge 4 commands:
             # * The first is acknowledged with a different origin.
@@ -232,10 +233,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # * The last is acknowledged normally
             # The first three will not complete, the last will.
             nread = 0
+            cmd_callback_event = asyncio.Event()
 
-            async def reader_callback(data: salobj.BaseMsgType) -> None:
-                nonlocal nread
-
+            async def cmd_reader_callback(data: salobj.BaseMsgType) -> None:
+                nonlocal nread, cmd_callback_event
                 # Write final ackcmd, after tweaking data if appropriate.
                 ackcmdwriter.set(
                     private_seqNum=data.private_seqNum,
@@ -255,27 +256,39 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     ackcmdwriter.set(identity="")
                 await ackcmdwriter.write()
                 nread += 1
+                cmd_callback_event.set()
 
             unfiltered_nread = 0
+            unfiltered_future: asyncio.Future = asyncio.Future()
 
-            def unfiltered_reader_callback(data: salobj.BaseMsgType) -> None:
+            def unfiltered_ackcmd_reader_callback(data: salobj.BaseMsgType) -> None:
                 nonlocal unfiltered_nread
                 unfiltered_nread += 1
+                if unfiltered_nread == 4:
+                    unfiltered_future.set_result(None)
 
-            cmdreader.callback = reader_callback
-            unfiltered_ackcmd_reader.callback = unfiltered_reader_callback
+            cmdreader.callback = cmd_reader_callback
+            unfiltered_ackcmd_reader.callback = unfiltered_ackcmd_reader_callback
 
             tasks = []
-            for i in range(4):
-                tasks.append(asyncio.create_task(cmdwriter.start(timeout=STD_TIMEOUT)))
-            await tasks[3]
-            assert not tasks[0].done()  # Origin did not match.
-            assert not tasks[1].done()  # Identity did not match.
-            assert not tasks[2].done()  # No identity.
+            try:
+                for i in range(4):
+                    cmd_callback_event.clear()
+                    tasks.append(asyncio.create_task(cmdwriter.start(timeout=2)))
+                    await asyncio.wait_for(
+                        cmd_callback_event.wait(), timeout=STD_TIMEOUT
+                    )
+                    assert nread == i + 1
+                await tasks[3]
+                assert not tasks[0].done()  # Origin did not match.
+                assert not tasks[1].done()  # Identity did not match.
+                assert not tasks[2].done()  # No identity.
+            finally:
+                for task in tasks:
+                    task.cancel()
+            await asyncio.wait_for(unfiltered_future, timeout=STD_TIMEOUT)
             assert nread == 4
             assert unfiltered_nread == 4
-            for task in tasks:
-                task.cancel()
 
     async def test_controller_telemetry_write(self) -> None:
         """Test ControllerTelemetry.set, write, and set_write."""
@@ -293,7 +306,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await self.csc.tel_scalars.write()
             data = await self.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.tel_scalars.next(flush=False, timeout=NO_DATA_TIMEOUT)
             self.csc.assert_scalars_equal(data, self.csc.tel_scalars.data)
 
             # put random telemetry data using set_write
@@ -303,7 +316,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             data = await self.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
             self.csc.assert_scalars_equal(data, self.csc.tel_scalars.data)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.tel_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.tel_scalars.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
     async def test_controller_event_write(self) -> None:
         """Test ControllerEvent.set, write, and set_write.
@@ -332,7 +345,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.csc.assert_scalars_equal(read_data, scalars_dict1)
             rcv_tai0 = utils.current_tai()
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_scalars.next(flush=False, timeout=NO_DATA_TIMEOUT)
             for data in (read_data, self.csc.evt_scalars.data):
                 assert data.private_origin == self.csc.domain.origin
                 assert data.private_sndStamp == pytest.approx(send_tai0, abs=0.5)
@@ -350,7 +363,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             )
             self.csc.assert_scalars_equal(read_data, scalars_dict2)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.next(flush=False, timeout=NODATA_TIMEOUT)
+                await self.remote.evt_scalars.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
     async def test_controller_set_and_write(self) -> None:
         """Test set and write methods of ControllerTelemetry
@@ -391,7 +404,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         sent_data_list = []
         for _ in range(num_commands):
             scalars_dict = self.csc.make_random_scalars_dict()
-            print(scalars_dict)
             await self.remote.cmd_setScalars.set_start(
                 **scalars_dict, timeout=STD_TIMEOUT
             )
@@ -401,9 +413,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_aget(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_scalars.aget(timeout=NODATA_TIMEOUT)
+                await self.remote.evt_scalars.aget(timeout=NO_DATA_TIMEOUT)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.tel_scalars.aget(timeout=NODATA_TIMEOUT)
+                await self.remote.tel_scalars.aget(timeout=NO_DATA_TIMEOUT)
 
             # start waiting for both events, then trigger multiple events
             evt_task = asyncio.create_task(
@@ -421,8 +433,17 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.csc.assert_scalars_equal(cmd_data_list[0], evt_data)
             self.csc.assert_scalars_equal(cmd_data_list[0], tel_data)
 
-            # wait for all remaining events to be received
-            await asyncio.sleep(EVENT_DELAY)
+            # the aget should not interfere with next
+            for i in range(num_commands):
+                print(f"test {i}")
+                evt_data = await self.remote.evt_scalars.next(
+                    flush=False, timeout=STD_TIMEOUT
+                )
+                tel_data = await self.remote.tel_scalars.next(
+                    flush=False, timeout=STD_TIMEOUT
+                )
+                self.csc.assert_scalars_equal(cmd_data_list[i], evt_data)
+                self.csc.assert_scalars_equal(cmd_data_list[i], tel_data)
 
             # aget should return the last value seen,
             # no matter now many times it is called
@@ -441,31 +462,21 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_plain_get(self) -> None:
         """Test RemoteEvent.get and RemoteTelemetry.get."""
         async with self.make_csc(initial_state=salobj.State.ENABLED):
-            is_first = True
             for read_topic in (self.remote.evt_scalars, self.remote.tel_scalars):
-                if not is_first:
-                    # Clear out data from previous iteration
-                    read_topic.flush()
+                # Clear out data from previous iteration, if any
+                read_topic.flush()
+
                 num_commands = 3
-                cmd_data_list = await self.set_scalars(
-                    num_commands=num_commands, assert_none=is_first
-                )
-                # wait for all events
-                await asyncio.sleep(EVENT_DELAY)
 
-                # Test that get returns the last value seen,
-                # no matter now many times it is called.
-                # Use flush=False to leave queued data for a later
-                # call to get that will flush the queue.
-                data_list = [read_topic.get() for _ in range(5)]
-                for data in data_list:
-                    assert data is not None
-                    self.csc.assert_scalars_equal(cmd_data_list[-1], data)
+                for _ in range(num_commands):
+                    cmd_data_list = await self.set_scalars(
+                        num_commands=1, assert_none=False
+                    )
 
-                # Make sure the data queue was not flushed.
-                assert read_topic.nqueued == num_commands
-
-                is_first = False
+                    next_data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
+                    get_data = read_topic.get()
+                    self.csc.assert_scalars_equal(cmd_data_list[0], next_data)
+                    self.csc.assert_scalars_equal(cmd_data_list[0], get_data)
 
     async def test_get_oldest(self) -> None:
         """Test that `get_oldest` returns the oldest sample."""
@@ -504,7 +515,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             while True:
                 try:
                     evt_data = await self.remote.evt_scalars.next(
-                        flush=False, timeout=NODATA_TIMEOUT
+                        flush=False, timeout=NO_DATA_TIMEOUT
                     )
                     assert evt_data is not None
                     evt_data_list.append(evt_data)
@@ -518,7 +529,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             while True:
                 try:
                     tel_data = await self.remote.tel_scalars.next(
-                        flush=False, timeout=NODATA_TIMEOUT
+                        flush=False, timeout=NO_DATA_TIMEOUT
                     )
                     assert tel_data is not None
                     tel_data_list.append(tel_data)
@@ -593,21 +604,30 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 assert data == read_data
 
     async def test_callbacks(self) -> None:
+        num_commands = 3
+
         evt_data_list: typing.List[salobj.BaseMsgType] = []
+        evt_future: asyncio.Future = asyncio.Future()
 
         def evt_callback(data: salobj.BaseMsgType) -> None:
             evt_data_list.append(data)
+            if len(evt_data_list) == num_commands:
+                evt_future.set_result(None)
 
         tel_data_list: typing.List[salobj.BaseMsgType] = []
+        tel_future: asyncio.Future = asyncio.Future()
 
         def tel_callback(data: salobj.BaseMsgType) -> None:
             tel_data_list.append(data)
+            if len(tel_data_list) == num_commands:
+                tel_future.set_result(None)
 
-        num_commands = 3
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             self.remote.evt_scalars.callback = evt_callback
             self.remote.tel_scalars.callback = tel_callback
 
+            # Check methods that are not allowed
+            # when there is a callback function
             with pytest.raises(RuntimeError):
                 self.remote.evt_scalars.get_oldest()
             with pytest.raises(RuntimeError):
@@ -622,8 +642,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await self.remote.tel_scalars.next(flush=False)
 
             cmd_data_list = await self.set_scalars(num_commands=num_commands)
-            # give the wait loops time to finish
-            await asyncio.sleep(EVENT_DELAY)
+            await asyncio.wait_for(
+                asyncio.gather(evt_future, tel_future), timeout=STD_TIMEOUT
+            )
 
             assert len(evt_data_list) == num_commands
             for cmd_data, evt_data in zip(cmd_data_list, evt_data_list):
@@ -691,7 +712,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             # show that get() flushes the queue
             with pytest.raises(asyncio.TimeoutError):
-                await self.csc.cmd_wait.next(timeout=NODATA_TIMEOUT)
+                await self.csc.cmd_wait.next(timeout=NO_DATA_TIMEOUT)
 
             duration = 2
             task2 = asyncio.create_task(
@@ -880,7 +901,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         data = await read_topic.next(flush=False, timeout=STD_TIMEOUT)
         assert_data_equal(data, input_dict)
         with pytest.raises(asyncio.TimeoutError):
-            await read_topic.next(flush=False, timeout=NODATA_TIMEOUT)
+            await read_topic.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
         # Write the same data using `write` with kwargs
         # (the above already tested write without kwargs)
@@ -972,7 +993,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
         # Make sure no additional samples were written
         with pytest.raises(asyncio.TimeoutError):
-            await read_topic.next(flush=False, timeout=NODATA_TIMEOUT)
+            await read_topic.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
     async def test_multiple_commands(self) -> None:
         """Test that we can have multiple instances of the same command
@@ -1044,9 +1065,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         ) as salinfo:
             cmdwriter = salobj.topics.RemoteCommand(salinfo=salinfo, name="setScalars")
             with pytest.raises(RuntimeError):
-                await cmdwriter.start(timeout=NODATA_TIMEOUT)
+                await cmdwriter.start(timeout=NO_DATA_TIMEOUT)
             with pytest.raises(RuntimeError):
-                await cmdwriter.set_start(timeout=NODATA_TIMEOUT)
+                await cmdwriter.set_start(timeout=NO_DATA_TIMEOUT)
             await salinfo.close()
 
     async def test_remote_command_set(self) -> None:
@@ -1067,7 +1088,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             read_data_list = []
 
-            async def reader_callback(data: salobj.BaseMsgType) -> None:
+            async def cmd_reader_callback(data: salobj.BaseMsgType) -> None:
                 read_data_list.append(data)
                 ackcmd = cmdreader.salinfo.AckCmdType(
                     private_seqNum=data.private_seqNum,
@@ -1075,7 +1096,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 )
                 await cmdreader.ack(data=data, ackcmd=ackcmd)
 
-            cmdreader.callback = reader_callback
+            cmdreader.callback = cmd_reader_callback
             kwargs_list: typing.Sequence[typing.Dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
@@ -1202,14 +1223,14 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             # max_history can only be 0 or 1 with index=0
             # for an indexed component
-            salinfo0 = salobj.SalInfo(domain=domain, name="Test", index=0)
-            for bad_max_history in (-1, 2, 3, 10):
-                with pytest.raises(ValueError):
-                    salobj.topics.ReadTopic(
-                        salinfo=salinfo0,
-                        attr_name="evt_scalars",
-                        max_history=bad_max_history,
-                    )
+            async with salobj.SalInfo(domain=domain, name="Test", index=0) as salinfo0:
+                for bad_max_history in (-1, 2, 3, 10):
+                    with pytest.raises(ValueError):
+                        salobj.topics.ReadTopic(
+                            salinfo=salinfo0,
+                            attr_name="evt_scalars",
+                            max_history=bad_max_history,
+                        )
 
     async def test_asynchronous_event_callback(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
@@ -1269,7 +1290,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # CMD_INPROGRESS command ack that extends the timeout.
             with salobj.assertRaisesAckTimeoutError():
                 await self.remote.cmd_wait.set_start(
-                    duration=-5, wait_done=False, timeout=NODATA_TIMEOUT
+                    duration=-5, wait_done=False, timeout=NO_DATA_TIMEOUT
                 )
 
     async def test_command_seq_num(self) -> None:
@@ -1277,78 +1298,115 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             prev_max_seq_num = None
             for cmd_name in self.remote.salinfo.command_names:
                 cmd = getattr(self.remote, f"cmd_{cmd_name}")
-                try:
-                    await cmd.start()
-                except salobj.AckError:
-                    # most state transition commands will fail
-                    pass
-                seq_num = cmd.data.private_seqNum
-                try:
-                    await cmd.start()
-                except salobj.AckError:
-                    pass
-                seq_num2 = cmd.data.private_seqNum
-                if seq_num < cmd.max_seq_num:
-                    assert seq_num2 == seq_num + 1
                 if prev_max_seq_num is None:
                     assert cmd.min_seq_num == 1
                 else:
                     assert cmd.min_seq_num == prev_max_seq_num + 1
+                    assert cmd.max_seq_num > cmd.min_seq_num
+                    assert cmd.max_seq_num <= salobj.topics.MAX_SEQ_NUM
                 prev_max_seq_num = cmd.max_seq_num
+
+            # Execute non-state-transition commands
+            # (since state-transition commands cannot be repeated)
+            for cmd in (
+                self.remote.cmd_setArrays,
+                self.remote.cmd_setScalars,
+                self.remote.cmd_wait,
+            ):
+                data = await cmd.start()
+                seq_num = data.private_seqNum
+                data = await cmd.start()
+                seq_num2 = data.private_seqNum
+                if seq_num < cmd.max_seq_num:
+                    assert seq_num2 == seq_num + 1
 
     async def test_topic_subname(self) -> None:
         """Test specifying topic subname with $LSST_TOPIC_SUBNAME."""
-        async with salobj.Domain() as domain:
-            salinfo_r1 = salobj.SalInfo(domain=domain, name="Test", index=0)
-            salinfo_w1 = salobj.SalInfo(domain=domain, name="Test", index=0)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain, name="Test", index=0
+        ) as salinfo_r1, salobj.SalInfo(
+            domain=domain, name="Test", index=0
+        ) as salinfo_w1:
             salobj.set_random_topic_subname()
-            salinfo_r2 = salobj.SalInfo(domain=domain, name="Test", index=0)
-            salinfo_w2 = salobj.SalInfo(domain=domain, name="Test", index=0)
-            writer1 = salobj.topics.ControllerEvent(
-                salinfo=salinfo_w1, name="errorCode"
-            )
-            writer2 = salobj.topics.ControllerEvent(
-                salinfo=salinfo_w2, name="errorCode"
-            )
-            await salinfo_w1.start()
-            await salinfo_w2.start()
+            async with salobj.SalInfo(
+                domain=domain, name="Test", index=0
+            ) as salinfo_r2, salobj.SalInfo(
+                domain=domain, name="Test", index=0
+            ) as salinfo_w2:
+                assert (
+                    salinfo_r1.component_info.topic_subname
+                    == salinfo_w1.component_info.topic_subname
+                )
+                assert (
+                    salinfo_r2.component_info.topic_subname
+                    == salinfo_w2.component_info.topic_subname
+                )
+                assert (
+                    salinfo_r1.component_info.topic_subname
+                    != salinfo_r2.component_info.topic_subname
+                )
 
-            # write late joiner data (before we have readers);
-            # only the last value should be seen
-            for i in (3, 4, 5):
-                await writer1.set_write(errorCode=10 + i)
-                await writer2.set_write(errorCode=20 + i)
+                writer1 = salobj.topics.ControllerEvent(
+                    salinfo=salinfo_w1, name="errorCode"
+                )
+                writer2 = salobj.topics.ControllerEvent(
+                    salinfo=salinfo_w2, name="errorCode"
+                )
+                await asyncio.wait_for(
+                    asyncio.gather(salinfo_w1.start(), salinfo_w2.start()),
+                    timeout=STD_TIMEOUT,
+                )
 
-            # create readers and set callbacks for them
-            reader1 = salobj.topics.RemoteEvent(salinfo=salinfo_r1, name="errorCode")
-            reader2 = salobj.topics.RemoteEvent(salinfo=salinfo_r2, name="errorCode")
-            await salinfo_r1.start()
-            await salinfo_r2.start()
+                # write late joiner data (before we have readers);
+                # only the last value should be seen
+                for i in (3, 4, 5):
+                    await writer1.set_write(errorCode=10 + i)
+                    await writer2.set_write(errorCode=20 + i)
 
-            # write more data now that we have readers;
-            # they should see all of it
-            for i in (6, 7, 8):
-                await writer1.set_write(errorCode=10 + i)
-                await writer2.set_write(errorCode=20 + i)
+                # create readers and set callbacks for them
+                reader1 = salobj.topics.RemoteEvent(
+                    salinfo=salinfo_r1, name="errorCode"
+                )
+                reader2 = salobj.topics.RemoteEvent(
+                    salinfo=salinfo_r2, name="errorCode"
+                )
+                await asyncio.wait_for(
+                    asyncio.gather(salinfo_r1.start(), salinfo_r2.start()),
+                    timeout=STD_TIMEOUT,
+                )
 
-            read_codes1 = []
-            read_codes2 = []
-            try:
-                for i in range(5):
-                    data1 = await reader1.next(flush=False, timeout=NODATA_TIMEOUT)
-                    read_codes1.append(data1.errorCode)
-            except asyncio.TimeoutError:
-                pass
-            try:
-                for i in range(5):
-                    data2 = await reader2.next(flush=False, timeout=NODATA_TIMEOUT)
-                    read_codes2.append(data2.errorCode)
-            except asyncio.TimeoutError:
-                pass
-            expected_codes1 = [15, 16, 17, 18]
-            expected_codes2 = [25, 26, 27, 28]
-            assert read_codes1 == expected_codes1
-            assert read_codes2 == expected_codes2
+                # write more data now that we have readers;
+                # they should see all of it
+                for i in (6, 7, 8):
+                    await writer1.set_write(errorCode=10 + i)
+                    await writer2.set_write(errorCode=20 + i)
+
+                read_codes1 = []
+                read_codes2 = []
+                expected_codes1 = [15, 16, 17, 18]
+                expected_codes2 = [25, 26, 27, 28]
+                try:
+                    timeout = STD_TIMEOUT
+                    for i in range(5):
+                        data1 = await reader1.next(flush=False, timeout=timeout)
+                        read_codes1.append(data1.errorCode)
+                        if len(read_codes1) >= len(expected_codes1):
+                            timeout = NO_DATA_TIMEOUT
+                except asyncio.TimeoutError:
+                    if len(read_codes1) < len(expected_codes1):
+                        raise
+                try:
+                    timeout = STD_TIMEOUT
+                    for i in range(5):
+                        data2 = await reader2.next(flush=False, timeout=timeout)
+                        read_codes2.append(data2.errorCode)
+                        if len(read_codes2) >= len(expected_codes2):
+                            timeout = NO_DATA_TIMEOUT
+                except asyncio.TimeoutError:
+                    if len(read_codes2) < len(expected_codes2):
+                        raise
+                assert read_codes1 == expected_codes1
+                assert read_codes2 == expected_codes2
 
     async def test_sal_index(self) -> None:
         """Test separation of data using SAL index, including historical data.
@@ -1358,8 +1416,8 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         Readers with a non-zero SAL index should only see data
         from a writer with the same index.
         """
+        sal_indices = (0, 1, 2)
         async with salobj.Domain() as domain:
-            sal_indices = (0, 1, 2)
             writers = [
                 salobj.topics.ControllerEvent(
                     salinfo=salobj.SalInfo(domain=domain, name="Test", index=index),
@@ -1367,7 +1425,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 )
                 for index in sal_indices
             ]
-            await asyncio.gather(*[writer.salinfo.start() for writer in writers])
+            await asyncio.wait_for(
+                asyncio.gather(*[writer.salinfo.start() for writer in writers]),
+                timeout=STD_TIMEOUT,
+            )
 
             # Write historical data (before we have readers);
             # only the last value for each index should be seen.
@@ -1387,7 +1448,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 )
                 for index in sal_indices
             ]
-            await asyncio.gather(*[reader.salinfo.start() for reader in readers])
+            await asyncio.wait_for(
+                asyncio.gather(*[reader.salinfo.start() for reader in readers]),
+                timeout=STD_TIMEOUT,
+            )
 
             # Write more data now that we have readers;
             # the readers should see all of it.
@@ -1396,23 +1460,25 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     value = base_value + writer.salinfo.index * 10
                     await writer.set_write(errorCode=value)
 
-            read_codes: typing.Dict[int, typing.List[int]] = {
-                index: [] for index in sal_indices
-            }
+            # Dict of salIndex: list of errorCodes read for that salIndex
+            read_codes: typing.Dict[int, typing.List[int]] = collections.defaultdict(
+                list
+            )
             expected_codes = {
                 # 0 gets the last historical value written for each index
                 # plus new data for all indices
                 0: [5, 15, 25, 6, 16, 26, 7, 17, 27, 8, 18, 28],
-                # 1 and 2 get the last historical value written
+                # the other two get the last historical value written
                 # for those indices, plus new data for that index
                 1: [15, 16, 17, 18],
                 2: [25, 26, 27, 28],
             }
             for reader in readers:
                 index = reader.salinfo.index
-                for i in range(len(expected_codes[index])):
+                for _ in range(len(expected_codes[index])):
                     data = await reader.next(flush=False, timeout=STD_TIMEOUT)
                     read_codes[index].append(data.errorCode)
+            assert read_codes.keys() == set(sal_indices)
             for index in sal_indices:
                 assert read_codes[index] == expected_codes[index]
 
@@ -1449,7 +1515,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             write_topic = salobj.topics.WriteTopic(
                 salinfo=salinfo, attr_name="evt_scalars"
             )
-            await salinfo.start()
+            await asyncio.wait_for(salinfo.start(), timeout=STD_TIMEOUT)
 
             predicted_data_dict = vars(write_topic.DataType())
             kwargs_list: typing.Iterable[typing.Dict[str, typing.Any]] = (

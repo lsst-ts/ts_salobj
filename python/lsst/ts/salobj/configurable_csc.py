@@ -55,9 +55,14 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         Directory of configuration files, or None for the standard
         configuration directory (obtained from `_get_default_config_dir`).
         This is provided for unit testing.
-    initial_state : `State` or `int`, optional
-        The initial state of the CSC. This is provided for unit testing,
-        as real CSCs should start up in `State.STANDBY`, the default.
+    initial_state : `State`, `int` or `None`, optional
+        Initial state for this CSC.
+        If None use the class attribute ``default_initial_state``.
+        Typically `State.STANDBY` (or `State.OFFLINE` for an
+        externally commandable CSC) but can also be
+        `State.DISABLED`, or `State.ENABLED`,
+        in which case you may also want to specify
+        ``override`` for a configurable CSC.
     override : `str`, optional
         Configuration override file to apply if ``initial_state`` is
         `State.DISABLED` or `State.ENABLED`.
@@ -127,7 +132,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         index: typing.Optional[int],
         config_schema: typing.Dict[str, typing.Any],
         config_dir: typing.Union[str, pathlib.Path, None] = None,
-        initial_state: State = State.STANDBY,
+        initial_state: None | State | int = None,
         override: str = "",
         simulation_mode: int = 0,
     ) -> None:

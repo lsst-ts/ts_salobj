@@ -66,16 +66,20 @@ class AckCmdReader(read_topic.ReadTopic):
             salinfo=salinfo, attr_name="ack_ackcmd", max_history=0, queue_len=queue_len
         )
 
+    def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
+        """Queue an ackcmd message if its ``identity`` and ``origin`` match
+        the values in self.salinfo.
 
-# This is already handled by SalInfo._ackcmd_callback
-#     def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
-#         """Queue a message if it is in response to a command I sent."""
-#         if (
-#             data.identity != self.salinfo.identity  # type: ignore
-#             or data.origin != self.salinfo.domain.origin  # type: ignore
-#         ):
-#             return
-#         self._data_queue.append(data)
+        Ignore ackcmd messages that have a different ``identity`` or
+        ``origin``, because those are in response to commands sent by
+        a different user (or at least by a different process, or a different
+        salinfo with a different identity).
+        """
+        if (
+            data.identity == self.salinfo.identity  # type: ignore
+            and data.origin == self.salinfo.domain.origin  # type: ignore
+        ):
+            self._data_queue.append(data)
 
 
 class CommandInfo:
@@ -469,30 +473,37 @@ class RemoteCommand(write_topic.WriteTopic):
         salobj.AckTimeoutError
             If the command times out.
         RuntimeError
-            If the ``salinfo`` has not started reading.
+            If ``self.salinfo`` is not running.
         TypeError
             If ``data`` is not None and not an instance of `DataType`.
         """
-        self.salinfo.assert_started()
-        if data is not None:
-            self.data = data
-        # else use the existing data, since it may have been set
-        # via a call to "set"
+        self.salinfo.assert_running()
 
         try:
             self._in_start = True
-            data_written = await super().write()
+            if data is not None:
+                self.data = data
+            # else use the existing data, since it may have been set
+            # via a call to "set"
+
+            data = self._prepare_data_to_write()
+
+            seq_num = data.private_seqNum
+            if seq_num in self.salinfo._running_cmds:
+                raise RuntimeError(
+                    f"{self.attr_name} a command with seq_num={seq_num} is already running. "
+                    "This may indicate a bug in ts_salobj SalInfo or RemoteCommand."
+                )
+            cmd_info = CommandInfo(
+                remote_command=self, seq_num=seq_num, wait_done=wait_done
+            )
+            self.salinfo._running_cmds[seq_num] = cmd_info
+            await self.salinfo.write_data(
+                topic_info=self.topic_info, data_dict=vars(data)
+            )
         finally:
             self._in_start = False
-        seq_num = data_written.private_seqNum
-        if seq_num in self.salinfo._running_cmds:
-            raise RuntimeError(
-                f"{self.attr_name} bug: a command with seq_num={seq_num} is already running"
-            )
-        cmd_info = CommandInfo(
-            remote_command=self, seq_num=seq_num, wait_done=wait_done
-        )
-        self.salinfo._running_cmds[seq_num] = cmd_info
+
         return await cmd_info.next_ackcmd(timeout=timeout)
 
     async def set_write(

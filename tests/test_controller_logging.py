@@ -34,9 +34,9 @@ from lsst.ts import utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
-STD_TIMEOUT = 60
+STD_TIMEOUT = 20
 # Timeout for when we expect no new data (seconds).
-NODATA_TIMEOUT = 0.1
+NO_DATA_TIMEOUT = 0.1
 
 np.random.seed(47)
 
@@ -81,12 +81,9 @@ class ControllerLoggingTestCase(
             )
             assert logLevel.level == logging.INFO
 
-            self.remote.evt_logMessage.flush()
-
-            # We may still get one or two startup log messages
-            # so read until we see the one we want.
             info_message = "test info message"
             self.csc.log.info(info_message)
+            # Skip initial messages until we find this new one.
             while True:
                 msg = await self.remote.evt_logMessage.next(
                     flush=False, timeout=STD_TIMEOUT
@@ -119,7 +116,7 @@ class ControllerLoggingTestCase(
 
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
             await self.remote.cmd_setLogLevel.set_start(
@@ -135,14 +132,14 @@ class ControllerLoggingTestCase(
             self.csc.log.info(info_message)
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
             warn_message = "test warn message"
             self.csc.log.warning(warn_message)
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
             with salobj.assertRaisesAckError():

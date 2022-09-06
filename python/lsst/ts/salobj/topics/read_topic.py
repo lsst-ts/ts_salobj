@@ -288,6 +288,8 @@ class ReadTopic(BaseTopic):
         # because it allows multiple callers of `next` to all get the same
         # message, and it avoids a potential race condition with `flush`.
         self._next_task = utils.make_done_future()
+        # Event that is set when new data arrives. Used by aget.
+        self._new_data_event = asyncio.Event()
         self._callback: typing.Optional[CallbackType] = None
         self._callback_tasks: typing.Set[asyncio.Task] = set()
         self._callback_loop_task = utils.make_done_future()
@@ -447,9 +449,8 @@ class ReadTopic(BaseTopic):
         if self.has_callback:
             raise RuntimeError("Not allowed because there is a callback function")
         if self._current_data is None:
-            if self._next_task.done():
-                self._next_task = asyncio.Future()
-            await asyncio.wait_for(self._next_task, timeout=timeout)
+            self._new_data_event.clear()
+            await asyncio.wait_for(self._new_data_event.wait(), timeout=timeout)
         assert self._current_data is not None  # make mypy happy
         return self._current_data
 
@@ -647,3 +648,4 @@ class ReadTopic(BaseTopic):
         if not self._next_task.done() and self._data_queue:
             oldest_message = self._data_queue.popleft()
             self._next_task.set_result(oldest_message)
+        self._new_data_event.set()

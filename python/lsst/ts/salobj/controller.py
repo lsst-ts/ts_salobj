@@ -203,6 +203,13 @@ class Controller:
         self.done_task: asyncio.Future = asyncio.Future()
         self._do_callbacks = do_callbacks
 
+        # The start method will pause until this event is set (which it is,
+        # by default). Unit tests may delay `start` by clearing this event
+        # immediately after constructing the Controller, and then setting
+        # it again, when ready for `start` to run.
+        self.delay_start_event = asyncio.Event()
+        self.delay_start_event.set()
+
         domain = Domain()
         try:
             self.salinfo = SalInfo(
@@ -268,6 +275,8 @@ class Controller:
         """Finish construction."""
         # Allow each remote constructor to begin running its start method.
         await asyncio.sleep(0)
+        # Allow unit tests to delay start.
+        await self.delay_start_event.wait()
 
         # Wait for all remote salinfos to start.
         start_tasks = []

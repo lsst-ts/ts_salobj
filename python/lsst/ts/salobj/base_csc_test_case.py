@@ -42,7 +42,7 @@ from .csc_utils import get_expected_summary_states
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.
-STD_TIMEOUT = 60
+STD_TIMEOUT = 20
 
 
 class BaseCscTestCase(metaclass=abc.ABCMeta):
@@ -79,7 +79,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def basic_make_csc(
         self,
-        initial_state: typing.Union[sal_enums.State, int],
+        initial_state: None | sal_enums.State | int,
         config_dir: typing.Union[str, pathlib.Path, None],
         simulation_mode: int,
         **kwargs: typing.Any,
@@ -108,27 +108,31 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     @contextlib.asynccontextmanager
     async def make_csc(
         self,
-        initial_state: sal_enums.State = sal_enums.State.STANDBY,
+        initial_state: None | sal_enums.State | int = None,
         config_dir: typing.Union[str, pathlib.Path, None] = None,
         simulation_mode: int = 0,
         log_level: typing.Optional[int] = None,
         timeout: float = STD_TIMEOUT,
         **kwargs: typing.Any,
     ) -> typing.AsyncGenerator[None, None]:
-        """Create a CSC and remote and wait for them to start,
-        after setting a random $LSST_DDS_PARTITION_PREFIX.
+        """Create a CSC and remote and wait for them to start.
 
         The csc is accessed as ``self.csc`` and the remote as ``self.remote``.
 
-        Reads and checks all but the last ``summaryState`` event during
-        startup.
+        The topics in `self.remote` will queue all telemetry and events
+        from when the CSC is constructed, with one exception:
+        self.remote.evt_summaryState will only have the final summary state,
+        because earlier values are read and checked against the expected
+        startup states. (The final summary state is left queued for backwards
+        compatibility.)
 
         Parameters
         ----------
         name : `str`
             Name of SAL component.
         initial_state : `lsst.ts.salobj.State` or `int`, optional
-            The initial state of the CSC. Defaults to STANDBY.
+            The initial state of the CSC.
+            If None use the CSC's default initial state.
         config_dir : `str`, optional
             Directory of configuration files, or `None` (the default)
             for the standard configuration directory (obtained from
@@ -148,24 +152,32 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             For a configurable CSC this may include ``override``,
             especially if ``initial_state`` is DISABLED or ENABLED.
         """
-        # Redundant with setUp, but preserve in case a subclass
-        # forgets to call super().setUp()
-        testutils.set_random_topic_subname()
         items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
         try:
+            # Create the CSC, but prevent it from starting
+            # until the remote is fully started
             self.csc = self.basic_make_csc(
                 initial_state=initial_state,
                 config_dir=config_dir,
                 simulation_mode=simulation_mode,
                 **kwargs,
             )
+            self.csc.delay_start_event.clear()
             items_to_close.append(self.csc)
+
+            # Create and start the remote
             self.remote = Remote(
                 domain=self.csc.domain,
                 name=self.csc.salinfo.name,
                 index=self.csc.salinfo.index,
             )
             items_to_close.append(self.remote)
+            await asyncio.wait_for(self.remote.start_task, timeout=timeout)
+
+            # Allow the CSC to start.
+            self.csc.delay_start_event.set()
+            await asyncio.wait_for(self.csc.start_task, timeout=timeout)
+
             if log_level is not None:
                 self.csc.log.setLevel(log_level)
 
@@ -175,6 +187,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             )
 
             if initial_state != self.csc.default_initial_state:
+                assert initial_state is not None
                 # Check all expected summary states expect the final state.
                 # That is omitted for backwards compatibility.
                 expected_states = get_expected_summary_states(
@@ -299,9 +312,6 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Time limit for the CSC to start and output
             the summaryState event.
         """
-        # Redundant with setUp, but preserve in case a subclass
-        # forgets to call super().setUp()
-        testutils.set_random_topic_subname()
         exe_path = shutil.which(exe_name)
         if exe_path is None:
             raise AssertionError(

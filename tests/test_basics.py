@@ -22,13 +22,14 @@
 import getpass
 import os
 import random
-import re
 import socket
 import unittest
 
 import pytest
 
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
+
+index_gen = utils.index_generator()
 
 
 class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
@@ -37,8 +38,10 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_assert_raises_ack_error(self) -> None:
         """Test the assertRaisesAckError function."""
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain, "Test", index=1)
+        index = next(index_gen)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain, "Test", index=index
+        ) as salinfo:
             private_seqNum = 5
             ack = 23
             error = -6
@@ -109,8 +112,10 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_ack_error_repr(self) -> None:
         """Test AckError.__str__ and AckError.__repr__"""
-        async with salobj.Domain() as domain:
-            salinfo = salobj.SalInfo(domain, "Test", index=1)
+        index = next(index_gen)
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain, "Test", index=index
+        ) as salinfo:
             msg = "a message"
             private_seqNum = 5
             ack = 23
@@ -129,10 +134,6 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             repr_err = repr(err)
             for item in ("AckError", msg, private_seqNum, ack, error, result):
                 assert str(item) in repr_err
-
-    async def test_get_opensplice_version(self) -> None:
-        ospl_version = salobj.get_opensplice_version()
-        assert re.search(r"^\d+\.\d+\.\d+", ospl_version) is not None
 
     async def test_get_user_host(self) -> None:
         expected_user_host = getpass.getuser() + "@" + socket.getfqdn()

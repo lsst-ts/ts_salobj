@@ -70,9 +70,6 @@ class Domain:
     <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
     follow the link for details:
 
-    * OSPL_MASTER_PRIORITY, optional is used to set the Master Priority.
-      If present, it must be a value between 0 and 255.
-
     **Cleanup**
 
     It is important to close a `Domain` when you are done with it, especially
