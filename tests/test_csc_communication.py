@@ -39,7 +39,7 @@ from lsst.ts import utils
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 20
 # Timeout for when we expect no new data (seconds).
-NODATA_TIMEOUT = 0.5
+NO_DATA_TIMEOUT = 1
 
 np.random.seed(47)
 
@@ -574,7 +574,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             await self.assert_next_summary_state(salobj.State.FAULT)
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_errorCode.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
@@ -656,11 +656,11 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     # make sure FAULT state and errorCode are only sent once
                     with pytest.raises(asyncio.TimeoutError):
                         await remote.evt_summaryState.next(
-                            flush=False, timeout=NODATA_TIMEOUT
+                            flush=False, timeout=NO_DATA_TIMEOUT
                         )
                     with pytest.raises(asyncio.TimeoutError):
                         await remote.evt_errorCode.next(
-                            flush=False, timeout=NODATA_TIMEOUT
+                            flush=False, timeout=NO_DATA_TIMEOUT
                         )
 
     async def test_make_csc_timeout(self) -> None:
