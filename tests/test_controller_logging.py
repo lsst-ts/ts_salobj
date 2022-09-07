@@ -34,7 +34,7 @@ from lsst.ts import salobj, utils
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 20
 # Timeout for when we expect no new data (seconds).
-NO_DATA_TIMEOUT = 0.1
+NO_DATA_TIMEOUT = 1
 
 np.random.seed(47)
 

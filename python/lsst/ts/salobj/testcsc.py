@@ -22,6 +22,7 @@
 __all__ = ["TestCsc", "run_test_csc"]
 
 import asyncio
+import collections
 import string
 import types
 import typing

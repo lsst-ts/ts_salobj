@@ -25,6 +25,7 @@ __all__ = ["BaseCsc"]
 
 import argparse
 import asyncio
+import collections
 import enum
 import sys
 import typing

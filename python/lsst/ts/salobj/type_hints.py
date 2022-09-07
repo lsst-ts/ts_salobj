@@ -28,7 +28,6 @@ __all__ = [
 
 import dataclasses
 import pathlib
-import typing
 
 from . import sal_enums
 

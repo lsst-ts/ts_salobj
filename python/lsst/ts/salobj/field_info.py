@@ -153,11 +153,11 @@ class FieldInfo:
 
     def make_dataclass_tuple(
         self,
-    ) -> typing.Tuple[str, typing.Type[typing.Any], dataclasses.Field]:
+    ) -> tuple[str, typing.Type[typing.Any], dataclasses.Field]:
         """Create field data for dataclasses.make_dataclasses."""
         scalar_type = PYTHON_TYPES[self.sal_type]
         if self.count > 1:
-            dtype: typing.Type[typing.Any] = typing.List[scalar_type]  # type: ignore
+            dtype: typing.Type[typing.Any] = list[scalar_type]  # type: ignore
             field: dataclasses.Field = dataclasses.field(
                 default_factory=lambda: [self.default_scalar_value] * self.count  # type: ignore
             )
@@ -166,7 +166,7 @@ class FieldInfo:
             field = dataclasses.field(default=self.default_scalar_value)
         return (self.name, dtype, field)
 
-    def make_avro_schema(self) -> typing.Dict[str, typing.Any]:
+    def make_avro_schema(self) -> dict[str, typing.Any]:
         """Return an Avro schema for this field."""
         scalar_type = AVRO_TYPES[self.sal_type]
         if self.count > 1:

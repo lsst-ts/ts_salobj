@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["Remote"]
 
 import asyncio
+import collections
 import types
 import typing
 from collections.abc import Iterable

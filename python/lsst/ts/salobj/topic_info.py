@@ -208,23 +208,19 @@ class TopicInfo:
     """
 
     # Cache of (component_name, attr_name): avro schema
-    _avro_schema_cache: typing.Dict[
-        typing.Tuple[str, str], typing.Dict[str, typing.Any]
-    ] = dict()
+    _avro_schema_cache: dict[tuple[str, str], dict[str, typing.Any]] = dict()
 
     # Cache of (component_name, attr_name): dataclass
     # This cache is necessary, so that different SalInfo instances
     # have the same data classes.
-    _dataclass_cache: typing.Dict[
-        typing.Tuple[str, str], typing.Type[BaseMsgType]
-    ] = dict()
+    _dataclass_cache: dict[tuple[str, str], typing.Type[BaseMsgType]] = dict()
 
     def __init__(
         self,
         component_name: str,
         topic_subname: str,
         sal_name: str,
-        fields: typing.Dict[str, FieldInfo],
+        fields: dict[str, FieldInfo],
         description: str = "",
         partitions: int = 1,
     ) -> None:
@@ -321,7 +317,7 @@ class TopicInfo:
             def validate(
                 model: typing.Any,
                 fields: typing.KeysView[str] = self.fields.keys(),
-                array_fields: typing.Dict[str, int] = self.array_fields,
+                array_fields: dict[str, int] = self.array_fields,
             ) -> None:
                 """Validate things Kafka does not: array length and str length.
 
@@ -356,7 +352,7 @@ class TopicInfo:
 
         return dataclass
 
-    def make_avro_schema(self) -> typing.Dict[str, typing.Any]:
+    def make_avro_schema(self) -> dict[str, typing.Any]:
         """Create an avro schema."""
         avro_schema = self._avro_schema_cache.get(self._cache_key)
 

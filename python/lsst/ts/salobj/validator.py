@@ -24,6 +24,7 @@ __all__ = [
     "StandardValidator",  # specific jsonschema validator
 ]
 
+import collections
 import typing
 from collections.abc import Generator
 

@@ -287,8 +287,6 @@ class ReadTopic(BaseTopic):
             maxlen=queue_len
         )
         self._current_data: type_hints.BaseMsgType | None = None
-        # Event that is set when new data arrives. Used by aget.
-        self._new_data_event = asyncio.Event()
         # Task that `next` waits on.
         # Its result is set to the oldest message on the queue.
         # We do this instead of having `next` itself pop the oldest message
@@ -327,9 +325,7 @@ class ReadTopic(BaseTopic):
     def callback(
         self,
     ) -> CallbackType | None:
-        """Asynchronous callback function, or None if there is not one.
-
-        Synchronous callback functions are deprecated.
+        """Callback function, or None if there is not one.
 
         The callback function is called when a new message is received;
         it receives one argument: the message (an object of type
@@ -355,21 +351,6 @@ class ReadTopic(BaseTopic):
 
     @callback.setter
     def callback(self, func: CallbackType | None) -> None:
-        if func is not None:
-            if not callable(func):
-                raise TypeError(f"callback {func} not callable")
-            if not inspect.iscoroutinefunction(
-                func
-            ) and not asyncio.iscoroutinefunction(
-                func.__call__  # type: ignore
-            ):
-                # TODO DM-37502: modify this to raise (and update doc string)
-                # once we drop support for synchronous callback functions.
-                warnings.warn(
-                    f"callback {func} should be asynchronous",
-                    category=DeprecationWarning,
-                )
-
         self._cancel_callbacks()
 
         if func is None:

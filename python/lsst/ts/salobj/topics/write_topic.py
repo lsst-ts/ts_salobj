@@ -23,6 +23,7 @@ from __future__ import annotations
 
 __all__ = ["MAX_SEQ_NUM", "SetWriteResult", "WriteTopic"]
 
+import collections
 import copy
 import dataclasses
 import struct

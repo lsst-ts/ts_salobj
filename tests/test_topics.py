@@ -601,7 +601,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_callbacks(self) -> None:
         num_commands = 3
 
-        evt_data_list: typing.List[salobj.BaseMsgType] = []
+        evt_data_list: list[salobj.BaseMsgType] = []
         evt_future: asyncio.Future = asyncio.Future()
 
         evt_data_list: typing.List[salobj.BaseMsgType] = []
@@ -612,7 +612,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             if len(evt_data_list) == num_commands:
                 evt_future.set_result(None)
 
-        tel_data_list: typing.List[salobj.BaseMsgType] = []
+        tel_data_list: list[salobj.BaseMsgType] = []
         tel_future: asyncio.Future = asyncio.Future()
 
         async def tel_callback(data: salobj.BaseMsgType) -> None:
@@ -1459,9 +1459,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     await writer.set_write(errorCode=value)
 
             # Dict of salIndex: list of errorCodes read for that salIndex
-            read_codes: typing.Dict[int, typing.List[int]] = collections.defaultdict(
-                list
-            )
+            read_codes: dict[int, list[int]] = collections.defaultdict(list)
             expected_codes = {
                 # 0 gets the last historical value written for each index
                 # plus new data for all indices
