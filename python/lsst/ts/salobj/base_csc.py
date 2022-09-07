@@ -25,6 +25,7 @@ __all__ = ["BaseCsc"]
 
 import argparse
 import asyncio
+import collections
 import enum
 import sys
 import typing
@@ -145,8 +146,8 @@ class BaseCsc(Controller):
     # See Attributes in the doc string for more information.
     default_initial_state: State = State.STANDBY
     enable_cmdline_state = False
-    valid_simulation_modes: typing.Sequence[int] = (0,)
-    simulation_help: typing.Optional[str] = None
+    valid_simulation_modes: collections.abc.Sequence[int] = (0,)
+    simulation_help: str | None = None
 
     def __init__(
         self,
@@ -191,7 +192,7 @@ class BaseCsc(Controller):
         # Set evt_simulationMode, now that it is available.
         self.evt_simulationMode.set(mode=int(simulation_mode))  # type: ignore
 
-        def format_version(version: typing.Optional[str]) -> str:
+        def format_version(version: str | None) -> str:
             return "?" if version is None else version
 
         self.evt_softwareVersions.set(  # type: ignore
@@ -260,7 +261,7 @@ class BaseCsc(Controller):
 
     @classmethod
     def make_from_cmd_line(
-        cls, index: typing.Union[int, enum.IntEnum, bool, None], **kwargs: typing.Any
+        cls, index: int | enum.IntEnum | bool | None, **kwargs: typing.Any
     ) -> BaseCsc:
         """Construct a CSC from command line arguments.
 
@@ -382,7 +383,7 @@ class BaseCsc(Controller):
 
     @classmethod
     async def amain(
-        cls, index: typing.Union[int, enum.IntEnum, bool, None], **kwargs: typing.Any
+        cls, index: int | enum.IntEnum | bool | None, **kwargs: typing.Any
     ) -> None:
         """Make a CSC from command-line arguments and run it.
 
@@ -424,7 +425,7 @@ class BaseCsc(Controller):
 
     @classmethod
     def add_kwargs_from_args(
-        cls, args: argparse.Namespace, kwargs: typing.Dict[str, typing.Any]
+        cls, args: argparse.Namespace, kwargs: dict[str, typing.Any]
     ) -> None:
         """Add constructor keyword arguments based on parsed arguments.
 
@@ -658,9 +659,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def fault(
-        self, code: typing.Optional[int], report: str, traceback: str = ""
-    ) -> None:
+    async def fault(self, code: int | None, report: str, traceback: str = "") -> None:
         """Enter the fault state and output the ``errorCode`` event.
 
         Parameters
@@ -778,7 +777,7 @@ class BaseCsc(Controller):
         self,
         data: typing.Any,
         cmd_name: str,
-        allowed_curr_states: typing.Sequence[State],
+        allowed_curr_states: collections.abc.Sequence[State],
         new_state: State,
     ) -> None:
         """Change to the desired state.

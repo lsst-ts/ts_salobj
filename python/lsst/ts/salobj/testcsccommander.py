@@ -22,7 +22,7 @@
 __all__ = ["TestCscCommander", "command_test_csc"]
 
 import asyncio
-import typing
+import collections
 
 import numpy as np
 
@@ -50,10 +50,10 @@ class TestCscCommander(csc_commander.CscCommander):
 
     def __init__(
         self,
-        index: typing.Optional[int],
+        index: int | None,
         enable: bool = False,
-        exclude: typing.Optional[typing.Sequence[str]] = None,
-        fields_to_ignore: typing.Sequence[str] = (
+        exclude: collections.abc.Sequence[str] | None = None,
+        fields_to_ignore: collections.abc.Sequence[str] = (
             "ignored",
             "value",
             "priority",
@@ -92,7 +92,7 @@ class TestCscCommander(csc_commander.CscCommander):
           field: {" ".join(self.array_field_types)}
           for example: boolean0=1,2 int0=3,-4,5,6,7 float0=-42.3"""
 
-    async def do_setArrays(self, args: typing.Sequence[str]) -> None:
+    async def do_setArrays(self, args: collections.abc.Sequence[str]) -> None:
         kwargs = dict()
         for field_val in args:
             field, valstr = field_val.split("=")

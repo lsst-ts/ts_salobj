@@ -104,7 +104,7 @@ def get_user_host() -> str:
     return f"{getpass.getuser()}@{socket.getfqdn()}"
 
 
-def name_to_name_index(name: str) -> typing.Tuple[str, int]:
+def name_to_name_index(name: str) -> tuple[str, int]:
     """Parse a SAL component name of the form name[:index].
 
     Parameters

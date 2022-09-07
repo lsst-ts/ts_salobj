@@ -48,7 +48,7 @@ class NoIndexCsc(salobj.TestCsc):
         arg2: typing.Any,
         initial_state: salobj.State = salobj.State.STANDBY,
         override: str = "",
-        config_dir: typing.Union[str, pathlib.Path, None] = None,
+        config_dir: str | pathlib.Path | None = None,
     ) -> None:
         super().__init__(
             index=next(index_gen),

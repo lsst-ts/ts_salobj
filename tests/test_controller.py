@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import collections
 import typing
 import unittest
 
@@ -44,7 +45,7 @@ class ControllerWithDoMethods(salobj.Controller):
         methods.
     """
 
-    def __init__(self, command_names: typing.Iterable[str]) -> None:
+    def __init__(self, command_names: collections.abc.Iterable[str]) -> None:
         index = next(index_gen)
         for name in command_names:
             setattr(self, f"do_{name}", self.mock_do_method)

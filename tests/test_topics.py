@@ -49,8 +49,8 @@ np.random.seed(47)
 class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self,
-        initial_state: typing.Union[salobj.State, int],
-        config_dir: typing.Union[str, pathlib.Path, None],
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
         simulation_mode: int,
     ) -> salobj.BaseCsc:
         return salobj.TestCsc(
@@ -380,7 +380,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def set_scalars(
         self, num_commands: int, assert_none: bool = True
-    ) -> typing.List[salobj.BaseMsgType]:
+    ) -> list[salobj.BaseMsgType]:
         """Send the setScalars command repeatedly and return the data sent.
 
         Each command is sent with new random data. Each command triggers
@@ -564,7 +564,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 self.read_topic = read_topic
                 self.nitems = nitems
                 self.name = name
-                self.data: typing.List[salobj.BaseMsgType] = []
+                self.data: list[salobj.BaseMsgType] = []
                 self.read_loop_task = asyncio.create_task(self.read_loop())
                 self.ready_to_read = asyncio.Event()
 
@@ -606,7 +606,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_callbacks(self) -> None:
         num_commands = 3
 
-        evt_data_list: typing.List[salobj.BaseMsgType] = []
+        evt_data_list: list[salobj.BaseMsgType] = []
         evt_future: asyncio.Future = asyncio.Future()
 
         def evt_callback(data: salobj.BaseMsgType) -> None:
@@ -614,7 +614,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             if len(evt_data_list) == num_commands:
                 evt_future.set_result(None)
 
-        tel_data_list: typing.List[salobj.BaseMsgType] = []
+        tel_data_list: list[salobj.BaseMsgType] = []
         tel_future: asyncio.Future = asyncio.Future()
 
         def tel_callback(data: salobj.BaseMsgType) -> None:
@@ -843,7 +843,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         self,
         callback: typing.Callable,
         ack: salobj.SalRetCode,
-        result_contains: typing.Optional[str] = None,
+        result_contains: str | None = None,
     ) -> None:
         """Check the exception raised by a remote command when the controller
         controller command raises an exception or returns a failed ackcmd.
@@ -1097,12 +1097,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await cmdreader.ack(data=data, ackcmd=ackcmd)
 
             cmdreader.callback = cmd_reader_callback
-            kwargs_list: typing.Sequence[typing.Dict[str, typing.Any]] = (
+            kwargs_list: collections.abc.Sequence[dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
                 dict(short0=-3, long0=47),
             )
-            fields: typing.Set[str] = set()
+            fields: set[str] = set()
             for kwargs in kwargs_list:
                 fields.update(kwargs.keys())
 
@@ -1461,9 +1461,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     await writer.set_write(errorCode=value)
 
             # Dict of salIndex: list of errorCodes read for that salIndex
-            read_codes: typing.Dict[int, typing.List[int]] = collections.defaultdict(
-                list
-            )
+            read_codes: dict[int, list[int]] = collections.defaultdict(list)
             expected_codes = {
                 # 0 gets the last historical value written for each index
                 # plus new data for all indices
@@ -1518,12 +1516,12 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(salinfo.start(), timeout=STD_TIMEOUT)
 
             predicted_data_dict = vars(write_topic.DataType())
-            kwargs_list: typing.Iterable[typing.Dict[str, typing.Any]] = (
+            kwargs_list: collections.abc.Iterable[dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
                 dict(int0=-3, long0=47),
             )
-            fields: typing.Set[str] = set()
+            fields: set[str] = set()
             for kwargs in kwargs_list:
                 fields.update(kwargs.keys())
 

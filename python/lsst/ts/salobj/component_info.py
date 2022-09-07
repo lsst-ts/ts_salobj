@@ -67,20 +67,20 @@ class ComponentInfo:
         self._set_basics()
         self.topics = self._make_topics()
 
-    def make_avro_schema_dict(self) -> typing.Dict[str, typing.Dict[str, typing.Any]]:
+    def make_avro_schema_dict(self) -> dict[str, dict[str, typing.Any]]:
         """Create a dict of topic attr name: Avro schema dict."""
         return {
             topic_info.attr_name: topic_info.make_avro_schema()
             for topic_info in self.topics.values()
         }
 
-    def _get_topic_elements(self) -> typing.List[ElementTree.Element]:
+    def _get_topic_elements(self) -> list[ElementTree.Element]:
         """Get component-specific topic elements.
 
         The ``name`` attribute must have been set.
         """
         interfaces_dir = lsst.ts.xml.get_sal_interfaces_dir()
-        topic_elts: typing.List[ElementTree.Element] = []
+        topic_elts: list[ElementTree.Element] = []
         for topic_type in ("Command", "Event", "Telemetry"):
             file_topic_type = {
                 "Command": "Commands",
@@ -94,7 +94,7 @@ class ComponentInfo:
             topic_elts += topic_root.findall(f"SAL{topic_type}")
         return topic_elts
 
-    def _make_topics(self) -> typing.Dict[str, TopicInfo]:
+    def _make_topics(self) -> dict[str, TopicInfo]:
         """Set the ``topics`` attribute.
 
         The ``name``, ``indexed``, and ``added_generics`` fields must be
@@ -107,7 +107,7 @@ class ComponentInfo:
         component_topic_elements = self._get_topic_elements()
 
         # Dict of topic name: topic element
-        topic_element_dict: typing.Dict[str, ElementTree.Element] = dict()
+        topic_element_dict: dict[str, ElementTree.Element] = dict()
 
         def add_topic(elt: ElementTree.Element) -> None:
             """Add a topic element to topic_element_dict"""
@@ -135,7 +135,7 @@ class ComponentInfo:
         for topic_elt in component_topic_elements:
             add_topic(topic_elt)
 
-        topics_list: typing.List[TopicInfo] = [
+        topics_list: list[TopicInfo] = [
             TopicInfo.from_xml_element(
                 topic_element,
                 component_name=self.name,
@@ -179,9 +179,9 @@ class ComponentInfo:
         self.indexed = find_required(element, "IndexEnumeration").strip() != "no"
 
 
-def parse_sal_generics() -> typing.Tuple[
-    typing.Dict[str, ElementTree.Element],
-    typing.Dict[str, typing.List[ElementTree.Element]],
+def parse_sal_generics() -> tuple[
+    dict[str, ElementTree.Element],
+    dict[str, list[ElementTree.Element]],
 ]:
     """Parse SALGenerics.xml.
 
@@ -193,8 +193,8 @@ def parse_sal_generics() -> typing.Tuple[
     interfaces_dir = lsst.ts.xml.get_sal_interfaces_dir()
     generics = ElementTree.parse(interfaces_dir / "SALGenerics.xml").getroot()
 
-    topic_element_dict: typing.Dict[str, ElementTree.Element] = dict()
-    category_dict: typing.Dict[str, typing.List[ElementTree.Element]] = dict()
+    topic_element_dict: dict[str, ElementTree.Element] = dict()
+    category_dict: dict[str, list[ElementTree.Element]] = dict()
     for gen in generics.findall("*/"):
         topic_name = find_required(gen, "EFDB_Topic")
         brief_name = topic_name[len("SALGeneric_") :]
