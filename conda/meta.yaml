@@ -12,6 +12,7 @@ build:
   script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
   entry_points:
     - command_test_csc = lsst.ts.salobj:command_test_csc
+    - make_avro_schemas = lsst.ts.salobj:make_avro_schemas
     - run_test_csc = lsst.ts.salobj:run_test_csc
   script_env:
     - PATH

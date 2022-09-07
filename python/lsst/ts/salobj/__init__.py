@@ -43,3 +43,4 @@ from .testscript import *
 from .testutils import *
 from .type_hints import *
 from .validator import *
+from .make_avro_schemas import *
