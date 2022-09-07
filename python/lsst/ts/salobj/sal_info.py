@@ -37,7 +37,6 @@ import time
 import traceback
 import types
 import typing
-import warnings
 
 from confluent_kafka import (
     OFFSET_BEGINNING,
@@ -491,16 +490,6 @@ class SalInfo:
             result=result,
             timeout=timeout,
         )
-
-    def makeAckCmd(
-        self, *args: typing.Any, **kwargs: typing.Any
-    ) -> type_hints.AckCmdDataType:
-        """Deprecated version of make_ackcmd."""
-        # TODO DM-26518: remove this method
-        warnings.warn(
-            "makeAckCmd is deprecated; use make_ackcmd instead.", DeprecationWarning
-        )
-        return self.make_ackcmd(*args, **kwargs)
 
     def basic_close(self) -> None:
         """A synchronous and less thorough version of `close`.
