@@ -27,7 +27,6 @@ import asyncio
 import atexit
 import base64
 import collections
-from concurrent.futures import ThreadPoolExecutor
 import enum
 import itertools
 import json
@@ -37,6 +36,7 @@ import time
 import traceback
 import types
 import typing
+from concurrent.futures import ThreadPoolExecutor
 
 from confluent_kafka import (
     OFFSET_BEGINNING,
@@ -48,18 +48,16 @@ from confluent_kafka import (
 )
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.error import KafkaError
-from confluent_kafka.schema_registry import SchemaRegistryClient, Schema
+from confluent_kafka.schema_registry import Schema, SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
 from confluent_kafka.serialization import MessageField, SerializationContext
 from fastavro.read import SchemaResolutionError
-
 from lsst.ts import utils
-from .topic_info import TopicInfo
+
+from . import sal_enums, topics, type_hints
 from .component_info import ComponentInfo
-from . import sal_enums
-from . import topics
-from . import type_hints
 from .domain import Domain
+from .topic_info import TopicInfo
 
 # We want SAL logMessage messages for at least INFO level messages,
 # so if the current level is less verbose, set it to INFO.
