@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import collections
 import logging
 import pathlib
 import subprocess
@@ -52,7 +53,7 @@ class NonConfigurableScript(salobj.BaseScript):
 
     def __init__(self, index: int) -> None:
         super().__init__(index=index, descr="Non-configurable script")
-        self.config: typing.Optional[types.SimpleNamespace] = None
+        self.config: types.SimpleNamespace | None = None
         self.run_called = False
         self.set_metadata_called = False
 
@@ -60,7 +61,7 @@ class NonConfigurableScript(salobj.BaseScript):
     def get_schema(cls) -> None:
         return None
 
-    async def configure(self, config: typing.Optional[types.SimpleNamespace]) -> None:
+    async def configure(self, config: types.SimpleNamespace | None) -> None:
         self.config = config
 
     async def run(self) -> None:
@@ -529,7 +530,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
         class ScriptWithRemotes(salobj.TestScript):
             def __init__(
-                self, index: int, remote_indices: typing.Iterable[int]
+                self, index: int, remote_indices: collections.abc.Iterable[int]
             ) -> None:
                 super().__init__(index, descr="Script with remotes")
                 remotes = []

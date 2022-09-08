@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # This file is part of ts_salobj.
 #
 # Developed for the Rubin Observatory Telescope and Site System.
@@ -17,43 +18,12 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["CONFIG_SCHEMA"]
+"""Make Avro schemas for specified SAL comonents.
 
-import typing
-import yaml
-
-
-# Config schema for TestCSC
-CONFIG_SCHEMA: dict[str, typing.Any] = yaml.safe_load(
-    """
-$schema: http://json-schema.org/draft-07/schema#
-$id: https://github.com/lsst-ts/ts_salobj/blob/main/python/lsst/ts/salobj/config_schema.py
-# title must end with one or more spaces followed by the schema version, which must begin with "v"
-title: Test v2
-description: Configuration for the TestCsc
-type: object
-properties:
-  string0:
-    type: string
-  bool0:
-    type: boolean
-  int0:
-    type: integer
-  float0:
-    type: number
-  intarr0:
-    type: array
-    items:
-      type: integer
-  multi_type:
-    anyOf:
-      - type: integer
-        minimum: 1
-      - type: string
-      - type: "null"
-
-required: [string0, bool0, int0, float0, intarr0, multi_type]
-additionalProperties: false
+Run with option ``--help`` for more information.
 """
-)
+from lsst.ts.salobj import make_avro_schemas
+
+make_avro_schemas()

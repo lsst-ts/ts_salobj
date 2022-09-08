@@ -34,3 +34,4 @@ from .base_csc_test_case import *
 from .base_config_test_case import *
 from .csc_commander import *
 from .testcsccommander import *
+from .make_avro_schemas import *

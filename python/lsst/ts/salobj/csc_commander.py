@@ -53,7 +53,7 @@ BOOL_DICT = {
 
 async def stream_as_generator(
     stream: typing.TextIO, exit_str: str = ""
-) -> typing.AsyncGenerator[str, None]:
+) -> collections.abc.AsyncGenerator[str, None]:
     """Await lines of text from stdin or another text input stream.
 
     Example usage:
@@ -235,12 +235,16 @@ class CscCommander:
     def __init__(
         self,
         name: str,
-        index: typing.Optional[int] = 0,
+        index: int | None = 0,
         enable: bool = False,
-        exclude: typing.Optional[typing.Sequence[str]] = None,
-        exclude_commands: typing.Sequence[str] = (),
-        fields_to_ignore: typing.Sequence[str] = ("ignored", "value", "priority"),
-        telemetry_fields_to_not_compare: typing.Sequence[str] = ("timestamp",),
+        exclude: collections.abc.Sequence[str] | None = None,
+        exclude_commands: collections.abc.Sequence[str] = (),
+        fields_to_ignore: collections.abc.Sequence[str] = (
+            "ignored",
+            "value",
+            "priority",
+        ),
+        telemetry_fields_to_not_compare: collections.abc.Sequence[str] = ("timestamp",),
     ) -> None:
         self.domain = domain.Domain()
         self.remote = remote.Remote(
@@ -250,11 +254,11 @@ class CscCommander:
         self.telemetry_fields_to_not_compare = frozenset(
             telemetry_fields_to_not_compare
         )
-        self.tasks: typing.Set[asyncio.Future] = set()
-        self.help_dict: typing.Dict[str, str] = dict()
+        self.tasks: set[asyncio.Future] = set()
+        self.help_dict: dict[str, str] = dict()
         self.enable = enable
         self.testing = False
-        self.output_queue: typing.Deque[str] = collections.deque()
+        self.output_queue: collections.deque[str] = collections.deque()
 
         for name in self.remote.salinfo.event_names:
             if name == "heartbeat":
@@ -347,9 +351,7 @@ help  # print this help
             return False
         return True
 
-    def get_public_data(
-        self, data: type_hints.BaseMsgType
-    ) -> typing.Dict[str, typing.Any]:
+    def get_public_data(self, data: type_hints.BaseMsgType) -> dict[str, typing.Any]:
         """Get a dict of field_name: value for public fields of a message.
 
         Parameters
@@ -411,11 +413,9 @@ help  # print this help
 
     def check_arguments(
         self,
-        args: typing.Sequence[str],
-        *names: typing.Union[
-            str, typing.Tuple[str, typing.Callable[[str], typing.Any]]
-        ],
-    ) -> typing.Dict[str, typing.Any]:
+        args: collections.abc.Sequence[str],
+        *names: str | tuple[str, typing.Callable[[str], typing.Any]],
+    ) -> dict[str, typing.Any]:
         """Check that the required arguments are provided.
         and return them as a keyword argument dict with cast values.
 
@@ -443,10 +443,8 @@ help  # print this help
 
         def cast(
             arg: str,
-            name: typing.Union[
-                str, typing.Tuple[str, typing.Callable[[str], typing.Any]]
-            ],
-        ) -> typing.Tuple[str, typing.Any]:
+            name: str | tuple[str, typing.Callable[[str], typing.Any]],
+        ) -> tuple[str, typing.Any]:
             """Cast one argument to the required type.
 
             Parameters
@@ -481,7 +479,7 @@ help  # print this help
 
         return dict(cast(arg=arg, name=name) for name, arg in zip(names, args))
 
-    async def do_start(self, args: typing.Sequence[str]) -> None:
+    async def do_start(self, args: collections.abc.Sequence[str]) -> None:
         """Allow the start command to have no arguments."""
         assert len(args) in (0, 1)
         if args:
@@ -493,7 +491,7 @@ help  # print this help
             configurationOverride=override,
         )
 
-    def get_commands_help(self) -> typing.List[str]:
+    def get_commands_help(self) -> list[str]:
         """Get help for each command, as a list of strings.
 
         End with "Other Commands:" and any commands
@@ -522,7 +520,7 @@ help  # print this help
         return help_strings
 
     async def run_command_topic(
-        self, command_name: str, args: typing.Sequence[str]
+        self, command_name: str, args: collections.abc.Sequence[str]
     ) -> None:
         """Run a command that has an associated salobj RemoteCommand topic.
 
@@ -636,7 +634,7 @@ help  # print this help
 
     @classmethod
     async def amain(
-        cls, *, index: typing.Union[int, enum.IntEnum, bool, None], **kwargs: typing.Any
+        cls, *, index: int | enum.IntEnum | bool | None, **kwargs: typing.Any
     ) -> None:
         """Construct the commander and run it.
 
@@ -693,7 +691,7 @@ help  # print this help
 
     @classmethod
     def add_kwargs_from_args(
-        cls, args: argparse.Namespace, kwargs: typing.Dict[str, typing.Any]
+        cls, args: argparse.Namespace, kwargs: dict[str, typing.Any]
     ) -> None:
         """Add constructor keyword arguments based on parsed arguments.
 
@@ -715,7 +713,7 @@ help  # print this help
 
     @classmethod
     def make_from_cmd_line(
-        cls, index: typing.Union[int, enum.IntEnum, bool, None], **kwargs: typing.Any
+        cls, index: int | enum.IntEnum | bool | None, **kwargs: typing.Any
     ) -> CscCommander:
         """Construct a SAL-related class from command line arguments.
 
@@ -781,8 +779,8 @@ help  # print this help
 
     async def __aexit__(
         self,
-        type: typing.Optional[typing.Type[BaseException]],
-        value: typing.Optional[BaseException],
-        traceback: typing.Optional[types.TracebackType],
+        type: typing.Type[BaseException] | None,
+        value: BaseException | None,
+        traceback: types.TracebackType | None,
     ) -> None:
         await self.close()

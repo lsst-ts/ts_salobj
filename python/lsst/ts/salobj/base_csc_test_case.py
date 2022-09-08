@@ -22,6 +22,7 @@ __all__ = ["BaseCscTestCase"]
 
 import abc
 import asyncio
+import collections
 import contextlib
 import enum
 import os
@@ -80,7 +81,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     def basic_make_csc(
         self,
         initial_state: None | sal_enums.State | int,
-        config_dir: typing.Union[str, pathlib.Path, None],
+        config_dir: str | pathlib.Path | None,
         simulation_mode: int,
         **kwargs: typing.Any,
     ) -> base_csc.BaseCsc:
@@ -109,12 +110,12 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     async def make_csc(
         self,
         initial_state: None | sal_enums.State | int = None,
-        config_dir: typing.Union[str, pathlib.Path, None] = None,
+        config_dir: str | pathlib.Path | None = None,
         simulation_mode: int = 0,
-        log_level: typing.Optional[int] = None,
+        log_level: int | None = None,
         timeout: float = STD_TIMEOUT,
         **kwargs: typing.Any,
-    ) -> typing.AsyncGenerator[None, None]:
+    ) -> collections.abc.AsyncGenerator[None, None]:
         """Create a CSC and remote and wait for them to start.
 
         The csc is accessed as ``self.csc`` and the remote as ``self.remote``.
@@ -152,7 +153,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             For a configurable CSC this may include ``override``,
             especially if ``initial_state`` is DISABLED or ENABLED.
         """
-        items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
+        items_to_close: list[base_csc.BaseCsc | Remote] = []
         try:
             # Create the CSC, but prevent it from starting
             # until the remote is fully started
@@ -210,7 +211,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         state: sal_enums.State,
         flush: bool = False,
         timeout: float = STD_TIMEOUT,
-        remote: typing.Optional[Remote] = None,
+        remote: Remote | None = None,
     ) -> None:
         """Wait for and check the next ``summaryState`` event.
 
@@ -282,9 +283,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         index: int,
         exe_name: str,
         default_initial_state: sal_enums.State = sal_enums.State.STANDBY,
-        initial_state: typing.Optional[sal_enums.State] = None,
-        override: typing.Optional[str] = None,
-        cmdline_args: typing.Sequence[str] = (),
+        initial_state: sal_enums.State | None = None,
+        override: str | None = None,
+        cmdline_args: collections.abc.Sequence[str] = (),
         timeout: float = STD_TIMEOUT,
     ) -> None:
         """Test running the CSC command line script.
@@ -366,8 +367,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     async def check_standard_state_transitions(
         self,
-        enabled_commands: typing.Sequence[str],
-        skip_commands: typing.Optional[typing.Sequence[str]] = None,
+        enabled_commands: collections.abc.Sequence[str],
+        skip_commands: collections.abc.Sequence[str] | None = None,
         override: str = "",
         timeout: float = STD_TIMEOUT,
     ) -> None:
@@ -448,8 +449,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     async def check_bad_commands(
         self,
-        bad_commands: typing.Optional[typing.Sequence[str]] = None,
-        good_commands: typing.Optional[typing.Sequence[str]] = None,
+        bad_commands: collections.abc.Sequence[str] | None = None,
+        good_commands: collections.abc.Sequence[str] | None = None,
     ) -> None:
         """Check that bad commands fail.
 

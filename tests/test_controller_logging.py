@@ -36,7 +36,7 @@ from lsst.ts import utils
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 20
 # Timeout for when we expect no new data (seconds).
-NO_DATA_TIMEOUT = 0.1
+NO_DATA_TIMEOUT = 1
 
 np.random.seed(47)
 
@@ -61,8 +61,8 @@ class ControllerLoggingTestCase(
 ):
     def basic_make_csc(
         self,
-        initial_state: typing.Union[salobj.State, int],
-        config_dir: typing.Union[str, pathlib.Path, None],
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
         simulation_mode: int,
     ) -> salobj.BaseCsc:
         return FailedCallbackCsc(

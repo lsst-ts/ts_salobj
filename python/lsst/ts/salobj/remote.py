@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["Remote"]
 
 import asyncio
+import collections
 import types
 import typing
 
@@ -137,11 +138,11 @@ class Remote:
         self,
         domain: Domain,
         name: str,
-        index: typing.Optional[int] = None,
+        index: int | None = None,
         *,
         readonly: bool = False,
-        include: typing.Optional[typing.Iterable[str]] = None,
-        exclude: typing.Optional[typing.Iterable[str]] = None,
+        include: collections.abc.Iterable[str] | None = None,
+        exclude: collections.abc.Iterable[str] | None = None,
         evt_max_history: int = 1,
         start: bool = True,
     ) -> None:
@@ -212,8 +213,8 @@ class Remote:
 
     async def __aexit__(
         self,
-        type: typing.Optional[typing.Type[BaseException]],
-        value: typing.Optional[BaseException],
-        traceback: typing.Optional[types.TracebackType],
+        type: typing.Type[BaseException] | None,
+        value: BaseException | None,
+        traceback: types.TracebackType | None,
     ) -> None:
         await self.close()

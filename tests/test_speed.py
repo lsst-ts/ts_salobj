@@ -20,11 +20,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
+import collections
 import contextlib
 import os
 import pathlib
 import time
-import typing
 import unittest
 import warnings
 
@@ -129,7 +129,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
     @contextlib.asynccontextmanager
     async def make_remote_and_topic_writer(
         self,
-    ) -> typing.AsyncGenerator[salobj.Remote, None]:
+    ) -> collections.abc.AsyncGenerator[salobj.Remote, None]:
         """Make a remote and launch a topic writer in a subprocess.
 
         Return the remote.

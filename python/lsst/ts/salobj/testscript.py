@@ -58,7 +58,7 @@ class TestScript(BaseScript):
         )
 
     @classmethod
-    def get_schema(cls) -> typing.Dict[str, str]:
+    def get_schema(cls) -> dict[str, str]:
         schema_yaml = """
             $schema: http://json-schema.org/draft-07/schema#
             $id: https://github.com/lsst-ts/ts_salobj/TestScript.yaml

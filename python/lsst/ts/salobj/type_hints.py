@@ -28,7 +28,6 @@ __all__ = [
 
 import dataclasses
 import pathlib
-import typing
 
 from . import sal_enums
 
@@ -66,4 +65,4 @@ class AckCmdDataType(BaseMsgType):
     timeout: float = 0
 
 
-PathType = typing.Union[str, pathlib.Path]
+PathType = str | pathlib.Path

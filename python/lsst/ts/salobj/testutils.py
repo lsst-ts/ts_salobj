@@ -29,22 +29,22 @@ __all__ = [
 import base64
 import contextlib
 import os
-import typing
+import collections
 import warnings
 
 import astropy.coordinates
 
 from .base import AckError, AckTimeoutError
 
-AngleOrDegType = typing.Union[astropy.coordinates.Angle, float]
+AngleOrDegType = astropy.coordinates.Angle | float
 
 
 @contextlib.contextmanager
 def assertRaisesAckError(
-    ack: typing.Optional[int] = None,
-    error: typing.Optional[int] = None,
-    result_contains: typing.Optional[str] = None,
-) -> typing.Generator[None, None, None]:
+    ack: int | None = None,
+    error: int | None = None,
+    result_contains: str | None = None,
+) -> collections.abc.Generator[None, None, None]:
     """Assert that code raises a salobj.AckError
 
     Parameters
@@ -73,8 +73,8 @@ def assertRaisesAckError(
 
 @contextlib.contextmanager
 def assertRaisesAckTimeoutError(
-    ack: typing.Optional[int] = None, error: typing.Optional[int] = None
-) -> typing.Generator[None, None, None]:
+    ack: int | None = None, error: int | None = None
+) -> collections.abc.Generator[None, None, None]:
     """Assert that code raises a salobj.AckTimeoutError
 
     Parameters

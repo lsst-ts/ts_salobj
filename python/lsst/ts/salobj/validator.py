@@ -24,6 +24,7 @@ __all__ = [
     "StandardValidator",  # specific jsonschema validator
 ]
 
+import collections
 import typing
 
 import jsonschema
@@ -79,7 +80,7 @@ class DefaultingValidator:
 
     def __init__(
         self,
-        schema: typing.Dict[str, typing.Any],
+        schema: dict[str, typing.Any],
         # TODO: remove the type: ignore once we use jsonschema 4
         StandardValidatorClass: typing.Type[StandardValidator] = StandardValidator,  # type: ignore
     ) -> None:
@@ -90,10 +91,10 @@ class DefaultingValidator:
 
         def set_defaults(
             validator: StandardValidatorClass,  # type: ignore
-            properties: typing.Dict[str, typing.Any],
-            instance: typing.Dict[str, typing.Any],
-            schema: typing.Dict[str, typing.Any],
-        ) -> typing.Generator[typing.Any, None, None]:
+            properties: dict[str, typing.Any],
+            instance: dict[str, typing.Any],
+            schema: dict[str, typing.Any],
+        ) -> collections.abc.Generator[typing.Any, None, None]:
             """Wrap a jsonschema Validator so that it sets default values.
 
             Parameters
@@ -158,8 +159,8 @@ class DefaultingValidator:
         self.defaults_validator = WrappedValidator(schema=schema)
 
     def validate(
-        self, data_dict: typing.Optional[typing.Dict[str, typing.Any]]
-    ) -> typing.Dict[str, typing.Any]:
+        self, data_dict: dict[str, typing.Any] | None
+    ) -> dict[str, typing.Any]:
         """Validate data.
 
         Set missing values based on defaults in the schema,
