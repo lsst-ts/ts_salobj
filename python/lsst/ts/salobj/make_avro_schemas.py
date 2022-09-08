@@ -64,8 +64,7 @@ def make_avro_schemas() -> None:
     parser = argparse.ArgumentParser(
         description="""Make Avro schemas for one or more SAL components.
 
-    Write the schemas to stdout as a json-encoded string of
-    a dict of [component_name: component_info], where:
+    Write the schemas to stdout as a json-encoded dict {component name: component_info}, where:
     * component_info is a dict of {SAL topic name: topic_info}
     * topic_info is a dict {"avro_schema": Avro schema, "array_fields": array_fields_info}
     * array_fields_info is a dict of {field name: array length}
