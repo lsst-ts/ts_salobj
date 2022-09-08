@@ -23,8 +23,7 @@ import json
 import subprocess
 import unittest
 
-from lsst.ts import salobj
-from lsst.ts import xml
+from lsst.ts import salobj, xml
 
 
 class MakeAvroSchemasTestCase(unittest.TestCase):
@@ -39,7 +38,10 @@ class MakeAvroSchemasTestCase(unittest.TestCase):
             }
             assert topics.keys() == all_sal_topic_names
             for topic_info in component_info.topics.values():
-                assert topics[topic_info.sal_name] == topic_info.make_avro_schema()
+                topic_info_dict = topics[topic_info.sal_name]
+                assert topic_info_dict.keys() == {"avro_schema", "array_fields"}
+                assert topic_info_dict["avro_schema"] == topic_info.make_avro_schema()
+                assert topic_info_dict["array_fields"] == topic_info.array_fields
 
     def test_one_topic(self) -> None:
         for component in ["Test", "Script", "MTMount"]:
