@@ -1,4 +1,23 @@
-#!/usr/bin/env python3
+# This file is part of ts_salobj.
+#
+# Developed for the Rubin Observatory Telescope and Site System.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = ["make_avro_schemas"]
 
@@ -8,7 +27,8 @@ import json
 import typing
 
 import lsst.ts.xml
-from lsst.ts import salobj
+
+from .component_info import ComponentInfo
 
 
 def check_components(
@@ -42,11 +62,15 @@ def make_avro_schemas() -> None:
     Run with option ``--help`` for more option.
     """
     parser = argparse.ArgumentParser(
-        description="Make Avro schemas for one or more SAL components.\n\n"
-        "Write the schemas to stdout as a json-encoded string of "
-        "a dict of [component: topic_data], "
-        "where topic_data is a dict of [SAL topic name: Avro schema]. "
-        "Write errors to stderr. "
+        description="""Make Avro schemas for one or more SAL components.
+
+    Write the schemas to stdout as a json-encoded string of
+    a dict of [component_name: component_info], where:
+    * component_info is a dict of {SAL topic name: topic_info}
+    * topic_info is a dict {"avro_schema": Avro schema, "array_fields": array_fields_info}
+    * array_fields_info is a dict of {field name: array length}
+    Write errors to stderr. """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "components",
@@ -82,9 +106,12 @@ def make_avro_schemas() -> None:
 
     result: dict[str, dict[str, typing.Any]] = dict()
     for name in components:
-        component_info = salobj.ComponentInfo(name=name, topic_subname="")
+        component_info = ComponentInfo(name=name, topic_subname="")
         result[name] = {
-            topic_info.sal_name: topic_info.make_avro_schema()
+            topic_info.sal_name: dict(
+                avro_schema=topic_info.make_avro_schema(),
+                array_fields=topic_info.array_fields,
+            )
             for topic_info in component_info.topics.values()
         }
     encoded_result = json.dumps(result)
