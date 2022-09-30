@@ -756,9 +756,19 @@ class SalInfo:
 
         self._consumer = Consumer(
             {
-                "group.id": get_random_string(),
                 "bootstrap.servers": self.kafka_broker_addr,
+                # Make sure every consumer is in its own consumer group,
+                # since each consumer acts independently.
+                "group.id": get_random_string(),
+                # Require explicit topic creation, so we can control
+                # topic configuration, and to reduce startup latency.
                 "allow.auto.create.topics": False,
+                # Protect against a race condition in the on_assign callback:
+                # if the broker purges data while the on_assign callback
+                # is assigning the desired historical data offset,
+                # data might no longer exist at that offset; in that case
+                # case read from the earliest data.
+                "auto.offset.reset": "earliest",
             }
         )
 
@@ -921,7 +931,6 @@ class SalInfo:
                 partition.offset = desired_offset
             history_offsets[partition.topic] = max_offset - 1
 
-        # Sort of like seek, but simpler
         self._consumer.assign(partitions)
         # print(f"{self.index} assign:")
         # for partition in partitions:
