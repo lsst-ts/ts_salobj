@@ -766,8 +766,8 @@ class SalInfo:
                 # Protect against a race condition in the on_assign callback:
                 # if the broker purges data while the on_assign callback
                 # is assigning the desired historical data offset,
-                # data might no longer exist at that offset; in that case
-                # case read from the earliest data.
+                # data might no longer exist at the assigned offset;
+                # in that case read from the earliest data.
                 "auto.offset.reset": "earliest",
             }
         )
