@@ -31,11 +31,11 @@ import sys
 import typing
 
 from lsst.ts import utils
-from . import base
-from . import type_hints
-from .sal_enums import State
+
+from . import base, type_hints
 from .controller import Controller
 from .csc_utils import make_state_transition_dict
+from .sal_enums import State
 
 HEARTBEAT_INTERVAL = 1  # seconds
 
@@ -65,6 +65,11 @@ class BaseCsc(Controller):
         is not configurable.
     simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
+    allow_missing_callbacks : `bool`, optional
+        Allow missing ``do_<name>`` callback methods? Missing method
+        will be replaced with one that raises salobj.ExpectedError.
+        This is intended for mock controllers, which may only support
+        a subset of commands.
 
     Raises
     ------
@@ -74,8 +79,13 @@ class BaseCsc(Controller):
         If ``simulation_mode`` is invalid.
         Note: you will only see this error if you await `start_task`.
     RuntimeError
-        If class variable ``version`` is not defined.
+        If class variable ``version`` is not defined,
         or class variable ``valid_simulation_modes`` is None.
+    TypeError
+        If one or more ``do_{command}`` methods
+        is present that has no corresponding command,
+        or if ``do_callbacks`` true, ``allow_missing_callbacks`` false,
+        and one or more ``do_{command}`` methods is missing.
 
     Attributes
     ----------
@@ -156,6 +166,7 @@ class BaseCsc(Controller):
         initial_state: None | State | int = None,
         override: str = "",
         simulation_mode: int = 0,
+        allow_missing_callbacks: bool = False,
     ) -> None:
         # Check class variables
         if not hasattr(self, "version"):
@@ -187,7 +198,12 @@ class BaseCsc(Controller):
 
         # Postpone assigning command callbacks until `start` is done (but call
         # assert_do_methods_present to fail early if there is a problem).
-        super().__init__(name=name, index=index, do_callbacks=True)
+        super().__init__(
+            name=name,
+            index=index,
+            do_callbacks=True,
+            allow_missing_callbacks=allow_missing_callbacks,
+        )
 
         # Set evt_simulationMode, now that it is available.
         self.evt_simulationMode.set(mode=int(simulation_mode))  # type: ignore
