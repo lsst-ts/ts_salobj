@@ -309,7 +309,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             with pytest.raises(RuntimeError):
                 script.next_supplemented_group_id()
 
-    async def test_pause(self) -> None:
+    async def test_configure_failed(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
             # Cannot run in UNCONFIGURED state.
             run_data = script.cmd_run.DataType()
@@ -321,30 +321,39 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             configure_data.config = "no_such_arg: 1"
             with pytest.raises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
-            assert script.state.state == ScriptState.UNCONFIGURED
+            assert script.state.state == ScriptState.CONFIGURE_FAILED
+            await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
 
+        async with salobj.TestScript(index=self.index) as script:
             # Test configure with invalid yaml.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "a : : 2"
             with pytest.raises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
-            assert script.state.state == ScriptState.UNCONFIGURED
+            assert script.state.state == ScriptState.CONFIGURE_FAILED
+            await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
 
+        async with salobj.TestScript(index=self.index) as script:
             # Test configure with yaml that makes a string, not a dict.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "just_a_string"
             with pytest.raises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
-            assert script.state.state == ScriptState.UNCONFIGURED
+            assert script.state.state == ScriptState.CONFIGURE_FAILED
+            await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
 
+        async with salobj.TestScript(index=self.index) as script:
             # Test configure with yaml that makes a list, not a dict.
             configure_data = script.cmd_configure.DataType()
             configure_data.config = "['not', 'a', 'dict']"
             with pytest.raises(salobj.ExpectedError):
                 await script.do_configure(configure_data)
-            assert script.state.state == ScriptState.UNCONFIGURED
+            assert script.state.state == ScriptState.CONFIGURE_FAILED
+            await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
 
-            # Now test valid configuration; specify nonexistent checkpoints
+    async def test_pause(self) -> None:
+        async with salobj.TestScript(index=self.index) as script:
+            # Configure the script with nonexistent checkpoints,
             # to test that the configure command handles checkpoints at all.
             wait_time = 0.5
             # Specify a log level that is not the default (which is INFO)
