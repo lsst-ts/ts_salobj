@@ -28,10 +28,12 @@ import types
 import typing
 
 from . import type_hints
+from .base import ExpectedError
 from .domain import Domain
 from .sal_info import SalInfo
 from .sal_log_handler import SalLogHandler
 from .topics import ControllerCommand, ControllerEvent, ControllerTelemetry
+from .type_hints import BaseMsgType
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.
@@ -81,14 +83,20 @@ class Controller:
         SAL component index, or 0 or None if the component is not indexed.
         A value is required if the component is indexed.
     do_callbacks : `bool`, optional
-        Set ``do_<name>`` methods as callbacks for commands?
-        If true then there must be exactly one ``do_<name>`` method
+        Set ``do_{command}`` methods as callbacks for commands?
+        If true then there must be exactly one ``do_{command}`` method
         for each command.
         Cannot be true if ``write_only`` is true.
     write_only : `bool`, optional
         If true then the Controller will have no command topics
         and will not read any SAL data.
         Cannot be true if ``do_callbacks`` is true.
+    allow_missing_callbacks : `bool`, optional
+        Allow missing ``do_{command}`` callback methods? Missing method
+        will be replaced with one that raises salobj.ExpectedError.
+        This is intended for mock controllers, which may only support
+        a subset of commands.
+        Cannot be true unless ``do_callbacks`` is true.
 
     Attributes
     ----------
@@ -120,7 +128,13 @@ class Controller:
     Raises
     ------
     ValueError
-        If ``do_callbacks`` and ``write_only`` both true.
+        If ``do_callbacks`` and ``write_only`` are both true, or if
+        ``allow_missing_callbacks`` is true and ``do_callbacks`` is not.
+    TypeError
+        If ``do_callbacks`` true and one or more ``do_{command}`` methods
+        is present that has no corresponding command,
+        or if ``do_callbacks`` true, ``allow_missing_callbacks`` false,
+        and one or more ``do_{command}`` methods is missing.
 
     Notes
     -----
@@ -195,9 +209,12 @@ class Controller:
         *,
         do_callbacks: bool = False,
         write_only: bool = False,
+        allow_missing_callbacks: bool = False,
     ) -> None:
         if do_callbacks and write_only:
             raise ValueError("Cannot specify do_callbacks and write_only both true")
+        if allow_missing_callbacks and not do_callbacks:
+            raise ValueError("allow_missing_callbacks true requires do_callbacks true")
         self.isopen = False
         self.start_called = False
         self.done_task: asyncio.Future = asyncio.Future()
@@ -228,7 +245,9 @@ class Controller:
             if do_callbacks:
                 # This must be called after the cmd_ attributes
                 # have been added.
-                self._assert_do_methods_present()
+                self._assert_do_methods_present(
+                    allow_missing_callbacks=allow_missing_callbacks
+                )
 
             for evt_name in self.salinfo.event_names:
                 evt = ControllerEvent(self.salinfo, evt_name)
@@ -466,19 +485,34 @@ class Controller:
         """Output the logLevel event."""
         await self.evt_logLevel.set_write(level=self.log.getEffectiveLevel())  # type: ignore
 
-    def _assert_do_methods_present(self) -> None:
-        """Assert that all needed do_<name> methods are present."""
+    def _assert_do_methods_present(self, allow_missing_callbacks: bool) -> None:
+        """Assert that the correct do_{command} methods are present.
+
+        Parameters
+        ----------
+        allow_missing_callbacks : `bool`
+            If false then there must be exactly one do_{command} method
+            for each command: no extra methods and no missing methods.
+            If true then do_{command} methods may be missing,
+            but all existing do_{command} methods must match a command.
+
+        Raises
+        ------
+        TypeError
+            If the correct do_{command} methods are not present.
+        """
         command_names = self.salinfo.command_names
         do_names = [name for name in dir(self) if name.startswith("do_")]
         supported_command_names = [name[3:] for name in do_names]
         if set(command_names) != set(supported_command_names):
             err_msgs = []
-            unsupported_commands = set(command_names) - set(supported_command_names)
-            if unsupported_commands:
-                needed_do_str = ", ".join(
-                    f"do_{name}" for name in sorted(unsupported_commands)
-                )
-                err_msgs.append(f"must add {needed_do_str} methods")
+            if not allow_missing_callbacks:
+                unsupported_commands = set(command_names) - set(supported_command_names)
+                if unsupported_commands:
+                    needed_do_str = ", ".join(
+                        f"do_{name}" for name in sorted(unsupported_commands)
+                    )
+                    err_msgs.append(f"must add {needed_do_str} methods")
             extra_commands = sorted(set(supported_command_names) - set(command_names))
             if extra_commands:
                 extra_do_str = ", ".join(
@@ -498,12 +532,16 @@ class Controller:
         command_names = self.salinfo.command_names
         for cmd_name in command_names:
             cmd = getattr(self, f"cmd_{cmd_name}")
-            do_method_name = f"do_{cmd_name}"
-            func = getattr(self, do_method_name, None)
-            if func is not None:
-                cmd.callback = func
-            else:
-                raise RuntimeError(f"Can't find method {do_method_name}")
+            func = getattr(self, f"do_{cmd_name}", self._unsupported_cmd_callback)
+            cmd.callback = func
+
+    def _unsupported_cmd_callback(self, data: BaseMsgType) -> None:
+        """Callback for unsupported commands.
+
+        Only used if do_callbacks and allow_missing_callbacks are both true,
+        and some callbacks are indeed missing.
+        """
+        raise ExpectedError("This command is not supported")
 
     async def __aenter__(self) -> Controller:
         await self.start_task
