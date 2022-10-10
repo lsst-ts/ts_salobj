@@ -138,7 +138,7 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_write_only_true(self) -> None:
         index = next(index_gen)
-        # Build a controller and check that callbacks are asigned.
+        # Build a controller and check that callbacks are assigned.
         async with salobj.Controller(
             name="Test", index=index, write_only=True
         ) as controller:
