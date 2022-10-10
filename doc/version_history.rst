@@ -6,6 +6,19 @@
 Version History
 ###############
 
+v7.2.0
+------
+
+* `BaseScript`: fail with state ``Script.ScriptState.CONFIGURE_FAILED`` if configuration fails.
+  This requires ts_idl 4.2.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
 v7.1.4
 ------
 
