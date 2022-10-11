@@ -30,6 +30,23 @@ vKafka
 * `BaseCsc`: stop setting $OSPL_MASTER_PRIORITY; it is not needed for Kafka.
   Delete constant ``MASTER_PRIORITY_ENV_VAR``.
 
+v7.2.0
+------
+
+* `BaseScript`: fail with state ``Script.ScriptState.CONFIGURE_FAILED`` if configuration fails.
+  This requires ts_idl 4.2.
+* `Controller` and `BaseCsc`: add constructor argument ``allow_missing_callbacks``.
+  This defaults to false, but if true allows the subclass to omit ``do_{command}`` methods.
+  This is useful for writing simple mock CSCs that support a subset of standard behavior.
+  Unsupported commands will fail with an appropriate error message.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
 v7.1.4
 ------
 
@@ -45,13 +62,6 @@ v7.1.4
 * Fix a few race conditions in unit tests.
 * Configure pre-commit to run `isort` to sort imports.
 * Modernize type annotations.
-
-Requirements:
-
-* ts_ddsconfig
-* ts_idl 2
-* ts_utils 1.1
-* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
 
 Requirements:
 
