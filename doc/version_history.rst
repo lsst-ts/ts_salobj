@@ -11,6 +11,10 @@ v7.2.0
 
 * `BaseScript`: fail with state ``Script.ScriptState.CONFIGURE_FAILED`` if configuration fails.
   This requires ts_idl 4.2.
+* `Controller` and `BaseCsc`: add constructor argument ``allow_missing_callbacks``.
+  This defaults to false, but if true allows the subclass to omit ``do_{command}`` methods.
+  This is useful for writing simple mock CSCs that support a subset of standard behavior.
+  Unsupported commands will fail with an appropriate error message.
 
 Requirements:
 

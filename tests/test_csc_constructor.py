@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import asyncio
 import pathlib
 import typing
 import unittest
@@ -32,6 +33,10 @@ np.random.seed(47)
 index_gen = utils.index_generator()
 TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
 TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
+
+# Standard timeout (sec)
+# Long to avoid unnecessary timeouts on slow CI systems.
+STD_TIMEOUT = 60
 
 
 class InvalidPkgNameCsc(salobj.TestCsc):
@@ -65,6 +70,17 @@ class WrongConfigPkgCsc(salobj.TestCsc):
     def get_config_pkg() -> str:
         """Return a package that does not have a Test subdirectory."""
         return "ts_salobj"
+
+
+class MissingDoMethodCsc(salobj.BaseCsc):
+    """A CSC that is missing one or more do_ methods."""
+
+    version = "a version"
+
+    def __init__(self, index: int, allow_missing_callbacks: bool) -> None:
+        super().__init__(
+            name="Test", index=index, allow_missing_callbacks=allow_missing_callbacks
+        )
 
 
 class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
@@ -156,6 +172,22 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
         index = next(index_gen)
         with pytest.raises(RuntimeError):
             MissingVersionCsc(index=index)
+
+    async def test_missing_callbacks(self) -> None:
+        index = next(index_gen)
+        with pytest.raises(TypeError):
+            MissingDoMethodCsc(index=index, allow_missing_callbacks=False)
+
+        index = next(index_gen)
+        csc = MissingDoMethodCsc(index=index, allow_missing_callbacks=True)
+        await asyncio.wait_for(csc.start_task, timeout=STD_TIMEOUT)
+        for command_topic in (
+            csc.cmd_setArrays,
+            csc.cmd_setScalars,
+            csc.cmd_wait,
+            csc.cmd_fault,
+        ):
+            assert command_topic.callback == csc._unsupported_cmd_callback
 
     async def test_valid_simulation_modes_none(self) -> None:
         index = next(index_gen)
