@@ -274,6 +274,7 @@ class BaseCsc(Controller):
     async def close_tasks(self) -> None:
         """Shut down pending tasks. Called by `close`."""
         self._heartbeat_task.cancel()
+        await super().close_tasks()
 
     @classmethod
     def make_from_cmd_line(
