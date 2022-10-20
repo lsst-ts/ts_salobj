@@ -34,37 +34,17 @@ import typing
 import warnings
 
 import yaml
-
 from lsst.ts import utils
-from . import base
-from . import controller
-from .remote import Remote
-from . import type_hints
-from . import validator
 from lsst.ts.idl.enums.Script import (
     MetadataCoordSys,
-    MetadataRotSys,
     MetadataDome,
+    MetadataRotSys,
     ScriptState,
 )
 
+from . import base, controller, type_hints, validator
 
 HEARTBEAT_INTERVAL = 5  # seconds
-
-
-def _make_remote_name(remote: Remote) -> str:
-    """Make a remote name from a remote, for output as script metadata.
-
-    Parameters
-    ----------
-    remote : `salobj.Remote`
-        Remote
-    """
-    name = remote.salinfo.name
-    index = remote.salinfo.index
-    if index is not None:
-        name = name + ":" + str(index)
-    return name
 
 
 class StateType:
