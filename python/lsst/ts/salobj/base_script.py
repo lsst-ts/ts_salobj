@@ -474,8 +474,9 @@ class BaseScript(controller.Controller, abc.ABC):
     async def cleanup(self) -> None:
         """Perform final cleanup, if any.
 
-        This method is always called as the script state is exiting
-        (unless the script process is aborted by SIGTERM or SIGKILL).
+        This method is called as the script state is exiting,
+        unless the script had not yet started to run,
+        or the script process is aborted by SIGTERM or SIGKILL.
         """
         pass
 
@@ -549,8 +550,11 @@ class BaseScript(controller.Controller, abc.ABC):
             await self.configure(config)
         except Exception as e:
             errmsg = f"config({config_yaml}) failed"
+            full_errmsg = f"{errmsg}: {e}"  # includes the exception
             self.log.exception(errmsg)
-            raise base.ExpectedError(f"{errmsg}: {e}") from e
+            await self.set_state(ScriptState.CONFIGURE_FAILED, reason=full_errmsg)
+            await self._exit()
+            raise base.ExpectedError(full_errmsg) from e
 
         await self._set_checkpoints(
             pause=data.pauseCheckpoint,  # type: ignore
@@ -773,6 +777,7 @@ class BaseScript(controller.Controller, abc.ABC):
                 ScriptState.ENDING: ScriptState.DONE,
                 ScriptState.STOPPING: ScriptState.STOPPED,
                 ScriptState.FAILING: ScriptState.FAILED,
+                ScriptState.CONFIGURE_FAILED: ScriptState.CONFIGURE_FAILED,
             }.get(self.state.state)
             if final_state is None:
                 reason = f"unexpected state for _exit {self.state_name}"
