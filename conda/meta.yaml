@@ -47,9 +47,6 @@ requirements:
     - python {{ python }}
     - setuptools
     - setuptools_scm
-    - aiohttp
-    - aiokafka
-    - kafkit
     - confluent_kafka
     - numpy ~=1.20
     - astropy >=5
