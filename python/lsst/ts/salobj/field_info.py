@@ -154,7 +154,7 @@ class FieldInfo:
     def make_dataclass_tuple(
         self,
     ) -> tuple[str, typing.Type[typing.Any], dataclasses.Field]:
-        """Create field data for dataclasses.make_dataclasses."""
+        """Create field data for topic_info.make_dataclasses."""
         scalar_type = PYTHON_TYPES[self.sal_type]
         if self.count > 1:
             dtype: typing.Type[typing.Any] = list[scalar_type]  # type: ignore

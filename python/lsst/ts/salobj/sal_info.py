@@ -74,9 +74,6 @@ MAX_HISTORY_READ = 10000
 DEFAULT_LSST_KAFKA_BROKER_ADDR = "broker:29092"
 DEFAULT_LSST_SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
 
-# limit_per_host argument for aiohttp.TCPConnector
-LIMIT_PER_HOST = 20
-
 # Maximum number of sequential errors reading data from Kafka
 MAX_SEQUENTIAL_READ_ERRORS = 2
 
