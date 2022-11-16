@@ -28,9 +28,7 @@ import unittest
 
 import numpy as np
 import pytest
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 np.random.seed(47)
 
@@ -62,7 +60,7 @@ class NoIndexCsc(salobj.TestCsc):
 
 class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
     def run(self, result: typing.Any = None) -> None:  # type: ignore
-        """Override `run` to set a random LSST_DDS_PARTITION_PREFIX
+        """Override `run` to set a random LSST_TOPIC_SUBNAME
         and set LSST_SITE=test for every test.
 
         https://stackoverflow.com/a/11180583

@@ -32,14 +32,12 @@ import subprocess
 import typing
 
 from lsst.ts import utils
-from . import base_csc
-from . import sal_enums
-from . import testutils
-from . import type_hints
+
+from . import base_csc, sal_enums, testutils, type_hints
+from .csc_utils import get_expected_summary_states
 from .domain import Domain
 from .remote import Remote
 from .topics.read_topic import ReadTopic
-from .csc_utils import get_expected_summary_states
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.
@@ -65,7 +63,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     _index_iter = utils.index_generator()
 
     def run(self, result: typing.Any = None) -> None:  # type: ignore
-        """Set a random LSST_DDS_PARTITION_PREFIX
+        """Set a random LSST_TOPIC_SUBNAME
         and set LSST_SITE=test for every test.
 
         Unlike setUp, a user cannot forget to override this.
