@@ -64,7 +64,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     _index_iter = utils.index_generator()
 
     def run(self, result: typing.Any = None) -> None:  # type: ignore
-        """Set a random LSST_DDS_PARTITION_PREFIX
+        """Set a random LSST_TOPIC_SUBNAME
         and set LSST_SITE=test for every test.
 
         Unlike setUp, a user cannot forget to override this.

@@ -41,7 +41,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
     """
 
     def run(self, result: typing.Any = None) -> None:  # type: ignore
-        """Override `run` to set a random LSST_DDS_PARTITION_PREFIX
+        """Override `run` to set a random LSST_TOPIC_SUBNAME
         and set LSST_SITE=test for every test.
 
         https://stackoverflow.com/a/11180583
