@@ -9,7 +9,7 @@ source:
 
 build:
   noarch: generic
-  script: python -m pip install --no-deps --ignore-installed .
+  script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
   entry_points:
     - command_test_csc = lsst.ts.salobj:command_test_csc
     - run_test_csc = lsst.ts.salobj:run_test_csc
@@ -42,15 +42,22 @@ test:
 
 requirements:
   host:
-    - python
+    - python {{ python }}
     - pip
     - setuptools_scm
     - setuptools
     - pytest-runner
     - pytest-asyncio
     - pytest-flake8
+  build:
+    - python {{ python }}
+    - setuptools_scm
+    - setuptools
+    - pytest-runner
+    - pytest-asyncio
+    - pytest-flake8
   run:
-    - python
+    - python {{ python }}
     - setuptools
     - setuptools_scm
     - numpy ~=1.20
