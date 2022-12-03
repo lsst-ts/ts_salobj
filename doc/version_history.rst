@@ -10,6 +10,7 @@ v7.2.1
 ------
 
 * Modernize the conda recipe.
+* Add mypy to pre-commit and update other pre-commit tasks.
 
 Requirements:
 
