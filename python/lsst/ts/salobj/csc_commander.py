@@ -33,11 +33,7 @@ import sys
 import types
 import typing
 
-from . import domain
-from . import remote
-from . import sal_enums
-from . import csc_utils
-from . import type_hints
+from . import csc_utils, domain, remote, sal_enums, type_hints
 
 # A dict of valid values for bool command arguments.
 # The argument should be converted to lowercase before using.
@@ -157,13 +153,6 @@ class CscCommander:
     Make a subclass of `CscCommander` if you want to add extra commands
     or provide special handling for some commands, events or telemetry.
     Subclasses may provide overrides as follows:
-
-    * To hide unwanted commands: delete them from ``self.command_dict``
-      in your constructor. Most CSCs should hide the "abort", "enterControl"
-      and "setValue" commands, as follows::
-
-        for command_to_ignore in ("abort", "enterControl", "setValue"):
-            del self.command_dict[command_to_ignore]
 
     * To override handling of a standard command (one defined in the XML):
       define a ``do_<command_name>`` method.
