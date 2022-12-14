@@ -26,9 +26,7 @@ import unittest
 
 import numpy as np
 import pytest
-
-from lsst.ts import utils
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.

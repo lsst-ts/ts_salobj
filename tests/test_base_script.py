@@ -31,9 +31,7 @@ import warnings
 
 import pytest
 import yaml
-
-from lsst.ts import utils
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
 from lsst.ts.idl.enums.Script import ScriptState
 
 # Long enough to perform any reasonable operation

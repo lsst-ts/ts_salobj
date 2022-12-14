@@ -28,8 +28,8 @@ import copy
 import typing
 
 import numpy as np
-
 from lsst.ts import utils
+
 from .. import type_hints
 from .base_topic import BaseTopic
 

@@ -3,9 +3,7 @@ import argparse
 import asyncio
 
 import numpy as np
-
-from lsst.ts import salobj
-from lsst.ts import utils
+from lsst.ts import salobj, utils
 
 
 async def measure_read_speed(

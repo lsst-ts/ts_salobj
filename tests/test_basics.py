@@ -26,7 +26,6 @@ import socket
 import unittest
 
 import pytest
-
 from lsst.ts import salobj, utils
 
 index_gen = utils.index_generator()

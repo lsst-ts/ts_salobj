@@ -31,8 +31,8 @@ import logging
 import typing
 
 from lsst.ts import utils
-from .. import base
-from .. import type_hints
+
+from .. import base, type_hints
 from .base_topic import BaseTopic
 
 if typing.TYPE_CHECKING:

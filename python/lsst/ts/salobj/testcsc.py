@@ -29,11 +29,10 @@ import typing
 
 import numpy as np
 
-from . import type_hints
-from . import __version__
+from . import __version__, type_hints
 from .base_csc import State
-from .configurable_csc import ConfigurableCsc
 from .config_schema import CONFIG_SCHEMA
+from .configurable_csc import ConfigurableCsc
 
 
 class TestCsc(ConfigurableCsc):

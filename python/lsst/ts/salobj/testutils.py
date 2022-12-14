@@ -27,9 +27,9 @@ __all__ = [
 ]
 
 import base64
+import collections
 import contextlib
 import os
-import collections
 import warnings
 
 import astropy.coordinates

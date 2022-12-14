@@ -27,10 +27,11 @@ import asyncio
 import os
 import types
 import typing
-import weakref
 import warnings
+import weakref
 
 from lsst.ts import idl
+
 from . import base
 
 # Avoid circular imports by only importing SalInfo when type checking

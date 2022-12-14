@@ -27,8 +27,9 @@ import typing
 from xml.etree import ElementTree
 
 import lsst.ts.xml
-from .topic_info import make_ackcmd_topic_info, TopicInfo
+
 from .field_info import find_optional, find_required
+from .topic_info import TopicInfo, make_ackcmd_topic_info
 
 
 class ComponentInfo:

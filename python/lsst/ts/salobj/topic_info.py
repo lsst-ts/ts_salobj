@@ -30,7 +30,6 @@ from xml.etree import ElementTree
 from .field_info import FieldInfo, find_optional, find_required
 from .type_hints import BaseMsgType
 
-
 _PRIVATE_FIELD_LIST = [
     FieldInfo(
         name="salIndex",

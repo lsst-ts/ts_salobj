@@ -29,7 +29,6 @@ import typing
 
 import jsonschema
 
-
 StandardValidator = jsonschema.Draft7Validator
 
 

@@ -27,13 +27,10 @@ import pathlib
 import time
 import unittest
 import warnings
-
-import astropy.units as u
-
 from unittest.mock import MagicMock
 
-from lsst.ts import salobj
-from lsst.ts import utils
+import astropy.units as u
+from lsst.ts import salobj, utils
 
 
 class MockVerify:

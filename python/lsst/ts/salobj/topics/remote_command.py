@@ -27,15 +27,11 @@ import asyncio
 import collections
 import logging
 import random
-import typing
 import time
+import typing
 
-from .. import base
-from .. import sal_enums
-from .. import type_hints
-from . import read_topic
-from . import write_topic
-from . import remote_command
+from .. import base, sal_enums, type_hints
+from . import read_topic, remote_command, write_topic
 
 if typing.TYPE_CHECKING:
     from ..sal_info import SalInfo
