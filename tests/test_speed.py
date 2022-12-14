@@ -31,9 +31,6 @@ from collections.abc import AsyncGenerator
 from unittest.mock import MagicMock
 
 import astropy.units as u
-
-from unittest.mock import MagicMock
-
 from lsst.ts import salobj, utils
 
 

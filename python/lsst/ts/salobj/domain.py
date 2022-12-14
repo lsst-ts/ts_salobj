@@ -29,9 +29,9 @@ import types
 import typing
 import warnings
 import weakref
-from collections.abc import Sequence
 
 from lsst.ts import idl
+
 from . import base
 
 # Avoid circular imports by only importing SalInfo when type checking
