@@ -434,7 +434,7 @@ class RemoteCommand(write_topic.WriteTopic):
 
     async def start(
         self,
-        data: type_hints.BaseMsgType = None,
+        data: type_hints.BaseMsgType | None = None,
         timeout: float = DEFAULT_TIMEOUT,
         wait_done: bool = True,
     ) -> type_hints.AckCmdDataType:
