@@ -9,6 +9,9 @@ Version History
 v7.2.2
 ------
 
+* `CscCommander`: remove outdated information from the doc string.
+* ``command_test_csc``: call the correct function.
+* `TestCscCommander`: remove unused constructor arguments.
 * Make mypy 0.991 happy.
 
 Requirements:
