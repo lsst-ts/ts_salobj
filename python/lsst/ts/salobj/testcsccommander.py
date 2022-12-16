@@ -43,22 +43,8 @@ class TestCscCommander(csc_commander.CscCommander):
         Note: `amain` always supplies this argument.
     """
 
-    def __init__(
-        self,
-        index: int | None,
-        enable: bool = False,
-        exclude: collections.abc.Sequence[str] | None = None,
-        fields_to_ignore: collections.abc.Sequence[str] = (
-            "ignored",
-            "value",
-            "priority",
-        ),
-    ) -> None:
-        super().__init__(
-            name="Test",
-            index=index,
-            enable=enable,
-        )
+    def __init__(self, index: int | None, enable: bool = False) -> None:
+        super().__init__(name="Test", index=index, enable=enable)
 
         def asbool(val: str) -> bool:
             """Cast an string representation of an boolean to a boolean.
