@@ -48,7 +48,7 @@ async def measure_write_speed(
         for field_name, value in data_dict.items():
             if field_name.startswith("private_"):
                 continue
-            if field_name in ("priority", "salIndex"):
+            if field_name == "salIndex":
                 continue
 
             # Random generators by type
