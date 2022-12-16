@@ -315,13 +315,13 @@ help  # print this help
             return f"{key}={value:0.4f}"
         return f"{key}={value}"
 
-    def format_data(self, data: typing.Any) -> str:
+    def format_data(self, data: type_hints.BaseMsgType) -> str:
         """Format the public fields of an event or telemetry sample,
         for printing.
         """
         return self.format_dict(self.get_public_data(data))
 
-    def format_dict(self, data: typing.Any) -> str:
+    def format_dict(self, data: dict[str, typing.Any]) -> str:
         """Format a dict for printing.
 
         Unlike format_data, this requires a dict and formats *all* fields.
@@ -354,7 +354,9 @@ help  # print this help
             if self.field_is_public(key)
         )
 
-    def get_rounded_public_data(self, data: typing.Any, digits: int = 2) -> typing.Any:
+    def get_rounded_public_data(
+        self, data: type_hints.BaseMsgType, digits: int = 2
+    ) -> typing.Any:
         """Get a dict of field_name: value for public fields of a DDS sample
         with float values rounded.
         """
@@ -364,7 +366,7 @@ help  # print this help
             if self.field_is_public(key)
         }
 
-    def event_callback(self, data: typing.Any, name: str) -> None:
+    def event_callback(self, data: type_hints.BaseMsgType, name: str) -> None:
         """Generic callback for events.
 
         You may provide evt_<event_name> methods to override printing
@@ -382,7 +384,9 @@ help  # print this help
             f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state_repr}"
         )
 
-    def telemetry_callback(self, data: typing.Any, name: str, digits: int = 2) -> None:
+    def telemetry_callback(
+        self, data: type_hints.BaseMsgType, name: str, digits: int = 2
+    ) -> None:
         """Generic callback for telemetry.
 
         You may provide tel_<telemetry_name> methods to override printing
