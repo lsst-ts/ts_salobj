@@ -228,11 +228,7 @@ class CscCommander:
         enable: bool = False,
         exclude: collections.abc.Sequence[str] | None = None,
         exclude_commands: collections.abc.Sequence[str] = (),
-        fields_to_ignore: collections.abc.Sequence[str] = (
-            "ignored",
-            "value",
-            "priority",
-        ),
+        fields_to_ignore: collections.abc.Sequence[str] = ("ignored", "value"),
         telemetry_fields_to_not_compare: collections.abc.Sequence[str] = ("timestamp",),
     ) -> None:
         self.domain = domain.Domain()
