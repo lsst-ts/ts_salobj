@@ -880,7 +880,7 @@ class SalInfo:
         historical data for that topic.
         """
         if self.on_assign_called:
-            self.log.warning("on_assign called again; we may lose some data")
+            self.log.info("on_assign called again; partitions[0]=%s", partitions[0])
             # We must call self._consumer.assign in order to continue reading,
             # but do not want any more historical data.
             read_history_topics = set()
