@@ -42,28 +42,10 @@ class TestCscCommander(csc_commander.CscCommander):
     enable : `bool`, optional
         Enable the CSC (when the commander starts up)?
         Note: `amain` always supplies this argument.
-    exclude : ``iterable`` of `str`, optional
-        Names of topics (telemetry or events) to not support.
-        Topic names must not have a ``tel_`` or ``evt_`` prefix.
-        If `None` or empty then no topics are excluded.
     """
 
-    def __init__(
-        self,
-        index: int | None,
-        enable: bool = False,
-        exclude: collections.abc.Sequence[str] | None = None,
-        fields_to_ignore: collections.abc.Sequence[str] = (
-            "ignored",
-            "value",
-            "priority",
-        ),
-    ) -> None:
-        super().__init__(
-            name="Test",
-            index=index,
-            enable=enable,
-        )
+    def __init__(self, index: int | None, enable: bool = False) -> None:
+        super().__init__(name="Test", index=index, enable=enable)
 
         def asbool(val: str) -> bool:
             """Cast an string representation of an boolean to a boolean.
