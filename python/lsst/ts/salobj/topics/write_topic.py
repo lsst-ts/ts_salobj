@@ -289,7 +289,7 @@ class WriteTopic(BaseTopic):
 
         Returns
         -------
-        result
+        result : `SetWriteResult`
             The resulting data and some flags.
 
         Notes
