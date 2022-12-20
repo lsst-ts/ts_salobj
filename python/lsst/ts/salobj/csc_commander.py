@@ -387,6 +387,30 @@ help  # print this help
             if self.field_is_public(key)
         }
 
+    def get_telemetry_comparison_dict(
+        self, public_dict: dict[str, typing.Any], digits: int
+    ) -> dict[str, typing.Any]:
+        """Get a dict of field name: rounded data, for comparing new telemetry
+        to old.
+
+        Parameters
+        ----------
+        public_data : `dict` [`str`, `Any`]
+            Dict of field_name: value containing public fields
+            that are to be compared.
+        digits : `int`
+            The default number of digits to which to round float values.
+            May be overridden for specific fields using constructor argument
+            ``telemetry_fields_compare_digits``.
+        """
+        return {
+            key: round_any(
+                value, digits=self.telemetry_fields_compare_digits.get(key, digits)
+            )
+            for key, value in public_dict.items()
+            if key not in self.telemetry_fields_to_not_compare
+        }
+
     def event_callback(self, data: type_hints.BaseMsgType, name: str) -> None:
         """Generic callback for events.
 
@@ -449,12 +473,12 @@ help  # print this help
           The event published when the data changes significantly.
           One good candidate is the generic clockOffset event.
         """
-        prev_value_name = f"previous_{name}"
+        prev_value_name = f"previous_tel_{name}"
         public_dict = self.get_public_data(data)
         comparison_dict = self.get_telemetry_comparison_dict(
             public_dict=public_dict, digits=digits
         )
-        if comparison_dict != getattr(self, prev_value_name, None):
+        if comparison_dict != getattr(self, prev_value_name):
             setattr(self, prev_value_name, comparison_dict)
             formatted_data = self.format_dict(public_dict)
             self.output(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
