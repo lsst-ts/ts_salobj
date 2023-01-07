@@ -230,11 +230,7 @@ class CscCommander:
         enable: bool = False,
         exclude: Sequence[str] | None = None,
         exclude_commands: Sequence[str] = (),
-<<<<<<< HEAD
-        fields_to_ignore: Sequence[str] = ("ignored", "value", "priority"),
-=======
         fields_to_ignore: Sequence[str] = ("ignored", "value"),
->>>>>>> 07e86aa (Use `from collections.abc import ...`)
         telemetry_fields_to_not_compare: Sequence[str] = ("timestamp",),
         telemetry_fields_compare_digits: dict[str, int] | None = None,
     ) -> None:
@@ -357,9 +353,7 @@ help  # print this help
         """Return True if the specified field name is public,
         False otherwise.
         """
-        if name.startswith("private_"):
-            return False
-        if name == "salIndex":
+        if name.startswith("private_") or name == "salIndex":
             return False
         if name in self.fields_to_ignore:
             return False
@@ -415,7 +409,7 @@ help  # print this help
             if key not in self.telemetry_fields_to_not_compare
         }
 
-    def event_callback(self, data: type_hints.BaseMsgType, name: str) -> None:
+    async def event_callback(self, data: type_hints.BaseMsgType, name: str) -> None:
         """Generic callback for events.
 
         You may provide evt_<event_name> methods to override printing
@@ -446,7 +440,7 @@ help  # print this help
             f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state_repr}"
         )
 
-    def telemetry_callback(
+    async def telemetry_callback(
         self, data: type_hints.BaseMsgType, name: str, digits: int = 2
     ) -> None:
         """Generic callback for telemetry.
