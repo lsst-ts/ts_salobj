@@ -28,10 +28,12 @@ import asyncio
 import collections
 import enum
 import functools
+import inspect
 import shlex
 import sys
 import types
 import typing
+import warnings
 from collections.abc import AsyncGenerator, Callable, Sequence
 
 from . import csc_utils, domain, remote, sal_enums, type_hints
@@ -156,35 +158,29 @@ class CscCommander:
     Subclasses may provide overrides as follows:
 
     * To override handling of a standard command (one defined in the XML):
-      define a ``do_<command_name>`` method.
+      define an async ``do_<command_name>`` method.
       The method receives one argument: a list of str arguments.
       You should provide a custom handler for, or hide, any command with
       array parameters, because the command parser only accepts scalars.
 
     * To add an additional command (one not defined in the XML):
 
-        * Define a  ``do_<command_name>`` to handle the command.
+        * Define an async  ``do_<command_name>`` to handle the command.
           The method receives one argument: a list of str arguments.
 
         * Add an entry to ``help_dict``. The key is the command name
           and the value is a brief (preferably only one line) help string
-          that lists the arguments first, and a brief description after.
+          that lists the arguments first and a brief description after.
           Here is an example::
 
-            self.help_dict["sine"] = "start_position amplitude "
-            "# track one cycle of a sine wave",
+            self.help_dict["sine"] = \\
+                "start_position amplitude  # track one cycle of a sine wave"
 
-    * To override handling of an event or telemetry topic: define method
+    * To override handling of an event or telemetry topic: define async method
       ``evt_<event_name>_callback`` or ``tel_<event_name>_callback``,
-      respectively.  It receives one argument: the DDS sample.
+      respectively.  It receives one argument: the message data.
       This can be especially useful if the default behavior is too chatty
       for one or more telemetry topics.
-
-    I have not found a way to write a unit test for this class.
-    I tried running a commander in a subprocess but could not figure out
-    how to send multiple commands (the ``subprocess.communicate``
-    method only allows sending one item of data).
-    Instead I suggest manually running it to control the Test CSC.
 
     Examples
     --------
@@ -271,6 +267,22 @@ class CscCommander:
             for name in self.remote.salinfo.command_names
             if name not in frozenset(exclude_commands)
         }
+
+        # Warn of synchronous do_ methods
+        # TODO DM-37502: modify this to raise (and update docs)
+        # once we drop support for synchronous callback functions.
+        all_members = inspect.getmembers(self, predicate=inspect.ismethod)
+        sync_do_member_names = [
+            member[0]
+            for member in all_members
+            if member[0].startswith("do_")
+            and not inspect.iscoroutinefunction(member[1])
+        ]
+        if sync_do_member_names:
+            warnings.warn(
+                f"Synchronous do_ methods are deprecated: {sorted(sync_do_member_names)}",
+                DeprecationWarning,
+            )
 
     def print_help(self) -> None:
         """Print help."""
@@ -558,21 +570,20 @@ help  # print this help
         command_name = tokens[0]
         args = tokens[1:]
         command_method = getattr(self, f"do_{command_name}", None)
-        coro = None
+        result = None
         if command_name == "help":
             self.print_help()
         elif command_method is not None:
             print(f"run_command running command method {command_method}")
-            coro = command_method(args)
+            result = command_method(args)
         elif command_name in self.command_dict:
             print("run_command running command from dict")
-            coro = self.run_command_topic(command_name, args)
+            result = self.run_command_topic(command_name, args)
         else:
             self.output(f"Unrecognized command: {command_name}")
 
-        if coro is None:
-            return
-        await coro
+        if inspect.isawaitable(result):
+            await result
 
     async def _run_command_and_output(self, cmd: str) -> None:
         """Execute a command and wait for it to finish. Output the result.
