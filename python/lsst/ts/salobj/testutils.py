@@ -27,11 +27,11 @@ __all__ = [
 ]
 
 import base64
-import collections
 import contextlib
 import os
 from collections.abc import Generator
 import warnings
+from collections.abc import Generator
 
 import astropy.coordinates
 

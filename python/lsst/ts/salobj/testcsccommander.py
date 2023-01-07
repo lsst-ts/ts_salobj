@@ -23,6 +23,7 @@ __all__ = ["TestCscCommander", "command_test_csc"]
 
 import asyncio
 from collections.abc import Sequence
+
 import numpy as np
 
 from . import csc_commander

@@ -1514,7 +1514,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(salinfo.start(), timeout=STD_TIMEOUT)
 
             predicted_data_dict = vars(write_topic.DataType())
-            kwargs_list: Iterable[typing.Dict[str, typing.Any]] = (
+            kwargs_list: Iterable[dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
                 dict(int0=-3, long0=47),

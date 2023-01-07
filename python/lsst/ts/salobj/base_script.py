@@ -26,7 +26,6 @@ __all__ = ["BaseScript"]
 import abc
 import argparse
 import asyncio
-import collections
 import re
 import sys
 import types

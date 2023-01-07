@@ -230,7 +230,11 @@ class CscCommander:
         enable: bool = False,
         exclude: Sequence[str] | None = None,
         exclude_commands: Sequence[str] = (),
+<<<<<<< HEAD
         fields_to_ignore: Sequence[str] = ("ignored", "value", "priority"),
+=======
+        fields_to_ignore: Sequence[str] = ("ignored", "value"),
+>>>>>>> 07e86aa (Use `from collections.abc import ...`)
         telemetry_fields_to_not_compare: Sequence[str] = ("timestamp",),
         telemetry_fields_compare_digits: dict[str, int] | None = None,
     ) -> None:

@@ -22,7 +22,6 @@ __all__ = ["BaseCscTestCase"]
 
 import abc
 import asyncio
-import collections
 import contextlib
 import enum
 import os
@@ -471,7 +470,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         self,
         bad_commands: Sequence[str] | None = None,
         good_commands: Sequence[str] | None = None,
-   ) -> None:
+    ) -> None:
         """Check that bad commands fail.
 
         Parameters
