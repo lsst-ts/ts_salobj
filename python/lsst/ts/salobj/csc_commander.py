@@ -32,6 +32,7 @@ import shlex
 import sys
 import types
 import typing
+from collections.abc import AsyncGenerator, Sequence
 
 from . import csc_utils, domain, remote, sal_enums, type_hints
 
@@ -49,7 +50,7 @@ BOOL_DICT = {
 
 async def stream_as_generator(
     stream: typing.TextIO, exit_str: str = ""
-) -> collections.abc.AsyncGenerator[str, None]:
+) -> AsyncGenerator[str, None]:
     """Await lines of text from stdin or another text input stream.
 
     Example usage:
@@ -231,10 +232,10 @@ class CscCommander:
         name: str,
         index: int | None = 0,
         enable: bool = False,
-        exclude: collections.abc.Sequence[str] | None = None,
-        exclude_commands: collections.abc.Sequence[str] = (),
-        fields_to_ignore: collections.abc.Sequence[str] = ("ignored", "value"),
-        telemetry_fields_to_not_compare: collections.abc.Sequence[str] = ("timestamp",),
+        exclude: Sequence[str] | None = None,
+        exclude_commands: Sequence[str] = (),
+        fields_to_ignore: Sequence[str] = ("ignored", "value"),
+        telemetry_fields_to_not_compare: Sequence[str] = ("timestamp",),
         telemetry_fields_compare_digits: dict[str, int] | None = None,
     ) -> None:
         self.domain = domain.Domain()
@@ -435,7 +436,7 @@ help  # print this help
 
     def check_arguments(
         self,
-        args: collections.abc.Sequence[str],
+        args: Sequence[str],
         *names: str | tuple[str, typing.Callable[[str], typing.Any]],
     ) -> dict[str, typing.Any]:
         """Check that the required arguments are provided.
@@ -501,7 +502,7 @@ help  # print this help
 
         return dict(cast(arg=arg, name=name) for name, arg in zip(names, args))
 
-    async def do_start(self, args: collections.abc.Sequence[str]) -> None:
+    async def do_start(self, args: Sequence[str]) -> None:
         """Allow the start command to have no arguments."""
         assert len(args) in (0, 1)
         if args:
@@ -541,9 +542,7 @@ help  # print this help
         ]
         return help_strings
 
-    async def run_command_topic(
-        self, command_name: str, args: collections.abc.Sequence[str]
-    ) -> None:
+    async def run_command_topic(self, command_name: str, args: Sequence[str]) -> None:
         """Run a command that has an associated salobj RemoteCommand topic.
 
         Parameters

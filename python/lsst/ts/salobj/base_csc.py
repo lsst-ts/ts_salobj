@@ -25,10 +25,10 @@ __all__ = ["BaseCsc"]
 
 import argparse
 import asyncio
-import collections
 import enum
 import sys
 import typing
+from collections.abc import Sequence
 
 from lsst.ts import utils
 
@@ -156,7 +156,7 @@ class BaseCsc(Controller):
     # See Attributes in the doc string for more information.
     default_initial_state: State = State.STANDBY
     enable_cmdline_state = False
-    valid_simulation_modes: collections.abc.Sequence[int] = (0,)
+    valid_simulation_modes: Sequence[int] = (0,)
     simulation_help: str | None = None
 
     def __init__(
@@ -794,7 +794,7 @@ class BaseCsc(Controller):
         self,
         data: typing.Any,
         cmd_name: str,
-        allowed_curr_states: collections.abc.Sequence[State],
+        allowed_curr_states: Sequence[State],
         new_state: State,
     ) -> None:
         """Change to the desired state.

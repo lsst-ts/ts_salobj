@@ -22,9 +22,9 @@
 __all__ = ["make_avro_schemas"]
 
 import argparse
-import collections.abc
 import json
 import typing
+from collections.abc import Iterable
 
 import lsst.ts.xml
 
@@ -32,7 +32,7 @@ from .component_info import ComponentInfo
 
 
 def check_components(
-    parser: argparse.ArgumentParser, descr: str, components: collections.abc.Iterable
+    parser: argparse.ArgumentParser, descr: str, components: Iterable
 ) -> None:
     """Check that all component names are valid.
 

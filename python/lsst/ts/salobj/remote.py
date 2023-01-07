@@ -24,9 +24,9 @@ from __future__ import annotations
 __all__ = ["Remote"]
 
 import asyncio
-import collections
 import types
 import typing
+from collections.abc import Iterable
 
 from .domain import Domain
 from .sal_info import SalInfo
@@ -141,8 +141,8 @@ class Remote:
         index: int | None = None,
         *,
         readonly: bool = False,
-        include: collections.abc.Iterable[str] | None = None,
-        exclude: collections.abc.Iterable[str] | None = None,
+        include: Iterable[str] | None = None,
+        exclude: Iterable[str] | None = None,
         evt_max_history: int = 1,
         start: bool = True,
     ) -> None:

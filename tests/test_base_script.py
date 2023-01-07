@@ -20,7 +20,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
-import collections
 import logging
 import pathlib
 import subprocess
@@ -28,6 +27,7 @@ import types
 import typing
 import unittest
 import warnings
+from collections.abc import Iterable
 
 import pytest
 import yaml
@@ -536,9 +536,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         """
 
         class ScriptWithRemotes(salobj.TestScript):
-            def __init__(
-                self, index: int, remote_indices: collections.abc.Iterable[int]
-            ) -> None:
+            def __init__(self, index: int, remote_indices: Iterable[int]) -> None:
                 super().__init__(index, descr="Script with remotes")
                 remotes = []
                 # use remotes that read history here, to check that

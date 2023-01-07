@@ -24,8 +24,8 @@ __all__ = [
     "StandardValidator",  # specific jsonschema validator
 ]
 
-import collections
 import typing
+from collections.abc import Generator
 
 import jsonschema
 
@@ -93,7 +93,7 @@ class DefaultingValidator:
             properties: dict[str, typing.Any],
             instance: dict[str, typing.Any],
             schema: dict[str, typing.Any],
-        ) -> collections.abc.Generator[typing.Any, None, None]:
+        ) -> Generator[typing.Any, None, None]:
             """Wrap a jsonschema Validator so that it sets default values.
 
             Parameters

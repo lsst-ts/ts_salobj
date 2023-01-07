@@ -20,13 +20,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
-import collections
 import contextlib
 import os
 import pathlib
 import time
 import unittest
 import warnings
+from collections.abc import AsyncGenerator
 from unittest.mock import MagicMock
 
 import astropy.units as u
@@ -126,7 +126,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
     @contextlib.asynccontextmanager
     async def make_remote_and_topic_writer(
         self,
-    ) -> collections.abc.AsyncGenerator[salobj.Remote, None]:
+    ) -> AsyncGenerator[salobj.Remote, None]:
         """Make a remote and launch a topic writer in a subprocess.
 
         Return the remote.

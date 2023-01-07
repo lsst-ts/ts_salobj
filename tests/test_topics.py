@@ -28,6 +28,7 @@ import pathlib
 import time
 import typing
 import unittest
+from collections.abc import Iterable, Sequence
 
 import numpy as np
 import pytest
@@ -1095,7 +1096,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await cmdreader.ack(data=data, ackcmd=ackcmd)
 
             cmdreader.callback = cmd_reader_callback
-            kwargs_list: collections.abc.Sequence[dict[str, typing.Any]] = (
+            kwargs_list: Sequence[dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
                 dict(short0=-3, long0=47),
@@ -1514,7 +1515,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(salinfo.start(), timeout=STD_TIMEOUT)
 
             predicted_data_dict = vars(write_topic.DataType())
-            kwargs_list: collections.abc.Iterable[dict[str, typing.Any]] = (
+            kwargs_list: Iterable[dict[str, typing.Any]] = (
                 dict(int0=1),
                 dict(float0=1.3),
                 dict(int0=-3, long0=47),

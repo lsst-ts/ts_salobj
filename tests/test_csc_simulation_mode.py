@@ -20,10 +20,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
-import collections
 import sys
 import typing
 import unittest
+from collections.abc import Iterable
 
 import numpy as np
 import pytest
@@ -65,9 +65,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
             (4, 1, 0),
         )
 
-    def make_csc_class(
-        self, modes: collections.abc.Iterable[int] | None
-    ) -> salobj.TestCsc:
+    def make_csc_class(self, modes: Iterable[int] | None) -> salobj.TestCsc:
         """Make a subclass of TestCsc with specified valid simulation modes"""
 
         class TestCscWithSimulation(salobj.TestCsc):

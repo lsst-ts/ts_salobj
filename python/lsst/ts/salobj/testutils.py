@@ -27,10 +27,10 @@ __all__ = [
 ]
 
 import base64
-import collections
 import contextlib
 import os
 import warnings
+from collections.abc import Generator
 
 import astropy.coordinates
 
@@ -44,7 +44,7 @@ def assertRaisesAckError(
     ack: int | None = None,
     error: int | None = None,
     result_contains: str | None = None,
-) -> collections.abc.Generator[None, None, None]:
+) -> Generator[None, None, None]:
     """Assert that code raises a salobj.AckError
 
     Parameters
@@ -74,7 +74,7 @@ def assertRaisesAckError(
 @contextlib.contextmanager
 def assertRaisesAckTimeoutError(
     ack: int | None = None, error: int | None = None
-) -> collections.abc.Generator[None, None, None]:
+) -> Generator[None, None, None]:
     """Assert that code raises a salobj.AckTimeoutError
 
     Parameters

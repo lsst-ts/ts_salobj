@@ -22,7 +22,6 @@ __all__ = ["BaseCscTestCase"]
 
 import abc
 import asyncio
-import collections
 import contextlib
 import enum
 import os
@@ -30,6 +29,7 @@ import pathlib
 import shutil
 import subprocess
 import typing
+from collections.abc import AsyncGenerator, Sequence
 
 from lsst.ts import utils
 
@@ -113,7 +113,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         log_level: int | None = None,
         timeout: float = STD_TIMEOUT,
         **kwargs: typing.Any,
-    ) -> collections.abc.AsyncGenerator[None, None]:
+    ) -> AsyncGenerator[None, None]:
         """Create a CSC and remote and wait for them to start.
 
         The csc is accessed as ``self.csc`` and the remote as ``self.remote``.
@@ -283,7 +283,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         default_initial_state: sal_enums.State = sal_enums.State.STANDBY,
         initial_state: sal_enums.State | None = None,
         override: str | None = None,
-        cmdline_args: collections.abc.Sequence[str] = (),
+        cmdline_args: Sequence[str] = (),
         timeout: float = STD_TIMEOUT,
     ) -> None:
         """Test running the CSC command line script.
@@ -365,8 +365,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     async def check_standard_state_transitions(
         self,
-        enabled_commands: collections.abc.Sequence[str],
-        skip_commands: collections.abc.Sequence[str] | None = None,
+        enabled_commands: Sequence[str],
+        skip_commands: Sequence[str] | None = None,
         override: str = "",
         timeout: float = STD_TIMEOUT,
     ) -> None:
@@ -447,8 +447,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     async def check_bad_commands(
         self,
-        bad_commands: collections.abc.Sequence[str] | None = None,
-        good_commands: collections.abc.Sequence[str] | None = None,
+        bad_commands: Sequence[str] | None = None,
+        good_commands: Sequence[str] | None = None,
     ) -> None:
         """Check that bad commands fail.
 

@@ -26,12 +26,12 @@ __all__ = ["BaseScript"]
 import abc
 import argparse
 import asyncio
-import collections
 import re
 import sys
 import types
 import typing
 import warnings
+from collections.abc import Sequence
 
 import yaml
 from lsst.ts import utils
@@ -453,9 +453,7 @@ class BaseScript(controller.Controller, abc.ABC):
         """
         pass
 
-    def assert_state(
-        self, action: str, states: collections.abc.Sequence[ScriptState]
-    ) -> None:
+    def assert_state(self, action: str, states: Sequence[ScriptState]) -> None:
         """Assert that the current state is in ``states`` and the script
         is not exiting.
 

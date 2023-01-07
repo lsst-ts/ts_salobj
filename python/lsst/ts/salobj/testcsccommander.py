@@ -22,7 +22,7 @@
 __all__ = ["TestCscCommander", "command_test_csc"]
 
 import asyncio
-import collections
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -74,7 +74,7 @@ class TestCscCommander(csc_commander.CscCommander):
           field: {" ".join(self.array_field_types)}
           for example: boolean0=1,2 int0=3,-4,5,6,7 float0=-42.3"""
 
-    async def do_setArrays(self, args: collections.abc.Sequence[str]) -> None:
+    async def do_setArrays(self, args: Sequence[str]) -> None:
         kwargs = dict()
         for field_val in args:
             field, valstr = field_val.split("=")

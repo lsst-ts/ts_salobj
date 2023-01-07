@@ -23,9 +23,9 @@ from __future__ import annotations
 
 __all__ = ["MAX_SEQ_NUM", "SetWriteResult", "WriteTopic"]
 
-import collections
 import copy
 import typing
+from collections.abc import Generator
 
 import numpy as np
 from lsst.ts import utils
@@ -116,9 +116,7 @@ class WriteTopic(BaseTopic):
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
         if min_seq_num is None:
-            self._seq_num_generator: collections.abc.Generator[
-                int, None, None
-            ] | None = None
+            self._seq_num_generator: Generator[int, None, None] | None = None
         else:
             self._seq_num_generator = utils.index_generator(
                 imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num

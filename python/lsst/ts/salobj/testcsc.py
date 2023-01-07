@@ -22,10 +22,10 @@
 __all__ = ["TestCsc", "run_test_csc"]
 
 import asyncio
-import collections
 import string
 import types
 import typing
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -124,9 +124,7 @@ class TestCsc(ConfigurableCsc):
         self.cmd_wait.allow_multiple_callbacks = True  # type: ignore
         self.config: types.SimpleNamespace | None = None
 
-    def as_dict(
-        self, data: typing.Any, fields: collections.abc.Sequence[str]
-    ) -> dict[str, typing.Any]:
+    def as_dict(self, data: typing.Any, fields: Sequence[str]) -> dict[str, typing.Any]:
         """Return the specified fields from a data struct as a dict.
 
         Parameters
@@ -197,7 +195,7 @@ class TestCsc(ConfigurableCsc):
         )
 
     @property
-    def arrays_fields(self) -> collections.abc.Sequence[str]:
+    def arrays_fields(self) -> Sequence[str]:
         """Get a tuple of the fields in an arrays struct."""
         return (
             "boolean0",
@@ -214,7 +212,7 @@ class TestCsc(ConfigurableCsc):
         )
 
     @property
-    def scalars_fields(self) -> collections.abc.Sequence[str]:
+    def scalars_fields(self) -> Sequence[str]:
         """Get a tuple of the fields in a scalars struct."""
         return (
             "boolean0",
@@ -232,7 +230,7 @@ class TestCsc(ConfigurableCsc):
         )
 
     @property
-    def int_fields(self) -> collections.abc.Sequence[str]:
+    def int_fields(self) -> Sequence[str]:
         """Get a tuple of the integer fields in a struct."""
         return (
             "byte0",

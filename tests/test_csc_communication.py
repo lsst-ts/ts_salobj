@@ -20,7 +20,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
-import collections
 import contextlib
 import itertools
 import logging
@@ -29,6 +28,7 @@ import subprocess
 import typing
 import unittest
 import warnings
+from collections.abc import AsyncGenerator, Sequence
 
 import numpy as np
 import pytest
@@ -48,7 +48,7 @@ TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
 
 
 def all_permutations(
-    items: collections.abc.Sequence[typing.Any],
+    items: Sequence[typing.Any],
 ) -> typing.Iterator[typing.Any]:
     """Return all permutations of a list of items and of all sublists,
     including [].
@@ -116,9 +116,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         )
 
     @contextlib.asynccontextmanager
-    async def make_remote(
-        self, identity: str
-    ) -> collections.abc.AsyncGenerator[salobj.Remote, None]:
+    async def make_remote(self, identity: str) -> AsyncGenerator[salobj.Remote, None]:
         """Create a remote to talk to self.csc with a specified identity.
 
         Uses the domain created by make_csc.
