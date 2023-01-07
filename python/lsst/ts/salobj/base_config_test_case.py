@@ -22,6 +22,7 @@ __all__ = ["BaseConfigTestCase"]
 
 import abc
 import importlib
+import itertools
 import pathlib
 import typing
 import unittest
@@ -193,17 +194,26 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
                 raise RuntimeError("Failed: no _init.yaml file found")
             if not site_files:
                 site_files = [""]
-
-            # Check each site and each site with each override file
-            for site_file in site_files:
-                for override_file in override_files:
-                    ConfigurableCsc.read_config_files(
-                        config_validator=config_validator,
-                        config_dir=config_dir,
-                        files_to_read=["_init.yaml", site_file, override_file],
-                    )
         except Exception as e:
-            raise AssertionError(repr(e)) from e
+            raise AssertionError(
+                f"Failed on {config_dir=}, {schema_version=}: {e!r}"
+            ) from e
+
+        try:
+            # Check each site and each site with each override file
+            for site_file, override_file in itertools.product(
+                site_files, override_files
+            ):
+                ConfigurableCsc.read_config_files(
+                    config_validator=config_validator,
+                    config_dir=config_dir,
+                    files_to_read=["_init.yaml", site_file, override_file],
+                )
+        except Exception as e:
+            raise AssertionError(
+                f"Failed on {config_dir=}, {schema_version=}, "
+                f"{site_file=}, {override_file=}: {e!r}"
+            ) from e
 
     def check_standard_config_files(
         self,
