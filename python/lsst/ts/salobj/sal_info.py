@@ -314,7 +314,7 @@ class SalInfo:
         # Make sure the background thread terminates.
         atexit.register(self.basic_close)
 
-    def _ackcmd_callback(self, data: type_hints.AckCmdDataType) -> None:
+    async def _ackcmd_callback(self, data: type_hints.AckCmdDataType) -> None:
         if not self._running_cmds:
             return
         # Note: ReadTopic's reader filters out ackcmd samples

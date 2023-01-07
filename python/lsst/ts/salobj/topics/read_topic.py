@@ -48,6 +48,9 @@ DEFAULT_QUEUE_LEN = 100
 MIN_QUEUE_LEN = 10
 
 
+# TODO DM-37502: change "_BasicReturnType | Awaitable[_BasicReturnType]"
+# to "Awaitable[_BasicReturnType]"
+# once we drop support for synchronous callback functions.
 _BasicReturnType = None | type_hints.AckCmdDataType
 CallbackType = Callable[
     [type_hints.BaseMsgType],
@@ -399,7 +402,9 @@ class ReadTopic(BaseTopic):
     def callback(
         self,
     ) -> None | CallbackType:
-        """Callback function, or None if there is not one.
+        """Asynchronous callback function, or None if there is not one.
+
+        Synchronous callback functions are deprecated.
 
         The callback function is called when a new message is received;
         it receives one argument: the message (an object of type
@@ -413,9 +418,6 @@ class ReadTopic(BaseTopic):
 
         Notes
         -----
-        The callback function can be synchronous or asynchronous
-        (e.g. defined with ``async def``).
-
         Setting a callback flushes the queue, and it will remain empty
         as long as there is a callback.
 
@@ -428,6 +430,17 @@ class ReadTopic(BaseTopic):
 
     @callback.setter
     def callback(self, func: None | CallbackType) -> None:
+        if func is not None:
+            if not callable(func):
+                raise TypeError(f"callback {func} not callable")
+            if not inspect.iscoroutinefunction(func):
+                # TODO DM-37502: modify this to raise (and update doc string)
+                # once we drop support for synchronous callback functions.
+                warnings.warn(
+                    f"callback {func} should be asynchronous",
+                    category=DeprecationWarning,
+                )
+
         self._cancel_callbacks()
 
         if func is None:

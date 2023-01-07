@@ -359,7 +359,7 @@ help  # print this help
             if self.field_is_public(key)
         }
 
-    def event_callback(self, data: typing.Any, name: str) -> None:
+    async def event_callback(self, data: typing.Any, name: str) -> None:
         """Generic callback for events.
 
         You may provide evt_<event_name> methods to override printing
@@ -367,7 +367,7 @@ help  # print this help
         """
         self.output(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
 
-    def evt_summaryState_callback(self, data: type_hints.BaseMsgType) -> None:
+    async def evt_summaryState_callback(self, data: type_hints.BaseMsgType) -> None:
         state_int: int = data.summaryState  # type: ignore
         try:
             state_repr: str = repr(sal_enums.State(state_int))
@@ -377,7 +377,9 @@ help  # print this help
             f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state_repr}"
         )
 
-    def telemetry_callback(self, data: typing.Any, name: str, digits: int = 2) -> None:
+    async def telemetry_callback(
+        self, data: typing.Any, name: str, digits: int = 2
+    ) -> None:
         """Generic callback for telemetry.
 
         You may provide tel_<telemetry_name> methods to override printing

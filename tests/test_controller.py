@@ -66,7 +66,7 @@ class ControllerWithDoMethods(salobj.Controller):
             allow_missing_callbacks=allow_missing_callbacks,
         )
 
-    def mock_do_method(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+    async def mock_do_method(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         pass
 
 
