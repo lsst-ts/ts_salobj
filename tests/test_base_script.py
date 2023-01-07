@@ -571,7 +571,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                     )
                     await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
 
-                    def logcallback(data: salobj.BaseMsgType) -> None:
+                    async def logcallback(data: salobj.BaseMsgType) -> None:
                         print(f"message={data.message}")
 
                     remote.evt_logMessage.callback = logcallback

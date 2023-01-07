@@ -32,7 +32,7 @@ import shlex
 import sys
 import types
 import typing
-from collections.abc import AsyncGenerator, Sequence
+from collections.abc import AsyncGenerator, Callable, Sequence
 
 from . import csc_utils, domain, remote, sal_enums, type_hints
 
@@ -340,9 +340,7 @@ help  # print this help
         """Return True if the specified field name is public,
         False otherwise.
         """
-        if name.startswith("private_"):
-            return False
-        if name == "salIndex":
+        if name.startswith("private_") or name == "salIndex":
             return False
         if name in self.fields_to_ignore:
             return False
@@ -398,7 +396,7 @@ help  # print this help
             if key not in self.telemetry_fields_to_not_compare
         }
 
-    def event_callback(self, data: type_hints.BaseMsgType, name: str) -> None:
+    async def event_callback(self, data: type_hints.BaseMsgType, name: str) -> None:
         """Generic callback for events.
 
         You may provide evt_<event_name> methods to override printing
@@ -406,7 +404,7 @@ help  # print this help
         """
         self.output(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
 
-    def evt_summaryState_callback(self, data: type_hints.BaseMsgType) -> None:
+    async def evt_summaryState_callback(self, data: type_hints.BaseMsgType) -> None:
         state_int: int = data.summaryState  # type: ignore
         try:
             state_repr: str = repr(sal_enums.State(state_int))
@@ -416,7 +414,7 @@ help  # print this help
             f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state_repr}"
         )
 
-    def telemetry_callback(
+    async def telemetry_callback(
         self, data: type_hints.BaseMsgType, name: str, digits: int = 2
     ) -> None:
         """Generic callback for telemetry.
@@ -437,7 +435,7 @@ help  # print this help
     def check_arguments(
         self,
         args: Sequence[str],
-        *names: str | tuple[str, typing.Callable[[str], typing.Any]],
+        *names: str | tuple[str, Callable[[str], typing.Any]],
     ) -> dict[str, typing.Any]:
         """Check that the required arguments are provided.
         and return them as a keyword argument dict with cast values.
@@ -466,7 +464,7 @@ help  # print this help
 
         def cast(
             arg: str,
-            name: str | tuple[str, typing.Callable[[str], typing.Any]],
+            name: str | tuple[str, Callable[[str], typing.Any]],
         ) -> tuple[str, typing.Any]:
             """Cast one argument to the required type.
 

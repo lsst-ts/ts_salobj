@@ -260,7 +260,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             unfiltered_nread = 0
             unfiltered_future: asyncio.Future = asyncio.Future()
 
-            def unfiltered_ackcmd_reader_callback(data: salobj.BaseMsgType) -> None:
+            async def unfiltered_ackcmd_reader_callback(
+                data: salobj.BaseMsgType,
+            ) -> None:
                 nonlocal unfiltered_nread
                 unfiltered_nread += 1
                 if unfiltered_nread == 4:
@@ -608,7 +610,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         evt_data_list: list[salobj.BaseMsgType] = []
         evt_future: asyncio.Future = asyncio.Future()
 
-        def evt_callback(data: salobj.BaseMsgType) -> None:
+        async def evt_callback(data: salobj.BaseMsgType) -> None:
             evt_data_list.append(data)
             if len(evt_data_list) == num_commands:
                 evt_future.set_result(None)
@@ -616,7 +618,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         tel_data_list: list[salobj.BaseMsgType] = []
         tel_future: asyncio.Future = asyncio.Future()
 
-        def tel_callback(data: salobj.BaseMsgType) -> None:
+        async def tel_callback(data: salobj.BaseMsgType) -> None:
             tel_data_list.append(data)
             if len(tel_data_list) == num_commands:
                 tel_future.set_result(None)
@@ -639,6 +641,48 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await self.remote.evt_scalars.next(flush=False)
             with pytest.raises(RuntimeError):
                 await self.remote.tel_scalars.next(flush=False)
+
+            cmd_data_list = await self.set_scalars(num_commands=num_commands)
+            await asyncio.wait_for(
+                asyncio.gather(evt_future, tel_future), timeout=STD_TIMEOUT
+            )
+
+            assert len(evt_data_list) == num_commands
+            for cmd_data, evt_data in zip(cmd_data_list, evt_data_list):
+                self.csc.assert_scalars_equal(cmd_data, evt_data)
+
+            assert len(tel_data_list) == num_commands
+            for cmd_data, tel_data in zip(cmd_data_list, tel_data_list):
+                self.csc.assert_scalars_equal(cmd_data, tel_data)
+
+    # TODO DM-37502: modify this to expect construction to raise,
+    # once we drop support for synchronous callback functions.
+    # Possibly combine it with test_callbacks?
+    async def test_synchronous_callbacks(self) -> None:
+
+        num_commands = 3
+
+        evt_data_list: typing.List[salobj.BaseMsgType] = []
+        evt_future: asyncio.Future = asyncio.Future()
+
+        def evt_callback(data: salobj.BaseMsgType) -> None:
+            evt_data_list.append(data)
+            if len(evt_data_list) == num_commands:
+                evt_future.set_result(None)
+
+        tel_data_list: typing.List[salobj.BaseMsgType] = []
+        tel_future: asyncio.Future = asyncio.Future()
+
+        def tel_callback(data: salobj.BaseMsgType) -> None:
+            tel_data_list.append(data)
+            if len(tel_data_list) == num_commands:
+                tel_future.set_result(None)
+
+        async with self.make_csc(initial_state=salobj.State.ENABLED):
+            with pytest.warns(DeprecationWarning):
+                self.remote.evt_scalars.callback = evt_callback
+            with pytest.warns(DeprecationWarning):
+                self.remote.tel_scalars.callback = tel_callback
 
             cmd_data_list = await self.set_scalars(num_commands=num_commands)
             await asyncio.wait_for(
@@ -742,7 +786,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # Set callback to a callable should succeed
             # (even if it has the wrong number of arguments).
 
-            def foo() -> None:
+            async def foo() -> None:
                 """A simple callable."""
                 pass
 
@@ -769,7 +813,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             failed_ack = salobj.SalRetCode.CMD_NOPERM
             result = "return failed ackcmd"
 
-            def return_ack(data: salobj.BaseMsgType) -> salobj.AckCmdDataType:
+            async def return_ack(data: salobj.BaseMsgType) -> salobj.AckCmdDataType:
                 return self.csc.salinfo.make_ackcmd(
                     private_seqNum=data.private_seqNum, ack=failed_ack, result=result
                 )
@@ -787,7 +831,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             msg = "intentional failure"
 
-            def fail_expected_exception(data: salobj.BaseMsgType) -> None:
+            async def fail_expected_exception(data: salobj.BaseMsgType) -> None:
                 raise salobj.ExpectedError(msg)
 
             await self.check_controller_command_callback_failure(
@@ -803,7 +847,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             msg = "intentional failure"
 
-            def fail_exception(data: salobj.BaseMsgType) -> None:
+            async def fail_exception(data: salobj.BaseMsgType) -> None:
                 raise Exception(msg)
 
             await self.check_controller_command_callback_failure(
@@ -818,7 +862,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
 
-            def fail_timeout(data: salobj.BaseMsgType) -> None:
+            async def fail_timeout(data: salobj.BaseMsgType) -> None:
                 raise asyncio.TimeoutError()
 
             await self.check_controller_command_callback_failure(
@@ -831,7 +875,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
 
-            def fail_cancel(data: salobj.BaseMsgType) -> None:
+            async def fail_cancel(data: salobj.BaseMsgType) -> None:
                 raise asyncio.CancelledError()
 
             await self.check_controller_command_callback_failure(
@@ -1230,47 +1274,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                             attr_name="evt_scalars",
                             max_history=bad_max_history,
                         )
-
-    async def test_asynchronous_event_callback(self) -> None:
-        async with self.make_csc(initial_state=salobj.State.ENABLED):
-            scalars_dict = self.csc.make_random_scalars_dict()
-            callback_data = None
-
-            async def scalars_callback(scalars: salobj.BaseMsgType) -> None:
-                nonlocal callback_data
-                callback_data = scalars
-
-            # send the setScalars command with random data
-            # but first set a callback for event that should be triggered
-            self.remote.evt_scalars.callback = scalars_callback
-            await self.remote.cmd_setScalars.set_start(
-                **scalars_dict, timeout=STD_TIMEOUT
-            )
-            # give the callback time to be called
-            await asyncio.sleep(EVENT_DELAY)
-            self.csc.assert_scalars_equal(callback_data, scalars_dict)
-
-    async def test_synchronous_event_callback(self) -> None:
-        """Like test_asynchronous_event_callback but the callback function
-        is synchronous.
-        """
-        async with self.make_csc(initial_state=salobj.State.ENABLED):
-            scalars_dict = self.csc.make_random_scalars_dict()
-            callback_data = None
-
-            def scalars_callback(scalars: salobj.BaseMsgType) -> None:
-                nonlocal callback_data
-                callback_data = scalars
-
-            # send the setScalars command with random data
-            # but first set a callback for event that should be triggered
-            self.remote.evt_scalars.callback = scalars_callback
-            await self.remote.cmd_setScalars.set_start(
-                **scalars_dict, timeout=STD_TIMEOUT
-            )
-            # give the callback time to be called
-            await asyncio.sleep(EVENT_DELAY)
-            self.csc.assert_scalars_equal(callback_data, scalars_dict)
 
     async def test_command_next_ack(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):

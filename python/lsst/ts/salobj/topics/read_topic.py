@@ -29,6 +29,8 @@ import collections
 import inspect
 import logging
 import typing
+import warnings
+from collections.abc import Awaitable, Callable, Collection
 
 from lsst.ts import utils
 
@@ -45,10 +47,13 @@ DEFAULT_QUEUE_LEN = 100
 MIN_QUEUE_LEN = 10
 
 
-_BasicReturnType = type_hints.AckCmdDataType | None
-CallbackType = typing.Callable[
+# TODO DM-37502: change "_BasicReturnType | Awaitable[_BasicReturnType]"
+# to "Awaitable[_BasicReturnType]"
+# once we drop support for synchronous callback functions.
+_BasicReturnType = None | type_hints.AckCmdDataType
+CallbackType = Callable[
     [type_hints.BaseMsgType],
-    _BasicReturnType | typing.Awaitable[_BasicReturnType],
+    _BasicReturnType | Awaitable[_BasicReturnType],
 ]
 
 
@@ -320,7 +325,9 @@ class ReadTopic(BaseTopic):
     def callback(
         self,
     ) -> CallbackType | None:
-        """Callback function, or None if there is not one.
+        """Asynchronous callback function, or None if there is not one.
+
+        Synchronous callback functions are deprecated.
 
         The callback function is called when a new message is received;
         it receives one argument: the message (an object of type
@@ -334,9 +341,6 @@ class ReadTopic(BaseTopic):
 
         Notes
         -----
-        The callback function can be synchronous or asynchronous
-        (e.g. defined with ``async def``).
-
         Setting a callback flushes the queue, and it will remain empty
         as long as there is a callback.
 
@@ -349,6 +353,17 @@ class ReadTopic(BaseTopic):
 
     @callback.setter
     def callback(self, func: CallbackType | None) -> None:
+        if func is not None:
+            if not callable(func):
+                raise TypeError(f"callback {func} not callable")
+            if not inspect.iscoroutinefunction(func):
+                # TODO DM-37502: modify this to raise (and update doc string)
+                # once we drop support for synchronous callback functions.
+                warnings.warn(
+                    f"callback {func} should be asynchronous",
+                    category=DeprecationWarning,
+                )
+
         self._cancel_callbacks()
 
         if func is None:
@@ -610,12 +625,12 @@ class ReadTopic(BaseTopic):
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
 
-    def _queue_data(self, data_list: typing.Collection[type_hints.BaseMsgType]) -> None:
+    def _queue_data(self, data_list: Collection[type_hints.BaseMsgType]) -> None:
         """Queue messages.
 
         Parameters
         ----------
-        data_list : typing.Collection[type_hints.BaseMsgType]
+        data_list : Collection[type_hints.BaseMsgType]
             Messages to be queueued.
 
         Also update ``self._current_data`` and fire `self._next_task`

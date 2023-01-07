@@ -365,7 +365,7 @@ class SalInfo:
         """Is this SAL component indexed?."""
         return self.component_info.indexed
 
-    def _ackcmd_callback(self, data: type_hints.AckCmdDataType) -> None:
+    async def _ackcmd_callback(self, data: type_hints.AckCmdDataType) -> None:
         if not self._running_cmds:
             return
         # Note: we could check identity and origin here, but by
