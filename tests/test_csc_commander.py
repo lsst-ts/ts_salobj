@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
 import pathlib
 import typing
 import unittest
@@ -38,16 +37,25 @@ np.random.seed(47)
 class BasicCscCommander(salobj.TestCscCommander):
     """A version of `TestCscCommander` that adds a custom "echo" command.
 
-    This class adds a custom command ("echo") that is not supported by
-    the Test CSC. This includes help for the command.
-
     Inherit from `TestCscCommander` instead of `CscCommander` in order to
     test a custom override of a command supported by the Test CSC
-    ("setArrays") and to test hiding unsupported generic commands.
+    ("setArrays").
     """
 
     def __init__(self, **kwargs: typing.Any) -> None:
         super().__init__(**kwargs)
+        self.help_dict["echo"] = "any  # echo arguments, space-separated"
+
+    async def do_echo(self, args: str) -> None:
+        """Output the arguments."""
+        self.output(" ".join(args))
+
+
+class SynchronousCustomCommandCscCommander(salobj.CscCommander):
+    """A version of `CscCommander` that adds a synchronous custom command."""
+
+    def __init__(self, **kwargs: typing.Any) -> None:
+        super().__init__(name="Test", **kwargs)
         self.help_dict["echo"] = "any  # echo arguments, space-separated"
 
     def do_echo(self, args: str) -> None:
@@ -63,9 +71,6 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
         simulation_mode: int,
     ) -> salobj.BaseCsc:
         index = self.next_index()
-        self.commander = BasicCscCommander(index=index)
-        self.addAsyncCleanup(self.commander.close)
-        self.commander.testing = True
 
         return salobj.TestCsc(
             index=index,
@@ -75,40 +80,40 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
         )
 
     async def test_basics(self) -> None:
-        async with self.make_csc(initial_state=salobj.State.STANDBY):
-            await asyncio.wait_for(self.commander.start(), timeout=STD_TIMEOUT)
+        async with self.make_csc(initial_state=salobj.State.STANDBY), BasicCscCommander(
+            index=self.csc.salinfo.index
+        ) as commander:
+            commander.testing = True
             print("wait for summary state")
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             # Test a command that will fail because the CSC is not enabled
             print("run command that should fail")
             with salobj.assertRaisesAckError(ack=salobj.SalRetCode.CMD_FAILED):
-                await self.commander.run_command(
-                    f"wait {salobj.SalRetCode.CMD_COMPLETE} 5"
-                )
+                await commander.run_command(f"wait {salobj.SalRetCode.CMD_COMPLETE} 5")
             # Test some standard CSC commands
             print("run start command")
-            await self.commander.run_command("start")
+            await commander.run_command("start")
             await self.assert_next_summary_state(salobj.State.DISABLED)
             print("run enable command")
-            await self.commander.run_command("enable")
+            await commander.run_command("enable")
             await self.assert_next_summary_state(salobj.State.ENABLED)
             t0 = utils.current_tai()
             wait_time = 2  # seconds
             print("run wait command")
-            await self.commander.run_command(
+            await commander.run_command(
                 f"wait {salobj.SalRetCode.CMD_COMPLETE} {wait_time}"
             )
             dt = utils.current_tai() - t0
             # The margin of 0.2 compensates for the clock in Docker on macOS
             # not being strictly monotonic.
             assert dt >= wait_time - 0.2
-            self.commander.output_queue.clear()
+            commander.output_queue.clear()
 
             # Test the help command
-            await self.commander.run_command("help")
-            assert len(self.commander.output_queue) == 1
-            help_str = self.commander.output_queue.pop()
+            await commander.run_command("help")
+            assert len(commander.output_queue) == 1
+            help_str = commander.output_queue.pop()
             for substr in ("standby", "exitControl", "echo", "help"):
                 assert substr in help_str
             for hidden_command in ("abort", "enterControl", "setValue"):
@@ -117,12 +122,12 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
             # Test TestCscCommander's custom setArrays command handler
             # Too many values
             with pytest.raises(RuntimeError):
-                await self.commander.run_command("setArrays int0=1,2,3,4,5,6")
+                await commander.run_command("setArrays int0=1,2,3,4,5,6")
             # No such field
             with pytest.raises(RuntimeError):
-                await self.commander.run_command("setArrays no_such_field=1,2,3,4,5,6")
+                await commander.run_command("setArrays no_such_field=1,2,3,4,5,6")
             # A valid command
-            await self.commander.run_command("setArrays boolean0=0,1 int0=-2,33,42")
+            await commander.run_command("setArrays boolean0=0,1 int0=-2,33,42")
             for topic in self.csc.evt_arrays, self.csc.tel_arrays:
                 assert topic.data.boolean0 == [False, True, False, False, False]
                 assert topic.data.int0 == [-2, 33, 42, 0, 0]
@@ -148,20 +153,39 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
             ):
                 args = ["0"] * n_scalar_fields
                 args[bool_index] = good_bool_arg
-                await self.commander.run_command("setScalars " + " ".join(args))
+                await commander.run_command("setScalars " + " ".join(args))
                 assert self.csc.evt_scalars.data.boolean0 == value
 
             for bad_bool_arg in ("2", "fail", "falsely"):
                 args = ["0"] * n_scalar_fields
                 args[bool_index] = bad_bool_arg
                 with pytest.raises(ValueError):
-                    await self.commander.run_command("setScalars " + " ".join(args))
+                    await commander.run_command("setScalars " + " ".join(args))
 
             # Test BasicCscCommander's "echo" command
-            self.commander.output_queue.clear()
+            commander.output_queue.clear()
             argstr = "1   2.3   arbitrary   text"
-            await self.commander.run_command(f"echo {argstr}")
-            assert len(self.commander.output_queue) == 1
+            await commander.run_command(f"echo {argstr}")
+            assert len(commander.output_queue) == 1
             expected_output = " ".join(argstr.split())
-            output_str = self.commander.output_queue.pop()
+            output_str = commander.output_queue.pop()
             assert output_str == expected_output
+
+    async def test_synchronous_custom_command(self) -> None:
+        async with self.make_csc(initial_state=salobj.State.STANDBY):
+            # TODO DM-37502: modify this to expect construction to raise,
+            # once we drop support for synchronous callback functions.
+            with pytest.warns(DeprecationWarning):
+                async with SynchronousCustomCommandCscCommander(
+                    index=self.csc.salinfo.index
+                ) as commander:
+                    commander.testing = True
+                    print("wait for summary state")
+                    # Test BasicCscCommander's "echo" command
+                    commander.output_queue.clear()
+                    argstr = "1   2.3   arbitrary   text"
+                    await commander.run_command(f"echo {argstr}")
+                    assert len(commander.output_queue) == 1
+                    expected_output = " ".join(argstr.split())
+                    output_str = commander.output_queue.pop()
+                    assert output_str == expected_output
