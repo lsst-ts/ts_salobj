@@ -130,6 +130,11 @@ class CscCommander:
     telemetry_fields_to_not_compare : `List` [`str`], optional
         Telemetry field names to ignore when checking if a telemetry topic has
         changed enough to print the latest sample. These fields are printed.
+    telemetry_fields_compare_digits : `dict` [`str`, `int`]
+        Dict of telemetry field name: number of digits to round the value
+        to before comparing to see if the value has changed.
+        Silently ignored for non-float fields and fields that appear in
+        ``telemetry_fields_to_not_compare``.
 
     Attributes
     ----------
@@ -221,12 +226,13 @@ class CscCommander:
     def __init__(
         self,
         name: str,
-        index: None | int = 0,
+        index: int | None = 0,
         enable: bool = False,
-        exclude: None | Sequence[str] = None,
+        exclude: Sequence[str] | None = None,
         exclude_commands: Sequence[str] = (),
         fields_to_ignore: Sequence[str] = ("ignored", "value"),
         telemetry_fields_to_not_compare: Sequence[str] = ("timestamp",),
+        telemetry_fields_compare_digits: dict[str, int] | None = None,
     ) -> None:
         self.domain = domain.Domain()
         self.remote = remote.Remote(
@@ -235,6 +241,11 @@ class CscCommander:
         self.fields_to_ignore = frozenset(fields_to_ignore)
         self.telemetry_fields_to_not_compare = frozenset(
             telemetry_fields_to_not_compare
+        )
+        self.telemetry_fields_compare_digits = (
+            {}
+            if telemetry_fields_compare_digits is None
+            else telemetry_fields_compare_digits
         )
         self.tasks: set[asyncio.Future] = set()
         self.help_dict: dict[str, str] = dict()
@@ -361,7 +372,9 @@ help  # print this help
             if self.field_is_public(key)
         )
 
-    def get_rounded_public_data(self, data: typing.Any, digits: int = 2) -> typing.Any:
+    def get_rounded_public_data(
+        self, data: type_hints.BaseMsgType, digits: int = 2
+    ) -> dict[str, typing.Any]:
         """Get a dict of field_name: value for public fields of a DDS sample
         with float values rounded.
         """
@@ -371,7 +384,31 @@ help  # print this help
             if self.field_is_public(key)
         }
 
-    async def event_callback(self, data: typing.Any, name: str) -> None:
+    def get_telemetry_comparison_dict(
+        self, public_dict: dict[str, typing.Any], digits: int
+    ) -> dict[str, typing.Any]:
+        """Get a dict of field name: rounded data, for comparing new telemetry
+        to old.
+
+        Parameters
+        ----------
+        public_data : `dict` [`str`, `Any`]
+            Dict of field_name: value containing public fields
+            that are to be compared.
+        digits : `int`
+            The default number of digits to which to round float values.
+            May be overridden for specific fields using constructor argument
+            ``telemetry_fields_compare_digits``.
+        """
+        return {
+            key: round_any(
+                value, digits=self.telemetry_fields_compare_digits.get(key, digits)
+            )
+            for key, value in public_dict.items()
+            if key not in self.telemetry_fields_to_not_compare
+        }
+
+    async def event_callback(self, data: type_hints.BaseMsgType, name: str) -> None:
         """Generic callback for events.
 
         You may provide evt_<event_name> methods to override printing
@@ -390,7 +427,7 @@ help  # print this help
         )
 
     async def telemetry_callback(
-        self, data: typing.Any, name: str, digits: int = 2
+        self, data: type_hints.BaseMsgType, name: str, digits: int = 2
     ) -> None:
         """Generic callback for telemetry.
 
@@ -398,14 +435,12 @@ help  # print this help
         of specific telemetry topics.
         """
         prev_value_name = f"previous_tel_{name}"
-        public_dict = self.get_rounded_public_data(data, digits=digits)
-        trimmed_dict = {
-            name: value
-            for name, value in public_dict.items()
-            if name not in self.telemetry_fields_to_not_compare
-        }
-        if trimmed_dict != getattr(self, prev_value_name):
-            setattr(self, prev_value_name, trimmed_dict)
+        public_dict = self.get_public_data(data)
+        comparison_dict = self.get_telemetry_comparison_dict(
+            public_dict=public_dict, digits=digits
+        )
+        if comparison_dict != getattr(self, prev_value_name):
+            setattr(self, prev_value_name, comparison_dict)
             formatted_data = self.format_dict(public_dict)
             self.output(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
 
@@ -774,8 +809,8 @@ help  # print this help
 
     async def __aexit__(
         self,
-        type: None | typing.Type[BaseException],
-        value: None | BaseException,
-        traceback: None | types.TracebackType,
+        type: typing.Type[BaseException] | None,
+        value: BaseException | None,
+        traceback: types.TracebackType | None,
     ) -> None:
         await self.close()
