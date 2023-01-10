@@ -28,10 +28,12 @@ import asyncio
 import collections
 import enum
 import functools
+import inspect
 import shlex
 import sys
 import types
 import typing
+import warnings
 from collections.abc import AsyncGenerator, Callable, Sequence
 
 from . import csc_utils, domain, remote, sal_enums, type_hints
@@ -128,6 +130,11 @@ class CscCommander:
     telemetry_fields_to_not_compare : `List` [`str`], optional
         Telemetry field names to ignore when checking if a telemetry topic has
         changed enough to print the latest sample. These fields are printed.
+    telemetry_fields_compare_digits : `dict` [`str`, `int`]
+        Dict of telemetry field name: number of digits to round the value
+        to before comparing to see if the value has changed.
+        Silently ignored for non-float fields and fields that appear in
+        ``telemetry_fields_to_not_compare``.
 
     Attributes
     ----------
@@ -156,35 +163,29 @@ class CscCommander:
     Subclasses may provide overrides as follows:
 
     * To override handling of a standard command (one defined in the XML):
-      define a ``do_<command_name>`` method.
+      define an async ``do_<command_name>`` method.
       The method receives one argument: a list of str arguments.
       You should provide a custom handler for, or hide, any command with
       array parameters, because the command parser only accepts scalars.
 
     * To add an additional command (one not defined in the XML):
 
-        * Define a  ``do_<command_name>`` to handle the command.
+        * Define an async  ``do_<command_name>`` to handle the command.
           The method receives one argument: a list of str arguments.
 
         * Add an entry to ``help_dict``. The key is the command name
           and the value is a brief (preferably only one line) help string
-          that lists the arguments first, and a brief description after.
+          that lists the arguments first and a brief description after.
           Here is an example::
 
-            self.help_dict["sine"] = "start_position amplitude "
-            "# track one cycle of a sine wave",
+            self.help_dict["sine"] = \\
+                "start_position amplitude  # track one cycle of a sine wave"
 
-    * To override handling of an event or telemetry topic: define method
+    * To override handling of an event or telemetry topic: define async method
       ``evt_<event_name>_callback`` or ``tel_<event_name>_callback``,
-      respectively.  It receives one argument: the DDS sample.
+      respectively.  It receives one argument: the message data.
       This can be especially useful if the default behavior is too chatty
       for one or more telemetry topics.
-
-    I have not found a way to write a unit test for this class.
-    I tried running a commander in a subprocess but could not figure out
-    how to send multiple commands (the ``subprocess.communicate``
-    method only allows sending one item of data).
-    Instead I suggest manually running it to control the Test CSC.
 
     Examples
     --------
@@ -225,12 +226,13 @@ class CscCommander:
     def __init__(
         self,
         name: str,
-        index: None | int = 0,
+        index: int | None = 0,
         enable: bool = False,
-        exclude: None | Sequence[str] = None,
+        exclude: Sequence[str] | None = None,
         exclude_commands: Sequence[str] = (),
         fields_to_ignore: Sequence[str] = ("ignored", "value"),
         telemetry_fields_to_not_compare: Sequence[str] = ("timestamp",),
+        telemetry_fields_compare_digits: dict[str, int] | None = None,
     ) -> None:
         self.domain = domain.Domain()
         self.remote = remote.Remote(
@@ -239,6 +241,11 @@ class CscCommander:
         self.fields_to_ignore = frozenset(fields_to_ignore)
         self.telemetry_fields_to_not_compare = frozenset(
             telemetry_fields_to_not_compare
+        )
+        self.telemetry_fields_compare_digits = (
+            {}
+            if telemetry_fields_compare_digits is None
+            else telemetry_fields_compare_digits
         )
         self.tasks: set[asyncio.Future] = set()
         self.help_dict: dict[str, str] = dict()
@@ -271,6 +278,22 @@ class CscCommander:
             for name in self.remote.salinfo.command_names
             if name not in frozenset(exclude_commands)
         }
+
+        # Warn of synchronous do_ methods
+        # TODO DM-37502: modify this to raise (and update docs)
+        # once we drop support for synchronous callback functions.
+        all_members = inspect.getmembers(self, predicate=inspect.ismethod)
+        sync_do_member_names = [
+            member[0]
+            for member in all_members
+            if member[0].startswith("do_")
+            and not inspect.iscoroutinefunction(member[1])
+        ]
+        if sync_do_member_names:
+            warnings.warn(
+                f"Synchronous do_ methods are deprecated: {sorted(sync_do_member_names)}",
+                DeprecationWarning,
+            )
 
     def print_help(self) -> None:
         """Print help."""
@@ -349,7 +372,9 @@ help  # print this help
             if self.field_is_public(key)
         )
 
-    def get_rounded_public_data(self, data: typing.Any, digits: int = 2) -> typing.Any:
+    def get_rounded_public_data(
+        self, data: type_hints.BaseMsgType, digits: int = 2
+    ) -> dict[str, typing.Any]:
         """Get a dict of field_name: value for public fields of a DDS sample
         with float values rounded.
         """
@@ -359,7 +384,31 @@ help  # print this help
             if self.field_is_public(key)
         }
 
-    def event_callback(self, data: typing.Any, name: str) -> None:
+    def get_telemetry_comparison_dict(
+        self, public_dict: dict[str, typing.Any], digits: int
+    ) -> dict[str, typing.Any]:
+        """Get a dict of field name: rounded data, for comparing new telemetry
+        to old.
+
+        Parameters
+        ----------
+        public_data : `dict` [`str`, `Any`]
+            Dict of field_name: value containing public fields
+            that are to be compared.
+        digits : `int`
+            The default number of digits to which to round float values.
+            May be overridden for specific fields using constructor argument
+            ``telemetry_fields_compare_digits``.
+        """
+        return {
+            key: round_any(
+                value, digits=self.telemetry_fields_compare_digits.get(key, digits)
+            )
+            for key, value in public_dict.items()
+            if key not in self.telemetry_fields_to_not_compare
+        }
+
+    async def event_callback(self, data: type_hints.BaseMsgType, name: str) -> None:
         """Generic callback for events.
 
         You may provide evt_<event_name> methods to override printing
@@ -367,7 +416,7 @@ help  # print this help
         """
         self.output(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
 
-    def evt_summaryState_callback(self, data: type_hints.BaseMsgType) -> None:
+    async def evt_summaryState_callback(self, data: type_hints.BaseMsgType) -> None:
         state_int: int = data.summaryState  # type: ignore
         try:
             state_repr: str = repr(sal_enums.State(state_int))
@@ -377,21 +426,21 @@ help  # print this help
             f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state_repr}"
         )
 
-    def telemetry_callback(self, data: typing.Any, name: str, digits: int = 2) -> None:
+    async def telemetry_callback(
+        self, data: type_hints.BaseMsgType, name: str, digits: int = 2
+    ) -> None:
         """Generic callback for telemetry.
 
         You may provide tel_<telemetry_name> methods to override printing
         of specific telemetry topics.
         """
         prev_value_name = f"previous_tel_{name}"
-        public_dict = self.get_rounded_public_data(data, digits=digits)
-        trimmed_dict = {
-            name: value
-            for name, value in public_dict.items()
-            if name not in self.telemetry_fields_to_not_compare
-        }
-        if trimmed_dict != getattr(self, prev_value_name):
-            setattr(self, prev_value_name, trimmed_dict)
+        public_dict = self.get_public_data(data)
+        comparison_dict = self.get_telemetry_comparison_dict(
+            public_dict=public_dict, digits=digits
+        )
+        if comparison_dict != getattr(self, prev_value_name):
+            setattr(self, prev_value_name, comparison_dict)
             formatted_data = self.format_dict(public_dict)
             self.output(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
 
@@ -556,21 +605,20 @@ help  # print this help
         command_name = tokens[0]
         args = tokens[1:]
         command_method = getattr(self, f"do_{command_name}", None)
-        coro = None
+        result = None
         if command_name == "help":
             self.print_help()
         elif command_method is not None:
             print(f"run_command running command method {command_method}")
-            coro = command_method(args)
+            result = command_method(args)
         elif command_name in self.command_dict:
             print("run_command running command from dict")
-            coro = self.run_command_topic(command_name, args)
+            result = self.run_command_topic(command_name, args)
         else:
             self.output(f"Unrecognized command: {command_name}")
 
-        if coro is None:
-            return
-        await coro
+        if inspect.isawaitable(result):
+            await result
 
     async def _run_command_and_output(self, cmd: str) -> None:
         """Execute a command and wait for it to finish. Output the result.
@@ -761,8 +809,8 @@ help  # print this help
 
     async def __aexit__(
         self,
-        type: None | typing.Type[BaseException],
-        value: None | BaseException,
-        traceback: None | types.TracebackType,
+        type: typing.Type[BaseException] | None,
+        value: BaseException | None,
+        traceback: types.TracebackType | None,
     ) -> None:
         await self.close()
