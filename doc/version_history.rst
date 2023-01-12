@@ -30,6 +30,49 @@ vKafka
 * `BaseCsc`: stop setting $OSPL_MASTER_PRIORITY; it is not needed for Kafka.
   Delete constant ``MASTER_PRIORITY_ENV_VAR``.
 
+v7.3.0
+------
+
+* Deprecate synchronous callbacks from ReadTopic, including ``do_x`` methods in CSCs and SAL scripts.
+  Also deprecate synchronous ``do_x`` methods in CSC commanders (DM-37501).
+* `CscCommander`: add ``telemetry_fields_compare_digits`` constructor argument.
+* Improve error output from `BaseConfigTestCase.check_config_files` (DM-37500).
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
+v7.2.2
+------
+
+* `CscCommander`: remove outdated information from the doc string.
+* ``command_test_csc``: call the correct function.
+* `TestCscCommander`: remove unused constructor arguments.
+* Make mypy 0.991 happy.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
+v7.2.1
+------
+
+* Modernize the conda recipe.
+* Add mypy to pre-commit and update other pre-commit tasks.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
 v7.2.0
 ------
 
