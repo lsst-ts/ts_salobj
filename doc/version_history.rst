@@ -6,6 +6,21 @@
 Version History
 ###############
 
+v7.2.2
+------
+
+* `CscCommander`: remove outdated information from the doc string.
+* ``command_test_csc``: call the correct function.
+* `TestCscCommander`: remove unused constructor arguments.
+* Make mypy 0.991 happy.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
 v7.2.1
 ------
 
