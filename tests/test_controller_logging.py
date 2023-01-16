@@ -90,6 +90,13 @@ class ControllerLoggingTestCase(
             assert msg.level == logging.INFO
             assert msg.traceback == ""
 
+            info_message = "message from background thread"
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.csc.log.info, info_message)
+            await self.assert_next_sample(
+                topic=self.remote.evt_logMessage, message=info_message
+            )
+
             filepath = pathlib.Path(__file__)
             subpath = "/".join(filepath.parts[-2:])
             assert msg.filePath.endswith(
