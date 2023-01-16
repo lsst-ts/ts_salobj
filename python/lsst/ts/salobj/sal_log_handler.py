@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["SalLogHandler"]
 
 import asyncio
+import concurrent.futures
 import logging
 import sys
 import typing
@@ -46,14 +47,21 @@ class SalLogHandler(logging.Handler):
     def __init__(self, controller: Controller) -> None:
         self.controller = controller
         self.loop = asyncio.get_running_loop()
+        self.futures: list[concurrent.futures.Future] = list()
         super().__init__()
+
+    def close(self) -> None:
+        while self.futures:
+            f = self.futures.pop(-1)
+            f.cancel()
+        super().close()
 
     def emit(self, record: logging.LogRecord) -> None:
         message = "(unknown)"
         try:
             self.format(record)
             message = record.message
-            asyncio.run_coroutine_threadsafe(
+            new_future = asyncio.run_coroutine_threadsafe(
                 coro=self._async_emit(
                     name=record.name,
                     level=record.levelno,
@@ -66,6 +74,7 @@ class SalLogHandler(logging.Handler):
                 ),
                 loop=self.loop,
             )
+            self.futures = [f for f in self.futures if not f.done()] + [new_future]
         except Exception as e:
             print(
                 f"SalLogHandler.emit of level={record.levelno}, "
