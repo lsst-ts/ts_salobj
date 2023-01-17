@@ -254,12 +254,13 @@ class AsyncS3Bucket:
         key : `str`
             Name to use for the file in the bucket.
         callback : callable, optional
-            Function to call with updates while writing. The function receives
-            one argument: the number of bytes written. If the transfer is
-            successful then it will always be called at least once,
-            and the sum of the number of bytes for all calls will equal
-            the size of the file.
-            The callback function is called by ``S3.Bucket.upload_fileobj``.
+            Synchronous function to call with updates while writing.
+            The function receives one argument: the number of bytes written.
+            If the transfer is successful then it will always be called
+            at least once, and the sum of the number of bytes for all calls
+            will equal the size of the file.
+            The function is called by the ``boto3`` library, which is why
+            it must be synchronous.
 
         Notes
         -----

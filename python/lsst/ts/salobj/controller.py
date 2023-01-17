@@ -535,7 +535,7 @@ class Controller:
             func = getattr(self, f"do_{cmd_name}", self._unsupported_cmd_callback)
             cmd.callback = func
 
-    def _unsupported_cmd_callback(self, data: BaseMsgType) -> None:
+    async def _unsupported_cmd_callback(self, data: BaseMsgType) -> None:
         """Callback for unsupported commands.
 
         Only used if do_callbacks and allow_missing_callbacks are both true,
