@@ -10,9 +10,6 @@ source:
 build:
   noarch: generic
   script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
-  entry_points:
-    - command_test_csc = lsst.ts.salobj:command_test_csc
-    - run_test_csc = lsst.ts.salobj:run_test_csc
   script_env:
     - PATH
     - PYTHONPATH
