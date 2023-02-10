@@ -443,7 +443,7 @@ help  # print this help
     async def telemetry_callback(
         self, data: type_hints.BaseMsgType, name: str, digits: int = 2
     ) -> None:
-        """Generic callback for telemetry.
+        """Default callback for telemetry topics.
 
         Print the telemetry information if it has changed enough
         (as specified by ``digits``).
@@ -471,12 +471,12 @@ help  # print this help
           The event published when the data changes significantly.
           One good candidate is the generic clockOffset event.
         """
-        prev_value_name = f"previous_tel_{name}"
+        prev_value_name = f"previous_{name}"
         public_dict = self.get_public_data(data)
         comparison_dict = self.get_telemetry_comparison_dict(
             public_dict=public_dict, digits=digits
         )
-        if comparison_dict != getattr(self, prev_value_name):
+        if comparison_dict != getattr(self, prev_value_name, None):
             setattr(self, prev_value_name, comparison_dict)
             formatted_data = self.format_dict(public_dict)
             self.output(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
