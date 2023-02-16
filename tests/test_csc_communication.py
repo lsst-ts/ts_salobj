@@ -173,7 +173,6 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 async with self.make_remote(
                     identity=other_name_index
                 ) as other_csc_remote:
-
                     all_csc_names = ["ATDome", "Hexapod:1", other_name_index]
                     for csc_names in all_permutations(all_csc_names):
                         csc_names_str = ", ".join(csc_names)

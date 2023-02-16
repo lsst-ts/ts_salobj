@@ -63,7 +63,6 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-
         metrics = (
             verify.Metric(
                 name="salobj.CreateClasses",
@@ -269,7 +268,6 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         async with salobj.Controller(
             name="Test", index=self.index, do_callbacks=False
         ) as controller:
-
             num_samples = 1000
 
             t0 = time.monotonic()

@@ -687,7 +687,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     # once we drop support for synchronous callback functions.
     # Possibly combine it with test_callbacks?
     async def test_synchronous_callbacks(self) -> None:
-
         num_commands = 3
 
         evt_data_list: typing.List[salobj.BaseMsgType] = []
