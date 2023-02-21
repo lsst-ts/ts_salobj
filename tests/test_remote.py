@@ -47,7 +47,6 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
         async with salobj.Domain() as domain, salobj.SalInfo(
             domain=domain, name="Test", index=index
         ) as salinfo:
-
             # all possible expected topic names
             all_command_names = set(salinfo.command_names)
             all_event_names = set(salinfo.event_names)

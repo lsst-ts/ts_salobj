@@ -1,0 +1,8 @@
+After a mysterious change to fix a complain in logging I only get one of these warnings
+
+tests/test_sal_info.py::SalInfoTestCase::test_salinfo_constructor
+tests/test_sal_info.py::SalInfoTestCase::test_write_only
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:97: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.

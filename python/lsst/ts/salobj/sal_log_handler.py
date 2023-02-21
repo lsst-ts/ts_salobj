@@ -24,12 +24,16 @@ from __future__ import annotations
 __all__ = ["SalLogHandler"]
 
 import asyncio
+import concurrent.futures
 import logging
 import sys
+import threading
 import typing
 
 if typing.TYPE_CHECKING:
     from .controller import Controller
+
+MixedFutureType = asyncio.Future | concurrent.futures.Future
 
 
 class SalLogHandler(logging.Handler):
@@ -46,35 +50,51 @@ class SalLogHandler(logging.Handler):
     def __init__(self, controller: Controller) -> None:
         self.controller = controller
         self.loop = asyncio.get_running_loop()
+        self.main_thread_id = threading.get_ident()
+        self.futures: list[MixedFutureType] = list()
         super().__init__()
+
+    def close(self) -> None:
+        while self.futures:
+            f = self.futures.pop(-1)
+            f.cancel()
+        super().close()
 
     def emit(self, record: logging.LogRecord) -> None:
         message = "(unknown)"
         try:
             self.format(record)
-            message = record.message
-            asyncio.run_coroutine_threadsafe(
-                coro=self._async_emit(
-                    name=record.name,
-                    level=record.levelno,
-                    # OpenSplice requires latin-1 (utf-8 doesn't work).
-                    message=record.message.encode("utf-8", "replace").decode(
-                        "latin-1", "replace"
-                    ),
-                    traceback=(
-                        ""
-                        if record.exc_text is None
-                        else record.exc_text.encode("utf-8", "replace").decode(
-                            "latin-1", "replace"
-                        )
-                    ),
-                    filePath=record.pathname,
-                    functionName=record.funcName,
-                    lineNumber=record.lineno,
-                    process=0 if record.process is None else record.process,
-                ),
-                loop=self.loop,
+            message = record.message.encode("utf-8", "replace").decode(
+                "latin-1", "replace"
             )
+            if threading.get_ident() == self.main_thread_id:
+                new_future: MixedFutureType = asyncio.create_task(
+                    self._async_emit(
+                        name=record.name,
+                        level=record.levelno,
+                        message=message,
+                        traceback=record.exc_text or "",
+                        filePath=record.pathname,
+                        functionName=record.funcName,
+                        lineNumber=record.lineno,
+                        process=record.process or 0,
+                    )
+                )
+            else:
+                new_future = asyncio.run_coroutine_threadsafe(
+                    coro=self._async_emit(
+                        name=record.name,
+                        level=record.levelno,
+                        message=message,
+                        traceback=record.exc_text or "",
+                        filePath=record.pathname,
+                        functionName=record.funcName,
+                        lineNumber=record.lineno,
+                        process=record.process or 0,
+                    ),
+                    loop=self.loop,
+                )
+            self.futures = [f for f in self.futures if not f.done()] + [new_future]
         except Exception as e:
             print(
                 f"SalLogHandler.emit of level={record.levelno}, "

@@ -206,7 +206,6 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_setCheckpoints(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
-
             # try valid values
             data = script.cmd_setCheckpoints.DataType()
             for pause, stop in (

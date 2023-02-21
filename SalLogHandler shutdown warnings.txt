@@ -1,0 +1,2132 @@
+(lsst-scipipe-4.1.0) UW/LSST/tsrepos/ts_salobj u/rowen/DM-37594% pytest -v
+================================================================ test session starts ================================================================
+platform darwin -- Python 3.10.6, pytest-7.1.2, pluggy-1.0.0 -- /Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase('/Users/rowen/UW/LSST/tsrepos/ts_salobj/.hypothesis/examples')
+rootdir: /Users/rowen/UW/LSST/tsrepos/ts_salobj, configfile: pyproject.toml
+plugins: hypothesis-6.47.1, mypy-0.8.0, xdist-2.5.0, remotedata-0.3.3, forked-1.4.0, arraydiff-0.3, black-0.3.12, asdf-2.10.1, flake8-1.1.1, mock-3.8.2, astropy-0.10.0, session2file-0.1.11, subtests-0.8.0, filter-subpackage-0.1.1, openfiles-0.5.0, doctestplus-0.12.0, anyio-3.6.2, astropy-header-0.1.2, cov-3.0.0
+collected 360 items                                                                                                                                 
+
+measure_read_speed.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                      [  0%]
+measure_read_speed.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                          [  0%]
+measure_read_speed.py::mypy PASSED                                                                                                            [  0%]
+measure_read_speed.py::mypy-status PASSED                                                                                                     [  1%]
+measure_write_speed.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                     [  1%]
+measure_write_speed.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                         [  1%]
+measure_write_speed.py::mypy PASSED                                                                                                           [  1%]
+setup.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                                   [  2%]
+setup.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                                       [  2%]
+setup.py::mypy PASSED                                                                                                                         [  2%]
+doc/conf.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                                [  3%]
+doc/conf.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                                    [  3%]
+doc/conf.py::mypy PASSED                                                                                                                      [  3%]
+python/lsst/ts/salobj/__init__.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                          [  3%]
+python/lsst/ts/salobj/__init__.py::BLACK SKIPPED (file(s) previously passed black format checks)                                              [  4%]
+python/lsst/ts/salobj/__init__.py::mypy PASSED                                                                                                [  4%]
+python/lsst/ts/salobj/async_s3_bucket.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                   [  4%]
+python/lsst/ts/salobj/async_s3_bucket.py::BLACK SKIPPED (file(s) previously passed black format checks)                                       [  5%]
+python/lsst/ts/salobj/async_s3_bucket.py::mypy PASSED                                                                                         [  5%]
+python/lsst/ts/salobj/base.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                              [  5%]
+python/lsst/ts/salobj/base.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                  [  5%]
+python/lsst/ts/salobj/base.py::mypy PASSED                                                                                                    [  6%]
+python/lsst/ts/salobj/base_config_test_case.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                             [  6%]
+python/lsst/ts/salobj/base_config_test_case.py::BLACK SKIPPED (file(s) previously passed black format checks)                                 [  6%]
+python/lsst/ts/salobj/base_config_test_case.py::mypy PASSED                                                                                   [  6%]
+python/lsst/ts/salobj/base_csc.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                          [  7%]
+python/lsst/ts/salobj/base_csc.py::BLACK SKIPPED (file(s) previously passed black format checks)                                              [  7%]
+python/lsst/ts/salobj/base_csc.py::mypy PASSED                                                                                                [  7%]
+python/lsst/ts/salobj/base_csc_test_case.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                [  8%]
+python/lsst/ts/salobj/base_csc_test_case.py::BLACK SKIPPED (file(s) previously passed black format checks)                                    [  8%]
+python/lsst/ts/salobj/base_csc_test_case.py::mypy PASSED                                                                                      [  8%]
+python/lsst/ts/salobj/base_script.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                       [  8%]
+python/lsst/ts/salobj/base_script.py::BLACK SKIPPED (file(s) previously passed black format checks)                                           [  9%]
+python/lsst/ts/salobj/base_script.py::mypy PASSED                                                                                             [  9%]
+python/lsst/ts/salobj/component_info.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                    [  9%]
+python/lsst/ts/salobj/component_info.py::BLACK SKIPPED (file(s) previously passed black format checks)                                        [ 10%]
+python/lsst/ts/salobj/component_info.py::mypy PASSED                                                                                          [ 10%]
+python/lsst/ts/salobj/config_schema.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                     [ 10%]
+python/lsst/ts/salobj/config_schema.py::BLACK SKIPPED (file(s) previously passed black format checks)                                         [ 10%]
+python/lsst/ts/salobj/config_schema.py::mypy PASSED                                                                                           [ 11%]
+python/lsst/ts/salobj/configurable_csc.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                  [ 11%]
+python/lsst/ts/salobj/configurable_csc.py::BLACK SKIPPED (file(s) previously passed black format checks)                                      [ 11%]
+python/lsst/ts/salobj/configurable_csc.py::mypy PASSED                                                                                        [ 11%]
+python/lsst/ts/salobj/controller.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                        [ 12%]
+python/lsst/ts/salobj/controller.py::BLACK SKIPPED (file(s) previously passed black format checks)                                            [ 12%]
+python/lsst/ts/salobj/controller.py::mypy PASSED                                                                                              [ 12%]
+python/lsst/ts/salobj/csc_commander.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                     [ 13%]
+python/lsst/ts/salobj/csc_commander.py::BLACK SKIPPED (file(s) previously passed black format checks)                                         [ 13%]
+python/lsst/ts/salobj/csc_commander.py::mypy PASSED                                                                                           [ 13%]
+python/lsst/ts/salobj/csc_utils.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                         [ 13%]
+python/lsst/ts/salobj/csc_utils.py::BLACK SKIPPED (file(s) previously passed black format checks)                                             [ 14%]
+python/lsst/ts/salobj/csc_utils.py::mypy PASSED                                                                                               [ 14%]
+python/lsst/ts/salobj/domain.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                            [ 14%]
+python/lsst/ts/salobj/domain.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                [ 15%]
+python/lsst/ts/salobj/domain.py::mypy PASSED                                                                                                  [ 15%]
+python/lsst/ts/salobj/field_info.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                        [ 15%]
+python/lsst/ts/salobj/field_info.py::BLACK SKIPPED (file(s) previously passed black format checks)                                            [ 15%]
+python/lsst/ts/salobj/field_info.py::mypy PASSED                                                                                              [ 16%]
+python/lsst/ts/salobj/hierarchical_update.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                               [ 16%]
+python/lsst/ts/salobj/hierarchical_update.py::BLACK SKIPPED (file(s) previously passed black format checks)                                   [ 16%]
+python/lsst/ts/salobj/hierarchical_update.py::mypy PASSED                                                                                     [ 16%]
+python/lsst/ts/salobj/make_avro_schemas.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                 [ 17%]
+python/lsst/ts/salobj/make_avro_schemas.py::BLACK SKIPPED (file(s) previously passed black format checks)                                     [ 17%]
+python/lsst/ts/salobj/make_avro_schemas.py::mypy PASSED                                                                                       [ 17%]
+python/lsst/ts/salobj/remote.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                            [ 18%]
+python/lsst/ts/salobj/remote.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                [ 18%]
+python/lsst/ts/salobj/remote.py::mypy PASSED                                                                                                  [ 18%]
+python/lsst/ts/salobj/sal_enums.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                         [ 18%]
+python/lsst/ts/salobj/sal_enums.py::BLACK SKIPPED (file(s) previously passed black format checks)                                             [ 19%]
+python/lsst/ts/salobj/sal_enums.py::mypy PASSED                                                                                               [ 19%]
+python/lsst/ts/salobj/sal_info.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                          [ 19%]
+python/lsst/ts/salobj/sal_info.py::BLACK SKIPPED (file(s) previously passed black format checks)                                              [ 20%]
+python/lsst/ts/salobj/sal_info.py::mypy PASSED                                                                                                [ 20%]
+python/lsst/ts/salobj/sal_log_handler.py::flake-8::FLAKE8 PASSED                                                                              [ 20%]
+python/lsst/ts/salobj/sal_log_handler.py::BLACK PASSED                                                                                        [ 20%]
+python/lsst/ts/salobj/sal_log_handler.py::mypy PASSED                                                                                         [ 21%]
+python/lsst/ts/salobj/testcsc.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                           [ 21%]
+python/lsst/ts/salobj/testcsc.py::BLACK SKIPPED (file(s) previously passed black format checks)                                               [ 21%]
+python/lsst/ts/salobj/testcsc.py::mypy PASSED                                                                                                 [ 21%]
+python/lsst/ts/salobj/testcsccommander.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                  [ 22%]
+python/lsst/ts/salobj/testcsccommander.py::BLACK SKIPPED (file(s) previously passed black format checks)                                      [ 22%]
+python/lsst/ts/salobj/testcsccommander.py::mypy PASSED                                                                                        [ 22%]
+python/lsst/ts/salobj/testscript.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                        [ 23%]
+python/lsst/ts/salobj/testscript.py::BLACK SKIPPED (file(s) previously passed black format checks)                                            [ 23%]
+python/lsst/ts/salobj/testscript.py::mypy PASSED                                                                                              [ 23%]
+python/lsst/ts/salobj/testutils.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                         [ 23%]
+python/lsst/ts/salobj/testutils.py::BLACK SKIPPED (file(s) previously passed black format checks)                                             [ 24%]
+python/lsst/ts/salobj/testutils.py::mypy PASSED                                                                                               [ 24%]
+python/lsst/ts/salobj/topic_info.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                        [ 24%]
+python/lsst/ts/salobj/topic_info.py::BLACK SKIPPED (file(s) previously passed black format checks)                                            [ 25%]
+python/lsst/ts/salobj/topic_info.py::mypy PASSED                                                                                              [ 25%]
+python/lsst/ts/salobj/type_hints.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                        [ 25%]
+python/lsst/ts/salobj/type_hints.py::BLACK SKIPPED (file(s) previously passed black format checks)                                            [ 25%]
+python/lsst/ts/salobj/type_hints.py::mypy PASSED                                                                                              [ 26%]
+python/lsst/ts/salobj/validator.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                         [ 26%]
+python/lsst/ts/salobj/validator.py::BLACK SKIPPED (file(s) previously passed black format checks)                                             [ 26%]
+python/lsst/ts/salobj/validator.py::mypy PASSED                                                                                               [ 26%]
+python/lsst/ts/salobj/topics/__init__.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                   [ 27%]
+python/lsst/ts/salobj/topics/__init__.py::BLACK SKIPPED (file(s) previously passed black format checks)                                       [ 27%]
+python/lsst/ts/salobj/topics/__init__.py::mypy PASSED                                                                                         [ 27%]
+python/lsst/ts/salobj/topics/base_topic.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                 [ 28%]
+python/lsst/ts/salobj/topics/base_topic.py::BLACK SKIPPED (file(s) previously passed black format checks)                                     [ 28%]
+python/lsst/ts/salobj/topics/base_topic.py::mypy PASSED                                                                                       [ 28%]
+python/lsst/ts/salobj/topics/controller_command.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                         [ 28%]
+python/lsst/ts/salobj/topics/controller_command.py::BLACK SKIPPED (file(s) previously passed black format checks)                             [ 29%]
+python/lsst/ts/salobj/topics/controller_command.py::mypy PASSED                                                                               [ 29%]
+python/lsst/ts/salobj/topics/controller_event.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                           [ 29%]
+python/lsst/ts/salobj/topics/controller_event.py::BLACK SKIPPED (file(s) previously passed black format checks)                               [ 30%]
+python/lsst/ts/salobj/topics/controller_event.py::mypy PASSED                                                                                 [ 30%]
+python/lsst/ts/salobj/topics/controller_telemetry.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                       [ 30%]
+python/lsst/ts/salobj/topics/controller_telemetry.py::BLACK SKIPPED (file(s) previously passed black format checks)                           [ 30%]
+python/lsst/ts/salobj/topics/controller_telemetry.py::mypy PASSED                                                                             [ 31%]
+python/lsst/ts/salobj/topics/read_topic.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                 [ 31%]
+python/lsst/ts/salobj/topics/read_topic.py::BLACK SKIPPED (file(s) previously passed black format checks)                                     [ 31%]
+python/lsst/ts/salobj/topics/read_topic.py::mypy PASSED                                                                                       [ 31%]
+python/lsst/ts/salobj/topics/remote_command.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                             [ 32%]
+python/lsst/ts/salobj/topics/remote_command.py::BLACK SKIPPED (file(s) previously passed black format checks)                                 [ 32%]
+python/lsst/ts/salobj/topics/remote_command.py::mypy PASSED                                                                                   [ 32%]
+python/lsst/ts/salobj/topics/remote_event.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                               [ 33%]
+python/lsst/ts/salobj/topics/remote_event.py::BLACK SKIPPED (file(s) previously passed black format checks)                                   [ 33%]
+python/lsst/ts/salobj/topics/remote_event.py::mypy PASSED                                                                                     [ 33%]
+python/lsst/ts/salobj/topics/remote_telemetry.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                           [ 33%]
+python/lsst/ts/salobj/topics/remote_telemetry.py::BLACK SKIPPED (file(s) previously passed black format checks)                               [ 34%]
+python/lsst/ts/salobj/topics/remote_telemetry.py::mypy PASSED                                                                                 [ 34%]
+python/lsst/ts/salobj/topics/write_topic.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                [ 34%]
+python/lsst/ts/salobj/topics/write_topic.py::BLACK SKIPPED (file(s) previously passed black format checks)                                    [ 35%]
+python/lsst/ts/salobj/topics/write_topic.py::mypy PASSED                                                                                      [ 35%]
+tests/test_async_s3_bucket.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                              [ 35%]
+tests/test_async_s3_bucket.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                  [ 35%]
+tests/test_async_s3_bucket.py::mypy PASSED                                                                                                    [ 36%]
+tests/test_async_s3_bucket.py::AsyncS3BucketTest::test_attributes PASSED                                                                      [ 36%]
+tests/test_async_s3_bucket.py::AsyncS3BucketTest::test_blank_s3_endpoint_url PASSED                                                           [ 36%]
+tests/test_async_s3_bucket.py::AsyncS3BucketTest::test_callbacks PASSED                                                                       [ 36%]
+tests/test_async_s3_bucket.py::AsyncS3BucketTest::test_exists PASSED                                                                          [ 37%]
+tests/test_async_s3_bucket.py::AsyncS3BucketTest::test_file_transfer PASSED                                                                   [ 37%]
+tests/test_async_s3_bucket.py::AsyncS3BucketTest::test_no_s3_endpoint_url PASSED                                                              [ 37%]
+tests/test_async_s3_bucket.py::AsyncS3BucketTest::test_size PASSED                                                                            [ 38%]
+tests/test_async_s3_bucket.py::AsyncS3BucketTest::test_specified_s3_endpoint_url PASSED                                                       [ 38%]
+tests/test_async_s3_bucket.py::AsyncS3BucketClassmethodTest::test_env_var_secrets PASSED                                                      [ 38%]
+tests/test_async_s3_bucket.py::AsyncS3BucketClassmethodTest::test_make_bucket_name_bad PASSED                                                 [ 38%]
+tests/test_async_s3_bucket.py::AsyncS3BucketClassmethodTest::test_make_bucket_name_good PASSED                                                [ 39%]
+tests/test_async_s3_bucket.py::AsyncS3BucketClassmethodTest::test_make_key PASSED                                                             [ 39%]
+tests/test_base_script.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                  [ 39%]
+tests/test_base_script.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                      [ 40%]
+tests/test_base_script.py::mypy PASSED                                                                                                        [ 40%]
+tests/test_base_script.py::BaseScriptTestCase::test_amain_bad_kwargs PASSED                                                                   [ 40%]
+tests/test_base_script.py::BaseScriptTestCase::test_configure_failed PASSED                                                                   [ 40%]
+tests/test_base_script.py::BaseScriptTestCase::test_fail_cleanup threadPASSED                                                                       [ 41%]
+tests/test_base_script.py::BaseScriptTestCase::test_fail_run PASSED                                                                           [ 41%]
+tests/test_base_script.py::BaseScriptTestCase::test_get_schema PASSED                                                                         [ 41%]
+tests/test_base_script.py::BaseScriptTestCase::test_next_supplemented_group_id PASSED                                                         [ 41%]
+tests/test_base_script.py::BaseScriptTestCase::test_non_configurable_script_empty_config PASSED                                               [ 42%]
+tests/test_base_script.py::BaseScriptTestCase::test_non_configurable_script_get_schema PASSED                                                 [ 42%]
+tests/test_base_script.py::BaseScriptTestCase::test_non_configurable_script_invalid_config PASSED                                             [ 42%]
+tests/test_base_script.py::BaseScriptTestCase::test_pause PASSED                                                                              [ 43%]
+tests/test_base_script.py::BaseScriptTestCase::test_remote PASSED                                                                             [ 43%]
+tests/test_base_script.py::BaseScriptTestCase::test_script_process PASSED                                                                     [ 43%]
+tests/test_base_script.py::BaseScriptTestCase::test_script_schema_process PASSED                                                              [ 43%]
+tests/test_base_script.py::BaseScriptTestCase::test_setCheckpoints PASSED                                                                     [ 44%]
+tests/test_base_script.py::BaseScriptTestCase::test_set_state_and_attributes PASSED                                                           [ 44%]
+tests/test_base_script.py::BaseScriptTestCase::test_stop_at_checkpoint PASSED                                                                 [ 44%]
+tests/test_base_script.py::BaseScriptTestCase::test_stop_while_paused PASSED                                                                  [ 45%]
+tests/test_base_script.py::BaseScriptTestCase::test_stop_while_running PASSED                                                                 [ 45%]
+tests/test_base_script.py::BaseScriptTestCase::test_zero_index PASSED                                                                         [ 45%]
+tests/test_basics.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                       [ 45%]
+tests/test_basics.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                           [ 46%]
+tests/test_basics.py::mypy PASSED                                                                                                             [ 46%]
+tests/test_basics.py::BasicsTestCase::test_ack_error_repr PASSED                                                                              [ 46%]
+tests/test_basics.py::BasicsTestCase::test_assert_raises_ack_error PASSED                                                                     [ 46%]
+tests/test_basics.py::BasicsTestCase::test_domain_attr PASSED                                                                                 [ 47%]
+tests/test_basics.py::BasicsTestCase::test_get_user_host PASSED                                                                               [ 47%]
+tests/test_basics.py::BasicsTestCase::test_name_to_name_index PASSED                                                                          [ 47%]
+tests/test_basics.py::BasicsTestCase::test_set_random_topic_subname PASSED                                                                    [ 48%]
+tests/test_component_info.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                               [ 48%]
+tests/test_component_info.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                   [ 48%]
+tests/test_component_info.py::mypy PASSED                                                                                                     [ 48%]
+tests/test_component_info.py::ComponentInfoTestCase::test_arrays_and_scalars_field_info PASSED                                                [ 49%]
+tests/test_component_info.py::ComponentInfoTestCase::test_avro_schemas PASSED                                                                 [ 49%]
+tests/test_component_info.py::ComponentInfoTestCase::test_component_info_for_test PASSED                                                      [ 49%]
+tests/test_component_info.py::ComponentInfoTestCase::test_topic_info_make_dataclass PASSED                                                    [ 50%]
+tests/test_config_files.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                 [ 50%]
+tests/test_config_files.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                     [ 50%]
+tests/test_config_files.py::mypy PASSED                                                                                                       [ 50%]
+tests/test_config_files.py::ConfigTestCase::test_get_schema PASSED                                                                            [ 51%]
+tests/test_config_files.py::ConfigTestCase::test_local_configs PASSED                                                                         [ 51%]
+tests/test_config_files.py::ConfigTestCase::test_standard_configs PASSED                                                                      [ 51%]
+tests/test_controller.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                   [ 51%]
+tests/test_controller.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                       [ 52%]
+tests/test_controller.py::mypy PASSED                                                                                                         [ 52%]
+tests/test_controller.py::ControllerConstructorTestCase::test_do_callbacks_false PASSED                                                       [ 52%]
+tests/test_controller.py::ControllerConstructorTestCase::test_do_callbacks_true PASSED                                                        [ 53%]
+tests/test_controller.py::ControllerConstructorTestCase::test_write_only_true PASSED                                                          [ 53%]
+tests/test_controller_logging.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                           [ 53%]
+tests/test_controller_logging.py::BLACK SKIPPED (file(s) previously passed black format checks)                                               [ 53%]
+tests/test_controller_logging.py::mypy PASSED                                                                                                 [ 54%]
+tests/test_controller_logging.py::ControllerLoggingTestCase::test_logging PASSED                                                              [ 54%]
+tests/test_csc_commander.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                [ 54%]
+tests/test_csc_commander.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                    [ 55%]
+tests/test_csc_commander.py::mypy PASSED                                                                                                      [ 55%]
+tests/test_csc_commander.py::CscCommanderTestCase::test_basics PASSED                                                                         [ 55%]
+tests/test_csc_commander.py::CscCommanderTestCase::test_synchronous_custom_command PASSED                                                     [ 55%]
+tests/test_csc_communication.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                            [ 56%]
+tests/test_csc_communication.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                [ 56%]
+tests/test_csc_communication.py::mypy PASSED                                                                                                  [ 56%]
+tests/test_csc_communication.py::CommunicateTestCase::test_authorization PASSED                                                               [ 56%]
+tests/test_csc_communication.py::CommunicateTestCase::test_bin_script_run PASSED                                                              [ 57%]
+tests/test_csc_communication.py::CommunicateTestCase::test_bin_script_version PASSED                                                          [ 57%]
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_method PASSED                                                                [ 57%]
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_problems PASSED                                                              [ 58%]
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_state_transitions PASSED                                                     [ 58%]
+tests/test_csc_communication.py::CommunicateTestCase::test_heartbeat PASSED                                                                   [ 58%]
+tests/test_csc_communication.py::CommunicateTestCase::test_log_level PASSED                                                                   [ 58%]
+tests/test_csc_communication.py::CommunicateTestCase::test_make_csc_timeout PASSED                                                            [ 59%]
+tests/test_csc_communication.py::CommunicateTestCase::test_setArrays_command PASSED                                                           [ 59%]
+tests/test_csc_communication.py::CommunicateTestCase::test_setScalars_command PASSED                                                          [ 59%]
+tests/test_csc_communication.py::CommunicateTestCase::test_set_auth_list_prefix PASSED                                                        [ 60%]
+tests/test_csc_communication.py::CommunicateTestCase::test_standard_state_transitions PASSED                                                  [ 60%]
+tests/test_csc_configuration.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                            [ 60%]
+tests/test_csc_configuration.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                [ 60%]
+tests/test_csc_configuration.py::mypy PASSED                                                                                                  [ 61%]
+tests/test_csc_configuration.py::ConfigurationTestCase::test_bad_config_dirs PASSED                                                           [ 61%]
+tests/test_csc_configuration.py::ConfigurationTestCase::test_bad_site PASSED                                                                  [ 61%]
+tests/test_csc_configuration.py::ConfigurationTestCase::test_default_config_dir PASSED                                                        [ 61%]
+tests/test_csc_configuration.py::ConfigurationTestCase::test_invalid_configs PASSED                                                           [ 62%]
+tests/test_csc_configuration.py::ConfigurationTestCase::test_minimal_config_dir PASSED                                                        [ 62%]
+tests/test_csc_configuration.py::ConfigurationTestCase::test_no_config_specified PASSED                                                       [ 62%]
+tests/test_csc_configuration.py::ConfigurationTestCase::test_override_all_fields PASSED                                                       [ 63%]
+tests/test_csc_configuration.py::ConfigurationTestCase::test_override_some_fields PASSED                                                      [ 63%]
+tests/test_csc_configuration.py::ConfigurationTestCase::test_override_with_hash PASSED                                                        [ 63%]
+tests/test_csc_constructor.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                              [ 63%]
+tests/test_csc_constructor.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                  [ 64%]
+tests/test_csc_constructor.py::mypy PASSED                                                                                                    [ 64%]
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_class_attributes PASSED                                                       [ 64%]
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_initial_state PASSED                                                          [ 65%]
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_invalid_config_dir PASSED                                                     [ 65%]
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_invalid_config_pkg PASSED                                                     [ 65%]
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_invalid_initial_state PASSED                                                  [ 65%]
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_late_callback_assignment PASSED                                               [ 66%]
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_missing_callbacks PASSED                                                      [ 66%]
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_missing_version PASSED                                                        [ 66%]
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_valid_simulation_modes_none PASSED                                            [ 66%]
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_wrong_config_pkg PASSED                                                       [ 67%]
+tests/test_csc_make_from_cmd_line.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                       [ 67%]
+tests/test_csc_make_from_cmd_line.py::BLACK SKIPPED (file(s) previously passed black format checks)                                           [ 67%]
+tests/test_csc_make_from_cmd_line.py::mypy PASSED                                                                                             [ 68%]
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_config_from_argument PASSED                                            [ 68%]
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_enum_index PASSED                                                      [ 68%]
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_index_from_argument_and_default_config_dir PASSED                      [ 68%]
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_no_index PASSED                                                        [ 69%]
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_specified_index PASSED                                                 [ 69%]
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_state_bad PASSED                                                       [ 69%]
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_state_good PASSED                                                      [ 70%]
+tests/test_csc_simulation_mode.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                          [ 70%]
+tests/test_csc_simulation_mode.py::BLACK SKIPPED (file(s) previously passed black format checks)                                              [ 70%]
+tests/test_csc_simulation_mode.py::mypy PASSED                                                                                                [ 70%]
+tests/test_csc_simulation_mode.py::SimulationModeTestCase::test_invalid_simulation_modes PASSED                                               [ 71%]
+tests/test_csc_simulation_mode.py::SimulationModeTestCase::test_none_valid_simulation_modes PASSED                                            [ 71%]
+tests/test_csc_simulation_mode.py::SimulationModeTestCase::test_simulate_cmdline_arg PASSED                                                   [ 71%]
+tests/test_csc_simulation_mode.py::SimulationModeTestCase::test_valid_simulation_modes PASSED                                                 [ 71%]
+tests/test_csc_utils.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                    [ 72%]
+tests/test_csc_utils.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                        [ 72%]
+tests/test_csc_utils.py::mypy PASSED                                                                                                          [ 72%]
+tests/test_csc_utils.py::SetSummaryStateTestCase::test_set_summary_state_invalid_state PASSED                                                 [ 73%]
+tests/test_csc_utils.py::SetSummaryStateTestCase::test_set_summary_state_valid PASSED                                                         [ 73%]
+tests/test_hierarchical_update.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                          [ 73%]
+tests/test_hierarchical_update.py::BLACK SKIPPED (file(s) previously passed black format checks)                                              [ 73%]
+tests/test_hierarchical_update.py::mypy PASSED                                                                                                [ 74%]
+tests/test_hierarchical_update.py::HierarchicalTestCase::test_basics PASSED                                                                   [ 74%]
+tests/test_hierarchical_update.py::HierarchicalTestCase::test_errors PASSED                                                                   [ 74%]
+tests/test_make_avro_schemas.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                            [ 75%]
+tests/test_make_avro_schemas.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                [ 75%]
+tests/test_make_avro_schemas.py::mypy PASSED                                                                                                  [ 75%]
+tests/test_make_avro_schemas.py::MakeAvroSchemasTestCase::test_all PASSED                                                                     [ 75%]
+tests/test_make_avro_schemas.py::MakeAvroSchemasTestCase::test_all_with_exclude PASSED                                                        [ 76%]
+tests/test_make_avro_schemas.py::MakeAvroSchemasTestCase::test_errors PASSED                                                                  [ 76%]
+tests/test_make_avro_schemas.py::MakeAvroSchemasTestCase::test_exclude PASSED                                                                 [ 76%]
+tests/test_make_avro_schemas.py::MakeAvroSchemasTestCase::test_multiple_topics PASSED                                                         [ 76%]
+tests/test_make_avro_schemas.py::MakeAvroSchemasTestCase::test_one_topic PASSED                                                               [ 77%]
+tests/test_queue_capacity_checker.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                       [ 77%]
+tests/test_queue_capacity_checker.py::BLACK SKIPPED (file(s) previously passed black format checks)                                           [ 77%]
+tests/test_queue_capacity_checker.py::mypy PASSED                                                                                             [ 78%]
+tests/test_queue_capacity_checker.py::QueueCapacityCheckerTestCase::test_check_nitems PASSED                                                  [ 78%]
+tests/test_queue_capacity_checker.py::QueueCapacityCheckerTestCase::test_constructor PASSED                                                   [ 78%]
+tests/test_remote.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                       [ 78%]
+tests/test_remote.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                           [ 79%]
+tests/test_remote.py::mypy PASSED                                                                                                             [ 79%]
+tests/test_remote.py::RemoteTestCase::test_constructor_include_exclude PASSED                                                                 [ 79%]
+tests/test_remote.py::RemoteTestCase::test_default_max_history PASSED                                                                         [ 80%]
+tests/test_remote.py::RemoteTestCase::test_evt_max_history PASSED                                                                             [ 80%]
+tests/test_remote.py::RemoteTestCase::test_repr PASSED                                                                                        [ 80%]
+tests/test_remote.py::RemoteTestCase::test_start_false PASSED                                                                                 [ 80%]
+tests/test_sal_info.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                     [ 81%]
+tests/test_sal_info.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                         [ 81%]
+tests/test_sal_info.py::mypy PASSED                                                                                                           [ 81%]
+tests/test_sal_info.py::SalInfoTestCase::test_default_authorize PASSED                                                                        [ 81%]
+tests/test_sal_info.py::SalInfoTestCase::test_log_level PASSED                                                                                [ 82%]
+tests/test_sal_info.py::SalInfoTestCase::test_lsst_topic_subname_required PASSED                                                              [ 82%]
+tests/test_sal_info.py::SalInfoTestCase::test_make_ack_cmd PASSED                                                                             [ 82%]
+tests/test_sal_info.py::SalInfoTestCase::test_salinfo_attributes PASSED                                                                       [ 83%]
+tests/test_sal_info.py::SalInfoTestCase::test_salinfo_component_info PASSED                                                                   [ 83%]
+tests/test_sal_info.py::SalInfoTestCase::test_salinfo_constructor PASSED                                                                      [ 83%]
+tests/test_sal_info.py::SalInfoTestCase::test_write_only PASSED                                                                               [ 83%]
+tests/test_speed.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                        [ 84%]
+tests/test_speed.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                            [ 84%]
+tests/test_speed.py::mypy PASSED                                                                                                              [ 84%]
+tests/test_speed.py::SpeedTestCase::test_class_creation_speed PASSED                                                                          [ 85%]
+tests/test_speed.py::SpeedTestCase::test_command_speed PASSED                                                                                 [ 85%]
+tests/test_speed.py::SpeedTestCase::test_read_speed PASSED                                                                                    [ 85%]
+tests/test_speed.py::SpeedTestCase::test_write_speed PASSED                                                                                   [ 85%]
+tests/test_topics.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                       [ 86%]
+tests/test_topics.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                           [ 86%]
+tests/test_topics.py::mypy PASSED                                                                                                             [ 86%]
+tests/test_topics.py::TopicsTestCase::test_aget PASSED                                                                                        [ 86%]
+tests/test_topics.py::TopicsTestCase::test_attributes PASSED                                                                                  [ 87%]
+tests/test_topics.py::TopicsTestCase::test_bad_put PASSED                                                                                     [ 87%]
+tests/test_topics.py::TopicsTestCase::test_base_topic_constructor_errors PASSED                                                               [ 87%]
+tests/test_topics.py::TopicsTestCase::test_base_topic_constructor_good PASSED                                                                 [ 88%]
+tests/test_topics.py::TopicsTestCase::test_callbacks PASSED                                                                                   [ 88%]
+tests/test_topics.py::TopicsTestCase::test_command_isolation PASSED                                                                           [ 88%]
+tests/test_topics.py::TopicsTestCase::test_command_next_ack PASSED                                                                            [ 88%]
+tests/test_topics.py::TopicsTestCase::test_command_seq_num PASSED                                                                             [ 89%]
+tests/test_topics.py::TopicsTestCase::test_command_timeout PASSED                                                                             [ 89%]
+tests/test_topics.py::TopicsTestCase::test_controller_command_callback_canceled PASSED                                                        [ 89%]
+tests/test_topics.py::TopicsTestCase::test_controller_command_callback_raises_exception PASSED                                                [ 90%]
+tests/test_topics.py::TopicsTestCase::test_controller_command_callback_raises_expected_error PASSED                                           [ 90%]
+tests/test_topics.py::TopicsTestCase::test_controller_command_callback_return_failed_ackcmd PASSED                                            [ 90%]
+tests/test_topics.py::TopicsTestCase::test_controller_command_callback_times_out PASSED                                                       [ 90%]
+tests/test_topics.py::TopicsTestCase::test_controller_command_get_next PASSED                                                                 [ 91%]
+tests/test_topics.py::TopicsTestCase::test_controller_command_get_set_callback PASSED                                                         [ 91%]
+tests/test_topics.py::TopicsTestCase::test_controller_command_success PASSED                                                                  [ 91%]
+tests/test_topics.py::TopicsTestCase::test_controller_event_write PASSED                                                                      [ 91%]
+tests/test_topics.py::TopicsTestCase::test_controller_set_and_write PASSED                                                                    [ 92%]
+tests/test_topics.py::TopicsTestCase::test_controller_telemetry_write PASSED                                                                  [ 92%]
+tests/test_topics.py::TopicsTestCase::test_get_oldest PASSED                                                                                  [ 92%]
+tests/test_topics.py::TopicsTestCase::test_multiple_commands PASSED                                                                           [ 93%]
+tests/test_topics.py::TopicsTestCase::test_multiple_next_readers PASSED                                                                       [ 93%]
+tests/test_topics.py::TopicsTestCase::test_multiple_sequential_commands PASSED                                                                [ 93%]
+tests/test_topics.py::TopicsTestCase::test_next PASSED                                                                                        [ 93%]
+tests/test_topics.py::TopicsTestCase::test_plain_get PASSED                                                                                   [ 94%]
+tests/test_topics.py::TopicsTestCase::test_put_id PASSED                                                                                      [ 94%]
+tests/test_topics.py::TopicsTestCase::test_read_topic_constructor_errors_and_warnings PASSED                                                  [ 94%]
+tests/test_topics.py::TopicsTestCase::test_read_topic_not_ready PASSED                                                                        [ 95%]
+tests/test_topics.py::TopicsTestCase::test_remote_command_not_ready PASSED                                                                    [ 95%]
+tests/test_topics.py::TopicsTestCase::test_remote_command_set PASSED                                                                          [ 95%]
+tests/test_topics.py::TopicsTestCase::test_sal_index PASSED                                                                                   [ 95%]
+tests/test_topics.py::TopicsTestCase::test_synchronous_callbacks PASSED                                                                       [ 96%]
+tests/test_topics.py::TopicsTestCase::test_topic_repr PASSED                                                                                  [ 96%]
+tests/test_topics.py::TopicsTestCase::test_topic_subname PASSED                                                                               [ 96%]
+tests/test_topics.py::TopicsTestCase::test_write_topic_set PASSED                                                                             [ 96%]
+tests/test_validator.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                    [ 97%]
+tests/test_validator.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                        [ 97%]
+tests/test_validator.py::mypy PASSED                                                                                                          [ 97%]
+tests/test_validator.py::ValidatorTestCase::test_all_fields PASSED                                                                            [ 98%]
+tests/test_validator.py::ValidatorTestCase::test_invalid_data PASSED                                                                          [ 98%]
+tests/test_validator.py::ValidatorTestCase::test_no_config_specified PASSED                                                                   [ 98%]
+tests/test_validator.py::ValidatorTestCase::test_some_fields PASSED                                                                           [ 98%]
+tests/test_validator.py::DefaultingTestCase::test_contained_object PASSED                                                                     [ 99%]
+tests/data/topic_writer.py::flake-8::FLAKE8 SKIPPED (file(s) previously passed FLAKE8 checks)                                                 [ 99%]
+tests/data/topic_writer.py::BLACK SKIPPED (file(s) previously passed black format checks)                                                     [ 99%]
+tests/data/topic_writer.py::mypy PASSED                                                                                                       [100%]
+
+================================================================= warnings summary ==================================================================
+...
+
+tests/test_controller_logging.py: 2 warnings
+tests/test_csc_communication.py: 16 warnings
+tests/test_csc_constructor.py: 6 warnings
+tests/test_csc_make_from_cmd_line.py: 4 warnings
+tests/test_csc_utils.py: 14 warnings
+tests/test_topics.py: 52 warnings
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/base_events.py", line 1888, in _run_once
+      handle._run()
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 285, in _protected_start
+      await self.start_phase2()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 264, in start_phase2
+      self.log.info(f"Executing {command} command during startup")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_controller_logging.py::ControllerLoggingTestCase::test_logging
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/base_events.py", line 1888, in _run_once
+      handle._run()
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_controller_logging.py", line 83, in test_logging
+      self.csc.log.info(info_message)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_controller_logging.py::ControllerLoggingTestCase::test_logging
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/base_events.py", line 1888, in _run_once
+      handle._run()
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_controller_logging.py", line 106, in test_logging
+      self.csc.log.warning(warn_message)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1489, in warning
+      self._log(WARNING, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_controller_logging.py::ControllerLoggingTestCase::test_logging
+tests/test_topics.py::TopicsTestCase::test_controller_command_callback_raises_exception
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/base_events.py", line 1888, in _run_once
+      handle._run()
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/controller_command.py", line 302, in _run_callback
+      self.log.exception(f"Callback {self.callback} failed with data={data}")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1512, in exception
+      self.error(msg, *args, exc_info=exc_info, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1506, in error
+      self._log(ERROR, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_commander.py: 1 warning
+tests/test_csc_communication.py: 12 warnings
+tests/test_csc_configuration.py: 4 warnings
+tests/test_csc_utils.py: 10 warnings
+tests/test_speed.py: 1 warning
+tests/test_topics.py: 2 warnings
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/base_events.py", line 600, in run_forever
+      self._run_once()
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/base_events.py", line 1888, in _run_once
+      handle._run()
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 1111, in _read_loop
+      self.log.info(
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_commander.py::CscCommanderTestCase::test_basics
+tests/test_csc_communication.py::CommunicateTestCase::test_setArrays_command
+tests/test_topics.py::TopicsTestCase::test_command_seq_num
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/read_topic.py", line 606, in _callback_loop
+      await result
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/controller_command.py", line 267, in _run_callback
+      ack = await result  # type: ignore
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/testcsc.py", line 145, in do_setArrays
+      self.log.info("executing setArrays")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_commander.py::CscCommanderTestCase::test_basics
+tests/test_csc_communication.py::CommunicateTestCase::test_setScalars_command
+tests/test_topics.py::TopicsTestCase::test_aget
+tests/test_topics.py::TopicsTestCase::test_callbacks
+tests/test_topics.py::TopicsTestCase::test_command_seq_num
+tests/test_topics.py::TopicsTestCase::test_get_oldest
+tests/test_topics.py::TopicsTestCase::test_next
+tests/test_topics.py::TopicsTestCase::test_plain_get
+tests/test_topics.py::TopicsTestCase::test_synchronous_callbacks
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/read_topic.py", line 606, in _callback_loop
+      await result
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/controller_command.py", line 267, in _run_callback
+      ack = await result  # type: ignore
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/testcsc.py", line 153, in do_setScalars
+      self.log.info("executing setScalars")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_method
+tests/test_topics.py::TopicsTestCase::test_controller_set_and_write
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/write_topic.py", line 332, in write
+      await self.salinfo.write_data(topic_info=self.topic_info, data_dict=data_dict)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 1151, in write_data
+      self.log.exception(
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1512, in exception
+      self.error(msg, *args, exc_info=exc_info, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1506, in error
+      self._log(ERROR, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_method
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_communication.py", line 570, in test_fault_method
+      await self.csc.fault(code="not a valid code", report=report)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 709, in fault
+      self.log.exception(
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1512, in exception
+      self.error(msg, *args, exc_info=exc_info, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1506, in error
+      self._log(ERROR, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_method
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_communication.py", line 570, in test_fault_method
+      await self.csc.fault(code="not a valid code", report=report)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 712, in fault
+      self.log.critical(f"Fault! errorCode={code}, errorReport={report!r}")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1524, in critical
+      self._log(CRITICAL, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_method
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_communication.py", line 586, in test_fault_method
+      await self.csc.fault(code=code, report=report, traceback=traceback)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 712, in fault
+      self.log.critical(f"Fault! errorCode={code}, errorReport={report!r}")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1524, in critical
+      self._log(CRITICAL, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_method
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_communication.py", line 606, in test_fault_method
+      await self.csc.fault(code=code, report="")
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 712, in fault
+      self.log.critical(f"Fault! errorCode={code}, errorReport={report!r}")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1524, in critical
+      self._log(CRITICAL, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_method
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_communication.py", line 558, in test_fault_method
+      async with self.make_csc(initial_state=salobj.State.STANDBY):
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/contextlib.py", line 206, in __aexit__
+      await anext(self.gen)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc_test_case.py", line 205, in make_csc
+      await item.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_problems
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_problems
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_problems
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_problems
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_communication.py", line 641, in test_fault_problems
+      await csc.fault(code=code, report=report, traceback=traceback)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 712, in fault
+      self.log.critical(f"Fault! errorCode={code}, errorReport={report!r}")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1524, in critical
+      self._log(CRITICAL, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_problems
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_problems
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_communication.py", line 641, in test_fault_problems
+      await csc.fault(code=code, report=report, traceback=traceback)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 716, in fault
+      self.log.exception(
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1512, in exception
+      self.error(msg, *args, exc_info=exc_info, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1506, in error
+      self._log(ERROR, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_state_transitions
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_state_transitions
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_state_transitions
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/read_topic.py", line 606, in _callback_loop
+      await result
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/controller_command.py", line 267, in _run_callback
+      ack = await result  # type: ignore
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/testcsc.py", line 163, in do_fault
+      self.log.warning("executing the fault command")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1489, in warning
+      self._log(WARNING, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_state_transitions
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_state_transitions
+tests/test_csc_communication.py::CommunicateTestCase::test_fault_state_transitions
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/read_topic.py", line 606, in _callback_loop
+      await result
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/controller_command.py", line 267, in _run_callback
+      ack = await result  # type: ignore
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/testcsc.py", line 164, in do_fault
+      await self.fault(code=1, report="executing the fault command")
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 712, in fault
+      self.log.critical(f"Fault! errorCode={code}, errorReport={report!r}")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1524, in critical
+      self._log(CRITICAL, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py: 1 warning
+tests/test_topics.py: 26 warnings
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/configurable_csc.py", line 168, in __init__
+      super().__init__(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 201, in __init__
+      super().__init__(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 232, in __init__
+      self.salinfo = SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py: 1 warning
+tests/test_topics.py: 26 warnings
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/contextlib.py", line 199, in __aenter__
+      return await anext(self.gen)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc_test_case.py", line 168, in make_csc
+      self.remote = Remote(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/remote.py", line 157, in __init__
+      self.salinfo = SalInfo(domain=domain, name=name, index=index)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_make_csc_timeout
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_initial_state
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_state_good
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/base_events.py", line 600, in run_forever
+      self._run_once()
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/base_events.py", line 1888, in _run_once
+      handle._run()
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 287, in _protected_start
+      self.log.warning("start canceled")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1489, in warning
+      self._log(WARNING, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_communication.py::CommunicateTestCase::test_standard_state_transitions
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_communication.py", line 683, in test_standard_state_transitions
+      async with self.make_csc(
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/contextlib.py", line 206, in __aexit__
+      await anext(self.gen)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc_test_case.py", line 205, in make_csc
+      await item.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_configuration.py::ConfigurationTestCase::test_bad_config_dirs
+tests/test_csc_configuration.py::ConfigurationTestCase::test_bad_config_dirs
+tests/test_csc_configuration.py::ConfigurationTestCase::test_bad_config_dirs
+tests/test_csc_configuration.py::ConfigurationTestCase::test_bad_site
+tests/test_csc_configuration.py::ConfigurationTestCase::test_invalid_configs
+tests/test_csc_configuration.py::ConfigurationTestCase::test_invalid_configs
+tests/test_csc_configuration.py::ConfigurationTestCase::test_invalid_configs
+tests/test_csc_configuration.py::ConfigurationTestCase::test_invalid_configs
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/read_topic.py", line 606, in _callback_loop
+      await result
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/controller_command.py", line 267, in _run_callback
+      ack = await result  # type: ignore
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 518, in do_start
+      await self._do_change_state(data, "start", [State.STANDBY], State.DISABLED)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 819, in _do_change_state
+      self.log.error(
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1506, in error
+      self._log(ERROR, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_initial_state
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_constructor.py", line 113, in test_initial_state
+      await self.check_initial_state(initial_state)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_constructor.py", line 121, in check_initial_state
+      async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 557, in __aexit__
+      await self.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_constructor.py::TestCscConstructorTestCase::test_initial_state
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_constructor.py", line 114, in test_initial_state
+      await self.check_initial_state(int(initial_state))
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_constructor.py", line 121, in check_initial_state
+      async with salobj.TestCsc(index=index, initial_state=int(initial_state)) as csc:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 557, in __aexit__
+      await self.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_config_from_argument
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_make_from_cmd_line.py", line 121, in test_config_from_argument
+      async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 557, in __aexit__
+      await self.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_enum_index
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_enum_index
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_make_from_cmd_line.py", line 100, in test_enum_index
+      async with salobj.TestCsc.make_from_cmd_line(index=SalIndex) as csc:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 557, in __aexit__
+      await self.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_index_from_argument_and_default_config_dir
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_make_from_cmd_line.py", line 107, in test_index_from_argument_and_default_config_dir
+      async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 557, in __aexit__
+      await self.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_no_index
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_no_index
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_make_from_cmd_line.py", line 78, in test_no_index
+      async with NoIndexCsc.make_from_cmd_line(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 557, in __aexit__
+      await self.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_specified_index
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_make_from_cmd_line.py", line 88, in test_specified_index
+      async with salobj.TestCsc.make_from_cmd_line(index=index) as csc:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 557, in __aexit__
+      await self.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_state_good
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_make_from_cmd_line.py", line 158, in test_state_good
+      await csc.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_state_good
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_state_good
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_state_good
+tests/test_csc_make_from_cmd_line.py::CscMakeFromCmdLineTestCase::test_state_good
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_make_from_cmd_line.py", line 146, in test_state_good
+      async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 557, in __aexit__
+      await self.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_csc_utils.py::SetSummaryStateTestCase::test_set_summary_state_valid
+tests/test_csc_utils.py::SetSummaryStateTestCase::test_set_summary_state_valid
+tests/test_csc_utils.py::SetSummaryStateTestCase::test_set_summary_state_valid
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_csc_utils.py", line 103, in check_set_summary_state
+      async with self.make_csc(
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/contextlib.py", line 206, in __aexit__
+      await anext(self.gen)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc_test_case.py", line 205, in make_csc
+      await item.close()
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 382, in close
+      self.log.info("Already closing; waiting for done_task")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1477, in info
+      self._log(INFO, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_sal_info.py::SalInfoTestCase::test_default_authorize
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_sal_info.py", line 206, in test_default_authorize
+      async with salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 308, in __init__
+      self.log.warning(
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1489, in warning
+      self._log(WARNING, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_sal_info.py::SalInfoTestCase::test_log_level
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_sal_info.py", line 236, in test_log_level
+      salinfo = salobj.SalInfo(domain=domain, name="Test", index=index)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_sal_info.py::SalInfoTestCase::test_make_ack_cmd
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_sal_info.py", line 245, in test_make_ack_cmd
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_sal_info.py::SalInfoTestCase::test_salinfo_attributes
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_sal_info.py", line 103, in test_salinfo_attributes
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_sal_info.py::SalInfoTestCase::test_salinfo_component_info
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_sal_info.py", line 174, in test_salinfo_component_info
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_sal_info.py::SalInfoTestCase::test_salinfo_constructor
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_sal_info.py", line 55, in test_salinfo_constructor
+      async with salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_sal_info.py::SalInfoTestCase::test_salinfo_constructor
+tests/test_sal_info.py::SalInfoTestCase::test_write_only
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_sal_info.py::SalInfoTestCase::test_write_only
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_sal_info.py", line 276, in test_write_only
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_speed.py::SpeedTestCase::test_command_speed
+tests/test_speed.py::SpeedTestCase::test_read_speed
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/contextlib.py", line 199, in __aenter__
+      return await anext(self.gen)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_speed.py", line 139, in make_remote_and_topic_writer
+      async with salobj.Domain() as domain, salobj.Remote(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/remote.py", line 157, in __init__
+      self.salinfo = SalInfo(domain=domain, name=name, index=index)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_speed.py::SpeedTestCase::test_write_speed
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_speed.py", line 268, in test_write_speed
+      async with salobj.Controller(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 232, in __init__
+      self.salinfo = SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py: 26 warnings
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 265, in start_phase2
+      await method(data)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 518, in do_start
+      await self._do_change_state(data, "start", [State.STANDBY], State.DISABLED)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 817, in _do_change_state
+      await getattr(self, f"begin_{cmd_name}")(data)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/configurable_csc.py", line 453, in begin_start
+      self.log.debug(
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_attributes
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 111, in test_attributes
+      async with salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_attributes
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/configurable_csc.py", line 168, in __init__
+      super().__init__(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/base_csc.py", line 201, in __init__
+      super().__init__(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 232, in __init__
+      self.salinfo = SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 315, in __init__
+      self.log.debug("Enabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_base_topic_constructor_errors
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 157, in test_base_topic_constructor_errors
+      salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_base_topic_constructor_good
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 135, in test_base_topic_constructor_good
+      salinfo = salobj.SalInfo(domain=domain, name="Test", index=1)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_command_isolation
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 209, in test_command_isolation
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_command_isolation
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 211, in test_command_isolation
+      ) as salinfo, salobj.SalInfo(domain=domain, name="Test", index=0) as salinfo0:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_command_next_ack
+tests/test_topics.py::TopicsTestCase::test_command_timeout
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/base_events.py", line 1888, in _run_once
+      handle._run()
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/controller_command.py", line 284, in _run_callback
+      await self._ack_if_running(data, ack)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/topics/controller_command.py", line 212, in _ack_if_running
+      self.log.warning(f"Cannot issue {ackcmd=}; SalInfo is not running")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1489, in warning
+      self._log(WARNING, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_controller_set_and_write
+  /Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/site-packages/numpy/core/numeric.py:2446: FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+    return bool(asarray(a1 == a2).all())
+
+tests/test_topics.py::TopicsTestCase::test_put_id
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 710, in test_put_id
+      async with salobj.Controller(name="Test", index=0) as controller0:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 232, in __init__
+      self.salinfo = SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_put_id
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 711, in test_put_id
+      async with salobj.Controller(name="Test", index=1) as controller1:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/controller.py", line 232, in __init__
+      self.salinfo = SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_read_topic_constructor_errors_and_warnings
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1219, in test_read_topic_constructor_errors_and_warnings
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_read_topic_constructor_errors_and_warnings
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1269, in test_read_topic_constructor_errors_and_warnings
+      async with salobj.SalInfo(domain=domain, name="Test", index=0) as salinfo0:
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_read_topic_not_ready
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1195, in test_read_topic_not_ready
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_remote_command_not_ready
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1106, in test_remote_command_not_ready
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_remote_command_set
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1123, in test_remote_command_set
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_sal_index
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1423, in test_sal_index
+      writers = [
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1425, in <listcomp>
+      salinfo=salobj.SalInfo(domain=domain, name="Test", index=index),
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_sal_index
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1446, in test_sal_index
+      readers = [
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1448, in <listcomp>
+      salinfo=salobj.SalInfo(domain=domain, name="Test", index=index),
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_topic_subname
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1327, in test_topic_subname
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_topic_subname
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1329, in test_topic_subname
+      ) as salinfo_r1, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_topic_subname
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1333, in test_topic_subname
+      async with salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_topic_subname
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1335, in test_topic_subname
+      ) as salinfo_r2, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_topics.py::TopicsTestCase::test_write_topic_set
+  /Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py:79: RuntimeWarning: coroutine 'SalLogHandler._async_emit' was never awaited
+  Coroutine created at (most recent call last)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/asyncio/events.py", line 80, in _run
+      self._context.run(self._callback, *self._args)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/unittest/async_case.py", line 101, in _asyncioLoopRunner
+      ret = await awaitable
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/tests/test_topics.py", line 1512, in test_write_topic_set
+      async with salobj.Domain() as domain, salobj.SalInfo(
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_info.py", line 317, in __init__
+      self.log.debug("Disabling authlist-based command authorization")
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1465, in debug
+      self._log(DEBUG, msg, args, **kwargs)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1624, in _log
+      self.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1634, in handle
+      self.callHandlers(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 1696, in callHandlers
+      hdlr.handle(record)
+    File "/Users/rowen/UW/LSST/lsst_stack/conda/envs/lsst-scipipe-4.1.0/lib/python3.10/logging/__init__.py", line 968, in handle
+      self.emit(record)
+    File "/Users/rowen/UW/LSST/tsrepos/ts_salobj/python/lsst/ts/salobj/sal_log_handler.py", line 65, in emit
+      coro=self._async_emit(
+    print(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================================================================= mypy ========================================================================
+Success: no issues found in 65 source files
+============================================ 232 passed, 128 skipped, 503 warnings in 885.82s (0:14:45) =============================================
+(lsst-scipipe-4.1.0) UW/LSST/tsrepos/ts_salobj u/rowen/DM-37594% thread
