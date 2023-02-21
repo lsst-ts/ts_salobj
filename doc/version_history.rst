@@ -11,6 +11,8 @@ v7.3.1
 
 * `SalLogHandler`: reduce the frequency of "_async_emit' was never awaited" warnings at shutdown.
 * ``conda/meta.yaml``: remove redundant "entry_points" information.
+* pre-commit: update black to 23.1.0, isort to 5.12.0, mypy to 1.0.0, and pre-commit-hooks to v4.4.0.
+* ``Jenkinsfile``: do not run as root.
 
 Requirements:
 

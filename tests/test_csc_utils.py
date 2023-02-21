@@ -42,7 +42,6 @@ class SetSummaryStateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         config_dir: str | pathlib.Path | None,
         simulation_mode: int,
     ) -> salobj.BaseCsc:
-
         return salobj.TestCsc(
             self.next_index(),
             initial_state=initial_state,
