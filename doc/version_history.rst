@@ -6,6 +6,25 @@
 Version History
 ###############
 
+v7.3.2
+------
+
+* `CscCommander`:
+    * Reduce clutter from logMessage events by only publishing the most interesting fields: 
+      level, name, message, and (if not empty) traceback.
+    * ``telemetry_callback``: do not assume an attribute already exists for previous data.
+      This makes it easier to use for events such as clockOffset, where you only want to see the information if it has changed significantly.
+      Also improve the documentation.
+
+* Remove some unwanted files that were accidentally added to the last release.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 u
+
 v7.3.1
 ------
 
