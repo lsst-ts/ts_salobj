@@ -45,20 +45,20 @@ class ComponentInfo:
 
     Attributes
     ----------
-    name : str
+    name : `str`
         SAL component name
-    topic_subname : str
+    topic_subname : `str`
         Sub-namespace for Kafka topic names and schema namespace.
-    description : str
+    description : `str`
         Description, from SALSubsystems.xml
-    indexed : bool
+    indexed : `bool`
         Is this component indexed (can there be different instances
         with different SAL indices)?
-    added_generics : List [str]
+    added_generics : `list` [`str`]
         Added generic categories and/or SAL topic names
         (e.g. command_enterControl).
         This comes from the AddedGenerics field of SALSubsystems.xml
-    topics : dict [str, TopicInfo], optional
+    topics : `dict` [`str`, `TopicInfo`]
         Dict of attr_name: TopicInfo.
     """
 
