@@ -141,11 +141,11 @@ def make_ackcmd_topic_info(
 
     Parameters
     ----------
-    component_name : str
+    component_name : `str`
         SAL component name, e.g. MTMount
-    topic_subname : str
+    topic_subname : `str`
         Sub-namespace for topic names and schema subject and namespace.
-    indexed : str
+    indexed : `str`
         Is this component indexed?
 
     Returns
@@ -171,32 +171,32 @@ class TopicInfo:
 
     Parameters
     ----------
-    component_name : str
+    component_name : `str`
         SAL component name
-    topic_subname : str
+    topic_subname : `str`
         Sub-namespace for topic names and schema subject and namespace.
-    sal_name : str
+    sal_name : `str`
         SAL topic name, e.g. logevent_summaryState
-    fields : Dict[str, FieldInfo]
+    fields : `dict` [`str`, `FieldInfo`]
         Dict of field name: field info
-    description : str, optional
+    description : `str`, optional
         Description of topic.
-    partitions : int, optional
+    partitions : `int`, optional
         Number of Kafka partitions.
         Must be 1 for events, since that makes it easier to get
         reliable historical data.
 
     Attributes
     ----------
-    attr_name : str
+    attr_name : `str`
         Topic name used by salobj for attributes, e.g. evt_summaryState
-    kafka_name : str
+    kafka_name : `str`
         Topic name used by Kafka
-    avro_subject : str
+    avro_subject : `str`
         Subject name for Avro schema
-    fields : Dict [str, FieldInfo]
+    fields : `dict` [`str`, `FieldInfo`]
         Dict of field name: field info
-    array_fields : Dict [str, int]
+    array_fields : `dict` [`str`, `int`]
         Dict of field name: array length for array fields
 
     Raises
@@ -275,13 +275,13 @@ class TopicInfo:
 
         Parameters
         ----------
-        element : ElementTree.Element
+        element : `ElementTree.Element`
             XML topic element; an of SALCommand, SALEvent, or SALTelemetry.
-        component_name : str
+        component_name : `str`
             SAL component name, e.g. MTMount
-        topic_subname : str
+        topic_subname : `str`
             Sub-namespace for topic names and schema subject and namespace.
-        indexed : str
+        indexed : `str`
             Is this component indexed?
         """
         full_name = find_required(element, "EFDB_Topic")

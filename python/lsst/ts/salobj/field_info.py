@@ -33,11 +33,11 @@ def find_optional(element: ElementTree.Element, name: str, default: str) -> str:
 
     Parameters
     ----------
-    element : ElementTree.Element
+    element : `ElementTree.Element`
         XML element
-    name : str
+    name : `str`
         Field name.
-    default : str
+    default : `str`
         Value to return if the field does not exist.
     """
     subelt = element.find(name)
@@ -51,9 +51,9 @@ def find_required(element: ElementTree.Element, name: str) -> str:
 
     Parameters
     ----------
-    element : ElementTree.Element
+    element : `ElementTree.Element`
         XML element
-    name : str
+    name : `str`
         Field name.
     """
     subelt = element.find(name)
@@ -101,20 +101,20 @@ class FieldInfo:
 
     Parameters
     ----------
-    name : str
+    name : `str`
         Field name
-    sal_type : str
+    sal_type : `str`
         SAL data type.
-    count : int
-        For lists: the fixed list length.
-    units : str
+    count : `int`
+        For arrays: the number of elements. Specify 1 for scalars.
+    units : `str`
         Units, "unitless" if none.
-    description : str
+    description : `str`
         Description (arbitrary text)
 
     Attributes
     ----------
-    default_scalar_value : typing.Any
+    default_scalar_value : `typing.Any`
         For a scalar: the default value.
         For an array: the default value of one element.
     """
