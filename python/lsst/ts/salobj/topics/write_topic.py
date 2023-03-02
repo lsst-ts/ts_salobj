@@ -214,9 +214,8 @@ class WriteTopic(BaseTopic):
 
             * Any key whose value is `None` is checked for existence,
               but the value of the field is not changed.
-            * If the field being set is an array then the value must either
-              be an array of the same length or a scalar (which replaces
-              every element of the array).
+            * If the field being set is an array then the value must be
+              an array of the same length.
 
         Returns
         -------
