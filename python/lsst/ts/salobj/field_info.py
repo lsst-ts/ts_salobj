@@ -136,7 +136,7 @@ class FieldInfo:
         self.default_scalar_value = python_type()
 
     @classmethod
-    def from_xml_element(cls, element: ElementTree.Element, indexed: bool) -> FieldInfo:
+    def from_xml_element(cls, element: ElementTree.Element) -> FieldInfo:
         """Construct a FieldInfo from an XML element."""
         name = find_required(element, "EFDB_Name")
         description = find_optional(element, "Description", "")
