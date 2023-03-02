@@ -271,7 +271,6 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
         async with salobj.Domain() as domain, salobj.SalInfo(
             domain=domain, name="Test", index=index, write_only=True
         ) as salinfo:
-
             # Cannot add a read topic to a write-only SalInfo
             with pytest.raises(RuntimeError):
                 salobj.topics.ReadTopic(
