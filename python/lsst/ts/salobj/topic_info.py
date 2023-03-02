@@ -292,7 +292,7 @@ class TopicInfo:
         if not indexed:
             del fields["salIndex"]
         for field_element in element.findall("item"):
-            field_info = FieldInfo.from_xml_element(field_element, indexed=indexed)
+            field_info = FieldInfo.from_xml_element(field_element)
             if field_info.name in fields:
                 raise RuntimeError(f"field {field_info.name} already found.")
             fields[field_info.name] = field_info
