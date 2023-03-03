@@ -22,13 +22,47 @@ vKafka
 
     * Messages no longer support the ``get_vars`` method; use the ``vars`` built-in function instead.
       In other words change ``message.get_vars()`` to ``vars(message)``.
-    * Remove function `get_opensplice_version`.
+    * Remove function ``get_opensplice_version``.
 
 * Added bin script and entry point ``make_avro_schemas`` to make Avro schemas the topics for specified SAL components.
   Run with ``--help`` for details.
 
 * `BaseCsc`: stop setting $OSPL_MASTER_PRIORITY; it is not needed for Kafka.
   Delete constant ``MASTER_PRIORITY_ENV_VAR``.
+
+v7.3.2
+------
+
+* `CscCommander`:
+    * Reduce clutter from logMessage events by only publishing the most interesting fields: 
+      level, name, message, and (if not empty) traceback.
+    * ``telemetry_callback``: do not assume an attribute already exists for previous data.
+      This makes it easier to use for events such as clockOffset, where you only want to see the information if it has changed significantly.
+      Also improve the documentation.
+
+* Remove some unwanted files that were accidentally added to the last release.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 u
+
+v7.3.1
+------
+
+* `SalLogHandler`: reduce the frequency of "_async_emit' was never awaited" warnings at shutdown.
+* ``conda/meta.yaml``: remove redundant "entry_points" information.
+* pre-commit: update black to 23.1.0, isort to 5.12.0, mypy to 1.0.0, and pre-commit-hooks to v4.4.0.
+* ``Jenkinsfile``: do not run as root.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
 
 v7.3.0
 ------
