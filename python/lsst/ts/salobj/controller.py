@@ -391,9 +391,10 @@ class Controller:
         except Exception:
             self.log.exception("Controller.close_tasks failed; close continues")
         try:
+            self.log.removeHandler(self._sal_log_handler)
+            self._sal_log_handler.close()
             # Give remotes time to read final DDS messages before closing
             # the domain participant.
-            self.log.removeHandler(self._sal_log_handler)
             await asyncio.sleep(SHUTDOWN_DELAY)
             await self.domain.close()
         except asyncio.CancelledError:
