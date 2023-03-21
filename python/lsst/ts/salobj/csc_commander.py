@@ -260,7 +260,7 @@ class CscCommander:
             topic = getattr(self.remote, topic_attr_name)
             callback = getattr(self, f"{topic_attr_name}_callback", None)
             if callback is None:
-                callback = functools.partial(self.event_callback, event_name=event_name)
+                callback = functools.partial(self.event_callback, name=event_name)
             setattr(topic, "callback", callback)
 
         for telemetry_name in self.remote.salinfo.telemetry_names:
@@ -269,7 +269,7 @@ class CscCommander:
             callback = getattr(self, f"{topic_attr_name}_callback", None)
             if callback is None:
                 callback = functools.partial(
-                    self.telemetry_callback, telemetry_name=telemetry_name
+                    self.telemetry_callback, name=telemetry_name
                 )
             setattr(topic, "callback", callback)
 
