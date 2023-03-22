@@ -6,6 +6,18 @@
 Version History
 ###############
 
+v7.3.3
+------
+
+* `CscCommander`: fix a bug in calling event and telemetry callbacks.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
 v7.3.2
 ------
 
@@ -23,7 +35,7 @@ Requirements:
 * ts_ddsconfig
 * ts_idl 4.2
 * ts_utils 1.1
-* IDL files for Test and Script generated from ts_xml 11 u
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
 
 v7.3.1
 ------
