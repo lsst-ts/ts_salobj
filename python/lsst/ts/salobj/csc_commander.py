@@ -253,30 +253,31 @@ class CscCommander:
         self.testing = False
         self.output_queue: collections.deque[str] = collections.deque()
 
-        for name in self.remote.salinfo.event_names:
-            if name == "heartbeat":
+        for event_name in self.remote.salinfo.event_names:
+            if event_name == "heartbeat":
                 continue
-            topic_attr_name = f"evt_{name}"
+            topic_attr_name = f"evt_{event_name}"
             topic = getattr(self.remote, topic_attr_name)
             callback = getattr(self, f"{topic_attr_name}_callback", None)
             if callback is None:
-                callback = functools.partial(self.event_callback, name=name)
+                callback = functools.partial(self.event_callback, name=event_name)
             setattr(topic, "callback", callback)
 
-        for name in self.remote.salinfo.telemetry_names:
-            topic_attr_name = f"tel_{name}"
-            setattr(self, f"previous_{topic_attr_name}", None)
+        for telemetry_name in self.remote.salinfo.telemetry_names:
+            topic_attr_name = f"tel_{telemetry_name}"
             topic = getattr(self.remote, topic_attr_name)
             callback = getattr(self, f"{topic_attr_name}_callback", None)
             if callback is None:
-                callback = functools.partial(self.telemetry_callback, name=name)
+                callback = functools.partial(
+                    self.telemetry_callback, name=telemetry_name
+                )
             setattr(topic, "callback", callback)
 
         # Dict of command name: RemoteCommand topic:
         self.command_dict = {
-            name: getattr(self.remote, f"cmd_{name}")
-            for name in self.remote.salinfo.command_names
-            if name not in frozenset(exclude_commands)
+            command_name: getattr(self.remote, f"cmd_{command_name}")
+            for command_name in self.remote.salinfo.command_names
+            if command_name not in frozenset(exclude_commands)
         }
 
         # Warn of synchronous do_ methods
@@ -335,13 +336,13 @@ help  # print this help
             return f"{key}={value:0.4f}"
         return f"{key}={value}"
 
-    def format_data(self, data: typing.Any) -> str:
+    def format_data(self, data: type_hints.BaseMsgType) -> str:
         """Format the public fields of an event or telemetry sample,
         for printing.
         """
         return self.format_dict(self.get_public_data(data))
 
-    def format_dict(self, data: typing.Any) -> str:
+    def format_dict(self, data: dict[str, typing.Any]) -> str:
         """Format a dict for printing.
 
         Unlike format_data, this requires a dict and formats *all* fields.
@@ -358,13 +359,13 @@ help  # print this help
             return False
         return True
 
-    def get_public_data(self, data: typing.Any) -> dict[str, typing.Any]:
-        """Get a dict of field_name: value for public fields of a DDS sample.
+    def get_public_data(self, data: type_hints.BaseMsgType) -> dict[str, typing.Any]:
+        """Get a dict of field_name: value for public fields of a message.
 
         Parameters
         ----------
-        data : ``dds_sample``
-            DDS sample.
+        data : `BaseMsgType`
+            Message.
         """
         return dict(
             (key, value)
@@ -416,6 +417,19 @@ help  # print this help
         """
         self.output(f"{data.private_sndStamp:0.3f}: {name}: {self.format_data(data)}")
 
+    async def evt_logMessage_callback(self, data: type_hints.BaseMsgType) -> None:
+        """Abbreviate the log output by omitting less-interesting fields.
+
+        Omit traceback unless it is non-blank.
+        Always omit filePath, functionName, lineNumber, process, and timestamp.
+        """
+        public_data = {key: getattr(data, key) for key in ("name", "level", "message")}
+        if data.traceback:  # type: ignore
+            public_data["traceback"] = data.traceback  # type: ignore
+        self.output(
+            f"{data.private_sndStamp:0.3f}: logMessage: {self.format_dict(public_data)}"
+        )
+
     async def evt_summaryState_callback(self, data: type_hints.BaseMsgType) -> None:
         state_int: int = data.summaryState  # type: ignore
         try:
@@ -429,17 +443,40 @@ help  # print this help
     async def telemetry_callback(
         self, data: type_hints.BaseMsgType, name: str, digits: int = 2
     ) -> None:
-        """Generic callback for telemetry.
+        """Default callback for telemetry topics.
 
-        You may provide tel_<telemetry_name> methods to override printing
-        of specific telemetry topics.
+        Print the telemetry information if it has changed enough
+        (as specified by ``digits``).
+
+        Parameters
+        ----------
+        data : `type_hints.BaseMsgType`
+            The message data.
+        name : `str`
+            The name to print. Typically the basic topic name
+            with no prefix.
+        digits : `int`
+            The default number of digits to which to round float values
+            before comparing if fields have changed enough to be worth
+            printing the new data.
+            May be overridden for specific fields using constructor argument
+            ``telemetry_fields_compare_digits``.
+
+        Notes
+        -----
+        * This method cannot be directly assigned as a topic callback.
+          Use `functools.partial` or similar to specify ``name``,
+          and, if you like, ``digits``.
+        * This method can also be used for events, if you only want
+          The event published when the data changes significantly.
+          One good candidate is the generic clockOffset event.
         """
-        prev_value_name = f"previous_tel_{name}"
+        prev_value_name = f"previous_{name}"
         public_dict = self.get_public_data(data)
         comparison_dict = self.get_telemetry_comparison_dict(
             public_dict=public_dict, digits=digits
         )
-        if comparison_dict != getattr(self, prev_value_name):
+        if comparison_dict != getattr(self, prev_value_name, None):
             setattr(self, prev_value_name, comparison_dict)
             formatted_data = self.format_dict(public_dict)
             self.output(f"{data.private_sndStamp:0.3f}: {name}: {formatted_data}")
