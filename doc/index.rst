@@ -81,7 +81,7 @@ For example:
 Running Tests Locally
 ---------------------
 
-If running tests in a Docker image, run the image with option ``--network=ts_salobj_default_default``.
+If running tests in a Docker image, run the image with option ``--network=ts_salobj_default``.
 
 To start Kafka, issue this command in ts_salobj's main directory: ``docker-compose up -d zookeeper broker schema-registry``
 
