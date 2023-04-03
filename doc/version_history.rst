@@ -6,6 +6,11 @@
 Version History
 ###############
 
+v7.3.3
+------
+* `QosSet`
+    * Fix doc strings
+
 v7.3.2
 ------
 
