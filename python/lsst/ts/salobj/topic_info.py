@@ -27,8 +27,9 @@ import dataclasses
 import typing
 from xml.etree import ElementTree
 
-from .field_info import FieldInfo, find_optional, find_required
+from .field_info import FieldInfo
 from .type_hints import BaseMsgType
+from .xml_utils import find_optional_text, find_required_text
 
 _PRIVATE_FIELD_LIST = [
     FieldInfo(
@@ -284,9 +285,9 @@ class TopicInfo:
         indexed : `str`
             Is this component indexed?
         """
-        full_name = find_required(element, "EFDB_Topic")
+        full_name = find_required_text(element, "EFDB_Topic")
         sal_name = full_name.split("_", 1)[1]
-        description = find_optional(element, "Description", "")
+        description = find_optional_text(element, "Description", "")
 
         fields = PRIVATE_FIELDS.copy()
         if not indexed:
