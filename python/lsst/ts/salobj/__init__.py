@@ -22,9 +22,9 @@ from .csc_commander import *
 from .csc_utils import *
 from .domain import *
 from .field_info import *
+from .get_component_info import *
 from .get_enums_from_xml import *
 from .hierarchical_update import *
-from .make_avro_schemas import *
 from .remote import *
 from .sal_enums import *
 from .sal_info import *

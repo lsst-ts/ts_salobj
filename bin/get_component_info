@@ -24,6 +24,6 @@
 
 Run with option ``--help`` for more information.
 """
-from lsst.ts.salobj import make_avro_schemas
+from lsst.ts.salobj import get_component_info
 
-make_avro_schemas()
+get_component_info()

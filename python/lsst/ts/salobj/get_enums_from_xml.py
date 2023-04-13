@@ -21,22 +21,14 @@ from __future__ import annotations
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = [
-    "get_field_enums_from_file_root",
-    "get_global_enums_from_file_root",
-    "get_enums_from_xml",
-]
+__all__ = ["get_field_and_global_enums"]
 
-import argparse
 import dataclasses
-import json
 import re
-import typing
 from xml.etree import ElementTree
 
 import lsst.ts.xml
 
-from .make_avro_schemas import check_components
 from .xml_utils import (
     FILE_SUFFIX_DICT,
     TopicType,
@@ -81,32 +73,6 @@ class GlobalEnumInfo:
         if not all(prefix == prefixes[0] for prefix in prefixes):
             raise RuntimeError(f"One or more inconsistent prefixes in {enum_text}")
         return cls(class_name=prefixes[0], items=items)
-
-
-def get_enums_for_one_component(
-    name: str,
-) -> tuple[list[FieldEnumInfo], list[GlobalEnumInfo]]:
-    """Parse ts_xml for enums for one SAL component.
-
-    Parameters
-    ----------
-    name : `str`
-        SAL component name.
-    """
-    interfaces_dir = lsst.ts.xml.get_sal_interfaces_dir()
-    field_enums: list[FieldEnumInfo] = []
-    global_enums: list[GlobalEnumInfo] = []
-    for topic_type in TopicType:
-        file_suffix = FILE_SUFFIX_DICT[topic_type]
-        filepath = interfaces_dir / name / f"{name}_{file_suffix}.xml"
-        if not filepath.is_file():
-            continue
-        file_root = ElementTree.parse(filepath).getroot()
-        field_enums += get_field_enums_from_file_root(
-            topic_type=topic_type, file_root=file_root
-        )
-        global_enums += get_global_enums_from_file_root(file_root)
-    return field_enums, global_enums
 
 
 def get_field_enums_from_file_root(
@@ -180,68 +146,27 @@ def get_global_enums_from_file_root(
     ]
 
 
-def get_enums_from_xml() -> None:
-    """Get enum information for SAL components specified on the command line.
+def get_field_and_global_enums(
+    name: str,
+) -> tuple[list[FieldEnumInfo], list[GlobalEnumInfo]]:
+    """Parse ts_xml for enums for one SAL component.
 
-    Run with option ``--help`` for more option.
+    Parameters
+    ----------
+    name : `str`
+        SAL component name.
     """
-    parser = argparse.ArgumentParser(
-        description="""Get enum info for one or more SAL components.
-
-    Write the data to stdout as a json-encoded dict:
-      {
-        component name: {
-            "global_enums": global_enum_info,
-            "field_specific_enums": field_specific_enum_info
-      }
-    where:
-    * global_enum_info is a list of (enum_class_name, [enum_item])
-    * enum_class_name is the first field of each enumeration item.
-    * enum_item is the rest of each enumumeration item (including
-      the value, if specified).
-    * field_specific_enum_info a list of (topic_name, field_name, [enum_item])
-    Write errors to stderr. """,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "components",
-        nargs="*",
-        help="Names of SAL components, e.g. 'Script ScriptQueue'. "
-        "Ignored if --all is specified",
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Make all components except those listed in --exclude.",
-    )
-    parser.add_argument(
-        "--exclude",
-        nargs="+",
-        help="Names of SAL components to exclude. "
-        "If an entry appears in both `components` and `exclude` then it is excluded.",
-    )
-    args = parser.parse_args()
-
-    if args.all:
-        components = lsst.ts.xml.subsystems
-    else:
-        components = args.components
-        check_components(parser=parser, descr="components", components=components)
-
-    if args.exclude:
-        exclude_set = set(args.exclude)
-        check_components(
-            parser=parser, descr="excluded components", components=exclude_set
+    interfaces_dir = lsst.ts.xml.get_sal_interfaces_dir()
+    field_enums: list[FieldEnumInfo] = []
+    global_enums: list[GlobalEnumInfo] = []
+    for topic_type in TopicType:
+        file_suffix = FILE_SUFFIX_DICT[topic_type]
+        filepath = interfaces_dir / name / f"{name}_{file_suffix}.xml"
+        if not filepath.is_file():
+            continue
+        file_root = ElementTree.parse(filepath).getroot()
+        field_enums += get_field_enums_from_file_root(
+            topic_type=topic_type, file_root=file_root
         )
-        components = [name for name in components if name not in exclude_set]
-
-    result: dict[str, dict[str, typing.Any]] = dict()
-    for name in components:
-        field_enums, global_enums = get_enums_for_one_component(name=name)
-
-        result[name] = dict(
-            field_enums=[info.as_tuple() for info in field_enums],
-            global_enums=[info.as_tuple() for info in global_enums],
-        )
-    encoded_result = json.dumps(result)
-    print(encoded_result)
+        global_enums += get_global_enums_from_file_root(file_root)
+    return field_enums, global_enums
