@@ -28,8 +28,13 @@ from xml.etree import ElementTree
 
 import lsst.ts.xml
 
-from .field_info import find_optional, find_required
 from .topic_info import TopicInfo, make_ackcmd_topic_info
+from .xml_utils import (
+    FILE_SUFFIX_DICT,
+    TopicType,
+    find_optional_text,
+    find_required_text,
+)
 
 
 class ComponentInfo:
@@ -41,7 +46,6 @@ class ComponentInfo:
         SAL component name.
     topic_subname : `str`
         Sub-namespace for Kafka topic names.
-
 
     Attributes
     ----------
@@ -82,17 +86,13 @@ class ComponentInfo:
         """
         interfaces_dir = lsst.ts.xml.get_sal_interfaces_dir()
         topic_elts: list[ElementTree.Element] = []
-        for topic_type in ("Command", "Event", "Telemetry"):
-            file_topic_type = {
-                "Command": "Commands",
-                "Event": "Events",
-                "Telemetry": "Telemetry",
-            }.get(topic_type)
-            filepath = interfaces_dir / self.name / f"{self.name}_{file_topic_type}.xml"
+        for topic_type in TopicType:
+            file_suffix = FILE_SUFFIX_DICT[topic_type]
+            filepath = interfaces_dir / self.name / f"{self.name}_{file_suffix}.xml"
             if not filepath.is_file():
                 continue
             topic_root = ElementTree.parse(filepath).getroot()
-            topic_elts += topic_root.findall(f"SAL{topic_type}")
+            topic_elts += topic_root.findall(f"SAL{topic_type.value}")
         return topic_elts
 
     def _make_topics(self) -> dict[str, TopicInfo]:
@@ -112,7 +112,7 @@ class ComponentInfo:
 
         def add_topic(elt: ElementTree.Element) -> None:
             """Add a topic element to topic_element_dict"""
-            topic_name = find_required(elt, "EFDB_Topic")
+            topic_name = find_required_text(elt, "EFDB_Topic")
             topic_name = topic_name.split("_", 1)[1]
             if topic_name in topic_element_dict:
                 raise RuntimeError(f"topic {topic_name} already found")
@@ -165,7 +165,9 @@ class ComponentInfo:
             interfaces_dir / "SALSubsystems.xml"
         ).getroot()
         elements = [
-            elt for elt in subsystems_root if find_required(elt, "Name") == self.name
+            elt
+            for elt in subsystems_root
+            if find_required_text(elt, "Name") == self.name
         ]
         if not elements:
             raise ValueError(f"No such component {self.name}")
@@ -173,11 +175,12 @@ class ComponentInfo:
             raise ValueError(f"Multiple components found with Name={self.name!r}")
         element = elements[0]
 
-        self.description = find_optional(element, "Description", "")
+        self.description = find_optional_text(element, "Description", "")
         self.added_generics = ["mandatory"] + [
-            item.strip() for item in find_required(element, "AddedGenerics").split(",")
+            item.strip()
+            for item in find_required_text(element, "AddedGenerics").split(",")
         ]
-        self.indexed = find_required(element, "IndexEnumeration").strip() != "no"
+        self.indexed = find_required_text(element, "IndexEnumeration").strip() != "no"
 
 
 def parse_sal_generics() -> (
@@ -199,7 +202,7 @@ def parse_sal_generics() -> (
     topic_element_dict: dict[str, ElementTree.Element] = dict()
     category_dict: dict[str, list[ElementTree.Element]] = dict()
     for gen in generics.findall("*/"):
-        topic_name = find_required(gen, "EFDB_Topic")
+        topic_name = find_required_text(gen, "EFDB_Topic")
         brief_name = topic_name[len("SALGeneric_") :]
         topic_element_dict[brief_name] = gen
         category_elt = gen.find("Category")

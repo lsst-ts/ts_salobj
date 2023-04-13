@@ -22,8 +22,8 @@ vKafka
       In other words change ``message.get_vars()`` to ``vars(message)``.
     * Remove function ``get_opensplice_version``.
 
-* Added bin script and entry point ``make_avro_schemas`` to make Avro schemas the topics for specified SAL components.
-  Run with ``--help`` for details.
+* Added bin script and entry point ``get_component_info`` to get information about a SAL component from ts_xml.
+  The information includes enumerations, Avro schemas for topics, and array lengths for fields.
 
 * `BaseCsc`: stop setting $OSPL_MASTER_PRIORITY; it is not needed for Kafka.
   Delete constant ``MASTER_PRIORITY_ENV_VAR``.

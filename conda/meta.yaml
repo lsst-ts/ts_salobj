@@ -23,6 +23,7 @@ test:
     - ts-conda-build =0.3
     - ts-idl {{ idl_version }}
     - ts-utils
+    - ts-xml
   source_files:
     - python
     - bin
@@ -55,3 +56,4 @@ requirements:
     - boto3
     - moto >=3
     - ts-utils
+    - ts-xml

@@ -27,40 +27,7 @@ import dataclasses
 import typing
 from xml.etree import ElementTree
 
-
-def find_optional(element: ElementTree.Element, name: str, default: str) -> str:
-    """Find an optional sub-element in an XML element and return the text.
-
-    Parameters
-    ----------
-    element : `ElementTree.Element`
-        XML element
-    name : `str`
-        Field name.
-    default : `str`
-        Value to return if the field does not exist.
-    """
-    subelt = element.find(name)
-    if subelt is None or subelt.text is None:
-        return default
-    return subelt.text
-
-
-def find_required(element: ElementTree.Element, name: str) -> str:
-    """Find a required sub-element in an XML element and return the text.
-
-    Parameters
-    ----------
-    element : `ElementTree.Element`
-        XML element
-    name : `str`
-        Field name.
-    """
-    subelt = element.find(name)
-    if subelt is None or subelt.text is None:
-        raise RuntimeError(f"Could not find required field {name}")
-    return subelt.text
-
+from .xml_utils import find_optional_text, find_required_text
 
 # Dict of SAL type: python type
 PYTHON_TYPES = {
@@ -138,11 +105,11 @@ class FieldInfo:
     @classmethod
     def from_xml_element(cls, element: ElementTree.Element) -> FieldInfo:
         """Construct a FieldInfo from an XML element."""
-        name = find_required(element, "EFDB_Name")
-        description = find_optional(element, "Description", "")
-        count = int(find_optional(element, "Count", "1"))
-        units = find_optional(element, "Units", "unitless")
-        sal_type = find_required(element, "IDL_Type")
+        name = find_required_text(element, "EFDB_Name")
+        description = find_optional_text(element, "Description", "")
+        count = int(find_optional_text(element, "Count", "1"))
+        units = find_optional_text(element, "Units", "unitless")
+        sal_type = find_required_text(element, "IDL_Type")
         return FieldInfo(
             name=name,
             sal_type=sal_type,
