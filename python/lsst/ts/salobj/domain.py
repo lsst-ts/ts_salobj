@@ -52,12 +52,14 @@ class QosSet:
     qos_path : `str` or `pathlib.Path`
         Path to QoS XML file.
     profile_name : `str`
-        Profile name; one of "Command", "Event", or "Telemetry".
+        Profile name; one of "CommandProfile", "EventProfile",
+        or "TelemetryProfile".
 
     Attributes
     ----------
     profile_name : `str`
-        Profile name; one of "Command", "Event", or "Telemetry".
+        Profile name; one of "CommandProfile", "EventProfile",
+        or "TelemetryProfile".
     qos_provider : `dds.QosProvider`
         QoS provider.
     topic_qos : `dds.Qos`
