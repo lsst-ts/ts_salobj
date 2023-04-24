@@ -28,6 +28,18 @@ vKafka
 * `BaseCsc`: stop setting $OSPL_MASTER_PRIORITY; it is not needed for Kafka.
   Delete constant ``MASTER_PRIORITY_ENV_VAR``.
 
+v7.3.3
+------
+* `QosSet`: fix doc strings
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
+
 v7.3.2
 ------
 
