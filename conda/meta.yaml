@@ -48,7 +48,7 @@ requirements:
     - python {{ python }}
     - setuptools
     - setuptools_scm
-    - confluent_kafka
+    - python-confluent-kafka
     - numpy ~=1.20
     - astropy >=5
     - boto3
