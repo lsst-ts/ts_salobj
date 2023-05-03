@@ -356,7 +356,11 @@ class ReadTopic(BaseTopic):
         if func is not None:
             if not callable(func):
                 raise TypeError(f"callback {func} not callable")
-            if not inspect.iscoroutinefunction(func):
+            if not inspect.iscoroutinefunction(
+                func
+            ) and not asyncio.iscoroutinefunction(
+                func.__call__  # type: ignore
+            ):
                 # TODO DM-37502: modify this to raise (and update doc string)
                 # once we drop support for synchronous callback functions.
                 warnings.warn(
