@@ -13,3 +13,7 @@ version.py
 .eggs
 *.egg_info
 .vscode
+.pre-commit-config.yaml
+.flake8
+.isort.cfg
+.mypy.ini
