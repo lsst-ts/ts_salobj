@@ -166,6 +166,8 @@ class ControllerCommand(read_topic.ReadTopic):
 
         Raises
         ------
+        asyncio.TimeoutError
+            If no message is available within the specified time limit.
         RuntimeError
             If a callback function is present.
 

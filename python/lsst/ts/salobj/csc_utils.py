@@ -120,6 +120,13 @@ async def set_summary_state(
         this function transitioned the CSC through,
         ending with the desired state.
 
+    Raises
+    ------
+    asyncio.TimeoutError
+        If the initial summary state cannot be read within the specified time
+        limit, or any individual state transition takes longer than the
+        specified time limit.
+
     Notes
     -----
     This function assumes the CSC is listening to SAL commands. If the CSC

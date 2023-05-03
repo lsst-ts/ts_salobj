@@ -177,10 +177,10 @@ class CommandInfo:
 
         Raises
         ------
-        AckTimeoutError
-            If the command acknowledgement does not arrive in time.
-        AckError
+        salobj.AckError
             If the command fails.
+        salobj.AckTimeoutError
+            If the command acknowledgement does not arrive in time.
         """
         try:
             self._wait_task = asyncio.create_task(
@@ -316,7 +316,9 @@ class RemoteCommand(write_topic.WriteTopic):
         Raises
         ------
         salobj.AckError
-            If the command fails or times out.
+            If the command fails.
+        salobj.AckTimeoutError
+            If the command acknowledgement does not arrive in time.
         RuntimeError
             If the command specified by ``seq_num`` is unknown
             or has already finished.
