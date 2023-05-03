@@ -6,8 +6,25 @@
 Version History
 ###############
 
+v7.3.4
+------
+
+* Add some missing Raises docs, especially missing asyncio.TimeoutError entries.
+* `topics.ReadTopic`: eliminate a false warning that async callback functors (classes with async ``__call__`` methods) are synchronous.
+* Switched to ts_pre_commit_config.
+* ``Jenkinsfile``: use new shared library.
+* Remove scons support.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
 v7.3.3
 ------
+
 * `QosSet`
     * Fix doc strings
 
