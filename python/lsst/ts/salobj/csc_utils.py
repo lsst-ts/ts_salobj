@@ -95,7 +95,7 @@ def get_expected_summary_states(
 async def set_summary_state(
     remote: Remote,
     state: State | int,
-    override: None | str = "",
+    override: str | None = "",
     timeout: float = 30,
 ) -> list[State]:
     """Put a CSC into the specified summary state.
@@ -119,6 +119,13 @@ async def set_summary_state(
         A list of the initial summary state and all summary states
         this function transitioned the CSC through,
         ending with the desired state.
+
+    Raises
+    ------
+    asyncio.TimeoutError
+        If the initial summary state cannot be read within the specified time
+        limit, or any individual state transition takes longer than the
+        specified time limit.
 
     Notes
     -----

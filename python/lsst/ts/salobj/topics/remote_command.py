@@ -124,7 +124,7 @@ class CommandInfo:
         self._ack_queue: collections.deque[
             type_hints.AckCmdDataType
         ] = collections.deque(maxlen=4)
-        self._last_ackcmd: None | type_hints.AckCmdDataType = None
+        self._last_ackcmd: type_hints.AckCmdDataType | None = None
 
     def add_ackcmd(self, ackcmd: type_hints.AckCmdDataType) -> bool:
         """Add a command acknowledgement to the queue.
@@ -177,10 +177,10 @@ class CommandInfo:
 
         Raises
         ------
-        AckTimeoutError
-            If the command acknowledgement does not arrive in time.
-        AckError
+        salobj.AckError
             If the command fails.
+        salobj.AckTimeoutError
+            If the command acknowledgement does not arrive in time.
         """
         try:
             self._wait_task = asyncio.create_task(
@@ -316,7 +316,9 @@ class RemoteCommand(write_topic.WriteTopic):
         Raises
         ------
         salobj.AckError
-            If the command fails or times out.
+            If the command fails.
+        salobj.AckTimeoutError
+            If the command acknowledgement does not arrive in time.
         RuntimeError
             If the command specified by ``seq_num`` is unknown
             or has already finished.
@@ -485,7 +487,7 @@ class RemoteCommand(write_topic.WriteTopic):
         return await cmd_info.next_ackcmd(timeout=timeout)
 
     async def set_write(
-        self, *, force_output: None | bool = None, **kwargs: typing.Any
+        self, *, force_output: bool | None = None, **kwargs: typing.Any
     ) -> write_topic.SetWriteResult:
         """An override of WriteTopic.set_write that is disabled."""
         raise NotImplementedError("Call set_start instead")

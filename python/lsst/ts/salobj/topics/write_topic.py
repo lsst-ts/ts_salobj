@@ -108,16 +108,16 @@ class WriteTopic(BaseTopic):
         *,
         salinfo: SalInfo,
         attr_name: str,
-        min_seq_num: None | int = 1,
+        min_seq_num: int | None = 1,
         max_seq_num: int = MAX_SEQ_NUM,
-        initial_seq_num: None | int = None,
+        initial_seq_num: int | None = None,
     ) -> None:
         super().__init__(salinfo=salinfo, attr_name=attr_name)
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
         if min_seq_num is None:
-            self._seq_num_generator: None | Generator[int, None, None] = None
+            self._seq_num_generator: Generator[int, None, None] | None = None
         else:
             self._seq_num_generator = utils.index_generator(
                 imin=min_seq_num, imax=max_seq_num, i0=initial_seq_num
@@ -271,7 +271,7 @@ class WriteTopic(BaseTopic):
         return did_change
 
     async def set_write(
-        self, *, force_output: None | bool = None, **kwargs: typing.Any
+        self, *, force_output: bool | None = None, **kwargs: typing.Any
     ) -> SetWriteResult:
         """Set zero or more fields of ``self.data`` and perhaps write the
         message (see ``force_output`` for details).

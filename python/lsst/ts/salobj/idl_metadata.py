@@ -51,8 +51,8 @@ class IdlMetadata:
         self,
         name: str,
         idl_path: type_hints.PathType,
-        sal_version: None | str,
-        xml_version: None | str,
+        sal_version: str | None,
+        xml_version: str | None,
         topic_info: dict[str, TopicMetadata],
     ) -> None:
         self.name = name
@@ -88,7 +88,7 @@ class TopicMetadata:
     """
 
     def __init__(
-        self, sal_name: str, version_hash: str, description: None | str
+        self, sal_name: str, version_hash: str, description: str | None
     ) -> None:
         self.sal_name = sal_name
         self.version_hash = version_hash
@@ -123,10 +123,10 @@ class FieldMetadata:
     def __init__(
         self,
         name: str,
-        description: None | str,
-        units: None | str,
+        description: str | None,
+        units: str | None,
         type_name: str,
-        array_length: None | int,
+        array_length: int | None,
     ):
         self.name = name
         self.description = description

@@ -51,7 +51,7 @@ MIN_QUEUE_LEN = 10
 # TODO DM-37502: change "_BasicReturnType | Awaitable[_BasicReturnType]"
 # to "Awaitable[_BasicReturnType]"
 # once we drop support for synchronous callback functions.
-_BasicReturnType = None | type_hints.AckCmdDataType
+_BasicReturnType = type_hints.AckCmdDataType | None
 CallbackType = Callable[
     [type_hints.BaseMsgType],
     _BasicReturnType | Awaitable[_BasicReturnType],
@@ -135,8 +135,8 @@ class QueueCapacityChecker:
         self._reset_thresholds = tuple(
             warn_thresh // 2 for warn_thresh in self.warn_thresholds
         )
-        self.warn_threshold: None | int = self.warn_thresholds[0]
-        self.reset_threshold: None | int = None
+        self.warn_threshold: int | None = self.warn_thresholds[0]
+        self.reset_threshold: int | None = None
 
     def check_nitems(self, nitems: int) -> bool:
         """Check the number of items in the queue and log a message
@@ -323,7 +323,7 @@ class ReadTopic(BaseTopic):
         self._data_queue: collections.deque[type_hints.BaseMsgType] = collections.deque(
             maxlen=queue_len
         )
-        self._current_data: None | type_hints.BaseMsgType = None
+        self._current_data: type_hints.BaseMsgType | None = None
         # Event that is set when new data arrives. Used by aget.
         self._new_data_event = asyncio.Event()
         # Task that `next` waits on.
@@ -332,7 +332,7 @@ class ReadTopic(BaseTopic):
         # because it allows multiple callers of `next` to all get the same
         # message, and it avoids a potential race condition with `flush`.
         self._next_task = utils.make_done_future()
-        self._callback: None | CallbackType = None
+        self._callback: CallbackType | None = None
         self._callback_tasks: set[asyncio.Task] = set()
         self._callback_loop_task = utils.make_done_future()
         self.dds_queue_length_checker = QueueCapacityChecker(
@@ -401,7 +401,7 @@ class ReadTopic(BaseTopic):
     @property
     def callback(
         self,
-    ) -> None | CallbackType:
+    ) -> CallbackType | None:
         """Asynchronous callback function, or None if there is not one.
 
         Synchronous callback functions are deprecated.
@@ -429,11 +429,15 @@ class ReadTopic(BaseTopic):
         return self._callback
 
     @callback.setter
-    def callback(self, func: None | CallbackType) -> None:
+    def callback(self, func: CallbackType | None) -> None:
         if func is not None:
             if not callable(func):
                 raise TypeError(f"callback {func} not callable")
-            if not inspect.iscoroutinefunction(func):
+            if not inspect.iscoroutinefunction(
+                func
+            ) and not asyncio.iscoroutinefunction(
+                func.__call__  # type: ignore
+            ):
                 # TODO DM-37502: modify this to raise (and update doc string)
                 # once we drop support for synchronous callback functions.
                 warnings.warn(
@@ -507,7 +511,7 @@ class ReadTopic(BaseTopic):
         """
         self.basic_close()
 
-    async def aget(self, timeout: None | float = None) -> type_hints.BaseMsgType:
+    async def aget(self, timeout: float | None = None) -> type_hints.BaseMsgType:
         """Get the most recent message, or wait for data if no data has
         ever been seen (`has_data` False).
 
@@ -527,6 +531,8 @@ class ReadTopic(BaseTopic):
 
         Raises
         ------
+        asyncio.TimeoutError
+            If no message is available within the specified time limit.
         RuntimeError
             If a callback function is present,
             or if the ``salinfo`` has not started reading.
@@ -561,7 +567,7 @@ class ReadTopic(BaseTopic):
             raise RuntimeError("Not allowed because there is a callback function")
         self._data_queue.clear()
 
-    def get(self) -> None | type_hints.BaseMsgType:
+    def get(self) -> type_hints.BaseMsgType | None:
         """Get the most recent message, or `None` if no data has ever been seen
         (`has_data` False).
 
@@ -582,7 +588,7 @@ class ReadTopic(BaseTopic):
 
         return self._current_data
 
-    def get_oldest(self) -> None | type_hints.BaseMsgType:
+    def get_oldest(self) -> type_hints.BaseMsgType | None:
         """Pop and return the oldest message from the queue, or `None` if the
         queue is empty.
 
@@ -614,7 +620,7 @@ class ReadTopic(BaseTopic):
         return None
 
     async def next(
-        self, *, flush: bool, timeout: None | float = None
+        self, *, flush: bool, timeout: float | None = None
     ) -> type_hints.BaseMsgType:
         """Pop and return the oldest message from the queue, waiting for data
         if the queue is empty.
@@ -640,6 +646,8 @@ class ReadTopic(BaseTopic):
 
         Raises
         ------
+        asyncio.TimeoutError
+            If no message is available within the specified time limit.
         RuntimeError
             If a callback function is present,
             or if the ``salinfo`` has not started reading.
@@ -656,7 +664,7 @@ class ReadTopic(BaseTopic):
             self.flush()
         return await self._next(timeout=timeout)
 
-    async def _next(self, *, timeout: None | float = None) -> type_hints.BaseMsgType:
+    async def _next(self, *, timeout: float | None = None) -> type_hints.BaseMsgType:
         """Implement next.
 
         Unlike `next`, this can be called while using a callback function.

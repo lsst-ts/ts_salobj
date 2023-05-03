@@ -50,8 +50,8 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
     def get_schema(
         self,
         csc_package_root: type_hints.PathType,
-        sal_name: None | str = None,
-        schema_subpath: None | str = None,
+        sal_name: str | None = None,
+        schema_subpath: str | None = None,
     ) -> dict[str, str]:
         """Get the config schema for a package, as a dict.
 
@@ -142,7 +142,7 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         self,
         config_dir: type_hints.PathType,
         schema: dict[str, typing.Any],
-        exclude_glob: None | str = None,
+        exclude_glob: str | None = None,
     ) -> None:
         """Check all configuration files for a given package.
 
@@ -219,7 +219,7 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         self,
         module_name: str,
         schema_name: str = "CONFIG_SCHEMA",
-        sal_name: None | str = None,
+        sal_name: str | None = None,
         config_package_root: str | pathlib.Path | None = None,
         config_dir: str | pathlib.Path | None = None,
     ) -> None:

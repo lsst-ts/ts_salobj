@@ -326,8 +326,8 @@ class Domain:
 
     async def __aexit__(
         self,
-        type: None | typing.Type[BaseException],
-        value: None | BaseException,
-        traceback: None | types.TracebackType,
+        type: typing.Type[BaseException] | None,
+        value: BaseException | None,
+        traceback: types.TracebackType | None,
     ) -> None:
         await self.close()

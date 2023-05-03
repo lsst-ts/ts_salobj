@@ -158,7 +158,7 @@ class DefaultingValidator:
         self.defaults_validator = WrappedValidator(schema=schema)
 
     def validate(
-        self, data_dict: None | dict[str, typing.Any]
+        self, data_dict: dict[str, typing.Any] | None
     ) -> dict[str, typing.Any]:
         """Validate data.
 

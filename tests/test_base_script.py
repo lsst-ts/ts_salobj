@@ -52,7 +52,7 @@ class NonConfigurableScript(salobj.BaseScript):
 
     def __init__(self, index: int) -> None:
         super().__init__(index=index, descr="Non-configurable script")
-        self.config: None | types.SimpleNamespace = None
+        self.config: types.SimpleNamespace | None = None
         self.run_called = False
         self.set_metadata_called = False
 
@@ -60,7 +60,7 @@ class NonConfigurableScript(salobj.BaseScript):
     def get_schema(cls) -> None:
         return None
 
-    async def configure(self, config: None | types.SimpleNamespace) -> None:
+    async def configure(self, config: types.SimpleNamespace | None) -> None:
         self.config = config
 
     async def run(self) -> None:

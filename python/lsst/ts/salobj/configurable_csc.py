@@ -123,7 +123,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     def __init__(
         self,
         name: str,
-        index: None | int,
+        index: int | None,
         config_schema: dict[str, typing.Any],
         config_dir: str | pathlib.Path | None = None,
         initial_state: State = State.STANDBY,
