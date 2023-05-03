@@ -110,7 +110,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         initial_state: sal_enums.State = sal_enums.State.STANDBY,
         config_dir: str | pathlib.Path | None = None,
         simulation_mode: int = 0,
-        log_level: None | int = None,
+        log_level: int | None = None,
         timeout: float = STD_TIMEOUT,
         **kwargs: typing.Any,
     ) -> AsyncGenerator[None, None]:
@@ -213,7 +213,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         state: sal_enums.State,
         flush: bool = False,
         timeout: float = STD_TIMEOUT,
-        remote: None | Remote = None,
+        remote: Remote | None = None,
     ) -> None:
         """Wait for and check the next ``summaryState`` event.
 
@@ -295,8 +295,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         index: int,
         exe_name: str,
         default_initial_state: sal_enums.State = sal_enums.State.STANDBY,
-        initial_state: None | sal_enums.State = None,
-        override: None | str = None,
+        initial_state: sal_enums.State | None = None,
+        override: str | None = None,
         cmdline_args: Sequence[str] = (),
         timeout: float = STD_TIMEOUT,
     ) -> None:
@@ -385,7 +385,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     async def check_standard_state_transitions(
         self,
         enabled_commands: Sequence[str],
-        skip_commands: None | Sequence[str] = None,
+        skip_commands: Sequence[str] | None = None,
         override: str = "",
         timeout: float = STD_TIMEOUT,
     ) -> None:
@@ -471,8 +471,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
     async def check_bad_commands(
         self,
-        bad_commands: None | Sequence[str] = None,
-        good_commands: None | Sequence[str] = None,
+        bad_commands: Sequence[str] | None = None,
+        good_commands: Sequence[str] | None = None,
     ) -> None:
         """Check that bad commands fail.
 

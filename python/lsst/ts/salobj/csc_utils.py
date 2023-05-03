@@ -95,7 +95,7 @@ def get_expected_summary_states(
 async def set_summary_state(
     remote: Remote,
     state: State | int,
-    override: None | str = "",
+    override: str | None = "",
     timeout: float = 30,
 ) -> list[State]:
     """Put a CSC into the specified summary state.

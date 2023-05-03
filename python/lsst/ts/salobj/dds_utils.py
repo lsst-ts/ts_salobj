@@ -27,7 +27,7 @@ import re
 import dds
 
 
-def get_dds_version(dds_file: None | str = None) -> str:
+def get_dds_version(dds_file: str | None = None) -> str:
     """Get the version of OpenSplice dds library.
 
     If it cannot be determined, return "?".
