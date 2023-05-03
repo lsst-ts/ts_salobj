@@ -78,7 +78,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def basic_make_csc(
         self,
-        initial_state: None | sal_enums.State | int,
+        initial_state: sal_enums.State | int | None,
         config_dir: str | pathlib.Path | None,
         simulation_mode: int,
         **kwargs: typing.Any,
@@ -107,7 +107,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     @contextlib.asynccontextmanager
     async def make_csc(
         self,
-        initial_state: None | sal_enums.State | int = None,
+        initial_state: sal_enums.State | int | None = None,
         config_dir: str | pathlib.Path | None = None,
         simulation_mode: int = 0,
         log_level: int | None = None,

@@ -131,7 +131,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         index: int | None,
         config_schema: dict[str, typing.Any],
         config_dir: str | pathlib.Path | None = None,
-        initial_state: None | State | int = None,
+        initial_state: State | int | None = None,
         override: str = "",
         simulation_mode: int = 0,
     ) -> None:

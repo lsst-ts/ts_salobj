@@ -205,7 +205,7 @@ class Controller:
     def __init__(
         self,
         name: str,
-        index: None | int = None,
+        index: int | None = None,
         *,
         do_callbacks: bool = False,
         write_only: bool = False,
@@ -338,7 +338,7 @@ class Controller:
         return self.salinfo.domain
 
     async def close(
-        self, exception: None | Exception = None, cancel_start: bool = True
+        self, exception: Exception | None = None, cancel_start: bool = True
     ) -> None:
         """Shut down, clean up resources and set done_task done.
 

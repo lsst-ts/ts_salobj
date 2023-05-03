@@ -162,8 +162,8 @@ class BaseCsc(Controller):
     def __init__(
         self,
         name: str,
-        index: None | int = None,
-        initial_state: None | State | int = None,
+        index: int | None = None,
+        initial_state: State | int | None = None,
         override: str = "",
         simulation_mode: int = 0,
         allow_missing_callbacks: bool = False,
