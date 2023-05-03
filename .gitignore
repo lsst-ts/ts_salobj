@@ -11,7 +11,7 @@ tests/.tests
 tests/measurements/*.json
 version.py
 .eggs
-*.egg_info
+python/*.egg-info
 .vscode
 .pre-commit-config.yaml
 .flake8
