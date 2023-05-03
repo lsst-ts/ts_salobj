@@ -180,6 +180,7 @@ class BaseCsc(Controller):
         name: str,
         index: None | int = None,
         check_if_duplicate: bool = False,
+        initial_state: State | int | None = None,
         override: str = "",
         simulation_mode: int = 0,
         allow_missing_callbacks: bool = False,

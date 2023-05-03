@@ -50,7 +50,7 @@ MIN_QUEUE_LEN = 10
 # TODO DM-37502: change "_BasicReturnType | Awaitable[_BasicReturnType]"
 # to "Awaitable[_BasicReturnType]"
 # once we drop support for synchronous callback functions.
-_BasicReturnType = None | type_hints.AckCmdDataType
+_BasicReturnType = type_hints.AckCmdDataType | None
 CallbackType = Callable[
     [type_hints.BaseMsgType],
     _BasicReturnType | Awaitable[_BasicReturnType],
