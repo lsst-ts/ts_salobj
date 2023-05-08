@@ -830,7 +830,7 @@ class BaseCsc(Controller):
             await getattr(self, f"end_{cmd_name}")(data)
         except base.ExpectedError as e:
             self.log.error(
-                f"begin_{cmd_name} failed; reverting to state {curr_state!r}: {e}"
+                f"end_{cmd_name} failed; reverting to state {curr_state!r}: {e}"
             )
             raise
         except Exception:
