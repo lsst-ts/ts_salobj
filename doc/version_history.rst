@@ -28,6 +28,34 @@ vKafka
 * `BaseCsc`: stop setting $OSPL_MASTER_PRIORITY; it is not needed for Kafka.
   Delete constant ``MASTER_PRIORITY_ENV_VAR``.
 
+v7.3.5
+------
+
+* `BaseCsc`: fix the log message if an end_<state> method fails; the message claimed it was begin_<state> that failed.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
+v7.3.4
+------
+
+* Add some missing Raises docs, especially missing asyncio.TimeoutError entries.
+* `topics.ReadTopic`: eliminate a false warning that async callback functors (classes with async ``__call__`` methods) are synchronous.
+* Switched to ts_pre_commit_config.
+* ``Jenkinsfile``: use new shared library.
+* Remove scons support.
+
+Requirements:
+
+* ts_ddsconfig
+* ts_idl 4.2
+* ts_utils 1.1
+* IDL files for Test and Script generated from ts_xml 11 using ts_sal 7
+
 v7.3.3
 ------
 * `QosSet`: fix doc strings
