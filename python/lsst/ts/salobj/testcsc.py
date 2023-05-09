@@ -102,7 +102,7 @@ class TestCsc(ConfigurableCsc):
     enable_cmdline_state = True
     valid_simulation_modes = [0]
     version = __version__
-    __test__ = False  # stop pytest from warning that this is not a test
+    __test__ = False  # Stop pytest from warning that this is not a test.
 
     def __init__(
         self,
