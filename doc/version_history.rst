@@ -26,8 +26,7 @@ Requirements:
 v7.3.3
 ------
 
-* `QosSet`
-    * Fix doc strings
+* `QosSet`: fix doc strings.
 
 Requirements:
 
