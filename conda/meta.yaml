@@ -8,61 +8,45 @@ source:
   path: ../
 
 build:
-  noarch: generic
+  noarch: python
   script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
-  script_env:
-    - PATH
-    - PYTHONPATH
-    - LD_LIBRARY_PATH
-    - OSPL_HOME
-    - PYTHON_BUILD_VERSION
-    - PYTHON_BUILD_LOCATION
-    - TS_CONFIG_OCS_DIR
 
 test:
   requires:
     - ts-conda-build =0.3
-    - ts-ddsconfig
     - ts-dds
+    - ts-ddsconfig
     - ts-idl {{ idl_version }}
     - ts-utils
   source_files:
-    - python
     - bin
-    - tests
-    - schema
-    - setup.cfg
     - pyproject.toml
-    - .git
+    - python
+    - schema
+    - tests
   commands:
     - pytest
 
 requirements:
   host:
-    - python {{ python }}
     - pip
-    - setuptools_scm
-    - setuptools
-    - pytest-runner
     - pytest-asyncio
     - pytest-flake8
-  build:
+    - pytest-runner
     - python {{ python }}
-    - setuptools_scm
     - setuptools
-    - pytest-runner
-    - pytest-asyncio
-    - pytest-flake8
+    - setuptools_scm
   run:
+    - astropy >=5
+    - boto3
+    - jsonschema
+    - moto >=3
+    - numpy ~=1.20
     - python {{ python }}
+    - pyyaml
     - setuptools
     - setuptools_scm
-    - numpy ~=1.20
-    - astropy >=5
-    - jsonschema
-    - pyyaml
-    - boto3
-    - moto >=3
-    - ts-ddsconfig
     - ts-dds
+    - ts-ddsconfig
+    - ts-idl {{ idl_version }}
     - ts-utils
