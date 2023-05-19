@@ -333,7 +333,7 @@ class RemoteCommand(write_topic.WriteTopic):
         lsst.ts.salobj.AckError
             If the command fails.
         lsst.ts.salobj.AckTimeoutError
-            If the command acknowledgement does not arrive in time.
+            If the command fails or times out.
         RuntimeError
             If the command specified by ``seq_num`` is unknown
             or has already finished.
