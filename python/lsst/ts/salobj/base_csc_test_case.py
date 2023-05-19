@@ -155,7 +155,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         asyncio.TimeoutError
             If the CSC cannot be constructed within the specified time limit.
         """
-        items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
+        items_to_close: typing.List[base_csc.BaseCsc | Remote] = []
         try:
             # Create the CSC, but prevent it from starting
             # until the remote is fully started
