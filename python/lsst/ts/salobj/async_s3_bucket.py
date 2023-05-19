@@ -26,6 +26,7 @@ import io
 import os
 import re
 import typing
+from collections.abc import Callable
 
 import astropy.time
 import astropy.units as u
@@ -46,13 +47,13 @@ class AsyncS3Bucket:
         for details. In particular note that bucket names must be globally
         unique across all AWS accounts.
     create : `bool`, optional
-        If True and the bucket does not exist, create it.
-        If False then assume the bucket exists.
+        If true and the bucket does not exist, create it.
+        If false then assume the bucket exists.
         You will typically want true if using a mock server (``domock`` true).
     profile : `str`, optional
         Profile name; use the default profile if None.
     domock : `bool`, optional
-        If True then start a mock S3 server.
+        If true then start a mock S3 server.
         This is recommended for running in simulation mode.
 
     Attributes
@@ -242,7 +243,7 @@ class AsyncS3Bucket:
         self,
         fileobj: typing.BinaryIO,
         key: str,
-        callback: typing.Callable[[int], None] | None = None,
+        callback: Callable[[int], None] | None = None,
     ) -> None:
         """Upload a file-like object to the bucket.
 
@@ -274,7 +275,7 @@ class AsyncS3Bucket:
         await loop.run_in_executor(None, self._sync_upload, fileobj, key, callback)
 
     async def download(
-        self, key: str, callback: typing.Callable[[int], None] | None = None
+        self, key: str, callback: Callable[[int], None] | None = None
     ) -> io.BytesIO:
         """Download a file-like object from the bucket.
 
@@ -339,12 +340,12 @@ class AsyncS3Bucket:
         self,
         fileobj: typing.BinaryIO,
         key: str,
-        callback: typing.Callable[[int], None] | None,
+        callback: Callable[[int], None] | None,
     ) -> None:
         self.bucket.upload_fileobj(Fileobj=fileobj, Key=key, Callback=callback)
 
     def _sync_download(
-        self, key: str, callback: typing.Callable[[int], None] | None
+        self, key: str, callback: Callable[[int], None] | None
     ) -> io.BytesIO:
         fileobj = io.BytesIO()
         self.bucket.download_fileobj(Key=key, Fileobj=fileobj, Callback=callback)

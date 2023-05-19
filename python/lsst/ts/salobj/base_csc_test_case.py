@@ -150,6 +150,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Extra keyword arguments for `basic_make_csc`.
             For a configurable CSC this may include ``override``,
             especially if ``initial_state`` is DISABLED or ENABLED.
+
+        Raises
+        ------
+        asyncio.TimeoutError
+            If the CSC cannot be constructed within the specified time limit.
         """
         items_to_close: list[base_csc.BaseCsc | Remote] = []
         try:
@@ -223,6 +228,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Time limit for getting the data sample (sec).
         remote : `Remote`, optional
             Remote to use; ``self.remote`` if None.
+
+        Raises
+        ------
+        asyncio.TimeoutError
+            If summary state is not seen within the specified time limit.
         """
         if remote is None:
             remote = self.remote
@@ -259,6 +269,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         -------
         data : topic data type
             The data read.
+
+        Raises
+        ------
+        asyncio.TimeoutError
+            If no message is available within the specified time limit.
         """
         data = await topic.next(flush=flush, timeout=timeout)
         for field_name, expected_value in kwargs.items():
@@ -310,6 +325,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         timeout : `float`, optional
             Time limit for the CSC to start and output
             the summaryState event.
+
+        Raises
+        ------
+        asyncio.TimeoutError
+            If the CSC cannot be started within the specified time limit.
         """
         exe_path = shutil.which(exe_name)
         if exe_path is None:
@@ -385,6 +405,11 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             from state `State.STANDBY` to `State.DISABLED`.
         timeout : `float`, optional
             Time limit for state transition commands (seconds).
+
+        Raises
+        ------
+        asyncio.TimeoutError
+            If any state transition takes longer than the specified time limit.
 
         Notes
         -----

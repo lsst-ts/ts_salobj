@@ -296,11 +296,11 @@ class BaseScript(controller.Controller, abc.ABC):
         reason : `str`, optional
             Reason for state change. `None` for no new reason.
         keep_old_reason : `bool`
-            If True, keep old reason; append the ``reason`` argument after ";"
+            If true, keep old reason; append the ``reason`` argument after ";"
             if it is is a non-empty string.
-            If False replace with ``reason``, or "" if ``reason`` is `None`.
+            If false replace with ``reason``, or "" if ``reason`` is `None`.
         force_output : `bool`, optional
-            If True the output even if not changed.
+            If true the output even if not changed.
 
         Notes
         -----

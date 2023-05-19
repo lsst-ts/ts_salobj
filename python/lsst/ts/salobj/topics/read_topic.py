@@ -453,6 +453,8 @@ class ReadTopic(BaseTopic):
 
         Raises
         ------
+        asyncio.TimeoutError
+            If no message is available within the specified time limit.
         RuntimeError
             If a callback function is present,
             or if the ``salinfo`` has not started reading.
@@ -566,6 +568,8 @@ class ReadTopic(BaseTopic):
 
         Raises
         ------
+        asyncio.TimeoutError
+            If no message is available within the specified time limit.
         RuntimeError
             If a callback function is present,
             or if the ``salinfo`` has not started reading.
