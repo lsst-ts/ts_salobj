@@ -177,9 +177,9 @@ class CommandInfo:
 
         Raises
         ------
-        salobj.AckError
+        lsst.ts.salobj.AckError
             If the command fails.
-        salobj.AckTimeoutError
+        lsst.ts.salobj.AckTimeoutError
             If the command acknowledgement does not arrive in time.
         """
         try:
@@ -315,9 +315,9 @@ class RemoteCommand(write_topic.WriteTopic):
 
         Raises
         ------
-        salobj.AckError
+        lsst.ts.salobj.AckError
             If the command fails.
-        salobj.AckTimeoutError
+        lsst.ts.salobj.AckTimeoutError
             If the command acknowledgement does not arrive in time.
         RuntimeError
             If the command specified by ``seq_num`` is unknown
@@ -405,9 +405,9 @@ class RemoteCommand(write_topic.WriteTopic):
 
         Raises
         ------
-        salobj.AckError
+        lsst.ts.salobj.AckError
             If the command fails.
-        salobj.AckTimeoutError
+        lsst.ts.salobj.AckTimeoutError
             If the command times out.
         TypeError
             If ``data`` is not None and not an instance of `DataType`.
@@ -451,9 +451,9 @@ class RemoteCommand(write_topic.WriteTopic):
 
         Raises
         ------
-        salobj.AckError
+        lsst.ts.salobj.AckError
             If the command fails.
-        salobj.AckTimeoutError
+        lsst.ts.salobj.AckTimeoutError
             If the command times out.
         RuntimeError
             If the ``salinfo`` has not started reading.

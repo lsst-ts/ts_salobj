@@ -273,8 +273,8 @@ class WriteTopic(BaseTopic):
     async def set_write(
         self, *, force_output: bool | None = None, **kwargs: typing.Any
     ) -> SetWriteResult:
-        """Set zero or more fields of ``self.data`` and perhaps write the
-        message (see ``force_output`` for details).
+        """Set zero or more fields of ``self.data`` and write if changed
+        or if ``force_output`` true.
 
         Parameters
         ----------

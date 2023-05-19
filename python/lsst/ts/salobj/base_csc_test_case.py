@@ -325,7 +325,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Time limit for the CSC to start and output
             the summaryState event.
 
-                    Raises
+        Raises
         ------
         asyncio.TimeoutError
             If the CSC cannot be started within the specified time limit.
@@ -405,7 +405,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         timeout : `float`, optional
             Time limit for state transition commands (seconds).
 
-                    Raises
+        Raises
         ------
         asyncio.TimeoutError
             If any state transition takes longer than the specified time limit.
