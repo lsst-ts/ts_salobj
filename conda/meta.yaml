@@ -8,15 +8,8 @@ source:
   path: ../
 
 build:
-  noarch: generic
-  script: python -m pip install --no-deps --ignore-installed .
-  script_env:
-    - PATH
-    - PYTHONPATH
-    - LD_LIBRARY_PATH
-    - PYTHON_BUILD_VERSION
-    - PYTHON_BUILD_LOCATION
-    - TS_CONFIG_OCS_DIR
+  noarch: python
+  script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
 
 test:
   requires:
@@ -25,35 +18,36 @@ test:
     - ts-utils
     - ts-xml
   source_files:
-    - python
-    - bin
-    - tests
-    - schema
-    - setup.cfg
-    - pyproject.toml
+      # .git is needed to test reading older git hashes of config files
     - .git
+    - bin
+    - pyproject.toml
+    - python
+    - schema
+    - tests
   commands:
     - pytest
 
 requirements:
   host:
-    - python
     - pip
-    - setuptools_scm
-    - setuptools
-    - pytest-runner
     - pytest-asyncio
     - pytest-flake8
-  run:
-    - python
+    - pytest-runner
+    - python {{ python }}
     - setuptools
     - setuptools_scm
-    - python-confluent-kafka
-    - numpy ~=1.20
+  run:
     - astropy >=5
-    - jsonschema
-    - pyyaml
     - boto3
+    - jsonschema
     - moto >=3
+    - numpy ~=1.20
+    - python {{ python }}
+    - python-confluent-kafka
+    - pyyaml
+    - setuptools
+    - setuptools_scm
+    - ts-idl {{ idl_version }}
     - ts-utils
     - ts-xml
