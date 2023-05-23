@@ -512,12 +512,18 @@ class ReadTopic(BaseTopic):
         self.basic_close()
 
     async def aget(self, timeout: float | None = None) -> type_hints.BaseMsgType:
-        """Get the most recent message, or wait for data if no data has
-        ever been seen (`has_data` False).
+        """Get the most recently seen message (with no delay), or wait for
+        data if no data has ever been seen (`has_data` False).
 
-        This method does not change which message will be returned by
-        any other method (except for the fact that new data
-        will arrive while waiting).
+        This is almost exactly like `get`. The only difference: if no data
+        has ever been received by this topic it will wait for data.
+        Once the topic has received *any* data, calling `aget` is identical
+        to calling `get` (except for the need to use ``await``) and the call
+        will return almost instantly.
+
+        Please avoid `aget`, if possible, because it tends to confuse users.
+        Use `get` to get the current data or `next` to wait for new data
+        (you will almost never need both for the same topic).
 
         Parameters
         ----------
@@ -539,6 +545,16 @@ class ReadTopic(BaseTopic):
 
         Notes
         -----
+        This method does not remove data from the queue, so it does not
+        change which data is returned by `next`.
+        In that respect it is not quite identical to this snippet,
+        which otherwise does the same thing as `aget`:
+
+            data = self.get()
+            if data is None:
+                data = await self.next(flush=False, timeout=timeout)
+            return data
+
         Do not modify the returned data. To make a copy that you can
         safely modify, use ``copy.copy(data)``.
         """

@@ -155,7 +155,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         asyncio.TimeoutError
             If the CSC cannot be constructed within the specified time limit.
         """
-        items_to_close: typing.List[typing.Union[base_csc.BaseCsc, Remote]] = []
+        items_to_close: typing.List[base_csc.BaseCsc | Remote] = []
         try:
             # Create the CSC, but prevent it from starting
             # until the remote is fully started
@@ -325,7 +325,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             Time limit for the CSC to start and output
             the summaryState event.
 
-                    Raises
+        Raises
         ------
         asyncio.TimeoutError
             If the CSC cannot be started within the specified time limit.
@@ -405,7 +405,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         timeout : `float`, optional
             Time limit for state transition commands (seconds).
 
-                    Raises
+        Raises
         ------
         asyncio.TimeoutError
             If any state transition takes longer than the specified time limit.
