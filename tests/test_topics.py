@@ -913,7 +913,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         self,
         callback: Callable,
         ack: salobj.SalRetCode,
-        result_contains: None | str = None,
+        result_contains: str | None = None,
     ) -> None:
         """Check the exception raised by a remote command when the controller
         controller command raises an exception or returns a failed ackcmd.

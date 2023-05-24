@@ -39,9 +39,9 @@ AngleOrDegType = astropy.coordinates.Angle | float
 
 @contextlib.contextmanager
 def assertRaisesAckError(
-    ack: None | int = None,
-    error: None | int = None,
-    result_contains: None | str = None,
+    ack: int | None = None,
+    error: int | None = None,
+    result_contains: str | None = None,
 ) -> Generator[None, None, None]:
     """Assert that code raises a salobj.AckError
 
@@ -71,7 +71,7 @@ def assertRaisesAckError(
 
 @contextlib.contextmanager
 def assertRaisesAckTimeoutError(
-    ack: None | int = None, error: None | int = None
+    ack: int | None = None, error: int | None = None
 ) -> Generator[None, None, None]:
     """Assert that code raises a salobj.AckTimeoutError
 

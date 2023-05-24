@@ -138,11 +138,11 @@ class Remote:
         self,
         domain: Domain,
         name: str,
-        index: None | int = None,
+        index: int | None = None,
         *,
         readonly: bool = False,
-        include: None | Iterable[str] = None,
-        exclude: None | Iterable[str] = None,
+        include: Iterable[str] | None = None,
+        exclude: Iterable[str] | None = None,
         evt_max_history: int = 1,
         start: bool = True,
     ) -> None:
@@ -218,8 +218,8 @@ class Remote:
 
     async def __aexit__(
         self,
-        type: None | typing.Type[BaseException],
-        value: None | BaseException,
-        traceback: None | types.TracebackType,
+        type: typing.Type[BaseException] | None,
+        value: BaseException | None,
+        traceback: types.TracebackType | None,
     ) -> None:
         await self.close()

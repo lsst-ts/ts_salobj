@@ -111,11 +111,11 @@ class BaseScript(controller.Controller, abc.ABC):
 
         schema = self.get_schema()
         if schema is None:
-            self.config_validator: None | validator.DefaultingValidator = None
+            self.config_validator: validator.DefaultingValidator | None = None
         else:
             self.config_validator = validator.DefaultingValidator(schema=schema)
-        self._run_task: None | asyncio.Future = None
-        self._pause_future: None | asyncio.Future = None
+        self._run_task: asyncio.Future | None = None
+        self._pause_future: asyncio.Future | None = None
         # Value incremented by `next_supplemented_group_id`
         # and cleared by do_setGroupId.
         self._sub_group_id = 0
@@ -310,7 +310,7 @@ class BaseScript(controller.Controller, abc.ABC):
     async def set_state(
         self,
         state: ScriptState | int | None = None,
-        reason: None | str = None,
+        reason: str | None = None,
         keep_old_reason: bool = False,
         force_output: bool = False,
     ) -> None:
@@ -459,7 +459,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def get_schema(cls) -> None | dict[str, typing.Any]:
+    def get_schema(cls) -> dict[str, typing.Any] | None:
         """Return a jsonschema to validate configuration, as a `dict`.
 
         Please provide default values for all fields for which defaults

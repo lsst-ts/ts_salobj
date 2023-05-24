@@ -157,12 +157,12 @@ class BaseCsc(Controller):
     default_initial_state: State = State.STANDBY
     enable_cmdline_state = False
     valid_simulation_modes: Sequence[int] = (0,)
-    simulation_help: None | str = None
+    simulation_help: str | None = None
 
     def __init__(
         self,
         name: str,
-        index: None | int = None,
+        index: int | None = None,
         initial_state: State = State.STANDBY,
         override: str = "",
         simulation_mode: int = 0,
@@ -206,7 +206,7 @@ class BaseCsc(Controller):
         # Set evt_simulationMode, now that it is available.
         self.evt_simulationMode.set(mode=int(simulation_mode))  # type: ignore
 
-        def format_version(version: None | str) -> str:
+        def format_version(version: str | None) -> str:
             return "?" if version is None else version
 
         self.evt_softwareVersions.set(  # type: ignore
@@ -676,7 +676,7 @@ class BaseCsc(Controller):
         """
         pass
 
-    async def fault(self, code: None | int, report: str, traceback: str = "") -> None:
+    async def fault(self, code: int | None, report: str, traceback: str = "") -> None:
         """Enter the fault state and output the ``errorCode`` event.
 
         Parameters
@@ -830,7 +830,7 @@ class BaseCsc(Controller):
             await getattr(self, f"end_{cmd_name}")(data)
         except base.ExpectedError as e:
             self.log.error(
-                f"begin_{cmd_name} failed; reverting to state {curr_state!r}: {e}"
+                f"end_{cmd_name} failed; reverting to state {curr_state!r}: {e}"
             )
             raise
         except Exception:

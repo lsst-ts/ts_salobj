@@ -102,12 +102,12 @@ class TestCsc(ConfigurableCsc):
     enable_cmdline_state = True
     valid_simulation_modes = [0]
     version = __version__
-    __test__ = False  # stop pytest from warning that this is not a test
+    __test__ = False  # Stop pytest from warning that this is not a test.
 
     def __init__(
         self,
         index: int,
-        config_dir: None | type_hints.PathType = None,
+        config_dir: type_hints.PathType | None = None,
         initial_state: State = State.STANDBY,
         override: str = "",
         simulation_mode: int = 0,
@@ -122,7 +122,7 @@ class TestCsc(ConfigurableCsc):
             simulation_mode=simulation_mode,
         )
         self.cmd_wait.allow_multiple_callbacks = True  # type: ignore
-        self.config: None | types.SimpleNamespace = None
+        self.config: types.SimpleNamespace | None = None
 
     def as_dict(self, data: typing.Any, fields: Sequence[str]) -> dict[str, typing.Any]:
         """Return the specified fields from a data struct as a dict.

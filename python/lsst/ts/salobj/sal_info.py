@@ -200,7 +200,7 @@ class SalInfo:
         self,
         domain: Domain,
         name: str,
-        index: None | int = 0,
+        index: int | None = 0,
         write_only: bool = False,
     ) -> None:
         if not isinstance(domain, Domain):
@@ -277,10 +277,10 @@ class SalInfo:
         # the first RemoteCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdReader
         # and set its callback to self._ackcmd_callback
-        self._ackcmd_reader: None | topics.AckCmdReader = None
+        self._ackcmd_reader: topics.AckCmdReader | None = None
         # the first ControllerCommand created should set this to
         # an lsst.ts.salobj.topics.AckCmdWriter
-        self._ackcmd_writer: None | topics.AckCmdWriter = None
+        self._ackcmd_writer: topics.AckCmdWriter | None = None
         # wait_timeout is a failsafe for shutdown; normally all you have to do
         # is call `close` to trigger the guard condition and stop the wait
         self._wait_timeout = dds.DDSDuration(sec=10)
@@ -851,9 +851,9 @@ class SalInfo:
 
     async def __aexit__(
         self,
-        type: None | typing.Type[BaseException],
-        value: None | BaseException,
-        traceback: None | types.TracebackType,
+        type: typing.Type[BaseException] | None,
+        value: BaseException | None,
+        traceback: types.TracebackType | None,
     ) -> None:
         await self.close()
 
