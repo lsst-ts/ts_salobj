@@ -6,6 +6,20 @@
 Version History
 ###############
 
+v7.4.0
+------
+
+* CSCs now optionally check for an already-running instance when starting.
+  This is always on when starting a CSC using the command line/entry point.
+  It is off by default when constructing the CSC class directly, to make unit tests start more quickly.
+  To support this:
+
+  * Add optional constructor argument ``check_if_duplicate`` to `BaseCsc`, `ConfigurableCsc`, and `TestCsc`.
+  * Add optional argument ``check_if_duplicate`` to `BaseCsc.make_from_cmd_line`.
+
+  Note that existing subclasses need not change anything to get the new behavior.
+  You may add optional constructor argument ``check_if_duplicate`` if you like, but it is not very useful.
+
 v7.3.4
 ------
 
