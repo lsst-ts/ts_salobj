@@ -11,22 +11,40 @@ vKafka
 
 * Update to use Kafka instead of DDS to read and write messages.
 
-* Changes that may visibly affect your code:
+* CSCs may specify initial_state=None to use the default state.
+
+* Changes that are most likely to break existing code:
 
     * `SalInfo`:
     
         * You must call ``start`` before writing data.
         * Deleted the deprecated ``makeAckCmd`` method; call ``make_ackcmd`` instead.
+        * The `SalInfo` ``metadata`` attribute has been replaced by ``component_info``.
+          ``component_info`` is more comprehensive (it is used to generate Kafka topics) and is derived directly from the XML files.
 
     * Messages no longer support the ``get_vars`` method; use the ``vars`` built-in function instead.
       In other words change ``message.get_vars()`` to ``vars(message)``.
-    * Remove function ``get_opensplice_version``.
+    * Deleted function ``get_opensplice_version``.
 
 * Added bin script and entry point ``get_component_info`` to get information about a SAL component from ts_xml.
   The information includes enumerations, Avro schemas for topics, and array lengths for fields.
 
 * `BaseCsc`: stop setting $OSPL_MASTER_PRIORITY; it is not needed for Kafka.
   Delete constant ``MASTER_PRIORITY_ENV_VAR``.
+
+v7.4.0
+------
+
+* CSCs now optionally check for an already-running instance when starting.
+  This is always on when starting a CSC using the command line/entry point.
+  It is off by default when constructing the CSC class directly, to make unit tests start more quickly.
+  To support this:
+
+  * Add optional constructor argument ``check_if_duplicate`` to `BaseCsc`, `ConfigurableCsc`, and `TestCsc`.
+  * Add optional argument ``check_if_duplicate`` to `BaseCsc.make_from_cmd_line`.
+
+  Note that existing subclasses need not change anything to get the new behavior.
+  You may add optional constructor argument ``check_if_duplicate`` if you like, but it is not very useful.
 
 v7.3.4
 ------
