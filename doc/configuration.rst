@@ -15,20 +15,26 @@ ts_salobj reads the following environment variables:
 
 Used by `SalInfo`:
 
-* ``LSST_TOPIC_SUBNAME`` (required): a component of Kafka topic names and schema namespaces.
-  Use a value of "sal" for production code, and any other value for experimental code and unit tests.
-  This allows experimental code to not interfere with production code, and unit tests to not interfere with each other.
-  Each `Remote` and `Controller` (hence ``CSC``) can have a different sub-namespace.
-
 * ``LSST_DDS_ENABLE_AUTHLIST`` (optional): set to "1" enable authlist-based command authorization.
   Set to "0" or leave undefined to disable authlist-based command authorization.
   In the long run we intend to eliminate this environment variable and always enable authlist-based command authorization.
 
 * ``LSST_KAFKA_BROKER_ADDR`` (optional): the address of the Kafka broker.
-  Defaults to ``broker:29092`` (matching the value in file ``docker-compose.yaml``), for unit tests.
+  If you are running Kafka locally, using the docker compose file, then set as follows:
+
+  * Leave it blank or set it to ``broker:29092`` (the default), for running unit tests within a Docker container.
+  * ``127.0.0.1:9092`` for running unit tests directly on your computer.
 
 * ``LSST_SCHEMA_REGISTRY_URL`` (optional): url of the Confluent schema registry.
-  Defaults to ``http://schema-registry:8081`` (matching the value in file ``docker-compose.yaml``), for unit tests.
+  If you are running Kafka locally, using the docker compose file, then set as follows:
+
+  * Leave blank or set to ``http://schema-registry:8081`` (the default) for running unit tests within a Docker container.
+  * ``127.0.0.1.8081`` for running unit tests directly on your computer.
+
+* ``LSST_TOPIC_SUBNAME`` (required): a component of Kafka topic names and schema namespaces.
+  Use a value of "sal" for production code, and any other value for experimental code and unit tests.
+  This allows experimental code to not interfere with production code, and unit tests to not interfere with each other.
+  Each `Remote` and `Controller` (hence ``CSC``) can have a different sub-namespace.
 
 Used by `ConfigurableCsc`:
 
@@ -44,14 +50,3 @@ Used by `AsyncS3Bucket`:
   Eventually we hope that ``endpoint_url`` can be defined in ``~/.aws/config``; if that is ever supported, we can deprecate this environment variable.
 
 .. _lsst.ts.salobj-configuration_other:
-
-Required LSST Packages
-----------------------
-
-ts_salobj requires the following LSST packages:
-
-* `ts_utils`_ for time functions and such.
-* `ts_xml`_ for SAL interfaces.
-
-.. _ts_utils: https://github.com/lsst-ts/ts_utils
-.. _ts_xml: https://github.com/lsst-ts/ts_xml
