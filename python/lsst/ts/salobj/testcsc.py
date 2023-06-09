@@ -60,6 +60,11 @@ class TestCsc(ConfigurableCsc):
         should use a different index.
     config_dir : `str`, optional
         Path to configuration files.
+    check_if_duplicate : `bool`, optional
+        Check for heartbeat events from the same SAL name and index
+        at startup (before starting the heartbeat loop)?
+        Defaults to False in order to speed up unit tests,
+        but `amain` sets it true.
     initial_state : `salobj.State`, optional
         The initial state of the CSC. Typically one of:
 
@@ -108,6 +113,7 @@ class TestCsc(ConfigurableCsc):
         self,
         index: int,
         config_dir: type_hints.PathType | None = None,
+        check_if_duplicate: bool = False,
         initial_state: State = State.STANDBY,
         override: str = "",
         simulation_mode: int = 0,
@@ -117,6 +123,7 @@ class TestCsc(ConfigurableCsc):
             index=index,
             config_schema=CONFIG_SCHEMA,
             config_dir=config_dir,
+            check_if_duplicate=check_if_duplicate,
             initial_state=initial_state,
             override=override,
             simulation_mode=simulation_mode,
