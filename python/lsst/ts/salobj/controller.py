@@ -285,10 +285,12 @@ class Controller:
             await self.start_phase2()
         except asyncio.CancelledError:
             self.log.warning("start canceled")
-        except Exception as e:
-            self.log.exception("start failed")
+        except ExpectedError as e:
+            self.log.error(f"start failed: {e}")
             await self.close(exception=e, cancel_start=False)
-            raise
+        except Exception as e:
+            self.log.exception(f"start failed: {e!r}")
+            await self.close(exception=e, cancel_start=False)
 
     async def start(self) -> None:
         """Finish construction."""

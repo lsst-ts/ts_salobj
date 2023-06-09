@@ -193,3 +193,16 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
         index = next(index_gen)
         with pytest.raises(RuntimeError):
             ValidSimulationModesNoneCsc(index=index)
+
+    async def test_check_if_duplicate(self) -> None:
+        index = next(index_gen)
+        csc = salobj.TestCsc(index=index)
+        assert not csc.check_if_duplicate
+        await csc.close()
+
+        for check_if_duplicate in (False, True):
+            with self.subTest(check_if_duplicate=check_if_duplicate):
+                index = next(index_gen)
+                csc = salobj.TestCsc(index=index, check_if_duplicate=check_if_duplicate)
+                assert csc.check_if_duplicate == check_if_duplicate
+                await csc.close()

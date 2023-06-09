@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import asyncio
 import enum
 import os
 import pathlib
@@ -35,6 +36,9 @@ np.random.seed(47)
 index_gen = utils.index_generator()
 TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
 TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
+
+# Standard timeout (sec)
+STD_TIMEOUT = 60
 
 
 class NoIndexCsc(salobj.TestCsc):
@@ -80,14 +84,35 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
                 ) as csc:
                     assert csc.arg1 == arg1
                     assert csc.arg2 == arg2
-                    await csc.close()
 
     async def test_specified_index(self) -> None:
         sys.argv = [sys.argv[0]]
         index = next(index_gen)
         async with salobj.TestCsc.make_from_cmd_line(index=index) as csc:
             assert csc.salinfo.index == index
-            await csc.close()
+
+    async def test_duplicate_rejection(self) -> None:
+        sys.argv = [sys.argv[0]]
+        index = next(index_gen)
+        async with salobj.TestCsc.make_from_cmd_line(index=index) as csc:
+            assert csc.salinfo.index == index
+            assert not csc.check_if_duplicate
+            await asyncio.wait_for(csc.start_task, timeout=STD_TIMEOUT)
+
+            duplicate_csc = salobj.TestCsc.make_from_cmd_line(
+                index=index, check_if_duplicate=True
+            )
+            try:
+                # Change origin so heartbeat private_origin differs.
+                duplicate_csc.salinfo.domain.origin += 1
+                assert duplicate_csc.salinfo.index == index
+                assert duplicate_csc.check_if_duplicate
+                with pytest.raises(
+                    salobj.ExpectedError, match="found another instance"
+                ):
+                    await asyncio.wait_for(duplicate_csc.done_task, timeout=STD_TIMEOUT)
+            finally:
+                await duplicate_csc.close()
 
     async def test_enum_index(self) -> None:
         class SalIndex(enum.IntEnum):
@@ -99,7 +124,6 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
             sys.argv = [sys.argv[0], str(index)]
             async with salobj.TestCsc.make_from_cmd_line(index=SalIndex) as csc:
                 assert csc.salinfo.index == index
-                await csc.close()
 
     async def test_index_from_argument_and_default_config_dir(self) -> None:
         index = next(index_gen)
@@ -113,7 +137,6 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
             desired_config_dir = pathlib.Path(desired_config_pkg_dir) / "Test/v2"
             assert csc.get_config_pkg() == desired_config_pkg_name
             assert csc.config_dir == desired_config_dir
-            await csc.close()
 
     async def test_config_from_argument(self) -> None:
         index = next(index_gen)
@@ -121,7 +144,6 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
         async with salobj.TestCsc.make_from_cmd_line(index=True) as csc:
             assert csc.salinfo.index == index
             assert csc.config_dir == TEST_CONFIG_DIR
-            await csc.close()
 
     async def test_state_good(self) -> None:
         """Test valid --state and --override arguments."""
@@ -155,7 +177,6 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
                     assert csc.config.string0 == "default value for string0"
                 else:
                     self.fail("Unhandled case.")
-                await csc.close()
 
     async def test_state_bad(self) -> None:
         """Test invalid --state or --override arguments."""
