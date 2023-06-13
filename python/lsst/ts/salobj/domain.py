@@ -30,8 +30,6 @@ import typing
 import warnings
 import weakref
 
-from lsst.ts import idl
-
 from . import base
 
 # Avoid circular imports by only importing SalInfo when type checking
@@ -62,8 +60,6 @@ class Domain:
     user_host : `str`
         username@host. This will match ``identity`` unless the latter
         is set to a CSC name.
-    idl_dir : `pathlib.Path`
-        Root directory of the ``ts_idl`` package.
 
     Notes
     -----
@@ -132,7 +128,6 @@ class Domain:
         self._salinfo_set: weakref.WeakSet[SalInfo] = weakref.WeakSet()
 
         self.origin = os.getpid()
-        self.idl_dir = idl.get_idl_dir()
 
     @property
     def salinfo_set(self) -> weakref.WeakSet[SalInfo]:
