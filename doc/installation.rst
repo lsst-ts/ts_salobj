@@ -42,24 +42,26 @@ The most convenient way to develop salobj-based software is to run a local Kafka
 
   * Set the following environment variables::
 
-      export LSST_KAFKA_BROKER_ADDR="127.0.0.1:9092"
-      export LSST_SCHEMA_REGISTRY_URL="http://schema-registry:8081"
+      export LSST_KAFKA_BROKER_ADDR="localhost:9092"
+      export LSST_SCHEMA_REGISTRY_URL="http://localhost:8081"
 
 * To start and stop Kafka, use the following bash/zsh functions::
 
     function kafka_run() {
         pushd <path to ts_salobj>
-        docker-compose up -d zookeeper broker schema-registry
+        docker-compose up -d
         popd
     }
 
     function kafka_stop() {
         pushd <path to ts_salobj>
-        docker-compose rm --stop --force broker schema-registry zookeeper
+        docker-compose rm --stop --force
         popd
     }
 
   Note that the docker-compose commands **must** be run in the ts_salobj directory.
+  This is needed for two reasons: to find the config file and to make the ``up`` command use the correct network.
+  Using these functions make this easy and reliable.
 
 Additional Configuration
 ========================
