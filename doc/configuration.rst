@@ -23,13 +23,13 @@ Used by `SalInfo`:
   If you are running Kafka locally, using the docker compose file, then set as follows:
 
   * Leave it blank or set it to ``broker:29092`` (the default), for running unit tests within a Docker container.
-  * ``127.0.0.1:9092`` for running unit tests directly on your computer.
+  * Use ``localhost:9092`` for running unit tests directly on your computer.
 
 * ``LSST_SCHEMA_REGISTRY_URL`` (optional): url of the Confluent schema registry.
   If you are running Kafka locally, using the docker compose file, then set as follows:
 
   * Leave blank or set to ``http://schema-registry:8081`` (the default) for running unit tests within a Docker container.
-  * ``127.0.0.1.8081`` for running unit tests directly on your computer.
+  * Use ``http://localhost:8081`` for running unit tests directly on your computer.
 
 * ``LSST_TOPIC_SUBNAME`` (required): a component of Kafka topic names and schema namespaces.
   Use a value of "sal" for production code, and any other value for experimental code and unit tests.
