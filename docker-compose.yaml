@@ -4,6 +4,9 @@
 # https://github.com/confluentinc/schema-registry-images/tags
 
 version: '3'
+networks:
+  kafka:
+    driver: bridge
 services:
 
   broker:
@@ -25,6 +28,8 @@ services:
         --override log.retention.minutes=10
       "
     ]
+    networks:
+      - kafka
     ports:
       - "9092:9092"
     environment:
@@ -36,6 +41,8 @@ services:
     container_name: schema-registry
     depends_on:
       - broker
+    networks:
+      - kafka
     ports:
       - "8081:8081"
     environment:

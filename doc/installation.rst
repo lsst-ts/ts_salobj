@@ -23,17 +23,17 @@ The most convenient way to develop salobj-based software is to run a local Kafka
 
 * If running salobj code in a Docker image:
 
-  * Make sure Docker has a network named ``ts_salobj_default``::
+  * Make sure Docker has a network named ``kafka``::
 
       docker network ls
 
     If not, create it with::
 
-      docker network create ts_salobj_default
+      docker network create kafka
 
   * Run your Docker image with this option, to make this network available::
 
-    --network=ts_salobj_default
+    --network=kafka
 
   * Leave environment variables ``LSST_KAFKA_BROKER_ADDR`` and ``LSST_SCHEMA_REGISTRY_URL`` undefined.
     The default values assume you are running salobj code inside a docker image.
@@ -45,23 +45,18 @@ The most convenient way to develop salobj-based software is to run a local Kafka
       export LSST_KAFKA_BROKER_ADDR="localhost:9092"
       export LSST_SCHEMA_REGISTRY_URL="http://localhost:8081"
 
-* To start and stop Kafka, use the following bash/zsh functions::
+* To start and stop Kafka::
 
-    function kafka_run() {
-        pushd <path to ts_salobj>
-        docker-compose up -d
-        popd
-    }
+    docker-compose -f <path-to-ts_salobj>/docker-compose.yaml up -d
 
-    function kafka_stop() {
-        pushd <path to ts_salobj>
-        docker-compose rm --stop --force
-        popd
-    }
+    docker-compose -f <path-to-ts_salobj>/docker-compose.yaml rm --stop --force
 
-  Note that the docker-compose commands **must** be run in the ts_salobj directory.
-  This is needed for two reasons: to find the config file and to make the ``up`` command use the correct network.
-  Using these functions make this easy and reliable.
+  We recommend making aliases for these two commands, e.g.::
+
+    alias kafka_run="docker-compose -f <path-to-ts_salobj>/docker-compose.yaml up -d"
+
+    alias kafka_stop="docker-compose -f <path-to-ts_salobj>/docker-compose.yaml rm --stop --force"
+
 
 Additional Configuration
 ========================
