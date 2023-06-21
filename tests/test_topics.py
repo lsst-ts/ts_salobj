@@ -1430,6 +1430,41 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 assert read_codes1 == expected_codes1
                 assert read_codes2 == expected_codes2
 
+    async def test_mock_write_topic(self) -> None:
+        async with salobj.make_mock_write_topics(
+            name="Test", attr_names=["cmd_wait", "evt_summaryState", "tel_arrays"]
+        ) as topics:
+            # Create the test_data first, then iterate over it,
+            # to make mypy happier.
+            test_data: list[tuple[str, list[dict[str, typing.Any]]]] = [
+                ("cmd_wait", [dict(duration=val) for val in (1, 2, 3)]),
+                ("evt_summaryState", [dict(summaryState=val) for val in (2, 3, 4)]),
+                ("tel_arrays", [dict(int0=[val] * 5) for val in range(5)]),
+            ]
+            for attr_name, data_list in test_data:
+                topic = getattr(topics, attr_name)
+                assert (
+                    topic.default_force_output is False
+                    if attr_name.startswith("evt")
+                    else True
+                )
+                assert len(topic.data_list) == 0
+                for i, data in enumerate(data_list):
+                    await topic.set_write(**data)
+                    assert len(topic.data_list) == i + 1
+                    for key, value in data.items():
+                        assert getattr(topic.data_list[-1], key) == value
+
+                # Write the last data again. This should only write and add
+                # data if not an event.
+                result = await topic.set_write(**data)
+                assert not result.did_change
+                assert result.was_written == topic.default_force_output
+                if result.was_written:
+                    assert len(topic.data_list) == len(data_list) + 1
+                else:
+                    assert len(topic.data_list) == len(data_list)
+
     async def test_sal_index(self) -> None:
         """Test separation of data using SAL index, including historical data.
 
