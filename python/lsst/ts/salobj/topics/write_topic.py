@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["MAX_SEQ_NUM", "SetWriteResult", "WriteTopic"]
 
 import copy
+import dataclasses
 import typing
 from collections.abc import Generator
 
@@ -46,6 +47,7 @@ if typing.TYPE_CHECKING:
 MAX_SEQ_NUM = (1 << 31) - 1
 
 
+@dataclasses.dataclass
 class SetWriteResult:
     """Result from set_write.
 
@@ -61,12 +63,9 @@ class SetWriteResult:
         call and other code that alters the data.
     """
 
-    def __init__(
-        self, did_change: bool, was_written: bool, data: type_hints.BaseMsgType
-    ) -> None:
-        self.did_change = did_change
-        self.was_written = was_written
-        self.data = data
+    did_change: bool
+    was_written: bool
+    data: type_hints.BaseMsgType
 
 
 class WriteTopic(BaseTopic):
