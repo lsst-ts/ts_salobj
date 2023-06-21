@@ -85,7 +85,21 @@ class MockWriteTopic(WriteTopic):
         )
         self.data_list: list[type_hints.BaseMsgType] = []
 
-    def _basic_write(self) -> type_hints.BaseMsgType:
+    async def write(self) -> type_hints.BaseMsgType:
+        """Write the current data and return a copy of the data written.
+
+        Returns
+        -------
+        data : self.DataType
+            The data that was written.
+            This can be useful to avoid race conditions
+            (as found in RemoteCommand).
+
+        Raises
+        ------
+        RuntimeError
+            If not running.
+        """
         data = self._prepare_data_to_write()
         self.data_list.append(data)
         return data
