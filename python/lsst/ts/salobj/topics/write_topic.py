@@ -25,7 +25,6 @@ __all__ = ["MAX_SEQ_NUM", "SetWriteResult", "WriteTopic"]
 
 import copy
 import dataclasses
-import struct
 import typing
 from collections.abc import Generator
 
