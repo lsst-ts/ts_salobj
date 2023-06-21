@@ -25,6 +25,7 @@ from .field_info import *
 from .get_component_info import *
 from .get_enums_from_xml import *
 from .hierarchical_update import *
+from .make_mock_write_topics import *
 from .remote import *
 from .sal_enums import *
 from .sal_info import *
