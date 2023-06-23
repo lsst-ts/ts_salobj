@@ -548,7 +548,7 @@ class ReadTopic(BaseTopic):
         This method does not remove data from the queue, so it does not
         change which data is returned by `next`.
         In that respect it is not quite identical to this snippet,
-        which otherwise does the same thing as `aget`:
+        which otherwise does the same thing as `aget`::
 
             data = self.get()
             if data is None:
