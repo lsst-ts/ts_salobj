@@ -97,9 +97,11 @@ class WriteTopic(BaseTopic):
     ----------
     isopen : `bool`
         Is this instance open? `True` until `close` or `basic_close` is called.
+    default_force_output : `bool`
+        Default value for the force_output argument of write.
+    Plus the attributes of:
+       `BaseTopic`
     """
-    # Default value for the force_output argument of write
-    default_force_output = True
 
     def __init__(
         self,
@@ -111,6 +113,9 @@ class WriteTopic(BaseTopic):
         initial_seq_num: int | None = None,
     ) -> None:
         super().__init__(salinfo=salinfo, attr_name=attr_name)
+        # Events are usually only written if data has changed.
+        # Commands, telemetry and ackcmd topics are usually always written.
+        self.default_force_output = not attr_name.startswith("evt_")
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num
