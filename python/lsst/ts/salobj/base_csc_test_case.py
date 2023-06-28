@@ -41,7 +41,10 @@ from .topics.read_topic import ReadTopic
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.
-STD_TIMEOUT = 20
+STD_TIMEOUT = 30
+
+# Timeout when constructing a CSC with duplicate checking enabled.
+STD_WITH_DUPLICATE_CHECK_TIMEOUT = STD_TIMEOUT + 10
 
 
 class BaseCscTestCase(metaclass=abc.ABCMeta):
@@ -299,7 +302,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         initial_state: sal_enums.State | None = None,
         override: str | None = None,
         cmdline_args: Sequence[str] = (),
-        timeout: float = STD_TIMEOUT,
+        timeout: float = STD_WITH_DUPLICATE_CHECK_TIMEOUT,
     ) -> None:
         """Test running the CSC command line script.
 
