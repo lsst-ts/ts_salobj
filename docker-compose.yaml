@@ -6,6 +6,7 @@
 version: '3'
 networks:
   kafka:
+    name: kafka
     driver: bridge
 services:
 
