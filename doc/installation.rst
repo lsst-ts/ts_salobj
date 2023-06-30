@@ -19,21 +19,29 @@ or::
 Run a Local Kafka Server
 ========================
 
-The most convenient way to develop salobj-based software is to run a local Kafka server, as follows:
+The most convenient way to develop salobj-based software is to run a local Kafka server in Docker, using the docker-compose file, as follows:
+
+* To start Kafka::
+
+    docker-compose -f <path-to-ts_salobj>/docker-compose.yaml up -d
+
+* To stop kafka and delete its data ("log files")::
+
+    docker-compose -f <path-to-ts_salobj>/docker-compose.yaml rm --stop --force
+
+* Consider making aliases for these two commands, e.g.::
+
+    alias kafka_run="docker-compose -f <path-to-ts_salobj>/docker-compose.yaml up -d"
+
+    alias kafka_stop="docker-compose -f <path-to-ts_salobj>/docker-compose.yaml rm --stop --force"
+
+To use this Kafka server, configure salobj as follows:
 
 * If running salobj code in a Docker image:
 
-  * Make sure Docker has a network named ``kafka``::
+  * Run your Docker image with the following option, to make the ``kafka`` network (the network used by the docker-compose file) available::
 
-      docker network ls
-
-    If not, create it with::
-
-      docker network create kafka
-
-  * Run your Docker image with this option, to make this network available::
-
-    --network=kafka
+      --network=kafka
 
   * Leave environment variables ``LSST_KAFKA_BROKER_ADDR`` and ``LSST_SCHEMA_REGISTRY_URL`` undefined.
     The default values assume you are running salobj code inside a docker image.
@@ -45,26 +53,14 @@ The most convenient way to develop salobj-based software is to run a local Kafka
       export LSST_KAFKA_BROKER_ADDR="localhost:9092"
       export LSST_SCHEMA_REGISTRY_URL="http://localhost:8081"
 
-* To start and stop Kafka::
-
-    docker-compose -f <path-to-ts_salobj>/docker-compose.yaml up -d
-
-    docker-compose -f <path-to-ts_salobj>/docker-compose.yaml rm --stop --force
-
-  We recommend making aliases for these two commands, e.g.::
-
-    alias kafka_run="docker-compose -f <path-to-ts_salobj>/docker-compose.yaml up -d"
-
-    alias kafka_stop="docker-compose -f <path-to-ts_salobj>/docker-compose.yaml rm --stop --force"
-
 
 Additional Configuration
 ========================
 
 To run code other than unit tests, you will also need to set the following environment variables::
 
-* ``LSST_SITE``: set to "test" or whatever site you want to load configuration files for.
-* ``LSST_TOPIC_SUBNAME``: set to "test" or any short-ish string of characters ``[a-zA-Z0-9._]``.
+    export LSST_SITE=test  # or whatever site you want to load configuration files for
+    export LSST_TOPIC_SUBNAME=test  # or any short-ish string of characters [a-zA-Z0-9._]
 
 See :ref:`lsst.ts.salobj-configuration_environment_variables` for more information.
 
