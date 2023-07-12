@@ -37,8 +37,13 @@ from . import base, type_hints
 from .controller import Controller
 from .csc_utils import make_state_transition_dict
 from .sal_enums import State
+from .sal_info import SalInfo
+from .topics.remote_event import RemoteEvent
 
 HEARTBEAT_INTERVAL = 1  # seconds
+
+# How many heartbeats to wait for in
+DUPLICATE_HEARTBEAT_INTERVAL_FACTOR = 5
 
 
 class BaseCsc(Controller):
@@ -52,6 +57,11 @@ class BaseCsc(Controller):
         Name of SAL component.
     index : `int` or `None`
         SAL component index, or 0 or None if the component is not indexed.
+    check_if_duplicate : `bool`, optional
+        Check for heartbeat events from the same SAL name and index
+        at startup (before starting the heartbeat loop)?
+        Defaults to False in order to speed up unit tests,
+        but `amain` sets it true.
     initial_state : `State` or `int`, optional
         Initial state for this CSC.
         Typically `State.STANDBY` (or `State.OFFLINE` for an
@@ -115,8 +125,11 @@ class BaseCsc(Controller):
         A *class* attribute. Used to set the ``cscVersion`` attribute of the
         ``softwareVersions`` event. You should almost always set this to
         your package's ``__version__`` attribute.
+    check_if_duplicate : `bool`
+        Check for heartbeat events from the same SAL name and index
+        at startup (before starting the heartbeat loop)?
     heartbeat_interval : `float`
-        Interval between heartbeat events, in seconds;
+        Interval between heartbeat events, in seconds.
 
     Notes
     -----
@@ -163,6 +176,7 @@ class BaseCsc(Controller):
         self,
         name: str,
         index: int | None = None,
+        check_if_duplicate: bool = False,
         initial_state: State = State.STANDBY,
         override: str = "",
         simulation_mode: int = 0,
@@ -186,6 +200,7 @@ class BaseCsc(Controller):
                 f"not in valid_simulation_modes={self.valid_simulation_modes}"
             )
 
+        self.check_if_duplicate = check_if_duplicate
         self._override = override
         self._summary_state = State(self.default_initial_state)
         self._initial_state = initial_state
@@ -216,6 +231,54 @@ class BaseCsc(Controller):
             cscVersion=getattr(self, "version", "?"),
         )
 
+    async def check_for_duplicate_heartbeat(
+        self, num_messages: int = DUPLICATE_HEARTBEAT_INTERVAL_FACTOR
+    ) -> int:
+        """Monitor heartbeat events and return True if any have a different
+        private_origin.
+
+        Intended for use by check_if_duplicate.
+
+        The heartbeat loop should be running before this is called.
+        This avoids the issue that if 2 CSCs are started at the same
+        time then neither will see the other one's heartbeat.
+        This code also assumes that will be true; it will likely raise
+        asyncio.TimeoutError if not.
+
+        Parameters
+        ----------
+        num_messages : `float`
+            The number of heartbeat messages to read.
+
+        Returns
+        -------
+        origin : `int`
+            private_origin field of duplicate heartbeat, or 0 if none detected.
+
+        Raises
+        ------
+        asyncio.TimeoutError
+            If no heartbeat seen within the specified time.
+        """
+        # Create a separate SalInfo because we only want to listen
+        # to the heartbeat topic for a short time.
+        if num_messages < 1:
+            raise ValueError(f"{num_messages=} must be positive")
+        async with SalInfo(
+            domain=self.salinfo.domain, name=self.salinfo.name, index=self.salinfo.index
+        ) as salinfo:
+            heartbeat_topic = RemoteEvent(
+                salinfo=salinfo, name="heartbeat", max_history=0
+            )
+            await salinfo.start()
+            for _ in range(num_messages):
+                data = await heartbeat_topic.next(
+                    flush=False, timeout=self.heartbeat_interval * 3
+                )
+                if data.private_origin != self.salinfo.domain.origin:
+                    return data.private_origin
+            return 0
+
     async def start(self) -> None:
         """Finish constructing the CSC.
 
@@ -227,6 +290,14 @@ class BaseCsc(Controller):
         await super().start()
         self._heartbeat_task.cancel()  # Paranoia
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+        if self.check_if_duplicate:
+            descr = f"{self.salinfo.name}:{self.salinfo.index} with origin={self.salinfo.domain.origin}"
+            self.log.info(f"{descr} checking for an already-running instance.")
+            duplicate_origin = await self.check_for_duplicate_heartbeat()
+            if duplicate_origin:
+                raise base.ExpectedError(
+                    f"{descr} quitting: found another instance with origin={duplicate_origin}."
+                )
         await self.set_simulation_mode(self.simulation_mode)
         await self.evt_softwareVersions.write()  # type: ignore
 
@@ -278,7 +349,10 @@ class BaseCsc(Controller):
 
     @classmethod
     def make_from_cmd_line(
-        cls, index: int | enum.IntEnum | bool | None, **kwargs: typing.Any
+        cls,
+        index: int | enum.IntEnum | bool | None,
+        check_if_duplicate: bool = False,
+        **kwargs: typing.Any,
     ) -> BaseCsc:
         """Construct a CSC from command line arguments.
 
@@ -296,6 +370,13 @@ class BaseCsc(Controller):
               should usually be allowed to specify the index.
 
             If the CSC is not indexed, specify `None` or 0.
+        check_if_duplicate : `bool`, optional
+            Check for heartbeat events from the same SAL name and index
+            at startup (before starting the heartbeat loop)?
+            The default is False, to match the BaseCsc default.
+            Note: handled by setting the attribute directly instead of
+            as a constructor argument, because CSCs may not all support
+            the constructor argument.
         **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
 
@@ -394,6 +475,9 @@ class BaseCsc(Controller):
         cls.add_kwargs_from_args(args=args, kwargs=kwargs)
 
         csc = cls(**kwargs)
+        # Set check_if_duplicate directly instead of passing as a constructor
+        # argument, because CSCs may not offer the constructor argument.
+        csc.check_if_duplicate = check_if_duplicate
         if args.loglevel is not None:
             csc.log.setLevel(args.loglevel)
         return csc
@@ -421,7 +505,7 @@ class BaseCsc(Controller):
         **kwargs : `dict`, optional
             Additional keyword arguments for your CSC's constructor.
         """
-        csc = cls.make_from_cmd_line(index=index, **kwargs)
+        csc = cls.make_from_cmd_line(index=index, check_if_duplicate=True, **kwargs)
         await csc.done_task
 
     @classmethod

@@ -24,6 +24,7 @@ import contextlib
 import itertools
 import logging
 import pathlib
+import shutil
 import subprocess
 import typing
 import unittest
@@ -267,6 +268,24 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                                 duration=0, timeout=STD_TIMEOUT
                             )
 
+    async def test_duplicate_rejection(self) -> None:
+        async with self.make_csc(initial_state=salobj.State.STANDBY):
+            assert not self.csc.check_if_duplicate
+
+            duplicate_csc = salobj.TestCsc(
+                index=self.csc.salinfo.index, check_if_duplicate=True
+            )
+            try:
+                # Change origin so heartbeat private_origin differs.
+                duplicate_csc.salinfo.domain.origin += 1
+                assert duplicate_csc.check_if_duplicate
+                with pytest.raises(
+                    salobj.ExpectedError, match="found another instance"
+                ):
+                    await asyncio.wait_for(duplicate_csc.done_task, timeout=STD_TIMEOUT)
+            finally:
+                await duplicate_csc.close()
+
     async def test_set_auth_list_prefix(self) -> None:
         """Test the setAuthList command with a +/- prefix"""
         async with self.make_csc(initial_state=salobj.State.ENABLED):
@@ -388,6 +407,68 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     initial_state=initial_state,
                     override=override,
                 )
+
+    async def test_bin_script_duplicate(self) -> None:
+        index = next(index_gen)
+        exe_name = "run_test_csc"
+        exe_path = shutil.which(exe_name)
+        if exe_path is None:
+            raise AssertionError(
+                f"Could not find bin script {exe_name}; did you setup or install this package?"
+            )
+
+        args = [exe_name, str(index), "--state", "standby"]
+
+        async with salobj.Domain() as domain, salobj.Remote(
+            domain=domain,
+            name="Test",
+            index=index,
+            include=["summaryState"],
+        ) as self.remote:
+            process1 = await asyncio.create_subprocess_exec(
+                *args,
+                stderr=subprocess.PIPE,
+            )
+            try:
+                await self.assert_next_summary_state(
+                    salobj.State.STANDBY, timeout=STD_TIMEOUT
+                )
+                # Start a duplicate CSC and wait for it to quit early.
+                process2 = await asyncio.create_subprocess_exec(
+                    *args,
+                    stderr=subprocess.PIPE,
+                )
+                try:
+                    await asyncio.wait_for(process2.wait(), timeout=STD_TIMEOUT)
+                    assert process2.returncode is not None
+                    assert process2.returncode > 0
+                    assert process2.stderr is not None  # make mypy happy
+                    try:
+                        errbytes = await asyncio.wait_for(
+                            process2.stderr.read(), timeout=STD_TIMEOUT
+                        )
+                        assert b"found another instance" in errbytes
+                    except asyncio.TimeoutError:
+                        raise AssertionError("timed out trying to read process2 stderr")
+                except asyncio.TimeoutError:
+                    process2.terminate()
+                    await asyncio.wait_for(process2.wait(), timeout=STD_TIMEOUT)
+                    raise AssertionError("CSC 2 did not die in time.")
+            finally:
+                if process1.returncode is None:
+                    process1.terminate()
+                    await asyncio.wait_for(process1.wait(), timeout=STD_TIMEOUT)
+                else:
+                    # CSC 1 quit early; try to print stderr, then fail.
+                    try:
+                        assert process1.stderr is not None  # make mypy happy
+                        errbytes = await asyncio.wait_for(
+                            process1.stderr.read(), timeout=STD_TIMEOUT
+                        )
+                        print("Subprocess stderr: ", errbytes.decode())
+                    except Exception as e:
+                        print(f"Could not read subprocess stderr: {e}")
+                    raise AssertionError("CSC 1 process terminated early")
 
     async def test_bin_script_version(self) -> None:
         """Test running the Test CSC from the bin script.

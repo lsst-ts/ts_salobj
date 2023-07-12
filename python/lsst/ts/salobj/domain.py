@@ -21,7 +21,7 @@ from __future__ import annotations
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["Domain"]
+__all__ = ["Domain", "QosSet"]
 
 import asyncio
 import os
@@ -72,6 +72,7 @@ class QosSet:
     Notes
     -----
     The following QoS should be created elsewhere:
+
     * publisher and subscriber: these depend on the DDS partition name,
       which is only read when creating the SalInfo object.
       Also these QoS are the same for all QoS profiles.

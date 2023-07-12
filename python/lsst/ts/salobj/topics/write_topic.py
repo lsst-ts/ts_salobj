@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["MAX_SEQ_NUM", "SetWriteResult", "WriteTopic"]
 
 import copy
+import dataclasses
 import struct
 import typing
 from collections.abc import Generator
@@ -47,6 +48,7 @@ if typing.TYPE_CHECKING:
 MAX_SEQ_NUM = (1 << 31) - 1
 
 
+@dataclasses.dataclass
 class SetWriteResult:
     """Result from set_write.
 
@@ -62,12 +64,9 @@ class SetWriteResult:
         call and other code that alters the data.
     """
 
-    def __init__(
-        self, did_change: bool, was_written: bool, data: type_hints.BaseMsgType
-    ) -> None:
-        self.did_change = did_change
-        self.was_written = was_written
-        self.data = data
+    did_change: bool
+    was_written: bool
+    data: type_hints.BaseMsgType
 
 
 class WriteTopic(BaseTopic):
@@ -99,9 +98,11 @@ class WriteTopic(BaseTopic):
     ----------
     isopen : `bool`
         Is this instance open? `True` until `close` or `basic_close` is called.
+    default_force_output : `bool`
+        Default value for the force_output argument of write.
+    Plus the attributes of:
+       `BaseTopic`
     """
-    # Default value for the force_output argument of write
-    default_force_output = True
 
     def __init__(
         self,
@@ -113,6 +114,9 @@ class WriteTopic(BaseTopic):
         initial_seq_num: int | None = None,
     ) -> None:
         super().__init__(salinfo=salinfo, attr_name=attr_name)
+        # Events are usually only written if data has changed.
+        # Commands, telemetry and ackcmd topics are usually always written.
+        self.default_force_output = not attr_name.startswith("evt_")
         self.isopen = True
         self.min_seq_num = min_seq_num  # record for unit tests
         self.max_seq_num = max_seq_num

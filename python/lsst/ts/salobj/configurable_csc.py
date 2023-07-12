@@ -54,6 +54,11 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         Directory of configuration files, or None for the standard
         configuration directory (obtained from `_get_default_config_dir`).
         This is provided for unit testing.
+    check_if_duplicate : `bool`, optional
+        Check for heartbeat events from the same SAL name and index
+        at startup (before starting the heartbeat loop)?
+        Defaults to False in order to speed up unit tests,
+        but `amain` sets it true.
     initial_state : `State` or `int`, optional
         The initial state of the CSC. This is provided for unit testing,
         as real CSCs should start up in `State.STANDBY`, the default.
@@ -126,6 +131,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         index: int | None,
         config_schema: dict[str, typing.Any],
         config_dir: str | pathlib.Path | None = None,
+        check_if_duplicate: bool = False,
         initial_state: State = State.STANDBY,
         override: str = "",
         simulation_mode: int = 0,
@@ -163,6 +169,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         super().__init__(
             name=name,
             index=index,
+            check_if_duplicate=check_if_duplicate,
             initial_state=initial_state,
             override=override,
             simulation_mode=simulation_mode,
