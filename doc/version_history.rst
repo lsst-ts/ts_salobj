@@ -8,8 +8,10 @@ Version History
 
 .. Version 8 of salobj will contain the kafka release.
 
-vKafka
+v8.0.0
 ------
+
+This new major release of salobj replaces DDS with Kafka.
 
 * Update to use Kafka instead of DDS to read and write messages.
 
@@ -33,6 +35,22 @@ vKafka
 
 * `BaseCsc`: stop setting $OSPL_MASTER_PRIORITY; it is not needed for Kafka.
   Delete constant ``MASTER_PRIORITY_ENV_VAR``.
+
+* Move the following submodules to ts_xml:
+
+  * ``component_info.py``
+  * ``field_info.py``
+  * ``get_component_info.py``
+  * ``sal_enums.py``
+  * ``get_enums_from_xml.py``
+  * ``xml_utils.py``
+  * ``type_hints.py``
+  * ``topic_info.py``
+
+* Re-export the following submodules to maintain backward compatibility.
+
+    * ``lsst.ts.xml.sal_enums``.
+    * ``lsst.ts.xml.type_hints``.
 
 v7.4.0
 ------
