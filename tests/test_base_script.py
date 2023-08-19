@@ -33,6 +33,7 @@ import pytest
 import yaml
 from lsst.ts import salobj, utils
 from lsst.ts.idl.enums.Script import ScriptState
+from lsst.ts.xml.type_hints import BaseMsgType
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -65,7 +66,7 @@ class NonConfigurableScript(salobj.BaseScript):
     async def run(self) -> None:
         self.run_called = True
 
-    def set_metadata(self, metadata: salobj.BaseMsgType) -> None:
+    def set_metadata(self, metadata: BaseMsgType) -> None:
         self.set_metadata_called = True
 
 
@@ -570,7 +571,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                     )
                     await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
 
-                    async def logcallback(data: salobj.BaseMsgType) -> None:
+                    async def logcallback(data: BaseMsgType) -> None:
                         print(f"message={data.message}")
 
                     remote.evt_logMessage.callback = logcallback
