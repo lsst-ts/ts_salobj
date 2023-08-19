@@ -25,7 +25,8 @@ __all__ = ["MockWriteTopic"]
 
 import typing
 
-from .. import type_hints
+from lsst.ts.xml import type_hints
+
 from .write_topic import MAX_SEQ_NUM, WriteTopic
 
 if typing.TYPE_CHECKING:

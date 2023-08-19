@@ -32,8 +32,9 @@ import typing
 
 import yaml
 from lsst.ts import utils
+from lsst.ts.xml import type_hints
 
-from . import base, type_hints
+from . import base
 from .base_csc import BaseCsc, State
 from .hierarchical_update import hierarchical_update
 from .validator import StandardValidator

@@ -27,8 +27,9 @@ __all__ = [
 
 import asyncio
 
+from lsst.ts.xml.sal_enums import State
+
 from .remote import Remote
-from .sal_enums import State
 
 StateTransitionDictType = dict[tuple[State, State], list[tuple[str, State]]]
 

@@ -31,11 +31,12 @@ import typing
 from collections.abc import Sequence
 
 from lsst.ts import utils
+from lsst.ts.xml import type_hints
+from lsst.ts.xml.sal_enums import State
 
-from . import base, type_hints
+from . import base
 from .controller import Controller
 from .csc_utils import make_state_transition_dict
-from .sal_enums import State
 from .sal_info import SalInfo
 from .topics.remote_event import RemoteEvent
 

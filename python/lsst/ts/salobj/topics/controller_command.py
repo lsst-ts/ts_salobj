@@ -27,7 +27,9 @@ import asyncio
 import inspect
 import typing
 
-from .. import base, sal_enums, type_hints
+from lsst.ts.xml import sal_enums, type_hints
+
+from .. import base
 from . import read_topic, write_topic
 
 if typing.TYPE_CHECKING:

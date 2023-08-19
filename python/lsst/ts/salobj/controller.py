@@ -27,13 +27,14 @@ import asyncio
 import types
 import typing
 
-from . import type_hints
+from lsst.ts.xml import type_hints
+from lsst.ts.xml.type_hints import BaseMsgType
+
 from .base import ExpectedError
 from .domain import Domain
 from .sal_info import SalInfo
 from .sal_log_handler import SalLogHandler
 from .topics import ControllerCommand, ControllerEvent, ControllerTelemetry
-from .type_hints import BaseMsgType
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.

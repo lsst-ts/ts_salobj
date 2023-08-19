@@ -28,8 +28,8 @@ import typing
 import unittest
 
 import yaml
+from lsst.ts.xml import type_hints
 
-from . import type_hints
 from .configurable_csc import ConfigurableCsc
 from .validator import StandardValidator
 

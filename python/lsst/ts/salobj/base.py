@@ -34,7 +34,7 @@ import re
 import socket
 import typing
 
-from . import sal_enums
+from lsst.ts.xml import sal_enums
 
 LOCAL_HOST = "127.0.0.1"
 

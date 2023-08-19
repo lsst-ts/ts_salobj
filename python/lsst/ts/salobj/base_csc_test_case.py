@@ -32,8 +32,9 @@ import typing
 from collections.abc import AsyncGenerator, Sequence
 
 from lsst.ts import utils
+from lsst.ts.xml import sal_enums, type_hints
 
-from . import base_csc, sal_enums, testutils, type_hints
+from . import base_csc, testutils
 from .csc_utils import get_expected_summary_states
 from .domain import Domain
 from .remote import Remote

@@ -53,11 +53,12 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerialize
 from confluent_kafka.serialization import MessageField, SerializationContext
 from fastavro.read import SchemaResolutionError
 from lsst.ts import utils
+from lsst.ts.xml import sal_enums, type_hints
+from lsst.ts.xml.component_info import ComponentInfo
+from lsst.ts.xml.topic_info import TopicInfo
 
-from . import sal_enums, topics, type_hints
-from .component_info import ComponentInfo
+from . import topics
 from .domain import Domain
-from .topic_info import TopicInfo
 
 # We want SAL logMessage messages for at least INFO level messages,
 # so if the current level is less verbose, set it to INFO.

@@ -30,7 +30,9 @@ import random
 import time
 import typing
 
-from .. import base, sal_enums, type_hints
+from lsst.ts.xml import sal_enums, type_hints
+
+from .. import base
 from . import read_topic, remote_command, write_topic
 
 if typing.TYPE_CHECKING:
