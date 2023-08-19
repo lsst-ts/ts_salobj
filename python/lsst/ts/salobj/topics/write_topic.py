@@ -30,8 +30,8 @@ from collections.abc import Generator
 
 import numpy as np
 from lsst.ts import utils
+from lsst.ts.xml import type_hints
 
-from .. import type_hints
 from .base_topic import BaseTopic
 
 if typing.TYPE_CHECKING:

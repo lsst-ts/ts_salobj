@@ -41,8 +41,9 @@ from lsst.ts.idl.enums.Script import (
     MetadataRotSys,
     ScriptState,
 )
+from lsst.ts.xml import type_hints
 
-from . import base, controller, type_hints, validator
+from . import base, controller, validator
 
 HEARTBEAT_INTERVAL = 5  # seconds
 

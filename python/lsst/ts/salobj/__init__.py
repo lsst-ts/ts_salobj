@@ -21,9 +21,6 @@ from .controller import *
 from .csc_commander import *
 from .csc_utils import *
 from .domain import *
-from .field_info import *
-from .get_component_info import *
-from .get_enums_from_xml import *
 from .hierarchical_update import *
 from .make_mock_write_topics import *
 from .remote import *
@@ -34,7 +31,5 @@ from .testcsc import *
 from .testcsccommander import *
 from .testscript import *
 from .testutils import *
-from .topic_info import *
 from .type_hints import *
 from .validator import *
-from .xml_utils import *

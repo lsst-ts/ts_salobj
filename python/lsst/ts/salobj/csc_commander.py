@@ -36,7 +36,9 @@ import typing
 import warnings
 from collections.abc import AsyncGenerator, Callable, Sequence
 
-from . import csc_utils, domain, remote, sal_enums, type_hints
+from lsst.ts.xml import sal_enums, type_hints
+
+from . import csc_utils, domain, remote
 
 # A dict of valid values for bool command arguments.
 # The argument should be converted to lowercase before using.
