@@ -29,6 +29,7 @@ import unittest
 import numpy as np
 import pytest
 from lsst.ts import salobj, utils
+from lsst.ts.xml.type_hints import BaseMsgType
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -50,7 +51,7 @@ class FailedCallbackCsc(salobj.TestCsc):
         super().__init__(*args, **kwargs)
         self.exc_msg = "do_wait raised an exception on purpose"
 
-    async def do_wait(self, data: salobj.BaseMsgType) -> None:
+    async def do_wait(self, data: BaseMsgType) -> None:
         raise RuntimeError(self.exc_msg)
 
 

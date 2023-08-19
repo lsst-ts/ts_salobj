@@ -31,6 +31,7 @@ from unittest.mock import MagicMock
 
 import astropy.units as u
 from lsst.ts import salobj, utils
+from lsst.ts.xml.component_info import ComponentInfo
 
 
 class MockVerify:
@@ -156,9 +157,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         """
         topic_subname = os.environ["LSST_TOPIC_SUBNAME"]
         t0 = time.monotonic()
-        component_info = salobj.ComponentInfo(
-            topic_subname=topic_subname, name="MTM1M3"
-        )
+        component_info = ComponentInfo(topic_subname=topic_subname, name="MTM1M3")
         data_classes = [
             topic_info.make_dataclass() for topic_info in component_info.topics.values()
         ]
