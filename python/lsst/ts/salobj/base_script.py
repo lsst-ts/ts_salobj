@@ -35,13 +35,13 @@ from collections.abc import Sequence
 
 import yaml
 from lsst.ts import utils
-from lsst.ts.idl.enums.Script import (
+from lsst.ts.xml import type_hints
+from lsst.ts.xml.enums.Script import (
     MetadataCoordSys,
     MetadataDome,
     MetadataRotSys,
     ScriptState,
 )
-from lsst.ts.xml import type_hints
 
 from . import base, controller, validator
 
