@@ -32,7 +32,7 @@ from collections.abc import Iterable
 import pytest
 import yaml
 from lsst.ts import salobj, utils
-from lsst.ts.idl.enums.Script import ScriptState
+from lsst.ts.xml.enums.Script import ScriptState
 from lsst.ts.xml.type_hints import BaseMsgType
 
 # Long enough to perform any reasonable operation
