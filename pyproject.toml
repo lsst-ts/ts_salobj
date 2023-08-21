@@ -18,7 +18,6 @@ where = [ "python" ]
 
 [project.scripts]
 command_test_csc = "lsst.ts.salobj:command_test_csc"
-get_component_info = "lsst.ts.salobj:get_component_info"
 run_test_csc = "lsst.ts.salobj:run_test_csc"
 
 [tool.setuptools_scm]
