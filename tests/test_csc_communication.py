@@ -425,12 +425,18 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             domain=domain,
             name="Test",
             index=index,
-            include=["summaryState"],
+            include=["summaryState", "heartbeat"],
         ) as self.remote:
             process1 = await asyncio.create_subprocess_exec(
                 *args,
                 stderr=subprocess.PIPE,
             )
+            await self.assert_next_sample(
+                topic=self.remote.evt_heartbeat,  # type: ignore
+                flush=True,
+                timeout=STD_TIMEOUT,
+            )
+
             try:
                 await self.assert_next_summary_state(
                     salobj.State.STANDBY, timeout=STD_TIMEOUT
