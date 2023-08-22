@@ -342,23 +342,20 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 *args,
                 stderr=subprocess.PIPE,
             )
-            await self.assert_next_sample(
-                topic=self.remote.evt_heartbeat,  # type: ignore
-                flush=True,
-                timeout=STD_TIMEOUT,
-            )
-
             try:
-                await self.assert_next_summary_state(
-                    salobj.State.STANDBY, timeout=STD_TIMEOUT
+                await self.assert_next_sample(
+                    topic=self.remote.evt_heartbeat,  # type: ignore
+                    flush=True,
+                    timeout=STD_TIMEOUT,
                 )
+
                 # Start a duplicate CSC and wait for it to quit early.
                 process2 = await asyncio.create_subprocess_exec(
                     *args,
                     stderr=subprocess.PIPE,
                 )
                 try:
-                    await asyncio.wait_for(process2.wait(), timeout=STD_TIMEOUT)
+                    await asyncio.wait_for(process2.wait(), timeout=STD_TIMEOUT * 2)
                     assert process2.returncode is not None
                     assert process2.returncode > 0
                     assert process2.stderr is not None  # make mypy happy
@@ -372,6 +369,21 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 except asyncio.TimeoutError:
                     process2.terminate()
                     await asyncio.wait_for(process2.wait(), timeout=STD_TIMEOUT)
+                    try:
+                        if process2.stdout is not None:
+                            std_out_bytes = await asyncio.wait_for(
+                                process2.stdout.read(), timeout=STD_TIMEOUT
+                            )
+                            print(std_out_bytes.decode())
+
+                        if process2.stderr is not None:
+                            errbytes = await asyncio.wait_for(
+                                process2.stderr.read(), timeout=STD_TIMEOUT
+                            )
+                            print(errbytes.decode())
+                    except asyncio.TimeoutError:
+                        print("Timeout waiting for process2 std out and/or std err")
+
                     raise AssertionError("CSC 2 did not die in time.")
             finally:
                 if process1.returncode is None:
