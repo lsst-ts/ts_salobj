@@ -991,6 +991,8 @@ class SalInfo:
         Destroying the Kafka objects prevents pytest from accumulating
         threads as it runs.
         """
+        self.pool.shutdown(wait=True, cancel_futures=True)
+
         if self._producer is not None:
             self._producer.purge()
         self._producer = None
@@ -998,7 +1000,6 @@ class SalInfo:
         self._serializers_and_contexts = dict()
         self._deserializers_and_contexts = dict()
         self._schema_registry_client = None
-        self.pool.shutdown(cancel_futures=True)
 
     async def _read_loop(self) -> None:
         """Read and process messages."""
