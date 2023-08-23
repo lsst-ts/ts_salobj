@@ -1013,7 +1013,7 @@ class SalInfo:
 
             sequential_read_errors = 0
 
-            while True:
+            while self.isopen:
                 message = await self.loop.run_in_executor(
                     self.pool, self._consumer.poll, 0.1
                 )
