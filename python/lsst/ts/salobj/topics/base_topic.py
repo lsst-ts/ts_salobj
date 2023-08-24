@@ -26,7 +26,7 @@ __all__ = ["BaseTopic"]
 import abc
 import typing
 
-from .. import type_hints
+from lsst.ts.xml import type_hints
 
 if typing.TYPE_CHECKING:
     from ..sal_info import SalInfo

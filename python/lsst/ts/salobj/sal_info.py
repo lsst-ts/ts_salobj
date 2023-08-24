@@ -53,11 +53,12 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerialize
 from confluent_kafka.serialization import MessageField, SerializationContext
 from fastavro.read import SchemaResolutionError
 from lsst.ts import utils
+from lsst.ts.xml import sal_enums, type_hints
+from lsst.ts.xml.component_info import ComponentInfo
+from lsst.ts.xml.topic_info import TopicInfo
 
-from . import sal_enums, topics, type_hints
-from .component_info import ComponentInfo
+from . import topics
 from .domain import Domain
-from .topic_info import TopicInfo
 
 # We want SAL logMessage messages for at least INFO level messages,
 # so if the current level is less verbose, set it to INFO.
@@ -213,7 +214,7 @@ class SalInfo:
         self.domain = domain
         self.index = 0 if index is None else index
         self.loop = asyncio.get_running_loop()
-        self.pool = ThreadPoolExecutor(max_workers=1000)
+        self.pool = ThreadPoolExecutor(max_workers=100)
         self.write_only = write_only
         self.identity = domain.default_identity
         self.start_called = False
@@ -339,6 +340,8 @@ class SalInfo:
         self._read_loop_task = utils.make_done_future()
 
         self._run_kafka_task = utils.make_done_future()
+
+        self._run_kafka_result = utils.make_done_future()
 
         if self.index != 0 and not self.indexed:
             raise ValueError(
@@ -516,16 +519,46 @@ class SalInfo:
             return
         self.isopen = False
         self._closing = True
+        if not self._run_kafka_result.done():
+            self._run_kafka_result.set_result(None)
+
         try:
-            self._read_loop_task.cancel()
-            if cancel_run_kafka_task:
+            await asyncio.wait_for(
+                self._read_loop_task,
+                timeout=0.5,
+            )
+        except Exception as e:
+            print(f"Read loop failed: {e!r}")
+            self.log.exception("Exception waiting for read loop to finish.")
+
+        try:
+            await asyncio.wait_for(
+                self._run_kafka_task,
+                timeout=0.5,
+            )
+        except Exception as e:
+            print(f"Run kafka loop failed: {e!r}")
+            self.log.exception("Exception waiting for kafka loop to finish.")
+
+        try:
+            if not self._read_loop_task.done():
+                self._read_loop_task.cancel()
+                try:
+                    await self._read_loop_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception as e:
+                    print(f"Error in read_loop_task: {e!r}")
+            if cancel_run_kafka_task and not self._run_kafka_task.done():
                 self._run_kafka_task.cancel()
+                try:
+                    await self._run_kafka_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception as e:
+                    print(f"Error in run_kafka_task: {e!r}")
             if self._consumer is not None:
                 self._consumer.close()
-            # Give the tasks time to finish cancelling.
-            # In particular: give the _read_loop time to
-            # decrement self.domain.num_read_loops
-            await asyncio.sleep(0)
             for reader in self._read_topics.values():
                 await reader.close()
             for writer in self._write_topics.values():
@@ -629,7 +662,9 @@ class SalInfo:
                 if not self.start_task.done():
                     self.start_task.set_result(None)
                 # Keep running until _run_kafka_task is cancelled.
-                await asyncio.Future()
+                if self._run_kafka_result.done():
+                    self._run_kafka_result = asyncio.Future()
+                await self._run_kafka_result
             else:
                 # There are read topics, so self.start_task will be
                 # set done in self._read_loop_task.
@@ -990,6 +1025,8 @@ class SalInfo:
         Destroying the Kafka objects prevents pytest from accumulating
         threads as it runs.
         """
+        self.pool.shutdown(wait=True, cancel_futures=True)
+
         if self._producer is not None:
             self._producer.purge()
         self._producer = None
@@ -997,7 +1034,6 @@ class SalInfo:
         self._serializers_and_contexts = dict()
         self._deserializers_and_contexts = dict()
         self._schema_registry_client = None
-        self.pool.shutdown(cancel_futures=True)
 
     async def _read_loop(self) -> None:
         """Read and process messages."""
@@ -1011,7 +1047,7 @@ class SalInfo:
 
             sequential_read_errors = 0
 
-            while True:
+            while self.isopen:
                 message = await self.loop.run_in_executor(
                     self.pool, self._consumer.poll, 0.1
                 )

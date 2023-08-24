@@ -28,8 +28,9 @@ import typing
 from collections.abc import Sequence
 
 import numpy as np
+from lsst.ts.xml import type_hints
 
-from . import __version__, type_hints
+from . import __version__
 from .base_csc import State
 from .config_schema import CONFIG_SCHEMA
 from .configurable_csc import ConfigurableCsc

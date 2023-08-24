@@ -35,14 +35,15 @@ from collections.abc import Sequence
 
 import yaml
 from lsst.ts import utils
-from lsst.ts.idl.enums.Script import (
+from lsst.ts.xml import type_hints
+from lsst.ts.xml.enums.Script import (
     MetadataCoordSys,
     MetadataDome,
     MetadataRotSys,
     ScriptState,
 )
 
-from . import base, controller, type_hints, validator
+from . import base, controller, validator
 
 HEARTBEAT_INTERVAL = 5  # seconds
 

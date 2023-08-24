@@ -31,11 +31,12 @@ import typing
 from collections.abc import Sequence
 
 from lsst.ts import utils
+from lsst.ts.xml import type_hints
+from lsst.ts.xml.sal_enums import State
 
-from . import base, type_hints
+from . import base
 from .controller import Controller
 from .csc_utils import make_state_transition_dict
-from .sal_enums import State
 from .sal_info import SalInfo
 from .topics.remote_event import RemoteEvent
 
@@ -270,13 +271,14 @@ class BaseCsc(Controller):
                 salinfo=salinfo, name="heartbeat", max_history=0
             )
             await salinfo.start()
-            for _ in range(num_messages):
+            try:
                 data = await heartbeat_topic.next(
                     flush=False, timeout=self.heartbeat_interval * 3
                 )
-                if data.private_origin != self.salinfo.domain.origin:
-                    return data.private_origin
-            return 0
+            except asyncio.TimeoutError:
+                return 0
+            else:
+                return data.private_origin
 
     async def start(self) -> None:
         """Finish constructing the CSC.
@@ -288,7 +290,6 @@ class BaseCsc(Controller):
         """
         await super().start()
         self._heartbeat_task.cancel()  # Paranoia
-        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         if self.check_if_duplicate:
             descr = f"{self.salinfo.name}:{self.salinfo.index} with origin={self.salinfo.domain.origin}"
             self.log.info(f"{descr} checking for an already-running instance.")
@@ -297,6 +298,7 @@ class BaseCsc(Controller):
                 raise base.ExpectedError(
                     f"{descr} quitting: found another instance with origin={duplicate_origin}."
                 )
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         await self.set_simulation_mode(self.simulation_mode)
         await self.evt_softwareVersions.write()  # type: ignore
 
@@ -930,8 +932,8 @@ class BaseCsc(Controller):
         """Output heartbeat at regular intervals."""
         while True:
             try:
-                await asyncio.sleep(self.heartbeat_interval)
                 await self.evt_heartbeat.write()  # type: ignore
+                await asyncio.sleep(self.heartbeat_interval)
             except asyncio.CancelledError:
                 break
             except Exception as e:

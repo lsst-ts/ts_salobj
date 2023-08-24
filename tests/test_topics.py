@@ -1045,8 +1045,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             assert self.csc.cmd_wait.has_callback
             assert self.csc.cmd_wait.allow_multiple_callbacks
 
-            durations = (0.4, 0.2)  # seconds
-            t0 = time.monotonic()
+            durations = (4, 2)  # seconds
             tasks = []
             for duration in durations:
                 task = asyncio.create_task(
@@ -1059,13 +1058,14 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 # is modified by the next loop iteration
                 await asyncio.sleep(0)
                 tasks.append(task)
+            t0 = time.monotonic()
             ackcmds = await asyncio.gather(*tasks)
             measured_duration = time.monotonic() - t0
             for ackcmd in ackcmds:
                 assert ackcmd.ack == salobj.SalRetCode.CMD_COMPLETE
 
             expected_duration = max(*durations)
-            assert abs(measured_duration - expected_duration) < 0.1
+            assert abs(measured_duration - expected_duration) < 1
 
     async def test_multiple_sequential_commands(self) -> None:
         """Test that commands prohibiting multiple callbacks are executed

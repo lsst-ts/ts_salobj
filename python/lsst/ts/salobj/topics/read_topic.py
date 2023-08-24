@@ -33,8 +33,9 @@ import warnings
 from collections.abc import Awaitable, Callable, Collection
 
 from lsst.ts import utils
+from lsst.ts.xml import type_hints
 
-from .. import base, type_hints
+from .. import base
 from .base_topic import BaseTopic
 
 if typing.TYPE_CHECKING:
@@ -50,7 +51,7 @@ MIN_QUEUE_LEN = 10
 # TODO DM-37502: change "_BasicReturnType | Awaitable[_BasicReturnType]"
 # to "Awaitable[_BasicReturnType]"
 # once we drop support for synchronous callback functions.
-_BasicReturnType = type_hints.AckCmdDataType | None
+_BasicReturnType = typing.Type[type_hints.AckCmdDataType | None]
 CallbackType = Callable[
     [type_hints.BaseMsgType],
     _BasicReturnType | Awaitable[_BasicReturnType],

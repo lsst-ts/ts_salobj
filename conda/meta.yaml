@@ -31,15 +31,14 @@ test:
 requirements:
   host:
     - pip
-    - pytest-asyncio
     - pytest-flake8
-    - pytest-runner
     - python {{ python }}
     - setuptools
     - setuptools_scm
   run:
     - astropy >=5
     - boto3
+    - fastavro
     - jsonschema
     - moto >=3
     - numpy ~=1.20
@@ -48,6 +47,6 @@ requirements:
     - pyyaml
     - setuptools
     - setuptools_scm
-    - ts-idl {{ idl_version }}
+    - ts-idl
     - ts-utils
     - ts-xml
