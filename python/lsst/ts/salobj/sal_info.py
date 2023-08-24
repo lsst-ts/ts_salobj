@@ -214,7 +214,7 @@ class SalInfo:
         self.domain = domain
         self.index = 0 if index is None else index
         self.loop = asyncio.get_running_loop()
-        self.pool = ThreadPoolExecutor(max_workers=1000)
+        self.pool = ThreadPoolExecutor(max_workers=100)
         self.write_only = write_only
         self.identity = domain.default_identity
         self.start_called = False
