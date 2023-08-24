@@ -519,16 +519,46 @@ class SalInfo:
             return
         self.isopen = False
         self._closing = True
+        if not self._run_kafka_result.done():
+            self._run_kafka_result.set_result(None)
+
         try:
-            self._read_loop_task.cancel()
-            if cancel_run_kafka_task:
+            await asyncio.wait_for(
+                self._read_loop_task,
+                timeout=0.5,
+            )
+        except Exception as e:
+            print(f"Read loop failed: {e!r}")
+            self.log.exception("Exception waiting for read loop to finish.")
+
+        try:
+            await asyncio.wait_for(
+                self._run_kafka_task,
+                timeout=0.5,
+            )
+        except Exception as e:
+            print(f"Run kafka loop failed: {e!r}")
+            self.log.exception("Exception waiting for kafka loop to finish.")
+
+        try:
+            if not self._read_loop_task.done():
+                self._read_loop_task.cancel()
+                try:
+                    await self._read_loop_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception as e:
+                    print(f"Error in read_loop_task: {e!r}")
+            if cancel_run_kafka_task and not self._run_kafka_task.done():
                 self._run_kafka_task.cancel()
+                try:
+                    await self._run_kafka_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception as e:
+                    print(f"Error in run_kafka_task: {e!r}")
             if self._consumer is not None:
                 self._consumer.close()
-            # Give the tasks time to finish cancelling.
-            # In particular: give the _read_loop time to
-            # decrement self.domain.num_read_loops
-            await asyncio.sleep(0)
             for reader in self._read_topics.values():
                 await reader.close()
             for writer in self._write_topics.values():
