@@ -341,6 +341,8 @@ class SalInfo:
 
         self._run_kafka_task = utils.make_done_future()
 
+        self._run_kafka_result = utils.make_done_future()
+
         if self.index != 0 and not self.indexed:
             raise ValueError(
                 f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component"
@@ -630,7 +632,9 @@ class SalInfo:
                 if not self.start_task.done():
                     self.start_task.set_result(None)
                 # Keep running until _run_kafka_task is cancelled.
-                await asyncio.Future()
+                if self._run_kafka_result.done():
+                    self._run_kafka_result = asyncio.Future()
+                await self._run_kafka_result
             else:
                 # There are read topics, so self.start_task will be
                 # set done in self._read_loop_task.
