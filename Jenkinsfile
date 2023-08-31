@@ -1,4 +1,4 @@
-@Library('JenkinsShared')_
+@Library('JenkinsShared@kafka')_
 DevelopPipeline(
     name: "ts_salobj",
     module_name: "lsst.ts.salobj",
