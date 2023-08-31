@@ -1076,28 +1076,25 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.csc.cmd_wait.allow_multiple_callbacks = False
             assert not self.csc.cmd_wait.allow_multiple_callbacks
 
-            durations = (0.4, 0.2)  # seconds
-            t0 = time.monotonic()
+            durations = (STD_TIMEOUT, STD_TIMEOUT / 2.0)  # seconds
 
             tasks = []
             for duration in durations:
-                task = asyncio.create_task(
-                    self.remote.cmd_wait.set_start(
-                        duration=duration,
-                        timeout=STD_TIMEOUT + duration,
-                    )
+                task = self.remote.cmd_wait.set_start(
+                    duration=duration,
+                    timeout=STD_TIMEOUT + duration,
                 )
                 tasks.append(task)
-                # make sure the command is sent before the command data
-                # is modified by the next loop iteration
-                await asyncio.sleep(0)
+            # stop to give time for the system to stabilize before
+            await asyncio.sleep(NO_DATA_TIMEOUT)
+            t0 = time.monotonic()
             ackcmds = await asyncio.gather(*tasks)
             measured_duration = time.monotonic() - t0
             for ackcmd in ackcmds:
                 assert ackcmd.ack == salobj.SalRetCode.CMD_COMPLETE
 
             expected_duration = np.sum(durations)
-            assert abs(measured_duration - expected_duration) < 0.1
+            assert measured_duration == pytest.approx(expected_duration, rel=1e-1)
 
     async def test_remote_command_not_ready(self) -> None:
         """Test RemoteCommand methods that should raise an exception when the
