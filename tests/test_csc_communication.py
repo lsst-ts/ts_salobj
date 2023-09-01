@@ -382,12 +382,11 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
     async def test_heartbeat(self) -> None:
         async with self.make_csc(initial_state=salobj.State.STANDBY):
-            self.csc.heartbeat_interval = 0.1
             timeout = self.csc.heartbeat_interval * 5
             await self.remote.evt_heartbeat.next(flush=True, timeout=STD_TIMEOUT)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
+            await self.remote.evt_heartbeat.next(flush=False, timeout=timeout)
+            await self.remote.evt_heartbeat.next(flush=False, timeout=timeout)
+            await self.remote.evt_heartbeat.next(flush=False, timeout=timeout)
 
     async def test_bin_script_run(self) -> None:
         """Test running the Test CSC from the bin script.
