@@ -31,6 +31,7 @@ import typing
 from collections.abc import Sequence
 
 from lsst.ts import utils
+from lsst.ts.xml import __version__ as xml_version
 from lsst.ts.xml import type_hints
 from lsst.ts.xml.sal_enums import State
 
@@ -234,6 +235,7 @@ class BaseCsc(Controller):
 
         self.evt_softwareVersions.set(  # type: ignore
             cscVersion=getattr(self, "version", "?"),
+            xmlVersion=xml_version,
         )
 
     async def check_for_duplicate_heartbeat(
