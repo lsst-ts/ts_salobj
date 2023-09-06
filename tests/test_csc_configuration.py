@@ -25,7 +25,7 @@ import unittest
 
 import numpy as np
 import yaml
-from lsst.ts import salobj, utils
+from lsst.ts import salobj, utils, xml
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
@@ -81,6 +81,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             await self.assert_next_sample(
                 topic=self.remote.evt_softwareVersions,
                 cscVersion=salobj.__version__,
+                xmlVersion=xml.__version__,
             )
             await self.assert_next_sample(
                 topic=self.remote.evt_configurationApplied,
