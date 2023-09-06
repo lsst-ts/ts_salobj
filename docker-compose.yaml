@@ -11,7 +11,7 @@ networks:
 services:
 
   broker:
-    image: quay.io/strimzi/kafka:0.35.0-kafka-3.4.0
+    image: quay.io/strimzi/kafka:0.36.1-kafka-3.5.1
     hostname: broker
     container_name: broker
     command: [
