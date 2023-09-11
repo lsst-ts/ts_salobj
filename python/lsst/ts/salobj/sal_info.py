@@ -250,15 +250,6 @@ class SalInfo:
             raise RuntimeError(
                 "You must define environment variable LSST_TOPIC_SUBNAME"
             )
-        # TODO DM-36101: remove this test when we are ready to switch
-        # from DDS-based SAL to Kafka-based SAL, and use
-        # $LSST_TOPIC_SUBNAME="sal" for production code.
-        # Then the EFD ingest code will see the expected topic names.
-        if topic_subname == "sal":
-            raise RuntimeError(
-                "Environment variable LSST_TOPIC_SUBNAME must not have value 'sal', "
-                "because that may interfere with EFD ingest of DDS-based SAL data"
-            )
 
         self.kafka_broker_addr = os.environ.get(
             "LSST_KAFKA_BROKER_ADDR", DEFAULT_LSST_KAFKA_BROKER_ADDR
