@@ -75,6 +75,9 @@ MAX_HISTORY_READ = 10000
 DEFAULT_LSST_KAFKA_BROKER_ADDR = "broker:29092"
 DEFAULT_LSST_SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
 
+DEFAULT_SECURITY_PROTOCOL = "SASL_PLAINTEXT"
+DEFAULT_SASL_MECHANISM = "SCRAM-SHA-512"
+
 # Maximum number of sequential errors reading data from Kafka
 MAX_SEQUENTIAL_READ_ERRORS = 2
 
@@ -165,6 +168,14 @@ class SalInfo:
     * ``LSST_SCHEMA_REGISTRY_URL`` (optional): url of the Confluent schema
       registry. Defaults to ``http://schema-registry:8081`` (matching the
       value in file ``docker-compose.yaml``), for unit tests.
+    * ``LSST_KAFKA_SECURITY_USERNAME`` (optional): Username to authenticate
+      with the kafka broker.
+    * ``LSST_KAFKA_SECURITY_PASSWORD`` (optional): Password to authenticate
+      with the kafka broker.
+    * ``LSST_KAFKA_SECURITY_PROTOCOL`` (optional): Authentication protocol to
+      use with the kafka broker.
+    * ``LSST_KAFKA_SECURITY_MECHANISM`` (optional): Authentication mechanism
+      to use with the kafka broker.
 
     **Usage**
 
@@ -256,6 +267,12 @@ class SalInfo:
         )
         self.schema_registry_url = os.environ.get(
             "LSST_SCHEMA_REGISTRY_URL", DEFAULT_LSST_SCHEMA_REGISTRY_URL
+        )
+        self.sasl_plain_username: None | str = os.environ.get(
+            "LSST_KAFKA_SECURITY_USERNAME", None
+        )
+        self.sasl_plain_password: None | str = os.environ.get(
+            "LSST_KAFKA_SECURITY_PASSWORD", None
         )
 
         self.component_info = ComponentInfo(topic_subname=topic_subname, name=name)
@@ -742,9 +759,9 @@ class SalInfo:
         # * Rely on automatic registration of new topics.
         #   That prevents setting non-default configuration (such as
         #   num_partitions) and it can cause ugly warnings.
-        broker_client = AdminClient(
-            {"bootstrap.servers": self.kafka_broker_addr, "api.version.request": True}
-        )
+        broker_client_configuration = self.get_broker_client_configuration()
+
+        broker_client = AdminClient(broker_client_configuration)
         create_result = broker_client.create_topics(new_topic_list)
         for kafka_name, future in create_result.items():
             exception = future.exception()
@@ -766,6 +783,34 @@ class SalInfo:
         # to call it causes tests/test_speed.py test_write to fail.
         broker_client.poll(1)
 
+    def get_broker_client_configuration(self) -> dict[str, typing.Any]:
+        """Get the broker client configuration.
+
+        Returns
+        -------
+        `dict`[`str`, `str`]
+            Broker configuration.
+        """
+        broker_client_configuration = {
+            "bootstrap.servers": self.kafka_broker_addr,
+            "api.version.request": True,
+        }
+
+        if (
+            self.sasl_plain_username is not None
+            and self.sasl_plain_password is not None
+        ):
+            broker_client_configuration["security.protocol"] = os.environ.get(
+                "LSST_KAFKA_SECURITY_PROTOCOL", DEFAULT_SECURITY_PROTOCOL
+            )
+            broker_client_configuration["sasl.mechanism"] = os.environ.get(
+                "LSST_KAFKA_SECURITY_MECHANISM", DEFAULT_SASL_MECHANISM
+            )
+            broker_client_configuration["sasl.username"] = self.sasl_plain_username
+            broker_client_configuration["sasl.password"] = self.sasl_plain_password
+
+        return broker_client_configuration
+
     def _blocking_create_consumer(self) -> None:
         """Create self._consumer and subscribe to topics.
 
@@ -777,23 +822,24 @@ class SalInfo:
         if not self._read_topics:
             return
 
-        self._consumer = Consumer(
-            {
-                "bootstrap.servers": self.kafka_broker_addr,
-                # Make sure every consumer is in its own consumer group,
-                # since each consumer acts independently.
-                "group.id": get_random_string(),
-                # Require explicit topic creation, so we can control
-                # topic configuration, and to reduce startup latency.
-                "allow.auto.create.topics": False,
-                # Protect against a race condition in the on_assign callback:
-                # if the broker purges data while the on_assign callback
-                # is assigning the desired historical data offset,
-                # data might no longer exist at the assigned offset;
-                # in that case read from the earliest data.
-                "auto.offset.reset": "earliest",
-            }
-        )
+        consumer_configuration = {
+            # Make sure every consumer is in its own consumer group,
+            # since each consumer acts independently.
+            "group.id": get_random_string(),
+            # Require explicit topic creation, so we can control
+            # topic configuration, and to reduce startup latency.
+            "allow.auto.create.topics": False,
+            # Protect against a race condition in the on_assign callback:
+            # if the broker purges data while the on_assign callback
+            # is assigning the desired historical data offset,
+            # data might no longer exist at the assigned offset;
+            # in that case read from the earliest data.
+            "auto.offset.reset": "earliest",
+        }
+
+        consumer_configuration.update(self.get_broker_client_configuration())
+
+        self._consumer = Consumer(consumer_configuration)
 
         read_topic_names = list(self._read_topics.keys())
         self._consumer.subscribe(
@@ -808,13 +854,14 @@ class SalInfo:
         if not self._write_topics:
             return
 
-        self._producer = Producer(
-            {
-                "acks": PRODUCER_WAIT_ACKS,
-                "queue.buffering.max.ms": 0,
-                "bootstrap.servers": self.kafka_broker_addr,
-            }
-        )
+        producer_configuration = {
+            "acks": PRODUCER_WAIT_ACKS,
+            "queue.buffering.max.ms": 0,
+        }
+
+        producer_configuration.update(self.get_broker_client_configuration())
+
+        self._producer = Producer(producer_configuration)
         # Work around https://github.com/confluentinc/
         # confluent-kafka-dotnet/issues/701
         # a 1 second delay in the first message for a topic.
