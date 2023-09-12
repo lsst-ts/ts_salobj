@@ -75,6 +75,9 @@ MAX_HISTORY_READ = 10000
 DEFAULT_LSST_KAFKA_BROKER_ADDR = "broker:29092"
 DEFAULT_LSST_SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
 
+SECURITY_PROTOCOL = "SASL_PLAINTEXT"
+SASL_MECHANISM = "SCRAM-SHA-512"
+
 # Maximum number of sequential errors reading data from Kafka
 MAX_SEQUENTIAL_READ_ERRORS = 2
 
@@ -165,6 +168,10 @@ class SalInfo:
     * ``LSST_SCHEMA_REGISTRY_URL`` (optional): url of the Confluent schema
       registry. Defaults to ``http://schema-registry:8081`` (matching the
       value in file ``docker-compose.yaml``), for unit tests.
+    * ``LSST_SASL_PLAIN_USERNAME`` (optional): Username to authenticate with
+      the kafka broker.
+    * ``LSST_SASL_PLAIN_PASSWORD`` (optional): Password to authenticate with
+      the kafka broker.
 
     **Usage**
 
@@ -256,6 +263,12 @@ class SalInfo:
         )
         self.schema_registry_url = os.environ.get(
             "LSST_SCHEMA_REGISTRY_URL", DEFAULT_LSST_SCHEMA_REGISTRY_URL
+        )
+        self.sasl_plain_username: None | str = os.environ.get(
+            "LSST_SASL_PLAIN_USERNAME", None
+        )
+        self.sasl_plain_password: None | str = os.environ.get(
+            "LSST_SASL_PLAIN_PASSWORD", None
         )
 
         self.component_info = ComponentInfo(topic_subname=topic_subname, name=name)
@@ -742,9 +755,21 @@ class SalInfo:
         # * Rely on automatic registration of new topics.
         #   That prevents setting non-default configuration (such as
         #   num_partitions) and it can cause ugly warnings.
-        broker_client = AdminClient(
-            {"bootstrap.servers": self.kafka_broker_addr, "api.version.request": True}
-        )
+        broker_client_configuration = {
+            "bootstrap.servers": self.kafka_broker_addr,
+            "api.version.request": True,
+        }
+
+        if (
+            self.sasl_plain_username is not None
+            and self.sasl_plain_password is not None
+        ):
+            broker_client_configuration["security.protocol"] = SECURITY_PROTOCOL
+            broker_client_configuration["sasl.mechanisms"] = SASL_MECHANISM
+            broker_client_configuration["sasl.username"] = self.sasl_plain_username
+            broker_client_configuration["sasl.password"] = self.sasl_plain_password
+
+        broker_client = AdminClient(broker_client_configuration)
         create_result = broker_client.create_topics(new_topic_list)
         for kafka_name, future in create_result.items():
             exception = future.exception()
