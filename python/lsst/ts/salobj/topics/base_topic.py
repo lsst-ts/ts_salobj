@@ -62,6 +62,7 @@ class BaseTopic(abc.ABC):
         try:
             self.salinfo = salinfo
             self.topic_info = self.salinfo.component_info.topics[attr_name]
+            self.rev_code = self.topic_info.get_revcode()
             self.log = salinfo.log.getChild(self.sal_name)
             self._type = self.topic_info.make_dataclass()
 
