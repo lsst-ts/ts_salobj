@@ -75,8 +75,8 @@ MAX_HISTORY_READ = 10000
 DEFAULT_LSST_KAFKA_BROKER_ADDR = "broker:29092"
 DEFAULT_LSST_SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
 
-SECURITY_PROTOCOL = "SASL_PLAINTEXT"
-SASL_MECHANISM = "SCRAM-SHA-512"
+DEFAULT_SECURITY_PROTOCOL = "SASL_PLAINTEXT"
+DEFAULT_SASL_MECHANISM = "SCRAM-SHA-512"
 
 # Maximum number of sequential errors reading data from Kafka
 MAX_SEQUENTIAL_READ_ERRORS = 2
@@ -172,6 +172,10 @@ class SalInfo:
       with the kafka broker.
     * ``LSST_KAFKA_SECURITY_PASSWORD`` (optional): Password to authenticate
       with the kafka broker.
+    * ``LSST_KAFKA_SECURITY_PROTOCOL`` (optional): Authentication protocol to
+      use with the kafka broker.
+    * ``LSST_KAFKA_SECURITY_MECHANISM`` (optional): Authentication mechanism
+      to use with the kafka broker.
 
     **Usage**
 
@@ -764,8 +768,12 @@ class SalInfo:
             self.sasl_plain_username is not None
             and self.sasl_plain_password is not None
         ):
-            broker_client_configuration["security.protocol"] = SECURITY_PROTOCOL
-            broker_client_configuration["sasl.mechanisms"] = SASL_MECHANISM
+            broker_client_configuration["security.protocol"] = os.environ.get(
+                "LSST_KAFKA_SECURITY_PROTOCOL", DEFAULT_SECURITY_PROTOCOL
+            )
+            broker_client_configuration["sasl.mechanisms"] = os.environ.get(
+                "LSST_KAFKA_SECURITY_MECHANISM", DEFAULT_SASL_MECHANISM
+            )
             broker_client_configuration["sasl.username"] = self.sasl_plain_username
             broker_client_configuration["sasl.password"] = self.sasl_plain_password
 
