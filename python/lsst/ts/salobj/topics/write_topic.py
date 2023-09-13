@@ -351,6 +351,7 @@ class WriteTopic(BaseTopic):
         current_tai = utils.current_tai()
         self.data.private_sndStamp = current_tai
         self.data.private_efdStamp = utils.utc_from_tai_unix(current_tai)
+        self.data.private_revCode = self.rev_code
         self.data.private_kafkaStamp = current_tai
         self.data.private_origin = self.salinfo.domain.origin
         self.data.private_identity = self.salinfo.identity
