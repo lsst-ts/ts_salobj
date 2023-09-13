@@ -771,7 +771,7 @@ class SalInfo:
             broker_client_configuration["security.protocol"] = os.environ.get(
                 "LSST_KAFKA_SECURITY_PROTOCOL", DEFAULT_SECURITY_PROTOCOL
             )
-            broker_client_configuration["sasl.mechanisms"] = os.environ.get(
+            broker_client_configuration["sasl.mechanism"] = os.environ.get(
                 "LSST_KAFKA_SECURITY_MECHANISM", DEFAULT_SASL_MECHANISM
             )
             broker_client_configuration["sasl.username"] = self.sasl_plain_username
