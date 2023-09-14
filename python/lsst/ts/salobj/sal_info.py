@@ -50,7 +50,11 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.error import KafkaError
 from confluent_kafka.schema_registry import Schema, SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
-from confluent_kafka.serialization import MessageField, SerializationContext
+from confluent_kafka.serialization import (
+    MessageField,
+    SerializationContext,
+    SerializationError,
+)
 from fastavro.read import SchemaResolutionError
 from lsst.ts import utils
 from lsst.ts.xml import sal_enums, type_hints
@@ -80,6 +84,7 @@ DEFAULT_SASL_MECHANISM = "SCRAM-SHA-512"
 
 # Maximum number of sequential errors reading data from Kafka
 MAX_SEQUENTIAL_READ_ERRORS = 2
+SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD = 10
 
 # Number of _deserializers_and_contexts to wait for when sending Kafka data.
 PRODUCER_WAIT_ACKS = 1
@@ -1080,10 +1085,11 @@ class SalInfo:
             self.log.error("No consumer; quitting")
             return
         try:
-            # Read historial and new data
+            # Read historical and new data
             read_history_start_monotonic = time.monotonic()
 
             sequential_read_errors = 0
+            schema_resolution_errors: dict[str, int] = dict()
 
             while self.isopen:
                 message = await self.loop.run_in_executor(
@@ -1111,38 +1117,45 @@ class SalInfo:
 
                 sequential_read_errors = 0
 
-                # print(
-                #     f"{self.index} read {kafka_name}\n"
-                #     f"serialized={message.value()}"
-                # )
-
                 read_topic = self._read_topics[kafka_name]
 
                 deserializer, context = self._deserializers_and_contexts[kafka_name]
                 try:
                     data_dict = deserializer(message.value(), context)
-                except SchemaResolutionError as e:
-                    self.log.error(
-                        f"failed to deserialized {kafka_name} {message.value()}: {e!r}"
-                    )
-                    raise
+                except (SchemaResolutionError, SerializationError):
+                    if kafka_name not in schema_resolution_errors:
+                        self.log.exception(
+                            f"Failed to deserialize {kafka_name}. This usually means the topic was published "
+                            "with an incompatible version of the schema from this instance. You might need "
+                            "to check which component has the incompatible schema and update it. It could be "
+                            "that the publisher is incompatible or this instance reading the topic. "
+                            "If this is a single old historical data, it might be safe to ignore this "
+                            "error. Additional deserialization error messages of this topic will be "
+                            "suppressed and will show as shorter error messages every "
+                            f"{SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD} failed attempt. If this error persist "
+                            "you should investigate it further."
+                        )
+
+                        schema_resolution_errors[kafka_name] = 0
+                    elif (
+                        schema_resolution_errors[kafka_name]
+                        % SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD
+                        == 0
+                    ):
+                        self.log.error(
+                            f"Failed to deserialize {schema_resolution_errors[kafka_name]} samples of "
+                            f"{kafka_name}. Check schema compatibility!"
+                        )
+                    schema_resolution_errors[kafka_name] += 1
+                    continue
+
                 data_dict["private_rcvStamp"] = utils.current_tai()
                 data = read_topic.DataType(**data_dict)
-
-                # print(
-                #     f"{utils.current_tai():0.2f} "
-                #     f"{self.index} read {kafka_name} with index="
-                #     f"{data_dict.get('salIndex')}, offset={message.offset()}"
-                # )
 
                 history_offset = self._history_offsets.get(kafka_name)
                 if history_offset is None:
                     if self.index != 0 and self.index != data.salIndex:
                         # Ignore data with mismatched index
-                        # print(
-                        #     f"{self.index} ignore new {kafka_name}; "
-                        #     f"mismatched index={data.salIndex}"
-                        # )
                         continue
 
                     # This is the normal case once we've read all history
@@ -1170,10 +1183,6 @@ class SalInfo:
                         index_data = self._history_index_data.pop(kafka_name, None)
                         if index_data is not None:
                             for hist_data in index_data.values():
-                                # print(
-                                #     f"{self.index} queue hist {kafka_name} "
-                                #     f"with index={hist_data.salIndex}"
-                                # )
                                 read_topic._queue_data([hist_data])
                     else:
                         read_topic._queue_data([data])
