@@ -50,7 +50,11 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.error import KafkaError
 from confluent_kafka.schema_registry import Schema, SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
-from confluent_kafka.serialization import MessageField, SerializationContext
+from confluent_kafka.serialization import (
+    MessageField,
+    SerializationContext,
+    SerializationError,
+)
 from fastavro.read import SchemaResolutionError
 from lsst.ts import utils
 from lsst.ts.xml import sal_enums, type_hints
@@ -1118,7 +1122,7 @@ class SalInfo:
                 deserializer, context = self._deserializers_and_contexts[kafka_name]
                 try:
                     data_dict = deserializer(message.value(), context)
-                except SchemaResolutionError:
+                except (SchemaResolutionError, SerializationError):
                     if kafka_name not in schema_resolution_errors:
                         self.log.exception(
                             f"Failed to deserialize {kafka_name}. This usually means the topic was published "
