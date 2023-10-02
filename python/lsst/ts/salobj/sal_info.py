@@ -549,6 +549,8 @@ class SalInfo:
                 self._run_kafka_task,
                 timeout=0.5,
             )
+        except asyncio.TimeoutError:
+            pass
         except Exception as e:
             print(f"Run kafka loop failed: {e!r}")
             self.log.exception("Exception waiting for kafka loop to finish.")
