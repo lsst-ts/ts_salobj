@@ -753,6 +753,9 @@ class SalInfo:
                 topic=topic_info.kafka_name,
                 num_partitions=topic_info.partitions,
                 replication_factor=1,
+                config={"cleanup.policy": "compact,delete"}
+                if topic_info.attr_name.startswith("evt_")
+                else {},
             )
             for topic_info in topic_infos.values()
         ]
@@ -779,8 +782,7 @@ class SalInfo:
                 isinstance(exception.args[0], KafkaError)
                 and exception.args[0].code() == KafkaError.TOPIC_ALREADY_EXISTS
             ):
-                # Topic already exists; that's fine
-                pass
+                self.log.info(f"Topic {kafka_name} already exists.")
             else:
                 self.log.exception(
                     f"Failed to create topic {kafka_name}: {exception!r}"
