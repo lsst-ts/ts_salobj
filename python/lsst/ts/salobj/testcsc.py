@@ -195,7 +195,6 @@ class TestCsc(ConfigurableCsc):
             longLong0=np.int64,
             unsignedShort0=np.uint16,
             unsignedInt0=np.uint32,
-            unsignedLong0=np.uint32,
             float0=np.single,
             double0=np.double,
             string0=str,
@@ -213,7 +212,6 @@ class TestCsc(ConfigurableCsc):
             "longLong0",
             "unsignedShort0",
             "unsignedInt0",
-            "unsignedLong0",
             "float0",
             "double0",
         )
@@ -230,7 +228,6 @@ class TestCsc(ConfigurableCsc):
             "longLong0",
             "unsignedShort0",
             "unsignedInt0",
-            "unsignedLong0",
             "float0",
             "double0",
             "string0",
@@ -247,7 +244,6 @@ class TestCsc(ConfigurableCsc):
             "longLong0",
             "unsignedShort0",
             "unsignedInt0",
-            "unsignedLong0",
         )
 
     def assert_arrays_equal(self, arrays1: typing.Any, arrays2: typing.Any) -> None:
