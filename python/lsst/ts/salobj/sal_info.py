@@ -782,7 +782,7 @@ class SalInfo:
                 isinstance(exception.args[0], KafkaError)
                 and exception.args[0].code() == KafkaError.TOPIC_ALREADY_EXISTS
             ):
-                self.log.info(f"Topic {kafka_name} already exists.")
+                print(f"Topic {kafka_name} already exists.")
             else:
                 self.log.exception(
                     f"Failed to create topic {kafka_name}: {exception!r}"
@@ -1063,7 +1063,9 @@ class SalInfo:
                 #         f"write {kafka_name} took {dt:0.2f} seconds"
                 #     )
 
-        self._producer.produce(kafka_name, raw_data, on_delivery=callback)
+        self._producer.produce(
+            kafka_name, key=kafka_name, value=raw_data, on_delivery=callback
+        )
         self._producer.flush()
 
     def _close_kafka(self) -> None:
