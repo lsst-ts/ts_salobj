@@ -63,7 +63,6 @@ class TestCscCommander(csc_commander.CscCommander):
             longLong0=np.int64,
             unsignedShort0=np.uint16,
             unsignedInt0=np.uint32,
-            unsignedLong0=np.uint32,
             float0=np.single,
             double0=np.double,
         )

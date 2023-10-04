@@ -6,6 +6,11 @@
 Version History
 ###############
 
+v8.0.0
+------
+
+* Removed all references to the `unsigned long` and `unsigned long long` data types, as they are no longer supported.
+
 v7.4.0
 ------
 

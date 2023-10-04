@@ -78,7 +78,6 @@ class IdlParserTestCase(unittest.TestCase):
             string0="string",
             unsignedShort0="unsigned short",
             unsignedInt0="unsigned long",
-            unsignedLong0="unsigned long",
             float0="float",
             double0="double",
         )
@@ -177,7 +176,6 @@ class IdlParserTestCase(unittest.TestCase):
             string0="string",
             unsignedShort0="unsigned short",
             unsignedInt0="unsigned long",
-            unsignedLong0="unsigned long",
             float0="float",
             double0="double",
         )
