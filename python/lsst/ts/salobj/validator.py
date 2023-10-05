@@ -184,7 +184,7 @@ class DefaultingValidator:
         """
         if data_dict is None:
             result = {}
-        elif type(data_dict) is not dict:
+        elif not isinstance(data_dict, dict):
             raise jsonschema.exceptions.ValidationError(f"{data_dict} is not a dict")
         else:
             result = data_dict.copy()
