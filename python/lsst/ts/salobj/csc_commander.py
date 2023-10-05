@@ -619,7 +619,7 @@ help  # print this help
             )
         for (name, default_value), str_value in zip(kwargs.items(), args):
             try:
-                if type(default_value) is bool:
+                if isinstance(default_value, bool):
                     kwargs[name] = BOOL_DICT[str_value.lower()]
                 else:
                     kwargs[name] = type(default_value)(str_value)
