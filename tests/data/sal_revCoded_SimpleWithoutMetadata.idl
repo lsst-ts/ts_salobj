@@ -15,7 +15,6 @@ struct command_setArrays_0dd79125 {
 	  long long	longLong0[5];
 	  unsigned short	unsignedShort0[5];
 	  unsigned long	unsignedInt0[5];
-	  unsigned long	unsignedLong0[5];
 	  float	float0[5];
 	  double	double0[5];
 	};
@@ -41,7 +40,6 @@ struct logevent_scalars_0ad55b18 {
 	  long long	longLong0;
 	  unsigned short	unsignedShort0;
 	  unsigned long	unsignedInt0;
-	  unsigned long	unsignedLong0;
 	  float	float0;
 	  double	double0;
 	  string<20>	string0;

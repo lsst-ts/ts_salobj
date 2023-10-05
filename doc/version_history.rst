@@ -6,6 +6,14 @@
 Version History
 ###############
 
+
+.. Version 8 of salobj will contain the kafka release.
+
+v7.5.0
+------
+
+* Removed all references to the `unsigned long` and `unsigned long long` data types, as they are no longer supported.
+
 v7.4.0
 ------
 

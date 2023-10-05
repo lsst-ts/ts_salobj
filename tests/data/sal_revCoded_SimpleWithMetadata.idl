@@ -16,7 +16,6 @@ struct command_setArrays_0dd79125 {  // @Metadata=(Description="Description of c
 	  long long	longLong0[5]; // @Metadata=(Units="unitless",Description="Description of longLong0")
 	  unsigned short	unsignedShort0[5]; // @Metadata=(Units="unitless",Description="Description of unsignedShort0")
 	  unsigned long	unsignedInt0[5]; // @Metadata=(Units="unitless",Description="Description of unsignedInt0")
-	  unsigned long	unsignedLong0[5]; // @Metadata=(Units="unitless",Description="Description of unsignedLong0")
 	  float	float0[5]; // @Metadata=(Units="unitless",Description="Description of float0")
 	  double	double0[5]; // @Metadata=(Units="unitless",Description="Description of double0")
 	};
@@ -41,7 +40,6 @@ struct logevent_scalars_0ad55b18 {  // @Metadata=(Description="Description of lo
 	  long long	longLong0; // @Metadata=(Units="unitless",Description="Description of longLong0")
 	  unsigned short	unsignedShort0; // @Metadata=(Units="unitless",Description="Description of unsignedShort0")
 	  unsigned long	unsignedInt0; // @Metadata=(Units="unitless",Description="Description of unsignedInt0")
-	  unsigned long	unsignedLong0; // @Metadata=(Units="unitless",Description="Description of unsignedLong0")
 	  float	float0; // @Metadata=(Units="unitless",Description="Description of float0")
 	  double	double0; // @Metadata=(Units="unitless",Description="Description of double0")
 	  string<20>	string0; // @Metadata=(Units="unitless",Description="Description of string0")
