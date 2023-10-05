@@ -1064,7 +1064,10 @@ class SalInfo:
                 #     )
 
         self._producer.produce(
-            kafka_name, key=kafka_name, value=raw_data, on_delivery=callback
+            kafka_name,
+            key=f'{{ "name": "{kafka_name}" }}',
+            value=raw_data,
+            on_delivery=callback,
         )
         self._producer.flush()
 
