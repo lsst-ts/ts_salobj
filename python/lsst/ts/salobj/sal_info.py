@@ -782,7 +782,7 @@ class SalInfo:
                 isinstance(exception.args[0], KafkaError)
                 and exception.args[0].code() == KafkaError.TOPIC_ALREADY_EXISTS
             ):
-                print(f"Topic {kafka_name} already exists.")
+                continue
             else:
                 self.log.exception(
                     f"Failed to create topic {kafka_name}: {exception!r}"
