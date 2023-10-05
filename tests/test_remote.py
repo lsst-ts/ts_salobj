@@ -36,7 +36,7 @@ index_gen = utils.index_generator()
 
 class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        salobj.set_random_topic_subname()
+        salobj.set_test_topic_subname()
 
     async def test_constructor_include_exclude(self) -> None:
         """Test the include and exclude arguments for salobj.Remote."""

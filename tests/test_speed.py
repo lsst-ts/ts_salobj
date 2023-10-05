@@ -115,7 +115,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         cls.verify_job.write(measurements_dir / "speed.json")  # type: ignore
 
     def setUp(self) -> None:
-        salobj.set_random_topic_subname()
+        salobj.set_test_topic_subname()
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"
         self.index = next(index_gen)
 

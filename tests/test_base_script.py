@@ -76,7 +76,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
     """
 
     def setUp(self) -> None:
-        salobj.set_random_topic_subname()
+        salobj.set_test_topic_subname()
         self.index = next(index_gen)
 
     async def configure_and_check(

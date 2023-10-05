@@ -65,7 +65,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     """
 
     _index_iter = utils.index_generator()
-    _random_subname_set = False
+    # The following attribute allows users to enforce randomizing topic
+    # subname. You can set it up in setUpClass, by setting
+    # cls._randomize_topic_subname=True.
+    _randomize_topic_subname = False
 
     def run(self, result: typing.Any = None) -> None:  # type: ignore
         """Set a random LSST_TOPIC_SUBNAME
@@ -74,9 +77,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         Unlike setUp, a user cannot forget to override this.
         (This is also a good place for context managers).
         """
-        if not self._random_subname_set:
-            testutils.set_random_topic_subname()
-            self._random_subname_set = True
+        testutils.set_test_topic_subname(randomize=self._randomize_topic_subname)
+
         # set LSST_SITE using os.environ instead of utils.modify_environ
         # so that check_bin_script works.
         os.environ["LSST_SITE"] = "test"
