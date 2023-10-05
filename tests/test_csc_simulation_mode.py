@@ -45,7 +45,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
 
         https://stackoverflow.com/a/11180583
         """
-        salobj.set_random_topic_subname()
+        salobj.set_test_topic_subname()
         with utils.modify_environ(LSST_SITE="test"):
             super().run(result)
 

@@ -1351,12 +1351,14 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def test_topic_subname(self) -> None:
         """Test specifying topic subname with $LSST_TOPIC_SUBNAME."""
+
+        salobj.set_test_topic_subname(randomize=True)
         async with salobj.Domain() as domain, salobj.SalInfo(
             domain=domain, name="Test", index=0
         ) as salinfo_r1, salobj.SalInfo(
             domain=domain, name="Test", index=0
         ) as salinfo_w1:
-            salobj.set_random_topic_subname()
+            salobj.set_test_topic_subname(randomize=True)
             async with salobj.SalInfo(
                 domain=domain, name="Test", index=0
             ) as salinfo_r2, salobj.SalInfo(
@@ -1446,6 +1448,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         from a writer with the same index.
         """
         sal_indices = (0, 1, 2)
+        salobj.set_test_topic_subname(randomize=True)
         async with salobj.Domain() as domain:
             writers = [
                 salobj.topics.ControllerEvent(
@@ -1467,7 +1470,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     await writer.set_write(errorCode=value)
 
             # Create readers.
-            # The index 0 reader should data from all writers.
+            # The index 0 reader should read data from all writers.
             # The index 1 and 2 readers should only see data from
             # the writer with the same index.
             readers = [
