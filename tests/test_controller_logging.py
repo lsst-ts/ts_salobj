@@ -125,6 +125,8 @@ class ControllerLoggingTestCase(
                     flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
+            self.remote.evt_logLevel.flush()
+
             await self.remote.cmd_setLogLevel.set_start(
                 level=logging.ERROR, timeout=STD_TIMEOUT
             )

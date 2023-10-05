@@ -21,7 +21,7 @@
 
 import getpass
 import os
-import random
+import pathlib
 import socket
 import unittest
 
@@ -31,9 +31,38 @@ from lsst.ts import salobj, utils
 index_gen = utils.index_generator()
 
 
+class TestBaseCscTestCaseIsolation(
+    salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase
+):
+    def basic_make_csc(
+        self,
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
+        simulation_mode: int,
+    ) -> salobj.BaseCsc:
+        index = self.next_index()
+
+        return salobj.TestCsc(
+            index=index,
+            initial_state=initial_state,
+            config_dir=config_dir,
+            simulation_mode=simulation_mode,
+        )
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._randomize_topic_subname = True
+
+    def test_topic_subname(self) -> None:
+        topic_subname_random = os.environ.get("LSST_TOPIC_SUBNAME")
+        salobj.set_test_topic_subname()
+        topic_subname = os.environ.get("LSST_TOPIC_SUBNAME")
+        assert topic_subname_random != topic_subname
+
+
 class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        salobj.set_random_topic_subname()
+        salobj.set_test_topic_subname()
 
     async def test_assert_raises_ack_error(self) -> None:
         """Test the assertRaisesAckError function."""
@@ -139,18 +168,30 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
         user_host = salobj.get_user_host()
         assert expected_user_host == user_host
 
-    def test_set_random_topic_subname(self) -> None:
-        random.seed(42)
+    async def test_set_test_topic_subname_randomize(self) -> None:
         NumToTest = 1000
         names = set()
-        for i in range(NumToTest):
-            salobj.set_random_topic_subname()
+
+        for _ in range(NumToTest):
+            salobj.set_test_topic_subname(randomize=True)
             name = os.environ.get("LSST_TOPIC_SUBNAME")
             assert name
             names.add(name)
             assert "." not in name  # type: ignore
         # any duplicate names will reduce the size of names
         assert len(names) == NumToTest
+
+    async def test_set_test_topic_subname(self) -> None:
+        NumToTest = 1000
+        names = set()
+
+        for _ in range(NumToTest):
+            salobj.set_test_topic_subname()
+            name = os.environ.get("LSST_TOPIC_SUBNAME")
+            assert name
+            names.add(name)
+            assert "." not in name  # type: ignore
+        assert len(names) == 1
 
     async def test_domain_attr(self) -> None:
         async with salobj.Domain() as domain:
