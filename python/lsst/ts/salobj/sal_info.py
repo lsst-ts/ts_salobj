@@ -78,6 +78,7 @@ MAX_HISTORY_READ = 10000
 
 DEFAULT_LSST_KAFKA_BROKER_ADDR = "broker:29092"
 DEFAULT_LSST_SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
+DEFAULT_LSST_KAFKA_REPLICATION_FACTOR = 1
 
 DEFAULT_SECURITY_PROTOCOL = "SASL_PLAINTEXT"
 DEFAULT_SASL_MECHANISM = "SCRAM-SHA-512"
@@ -181,6 +182,8 @@ class SalInfo:
       use with the kafka broker.
     * ``LSST_KAFKA_SECURITY_MECHANISM`` (optional): Authentication mechanism
       to use with the kafka broker.
+    * ``LSST_KAFKA_REPLICATION_FACTOR`` (optional): Replication factor to use
+      when creating topics.
 
     **Usage**
 
@@ -278,6 +281,11 @@ class SalInfo:
         )
         self.sasl_plain_password: None | str = os.environ.get(
             "LSST_KAFKA_SECURITY_PASSWORD", None
+        )
+        self.replication_factor = int(
+            os.environ.get(
+                "LSST_KAFKA_REPLICATION_FACTOR", DEFAULT_LSST_KAFKA_REPLICATION_FACTOR
+            )
         )
 
         self.component_info = ComponentInfo(topic_subname=topic_subname, name=name)
@@ -752,7 +760,7 @@ class SalInfo:
             NewTopic(
                 topic=topic_info.kafka_name,
                 num_partitions=topic_info.partitions,
-                replication_factor=1,
+                replication_factor=self.replication_factor,
                 config={"cleanup.policy": "compact,delete"}
                 if topic_info.attr_name.startswith("evt_")
                 else {},
