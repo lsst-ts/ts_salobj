@@ -36,12 +36,12 @@ requirements:
     - setuptools
     - setuptools_scm
   run:
-    - astropy >=5
+    - astropy >=5.2
     - boto3
     - fastavro
     - jsonschema
     - moto >=3
-    - numpy ~=1.24
+    - {{ pin_compatible('numpy') }}
     - python {{ python }}
     - python-confluent-kafka =1.9
     - pyyaml
@@ -49,4 +49,4 @@ requirements:
     - setuptools_scm
     - ts-idl
     - ts-utils
-    - ts-xml
+    - ts-xml >=20
