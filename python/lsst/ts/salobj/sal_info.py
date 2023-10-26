@@ -761,7 +761,7 @@ class SalInfo:
                 topic=topic_info.kafka_name,
                 num_partitions=topic_info.partitions,
                 replication_factor=self.replication_factor,
-                config={"cleanup.policy": "compact,delete"}
+                config={"cleanup.policy": "compact"}
                 if topic_info.attr_name.startswith("evt_")
                 else {},
             )
@@ -1065,15 +1065,12 @@ class SalInfo:
                     print(
                         f"warning: {self.index} write {kafka_name} took {dt:0.2f} seconds"
                     )
-                # else:
-                #     print(
-                #         f"{data_dict['private_sndStamp']:0.2f} {self.index} "
-                #         f"write {kafka_name} took {dt:0.2f} seconds"
-                #     )
 
         self._producer.produce(
             kafka_name,
-            key=f'{{ "name": "{kafka_name}" }}',
+            key=f'{{ "name": "{self.name}", "topic": "{topic_info.sal_name}" }}'
+            if not self.indexed
+            else f'{{ "name": "{self.name}", "index": {self.index}, "topic": "{topic_info.sal_name}" }}',
             value=raw_data,
             on_delivery=callback,
         )
