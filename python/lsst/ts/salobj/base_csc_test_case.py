@@ -82,6 +82,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         # set LSST_SITE using os.environ instead of utils.modify_environ
         # so that check_bin_script works.
         os.environ["LSST_SITE"] = "test"
+        self.csc_start_time = utils.current_tai()
         super().run(result)  # type: ignore
 
     @abc.abstractmethod
@@ -176,6 +177,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 **kwargs,
             )
             self.csc.delay_start_event.clear()
+            self.csc_start_time = utils.current_tai()
             items_to_close.append(self.csc)
 
             # Create and start the remote
@@ -285,6 +287,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             If no message is available within the specified time limit.
         """
         data = await topic.next(flush=flush, timeout=timeout)
+        while data.private_sndStamp <= self.csc_start_time:
+            print(f"Discarding old sample: {data}.")
+            data = await topic.next(flush=flush, timeout=timeout)
+
         for field_name, expected_value in kwargs.items():
             read_value = getattr(data, field_name, None)
             if read_value is None:
@@ -365,6 +371,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             domain=domain, name=name, index=index
         ) as self.remote:
             print("check_bin_script running:", " ".join(args))
+            self.csc_start_time = utils.current_tai()
             process = await asyncio.create_subprocess_exec(
                 *args,
                 stderr=subprocess.PIPE,
