@@ -50,7 +50,11 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.error import KafkaError
 from confluent_kafka.schema_registry import Schema, SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
-from confluent_kafka.serialization import MessageField, SerializationContext
+from confluent_kafka.serialization import (
+    MessageField,
+    SerializationContext,
+    SerializationError,
+)
 from fastavro.read import SchemaResolutionError
 from lsst.ts import utils
 from lsst.ts.xml import sal_enums, type_hints
@@ -74,9 +78,14 @@ MAX_HISTORY_READ = 10000
 
 DEFAULT_LSST_KAFKA_BROKER_ADDR = "broker:29092"
 DEFAULT_LSST_SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
+DEFAULT_LSST_KAFKA_REPLICATION_FACTOR = 1
+
+DEFAULT_SECURITY_PROTOCOL = "SASL_PLAINTEXT"
+DEFAULT_SASL_MECHANISM = "SCRAM-SHA-512"
 
 # Maximum number of sequential errors reading data from Kafka
 MAX_SEQUENTIAL_READ_ERRORS = 2
+SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD = 10
 
 # Number of _deserializers_and_contexts to wait for when sending Kafka data.
 PRODUCER_WAIT_ACKS = 1
@@ -165,6 +174,16 @@ class SalInfo:
     * ``LSST_SCHEMA_REGISTRY_URL`` (optional): url of the Confluent schema
       registry. Defaults to ``http://schema-registry:8081`` (matching the
       value in file ``docker-compose.yaml``), for unit tests.
+    * ``LSST_KAFKA_SECURITY_USERNAME`` (optional): Username to authenticate
+      with the kafka broker.
+    * ``LSST_KAFKA_SECURITY_PASSWORD`` (optional): Password to authenticate
+      with the kafka broker.
+    * ``LSST_KAFKA_SECURITY_PROTOCOL`` (optional): Authentication protocol to
+      use with the kafka broker.
+    * ``LSST_KAFKA_SECURITY_MECHANISM`` (optional): Authentication mechanism
+      to use with the kafka broker.
+    * ``LSST_KAFKA_REPLICATION_FACTOR`` (optional): Replication factor to use
+      when creating topics.
 
     **Usage**
 
@@ -256,6 +275,17 @@ class SalInfo:
         )
         self.schema_registry_url = os.environ.get(
             "LSST_SCHEMA_REGISTRY_URL", DEFAULT_LSST_SCHEMA_REGISTRY_URL
+        )
+        self.sasl_plain_username: None | str = os.environ.get(
+            "LSST_KAFKA_SECURITY_USERNAME", None
+        )
+        self.sasl_plain_password: None | str = os.environ.get(
+            "LSST_KAFKA_SECURITY_PASSWORD", None
+        )
+        self.replication_factor = int(
+            os.environ.get(
+                "LSST_KAFKA_REPLICATION_FACTOR", DEFAULT_LSST_KAFKA_REPLICATION_FACTOR
+            )
         )
 
         self.component_info = ComponentInfo(topic_subname=topic_subname, name=name)
@@ -527,6 +557,8 @@ class SalInfo:
                 self._run_kafka_task,
                 timeout=0.5,
             )
+        except asyncio.TimeoutError:
+            pass
         except Exception as e:
             print(f"Run kafka loop failed: {e!r}")
             self.log.exception("Exception waiting for kafka loop to finish.")
@@ -728,7 +760,10 @@ class SalInfo:
             NewTopic(
                 topic=topic_info.kafka_name,
                 num_partitions=topic_info.partitions,
-                replication_factor=1,
+                replication_factor=self.replication_factor,
+                config={"cleanup.policy": "compact"}
+                if topic_info.attr_name.startswith("evt_")
+                else {},
             )
             for topic_info in topic_infos.values()
         ]
@@ -742,9 +777,9 @@ class SalInfo:
         # * Rely on automatic registration of new topics.
         #   That prevents setting non-default configuration (such as
         #   num_partitions) and it can cause ugly warnings.
-        broker_client = AdminClient(
-            {"bootstrap.servers": self.kafka_broker_addr, "api.version.request": True}
-        )
+        broker_client_configuration = self.get_broker_client_configuration()
+
+        broker_client = AdminClient(broker_client_configuration)
         create_result = broker_client.create_topics(new_topic_list)
         for kafka_name, future in create_result.items():
             exception = future.exception()
@@ -755,8 +790,7 @@ class SalInfo:
                 isinstance(exception.args[0], KafkaError)
                 and exception.args[0].code() == KafkaError.TOPIC_ALREADY_EXISTS
             ):
-                # Topic already exists; that's fine
-                pass
+                continue
             else:
                 self.log.exception(
                     f"Failed to create topic {kafka_name}: {exception!r}"
@@ -765,6 +799,34 @@ class SalInfo:
         # The existence of the poll method is not documented, but failing
         # to call it causes tests/test_speed.py test_write to fail.
         broker_client.poll(1)
+
+    def get_broker_client_configuration(self) -> dict[str, typing.Any]:
+        """Get the broker client configuration.
+
+        Returns
+        -------
+        `dict`[`str`, `str`]
+            Broker configuration.
+        """
+        broker_client_configuration = {
+            "bootstrap.servers": self.kafka_broker_addr,
+            "api.version.request": True,
+        }
+
+        if (
+            self.sasl_plain_username is not None
+            and self.sasl_plain_password is not None
+        ):
+            broker_client_configuration["security.protocol"] = os.environ.get(
+                "LSST_KAFKA_SECURITY_PROTOCOL", DEFAULT_SECURITY_PROTOCOL
+            )
+            broker_client_configuration["sasl.mechanism"] = os.environ.get(
+                "LSST_KAFKA_SECURITY_MECHANISM", DEFAULT_SASL_MECHANISM
+            )
+            broker_client_configuration["sasl.username"] = self.sasl_plain_username
+            broker_client_configuration["sasl.password"] = self.sasl_plain_password
+
+        return broker_client_configuration
 
     def _blocking_create_consumer(self) -> None:
         """Create self._consumer and subscribe to topics.
@@ -777,23 +839,24 @@ class SalInfo:
         if not self._read_topics:
             return
 
-        self._consumer = Consumer(
-            {
-                "bootstrap.servers": self.kafka_broker_addr,
-                # Make sure every consumer is in its own consumer group,
-                # since each consumer acts independently.
-                "group.id": get_random_string(),
-                # Require explicit topic creation, so we can control
-                # topic configuration, and to reduce startup latency.
-                "allow.auto.create.topics": False,
-                # Protect against a race condition in the on_assign callback:
-                # if the broker purges data while the on_assign callback
-                # is assigning the desired historical data offset,
-                # data might no longer exist at the assigned offset;
-                # in that case read from the earliest data.
-                "auto.offset.reset": "earliest",
-            }
-        )
+        consumer_configuration = {
+            # Make sure every consumer is in its own consumer group,
+            # since each consumer acts independently.
+            "group.id": get_random_string(),
+            # Require explicit topic creation, so we can control
+            # topic configuration, and to reduce startup latency.
+            "allow.auto.create.topics": False,
+            # Protect against a race condition in the on_assign callback:
+            # if the broker purges data while the on_assign callback
+            # is assigning the desired historical data offset,
+            # data might no longer exist at the assigned offset;
+            # in that case read from the earliest data.
+            "auto.offset.reset": "earliest",
+        }
+
+        consumer_configuration.update(self.get_broker_client_configuration())
+
+        self._consumer = Consumer(consumer_configuration)
 
         read_topic_names = list(self._read_topics.keys())
         self._consumer.subscribe(
@@ -808,13 +871,14 @@ class SalInfo:
         if not self._write_topics:
             return
 
-        self._producer = Producer(
-            {
-                "acks": PRODUCER_WAIT_ACKS,
-                "queue.buffering.max.ms": 0,
-                "bootstrap.servers": self.kafka_broker_addr,
-            }
-        )
+        producer_configuration = {
+            "acks": PRODUCER_WAIT_ACKS,
+            "queue.buffering.max.ms": 0,
+        }
+
+        producer_configuration.update(self.get_broker_client_configuration())
+
+        self._producer = Producer(producer_configuration)
         # Work around https://github.com/confluentinc/
         # confluent-kafka-dotnet/issues/701
         # a 1 second delay in the first message for a topic.
@@ -1001,13 +1065,15 @@ class SalInfo:
                     print(
                         f"warning: {self.index} write {kafka_name} took {dt:0.2f} seconds"
                     )
-                # else:
-                #     print(
-                #         f"{data_dict['private_sndStamp']:0.2f} {self.index} "
-                #         f"write {kafka_name} took {dt:0.2f} seconds"
-                #     )
 
-        self._producer.produce(kafka_name, raw_data, on_delivery=callback)
+        self._producer.produce(
+            kafka_name,
+            key=f'{{ "name": "{self.name}", "topic": "{topic_info.sal_name}" }}'
+            if not self.indexed
+            else f'{{ "name": "{self.name}", "index": {self.index}, "topic": "{topic_info.sal_name}" }}',
+            value=raw_data,
+            on_delivery=callback,
+        )
         self._producer.flush()
 
     def _close_kafka(self) -> None:
@@ -1033,10 +1099,11 @@ class SalInfo:
             self.log.error("No consumer; quitting")
             return
         try:
-            # Read historial and new data
+            # Read historical and new data
             read_history_start_monotonic = time.monotonic()
 
             sequential_read_errors = 0
+            schema_resolution_errors: dict[str, int] = dict()
 
             while self.isopen:
                 message = await self.loop.run_in_executor(
@@ -1064,38 +1131,45 @@ class SalInfo:
 
                 sequential_read_errors = 0
 
-                # print(
-                #     f"{self.index} read {kafka_name}\n"
-                #     f"serialized={message.value()}"
-                # )
-
                 read_topic = self._read_topics[kafka_name]
 
                 deserializer, context = self._deserializers_and_contexts[kafka_name]
                 try:
                     data_dict = deserializer(message.value(), context)
-                except SchemaResolutionError as e:
-                    self.log.error(
-                        f"failed to deserialized {kafka_name} {message.value()}: {e!r}"
-                    )
-                    raise
+                except (SchemaResolutionError, SerializationError):
+                    if kafka_name not in schema_resolution_errors:
+                        self.log.exception(
+                            f"Failed to deserialize {kafka_name}. This usually means the topic was published "
+                            "with an incompatible version of the schema from this instance. You might need "
+                            "to check which component has the incompatible schema and update it. It could be "
+                            "that the publisher is incompatible or this instance reading the topic. "
+                            "If this is a single old historical data, it might be safe to ignore this "
+                            "error. Additional deserialization error messages of this topic will be "
+                            "suppressed and will show as shorter error messages every "
+                            f"{SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD} failed attempt. If this error persist "
+                            "you should investigate it further."
+                        )
+
+                        schema_resolution_errors[kafka_name] = 0
+                    elif (
+                        schema_resolution_errors[kafka_name]
+                        % SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD
+                        == 0
+                    ):
+                        self.log.error(
+                            f"Failed to deserialize {schema_resolution_errors[kafka_name]} samples of "
+                            f"{kafka_name}. Check schema compatibility!"
+                        )
+                    schema_resolution_errors[kafka_name] += 1
+                    continue
+
                 data_dict["private_rcvStamp"] = utils.current_tai()
                 data = read_topic.DataType(**data_dict)
-
-                # print(
-                #     f"{utils.current_tai():0.2f} "
-                #     f"{self.index} read {kafka_name} with index="
-                #     f"{data_dict.get('salIndex')}, offset={message.offset()}"
-                # )
 
                 history_offset = self._history_offsets.get(kafka_name)
                 if history_offset is None:
                     if self.index != 0 and self.index != data.salIndex:
                         # Ignore data with mismatched index
-                        # print(
-                        #     f"{self.index} ignore new {kafka_name}; "
-                        #     f"mismatched index={data.salIndex}"
-                        # )
                         continue
 
                     # This is the normal case once we've read all history
@@ -1123,10 +1197,6 @@ class SalInfo:
                         index_data = self._history_index_data.pop(kafka_name, None)
                         if index_data is not None:
                             for hist_data in index_data.values():
-                                # print(
-                                #     f"{self.index} queue hist {kafka_name} "
-                                #     f"with index={hist_data.salIndex}"
-                                # )
                                 read_topic._queue_data([hist_data])
                     else:
                         read_topic._queue_data([data])

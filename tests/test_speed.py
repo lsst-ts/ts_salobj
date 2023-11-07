@@ -30,6 +30,7 @@ from collections.abc import AsyncGenerator
 from unittest.mock import MagicMock
 
 import astropy.units as u
+import pytest
 from lsst.ts import salobj, utils
 from lsst.ts.xml.component_info import ComponentInfo
 
@@ -115,7 +116,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         cls.verify_job.write(measurements_dir / "speed.json")  # type: ignore
 
     def setUp(self) -> None:
-        salobj.set_random_topic_subname()
+        salobj.set_test_topic_subname()
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"
         self.index = next(index_gen)
 
@@ -172,6 +173,9 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             verify.Measurement("salobj.CreateClasses", creation_speed * u.ct / u.second)
         )
 
+    @pytest.mark.xfail(
+        reason="This test pushes the CI system to its limit and, as such, can fail from time to time.",
+    )
     async def test_command_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
             await remote.evt_summaryState.next(flush=False, timeout=60)
@@ -191,6 +195,9 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 )
             )
 
+    @pytest.mark.xfail(
+        reason="This test pushes the CI system to its limit and, as such, can fail from time to time.",
+    )
     async def test_read_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
             await salobj.set_summary_state(
