@@ -236,6 +236,8 @@ class SalInfo:
         self.pool = ThreadPoolExecutor(max_workers=100)
         self.write_only = write_only
         self.identity = domain.default_identity
+        self.group_id = f"{self.identity}:{get_random_string()}"
+
         self.start_called = False
         self.on_assign_called = False
 
@@ -842,7 +844,7 @@ class SalInfo:
         consumer_configuration = {
             # Make sure every consumer is in its own consumer group,
             # since each consumer acts independently.
-            "group.id": get_random_string(),
+            "group.id": self.group_id,
             # Require explicit topic creation, so we can control
             # topic configuration, and to reduce startup latency.
             "allow.auto.create.topics": False,
@@ -1104,6 +1106,8 @@ class SalInfo:
 
             sequential_read_errors = 0
             schema_resolution_errors: dict[str, int] = dict()
+
+            self.log.info("Starting read loop, {self.group_id=}.")
 
             while self.isopen:
                 message = await self.loop.run_in_executor(
