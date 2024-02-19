@@ -88,7 +88,7 @@ MAX_SEQUENTIAL_READ_ERRORS = 2
 SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD = 10
 
 # Number of _deserializers_and_contexts to wait for when sending Kafka data.
-PRODUCER_WAIT_ACKS = 1
+DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS = "all"
 
 
 def get_random_string() -> str:
@@ -184,6 +184,9 @@ class SalInfo:
       to use with the kafka broker.
     * ``LSST_KAFKA_REPLICATION_FACTOR`` (optional): Replication factor to use
       when creating topics.
+    * ``LSST_KAFKA_PRODUCER_WAIT_ACKS`` (optional): The number of
+      acknowledgments the producer requires the leader to have received before
+      considering a request complete.
 
     **Usage**
 
@@ -247,9 +250,9 @@ class SalInfo:
 
         # Dict of kafka topic name: dict of index: data
         # Only used for indexed components.
-        self._history_index_data: dict[
-            str, dict[int, type_hints.BaseDdsDataType]
-        ] = collections.defaultdict(dict)
+        self._history_index_data: dict[str, dict[int, type_hints.BaseDdsDataType]] = (
+            collections.defaultdict(dict)
+        )
 
         self._consumer: Consumer | None = None
         self._producer: Producer | None = None
@@ -772,9 +775,11 @@ class SalInfo:
                 topic=topic_info.kafka_name,
                 num_partitions=topic_info.partitions,
                 replication_factor=self.replication_factor,
-                config={"cleanup.policy": "compact"}
-                if topic_info.attr_name.startswith("evt_")
-                else {},
+                config=(
+                    {"cleanup.policy": "compact"}
+                    if topic_info.attr_name.startswith("evt_")
+                    else {}
+                ),
             )
             for topic_info in topic_infos.values()
         ]
@@ -883,7 +888,10 @@ class SalInfo:
             return
 
         producer_configuration = {
-            "acks": PRODUCER_WAIT_ACKS,
+            "acks": os.environ.get(
+                "LSST_KAFKA_PRODUCER_WAIT_ACKS ",
+                DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS,
+            ),
             "queue.buffering.max.ms": 0,
         }
 
@@ -1079,9 +1087,11 @@ class SalInfo:
 
         self._producer.produce(
             kafka_name,
-            key=f'{{ "name": "{self.name}", "topic": "{topic_info.sal_name}" }}'
-            if not self.indexed
-            else f'{{ "name": "{self.name}", "index": {self.index}, "topic": "{topic_info.sal_name}" }}',
+            key=(
+                f'{{ "name": "{self.name}", "topic": "{topic_info.sal_name}" }}'
+                if not self.indexed
+                else f'{{ "name": "{self.name}", "index": {self.index}, "topic": "{topic_info.sal_name}" }}'
+            ),
             value=raw_data,
             on_delivery=callback,
         )
