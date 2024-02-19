@@ -88,7 +88,7 @@ MAX_SEQUENTIAL_READ_ERRORS = 2
 SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD = 10
 
 # Number of _deserializers_and_contexts to wait for when sending Kafka data.
-PRODUCER_WAIT_ACKS = 1
+DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS = "all"
 
 
 def get_random_string() -> str:
@@ -184,6 +184,9 @@ class SalInfo:
       to use with the kafka broker.
     * ``LSST_KAFKA_REPLICATION_FACTOR`` (optional): Replication factor to use
       when creating topics.
+    * ``LSST_KAFKA_PRODUCER_WAIT_ACKS`` (optional): The number of
+      acknowledgments the producer requires the leader to have received before
+      considering a request complete.
 
     **Usage**
 
@@ -885,7 +888,10 @@ class SalInfo:
             return
 
         producer_configuration = {
-            "acks": PRODUCER_WAIT_ACKS,
+            "acks": os.environ.get(
+                "LSST_KAFKA_PRODUCER_WAIT_ACKS ",
+                DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS,
+            ),
             "queue.buffering.max.ms": 0,
         }
 
