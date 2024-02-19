@@ -247,9 +247,9 @@ class SalInfo:
 
         # Dict of kafka topic name: dict of index: data
         # Only used for indexed components.
-        self._history_index_data: dict[
-            str, dict[int, type_hints.BaseDdsDataType]
-        ] = collections.defaultdict(dict)
+        self._history_index_data: dict[str, dict[int, type_hints.BaseDdsDataType]] = (
+            collections.defaultdict(dict)
+        )
 
         self._consumer: Consumer | None = None
         self._producer: Producer | None = None
@@ -772,9 +772,11 @@ class SalInfo:
                 topic=topic_info.kafka_name,
                 num_partitions=topic_info.partitions,
                 replication_factor=self.replication_factor,
-                config={"cleanup.policy": "compact"}
-                if topic_info.attr_name.startswith("evt_")
-                else {},
+                config=(
+                    {"cleanup.policy": "compact"}
+                    if topic_info.attr_name.startswith("evt_")
+                    else {}
+                ),
             )
             for topic_info in topic_infos.values()
         ]
@@ -1079,9 +1081,11 @@ class SalInfo:
 
         self._producer.produce(
             kafka_name,
-            key=f'{{ "name": "{self.name}", "topic": "{topic_info.sal_name}" }}'
-            if not self.indexed
-            else f'{{ "name": "{self.name}", "index": {self.index}, "topic": "{topic_info.sal_name}" }}',
+            key=(
+                f'{{ "name": "{self.name}", "topic": "{topic_info.sal_name}" }}'
+                if not self.indexed
+                else f'{{ "name": "{self.name}", "index": {self.index}, "topic": "{topic_info.sal_name}" }}'
+            ),
             value=raw_data,
             on_delivery=callback,
         )
