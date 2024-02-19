@@ -25,3 +25,4 @@ python/*.egg-info
 .mypy.ini
 .clang-format
 .ruff.toml
+towncrier.toml
