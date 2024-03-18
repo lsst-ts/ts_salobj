@@ -108,7 +108,7 @@ class AsyncS3Bucket:
 
     def _start_mock(self, name: str) -> None:
         """Start a mock S3 server with the specified bucket."""
-        self.mock = moto.mock_s3()
+        self.mock = moto.mock_aws()
         print(f"mock type={type(self.mock)}")
         self.mock.start()
 
