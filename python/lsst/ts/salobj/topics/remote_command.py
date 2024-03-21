@@ -121,9 +121,9 @@ class CommandInfo:
 
         # we should see at most 3 acks, but leave room for one more,
         # just in case
-        self._ack_queue: collections.deque[
-            type_hints.AckCmdDataType
-        ] = collections.deque(maxlen=4)
+        self._ack_queue: collections.deque[type_hints.AckCmdDataType] = (
+            collections.deque(maxlen=4)
+        )
         self._last_ackcmd: type_hints.AckCmdDataType | None = None
 
     def add_ackcmd(self, ackcmd: type_hints.AckCmdDataType) -> bool:

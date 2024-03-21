@@ -1521,9 +1521,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         await asyncio.sleep(0.1)
 
                 # Dict of salIndex: list of errorCodes read for that salIndex
-                read_codes: typing.Dict[
-                    int, typing.List[int]
-                ] = collections.defaultdict(list)
+                read_codes: typing.Dict[int, typing.List[int]] = (
+                    collections.defaultdict(list)
+                )
                 expected_codes = {
                     # 0 gets the last historical value written for each index
                     # plus new data for all indices

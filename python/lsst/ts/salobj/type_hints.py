@@ -40,6 +40,7 @@ class BaseMsgType:
     This has the ``salIndex`` field, which is only present for indexed
     SAL components, and is missing all topic-specific fields.
     """
+
     private_revCode: str = ""
     private_sndStamp: float = 0
     private_rcvStamp: float = 0
