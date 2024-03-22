@@ -519,9 +519,9 @@ class SalInfo:
                 event_names.append(sal_topic_name[9:])
             elif sal_topic_name != "ackcmd":
                 telemetry_names.append(sal_topic_name)
-            revnames[
-                sal_topic_name
-            ] = f"{self.name}::{sal_topic_name}_{topic_metadata.version_hash}"
+            revnames[sal_topic_name] = (
+                f"{self.name}::{sal_topic_name}_{topic_metadata.version_hash}"
+            )
 
         # Examine last topic (or any topic) to see if component is indexed.
         self.indexed = "salIndex" in topic_metadata.field_info

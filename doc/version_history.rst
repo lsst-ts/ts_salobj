@@ -9,6 +9,14 @@ Version History
 
 .. Version 8 of salobj will contain the kafka release.
 
+v7.6.0
+------
+
+* Updated moto to version 5.
+* Removed testing for a non-existent warning from a unit test.
+* Update the version of the ts-conda-build dependency to 0.4.
+* Reformat code with black.
+
 v7.5.0
 ------
 
@@ -66,7 +74,7 @@ v7.3.2
 ------
 
 * `CscCommander`:
-    * Reduce clutter from logMessage events by only publishing the most interesting fields: 
+    * Reduce clutter from logMessage events by only publishing the most interesting fields:
       level, name, message, and (if not empty) traceback.
     * ``telemetry_callback``: do not assume an attribute already exists for previous data.
       This makes it easier to use for events such as clockOffset, where you only want to see the information if it has changed significantly.
