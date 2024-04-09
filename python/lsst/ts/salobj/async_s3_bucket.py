@@ -91,7 +91,7 @@ class AsyncS3Bucket:
         self.mock: moto.core.models.BotocoreEventMockAWS | None = None
         self.profile = profile
         if domock:
-            self._start_mock(name)
+            self._start_mock()
 
         endpoint_url = os.environ.get("S3_ENDPOINT_URL", None)
         if not endpoint_url:
@@ -106,14 +106,9 @@ class AsyncS3Bucket:
 
         self.bucket = self.service_resource.Bucket(name)
 
-    def _start_mock(self, name: str) -> None:
+    def _start_mock(self) -> None:
         """Start a mock S3 server with the specified bucket."""
-        # TODO DM-43432 Remove the check for mock_s3 as soon as the transition
-        #  to moto 5 has been completed.
-        if hasattr(moto, "mock_s3"):
-            self.mock = moto.mock_s3()
-        else:
-            self.mock = moto.mock_aws()
+        self.mock = moto.mock_aws()
         print(f"mock type={type(self.mock)}")
         self.mock.start()
 

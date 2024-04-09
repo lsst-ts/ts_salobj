@@ -9,6 +9,11 @@ Version History
 
 .. Version 8 of salobj will contain the kafka release.
 
+v7.6.1
+------
+
+* Remove backward compatibility with moto version 3.
+
 v7.6.0
 ------
 
