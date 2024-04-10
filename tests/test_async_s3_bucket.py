@@ -229,13 +229,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
         )
         env_dict = {name: f"arbitrary value for {name}" for name in env_names}
         with utils.modify_environ(**env_dict):
-            # TODO DM-43432 Remove the check for mock_s3 as soon as the
-            #  transition to moto 5 has been completed.
-            if hasattr(moto, "mock_s3"):
-                mock = moto.mock_s3
-            else:
-                mock = moto.mock_aws
-            with mock():
+            with moto.mock_aws():
                 for name, my_value in env_dict.items():
                     assert os.environ[name] != my_value
             for name, my_value in env_dict.items():
