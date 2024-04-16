@@ -940,9 +940,10 @@ class BaseCsc(Controller):
         while True:
             try:
                 await self.evt_heartbeat.write()  # type: ignore
-                await asyncio.sleep(self.heartbeat_interval)
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 # don't use the log because it also uses DDS messaging
                 print(f"Heartbeat output failed: {e!r}", file=sys.stderr)
+            finally:
+                await asyncio.sleep(self.heartbeat_interval)
