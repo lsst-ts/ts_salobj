@@ -229,7 +229,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
         )
         env_dict = {name: f"arbitrary value for {name}" for name in env_names}
         with utils.modify_environ(**env_dict):
-            with moto.mock_s3():
+            with moto.mock_aws():
                 for name, my_value in env_dict.items():
                     assert os.environ[name] != my_value
             for name, my_value in env_dict.items():
