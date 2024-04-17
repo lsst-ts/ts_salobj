@@ -24,7 +24,7 @@ build:
 
 test:
   requires:
-    - ts-conda-build =0.3
+    - ts-conda-build =0.4
     - ts-idl {{ idl_version }}
     - ts-utils
     - ts-xml
@@ -51,13 +51,12 @@ requirements:
     - boto3
     - fastavro
     - jsonschema
-    - moto >=3
+    - moto >=5
     - {{ pin_compatible('numpy') }}
     - python {{ python }}
     - python-confluent-kafka =1.9
     - pyyaml
     - setuptools
     - setuptools_scm
-    - ts-idl
     - ts-utils
     - ts-xml >=20
