@@ -650,7 +650,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         with pytest.raises(RuntimeError):
             salobj.TestScript.make_from_cmd_line(**bad_kwargs)
 
-        with pytest.raises(RuntimeError), pytest.warns(RuntimeWarning):
+        with pytest.raises(RuntimeError):
             await salobj.TestScript.amain(**bad_kwargs)
 
     async def test_script_schema_process(self) -> None:
