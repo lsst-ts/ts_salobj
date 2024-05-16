@@ -99,8 +99,8 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
                     cmd = getattr(controller, "cmd_" + cmd_name)
                     assert cmd.has_callback
 
-        # do_setAuthList and do_setLogLevel are provided by Controller
-        skip_names = {"setAuthList", "setLogLevel"}
+        # do_setLogLevel is provided by Controller
+        skip_names = {"setLogLevel"}
         for missing_name in command_names:
             if missing_name in skip_names:
                 continue
