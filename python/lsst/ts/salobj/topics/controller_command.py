@@ -94,8 +94,6 @@ class ControllerCommand(read_topic.ReadTopic):
             max_history=0,
             queue_len=queue_len,
         )
-        # TODO DM-32379: replace salinfo.default_authorize with True
-        self.authorize = salinfo.default_authorize
         self.cmdtype = salinfo.sal_topic_names.index(self.sal_name)
         if salinfo._ackcmd_writer is None:
             self.salinfo._ackcmd_writer = AckCmdWriter(salinfo=salinfo)
@@ -236,35 +234,6 @@ class ControllerCommand(read_topic.ReadTopic):
         data : `DataType`
             Command data.
         """
-        if self.authorize:
-            try:
-                identity = data.private_identity
-                auth_error = None
-                if "@" in identity:
-                    # A user
-                    if (
-                        identity != self.salinfo.domain.user_host
-                        and identity not in self.salinfo.authorized_users
-                    ):
-                        auth_error = (
-                            f"User identity {identity!r} "
-                            f"not self ({self.salinfo.domain.user_host}) "
-                            f"and not in {self.salinfo.authorized_users}"
-                        )
-                elif identity in self.salinfo.non_authorized_cscs:
-                    auth_error = f"CSC identity {identity!r} in {self.salinfo.non_authorized_cscs}"
-                if auth_error is not None:
-                    ack = self.salinfo.make_ackcmd(
-                        private_seqNum=data.private_seqNum,
-                        ack=sal_enums.SalRetCode.CMD_NOPERM,
-                        error=1,
-                        result=f"Not authorized: {auth_error}",
-                    )
-                    await self.ack(data, ack)
-                    return
-            except Exception:
-                self.log.exception("Error checking identity")
-
         try:
             result = self._callback(data)  # type: ignore
             if inspect.isawaitable(result):

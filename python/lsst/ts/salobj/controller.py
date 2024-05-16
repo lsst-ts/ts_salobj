@@ -178,7 +178,6 @@ class Controller:
 
     * Events, each an instance of `topics.ControllerEvent`:
 
-        * ``evt_authList``
         * ``evt_configurationApplied``
         * ... and so on for all other standard CSC events
         * ``evt_arrays``
@@ -258,7 +257,7 @@ class Controller:
                 tel = ControllerTelemetry(self.salinfo, tel_name)
                 setattr(self, tel.attr_name, tel)
 
-            for required_name in ("logMessage", "logLevel", "authList"):
+            for required_name in ("logMessage", "logLevel"):
                 if not hasattr(self, f"evt_{required_name}"):
                     raise RuntimeError(f"{self!r} has no {required_name} event")
 
@@ -324,10 +323,6 @@ class Controller:
                 return
 
         await self.put_log_level()
-        await self.evt_authList.set_write(  # type: ignore
-            authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
-            nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
-        )
 
     async def start_phase2(self) -> None:
         """Additional work after `start` before fully started.
@@ -419,60 +414,6 @@ class Controller:
         and closing the domain.
         """
         pass
-
-    async def do_setAuthList(self, data: type_hints.BaseMsgType) -> None:
-        """Update the authorization list.
-
-        Parameters
-        ----------
-        data : ``cmd_setAuthList.DataType``
-            Authorization lists.
-
-        Notes
-        -----
-        Add items if the data string starts with "+", ignoring duplicates
-        (both with respect to the existing items and within the data string).
-        Remove items if the data string starts with "-", ignoring missing
-        items (items specified for removal that do not exist).
-        Ignore whitespace after each comma and after the +/- prefix.
-        """
-        users_prefix, users_set = parse_as_prefix_and_set(
-            data.authorizedUsers,  # type: ignore
-        )
-        # Remove "me" from users list.
-        users_set.discard(self.salinfo.domain.user_host)
-
-        cscs_prefix, cscs_set = parse_as_prefix_and_set(
-            data.nonAuthorizedCSCs,  # type: ignore
-        )
-        # Strip :0 suffix, if present, for consistency.
-        cscs_set = {csc[:-2] if csc.endswith(":0") else csc for csc in cscs_set}
-
-        if users_prefix == "+":
-            # + prefix: add users.
-            self.salinfo.authorized_users |= users_set
-        elif users_prefix == "-":
-            # - prefix: remove users.
-            self.salinfo.authorized_users -= users_set
-        else:
-            # No prefix: replace users.
-            self.salinfo.authorized_users = users_set
-
-        if cscs_prefix == "+":
-            # + prefix: add CSCs.
-            self.salinfo.non_authorized_cscs |= cscs_set
-        elif cscs_prefix == "-":
-            # - prefix: remove CSCs.
-            self.salinfo.non_authorized_cscs -= cscs_set
-        else:
-            # No prefix: replace CSCs.
-            self.salinfo.non_authorized_cscs = cscs_set
-
-        await self.evt_authList.set_write(  # type: ignore
-            authorizedUsers=", ".join(sorted(self.salinfo.authorized_users)),
-            nonAuthorizedCSCs=", ".join(sorted(self.salinfo.non_authorized_cscs)),
-            force_output=True,
-        )
 
     async def do_setLogLevel(self, data: type_hints.BaseMsgType) -> None:
         """Set logging level.
