@@ -148,9 +148,6 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             await remote.close()
 
     async def test_duplicate_rejection(self) -> None:
-        """For simplicity this test calls setAuthList without a +/- prefix.
-        The prefix is tested elsewhere.
-        """
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             assert not self.csc.check_if_duplicate
 

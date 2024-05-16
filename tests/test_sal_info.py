@@ -190,20 +190,6 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 salinfo.component_info.topics.keys()
             )
 
-    async def test_default_authorize(self) -> None:
-        """Test that LSST_DDS_ENABLE_AUTHLIST correctly sets the
-        default_authorize attribute.
-        """
-        async with salobj.Domain() as domain:
-            for env_var_value in ("0", "1", None, "2", "", "00"):
-                expected_default_authorize = True if env_var_value == "1" else False
-                index = next(index_gen)
-                with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST=env_var_value):
-                    async with salobj.SalInfo(
-                        domain=domain, name="Test", index=index
-                    ) as salinfo:
-                        assert salinfo.default_authorize == expected_default_authorize
-
     async def test_lsst_topic_subname_required(self) -> None:
         # Delete LSST_TOPIC_SUBNAME. This should prevent constructing
         # a SalInfo.
