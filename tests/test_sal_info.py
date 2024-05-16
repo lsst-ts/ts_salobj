@@ -218,26 +218,26 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             domain=domain, name="Test", index=index
         ) as salinfo:
             # Use all defaults
-            seqNum = 55
+            seq_num = 55
             ack = salobj.SalRetCode.CMD_COMPLETE
-            ackcmd = salinfo.make_ackcmd(private_seqNum=seqNum, ack=ack)
-            assert ackcmd.private_seqNum == seqNum
+            ackcmd = salinfo.make_ackcmd(private_seqNum=seq_num, ack=ack)
+            assert ackcmd.private_seqNum == seq_num
             assert ackcmd.ack == ack
             assert ackcmd.error == 0
             assert ackcmd.result == ""
 
             # Specify an error code and result
-            seqNum = 27
+            seq_num = 27
             ack = salobj.SalRetCode.CMD_FAILED
             error = 127
             result = "why not?"
             ackcmd = salinfo.make_ackcmd(
-                private_seqNum=seqNum,
+                private_seqNum=seq_num,
                 ack=ack,
                 error=error,
                 result=result,
             )
-            assert ackcmd.private_seqNum == seqNum
+            assert ackcmd.private_seqNum == seq_num
             assert ackcmd.ack == ack
             assert ackcmd.error == error
             assert ackcmd.result == result
