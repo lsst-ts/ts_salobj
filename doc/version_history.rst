@@ -13,6 +13,8 @@ v7.6.1
 ------
 
 * Remove backward compatibility with moto version 3.
+* Remove the do_setAuthList command.
+* Give a local variable a more pythonesque name.
 
 v7.6.0
 ------
