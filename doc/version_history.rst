@@ -18,7 +18,7 @@ This new major release of salobj replaces DDS with Kafka.
 * Changes that are most likely to break existing code:
 
     * `SalInfo`:
-    
+
         * You must call ``start`` before writing data.
         * Deleted the deprecated ``makeAckCmd`` method; call ``make_ackcmd`` instead.
         * The `SalInfo` ``metadata`` attribute has been replaced by ``component_info``.
@@ -49,6 +49,11 @@ This new major release of salobj replaces DDS with Kafka.
 
     * ``lsst.ts.xml.sal_enums``.
     * ``lsst.ts.xml.type_hints``.
+
+* Remove the do_setAuthList command.
+
+* Give a local variable a more pythonesque name.
+
 
 v7.4.0
 ------
@@ -102,7 +107,7 @@ v7.3.2
 ------
 
 * `CscCommander`:
-    * Reduce clutter from logMessage events by only publishing the most interesting fields: 
+    * Reduce clutter from logMessage events by only publishing the most interesting fields:
       level, name, message, and (if not empty) traceback.
     * ``telemetry_callback``: do not assume an attribute already exists for previous data.
       This makes it easier to use for events such as clockOffset, where you only want to see the information if it has changed significantly.
