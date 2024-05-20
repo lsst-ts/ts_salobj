@@ -1027,6 +1027,7 @@ class SalInfo:
 
     def _blocking_write(
         self,
+        myloop,
         topic_info: TopicInfo,
         data_dict: dict[str, typing.Any],
         future: asyncio.Future,
@@ -1048,13 +1049,15 @@ class SalInfo:
 
         t0 = time.monotonic()
 
+
+        self.myloop = myloop
         def callback(err: KafkaError, _: Message) -> None:
             if err:
-                self.loop.call_soon_threadsafe(
+                self.myloop.call_soon_threadsafe(
                     future.set_exception, KafkaException(err)
                 )
             else:
-                self.loop.call_soon_threadsafe(future.set_result, None)
+                self.myloop.call_soon_threadsafe(future.set_result, None)
                 dt = time.monotonic() - t0
                 if dt > 0.1:
                     print(
@@ -1237,10 +1240,16 @@ class SalInfo:
         self.assert_running()
 
         try:
-            future = self.loop.create_future()
-            await self.loop.run_in_executor(
-                self.pool, self._blocking_write, topic_info, data_dict, future
+            loop = asyncio.get_running_loop()
+            future = loop.create_future()
+            await loop.run_in_executor(
+                self.pool, self._blocking_write, loop, topic_info, data_dict, future
             )
+            # I've tested this with and without the next line.  The code works without the call
+            # to set_event_loop(), because I believe the second loop is dead by this time.
+            # There is an chance that there may be additional loops (I didn't try testing that), 
+            # so setting this might not be a bad idea, and I don't think it hurts anything.
+            asyncio.set_event_loop(self.loop)
             await future
 
         except Exception:
