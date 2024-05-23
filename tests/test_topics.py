@@ -67,9 +67,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         async with self.make_csc(initial_state=salobj.State.ENABLED):
             for obj in (self.remote, self.csc):
                 is_remote = isinstance(obj, salobj.Remote)
-                # TODO DM-36605 remove this line once authorization is enabled
-                # by default.
-                assert not self.csc.salinfo.default_authorize
                 for cmd_name in obj.salinfo.command_names:
                     cmd = getattr(obj, f"cmd_{cmd_name}")
                     assert cmd.name == cmd_name
@@ -80,15 +77,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         == cmd.salinfo.name + "_" + cmd.sal_name + "_" + cmd.rev_code
                     )
                     assert cmd.volatile
-                    # TODO DM-36605 change to ``assert cmd.authorize``
-                    # once authorization is enabled by default
-                    if is_remote:
-                        assert isinstance(cmd, salobj.topics.RemoteCommand)
-                    else:
-                        assert isinstance(cmd, salobj.topics.ControllerCommand)
-                        # TODO DM-36605 change "assert not" to "assert"
-                        # once authorization is enabled by default.
-                        assert not cmd.authorize
                     self.check_topic_metadata(cmd)
 
                 for evt_name in obj.salinfo.event_names:
@@ -146,16 +134,6 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         + ackcmd.rev_code
                     )
                     assert ackcmd.volatile
-
-            # Test command topics with authorization enabled
-            # TODO DM-36605 remove this entire block once authorization
-            # is enabled by default
-            with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST="1"):
-                async with salobj.TestCsc(index=self.next_index()) as csc:
-                    assert csc.salinfo.default_authorize
-                    for cmd_name in csc.salinfo.command_names:
-                        cmd = getattr(csc, f"cmd_{cmd_name}")
-                        assert cmd.authorize
 
     async def test_base_topic_constructor_good(self) -> None:
         async with salobj.Domain() as domain, salobj.SalInfo(

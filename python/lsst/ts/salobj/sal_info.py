@@ -133,20 +133,12 @@ class SalInfo:
         A dict of topic name: name_revision.
     topic_info : `dict` [`str`, `TopicMetadata`]
         A dict of SAL topic name: topic metadata.
-    authorized_users : `List` [`str`]
-        Set of users authorized to command this component.
-    non_authorized_cscs : `List` [`str`]
-        Set of CSCs that are not authorized to command this component.
-
     Notes
     -----
     Reads the following `Environment Variables
     <https://ts-salobj.lsst.io/configuration.html#environment_variables>`_;
     follow the link for details:
 
-    * ``LSST_DDS_ENABLE_AUTHLIST`` (optional): if set to "1"
-      enable authlist-based command authorization.
-      If "0" or undefined, do not enable authorization.
     * ``LSST_DDS_PARTITION_PREFIX`` (required): the DDS partition name.
     * ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec)
       for waiting for historical (late-joiner) data.
@@ -235,26 +227,6 @@ class SalInfo:
         self.start_called = False
         self.done_task: asyncio.Future = asyncio.Future()
         self.start_task: asyncio.Future = asyncio.Future()
-
-        # Parse environment variable LSST_DDS_ENABLE_AUTHLIST
-        # to determine whether to implement command authorization.
-        # TODO DM-32379: remove this code block, including the
-        # default_authorize attribute.
-        authorize_str = os.environ.get("LSST_DDS_ENABLE_AUTHLIST", "0")
-        if authorize_str not in ("0", "1"):
-            self.log.warning(
-                f"Invalid value $LSST_DDS_ENABLE_AUTHLIST={authorize_str!r}. "
-                "Specify '1' to enable, '0' or undefined to disable "
-                "authlist-based command authorization. Disabling."
-            )
-        self.default_authorize = authorize_str == "1"
-        if self.default_authorize:
-            self.log.info("Enabling authlist-based command authorization")
-        else:
-            self.log.info("Disabling authlist-based command authorization")
-
-        self.authorized_users: set[str] = set()
-        self.non_authorized_cscs: set[str] = set()
 
         # Publishers and subscribers.
         # Create at need to avoid unnecessary instances.

@@ -426,8 +426,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         assert self.csc.summary_state == sal_enums.State.STANDBY
         await self.assert_next_summary_state(sal_enums.State.STANDBY)
         await self.check_bad_commands(
-            good_commands=("start", "exitControl", "setAuthList", "setLogLevel")
-            + skip_commands
+            good_commands=("start", "exitControl", "setLogLevel") + skip_commands
         )
 
         # Send start; new state is DISABLED.
@@ -437,8 +436,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         assert self.csc.summary_state == sal_enums.State.DISABLED
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
         await self.check_bad_commands(
-            good_commands=("enable", "standby", "setAuthList", "setLogLevel")
-            + skip_commands
+            good_commands=("enable", "standby", "setLogLevel") + skip_commands
         )
 
         # Send enable; new state is ENABLED.
@@ -446,9 +444,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         assert self.csc.summary_state == sal_enums.State.ENABLED
         await self.assert_next_summary_state(sal_enums.State.ENABLED)
         all_enabled_commands = tuple(
-            sorted(
-                set(("disable", "setAuthList", "setLogLevel")) | set(enabled_commands)
-            )
+            sorted(set(("disable", "setLogLevel")) | set(enabled_commands))
         )
         await self.check_bad_commands(
             good_commands=all_enabled_commands + skip_commands
