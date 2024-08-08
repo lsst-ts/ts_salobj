@@ -283,6 +283,33 @@ class BaseScript(controller.Controller, abc.ABC):
         return self.evt_state.data.groupId  # type: ignore
 
     @property
+    def obs_id(self) -> str:
+        """Get the block ID (a `str`), or "" if not set."""
+        return self.evt_state.data.blockId  # type: ignore
+
+    @obs_id.setter
+    def obs_id(self, value: str) -> None:
+        """Setter for the obs_id property.
+
+        This method is provided for backward compatibility
+        purposes. It will ignore trying to set the value
+        of the variable and issue a warning message.
+
+        Parameters
+        ----------
+        value : `str`
+            Value of the obs_id, this is ignored.
+        """
+        message = (
+            "Setting the value of obs_id attribute will be deprecated. "
+            "Setting the value of this attribute is part of the BaseScript "
+            "business logic and should not be done manually. "
+            f"The received {value=} will be ignored."
+        )
+        warnings.warn(message, DeprecationWarning)
+        self.log.warning(message)
+
+    @property
     def state(self) -> StateType:
         """Get the current state.
 
@@ -573,6 +600,7 @@ class BaseScript(controller.Controller, abc.ABC):
             duration=0,
         )
         self.set_metadata(metadata=self.evt_metadata.data)  # type: ignore
+        self.evt_state.set(blockId=data.blockId)  # type: ignore
         await self.evt_metadata.write()  # type: ignore
         await self.set_state(ScriptState.CONFIGURED)
         await asyncio.sleep(0.001)
