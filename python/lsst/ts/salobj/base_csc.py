@@ -80,6 +80,9 @@ class BaseCsc(Controller):
         will be replaced with one that raises salobj.ExpectedError.
         This is intended for mock controllers, which may only support
         a subset of commands.
+    extra_commands : `set`[`str`]
+        List of commands that can be defined in the CSC but be missing
+        from the interface.
 
     Raises
     ------
@@ -181,6 +184,7 @@ class BaseCsc(Controller):
         override: str = "",
         simulation_mode: int = 0,
         allow_missing_callbacks: bool = False,
+        extra_commands: set[str] = set(),
     ) -> None:
         # Check class variables
         if not hasattr(self, "version"):
@@ -216,6 +220,7 @@ class BaseCsc(Controller):
             index=index,
             do_callbacks=True,
             allow_missing_callbacks=allow_missing_callbacks,
+            extra_commands=extra_commands,
         )
 
         # Set evt_simulationMode, now that it is available.
