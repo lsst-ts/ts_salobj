@@ -127,6 +127,7 @@ class TestCsc(ConfigurableCsc):
             initial_state=initial_state,
             override=override,
             simulation_mode=simulation_mode,
+            extra_commands={"newCommand"},
         )
         self.cmd_wait.allow_multiple_callbacks = True  # type: ignore
         self.config: types.SimpleNamespace | None = None
@@ -182,6 +183,14 @@ class TestCsc(ConfigurableCsc):
         if duration >= 0:
             await self.cmd_wait.ack_in_progress(data, timeout=duration)  # type: ignore
         await asyncio.sleep(abs(duration))
+
+    async def do_newCommand(self, data: type_hints.BaseMsgType) -> None:
+        """This method is defined here to provide a test to the
+        extra_commands features in CSC.
+
+        Warning: DO NOTE REMOVE THIS COMMAND.
+        """
+        pass
 
     @property
     def field_type(self) -> dict[str, typing.Any]:
