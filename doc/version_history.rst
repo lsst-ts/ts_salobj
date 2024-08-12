@@ -9,6 +9,14 @@ Version History
 
 .. Version 8 of salobj will contain the kafka release.
 
+v7.7.0
+------
+
+* Add new functionality to allow specifying extra commands for a CSC.
+  This will allow us to improve backwards compatibility when adding new commands to CSC.
+* Add support for setting block information in BaseScript.
+
+
 v7.6.1
 ------
 
