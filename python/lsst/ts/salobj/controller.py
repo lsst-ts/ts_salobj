@@ -257,7 +257,7 @@ class Controller:
                 # This must be called after the cmd_ attributes
                 # have been added.
                 self._assert_do_methods_present(
-                    allow_missing_callbacks=allow_missing_callbacks
+                    allow_missing_callbacks=allow_missing_callbacks,
                 )
 
             for evt_name in self.salinfo.event_names:
@@ -441,9 +441,7 @@ class Controller:
         """Output the logLevel event."""
         await self.evt_logLevel.set_write(level=self.log.getEffectiveLevel())  # type: ignore
 
-    def _assert_do_methods_present(
-        self, allow_missing_callbacks: bool, valid_extra_commands: set[str]
-    ) -> None:
+    def _assert_do_methods_present(self, allow_missing_callbacks: bool) -> None:
         """Assert that the correct do_{command} methods are present.
 
         Parameters
@@ -453,9 +451,6 @@ class Controller:
             for each command: no extra methods and no missing methods.
             If true then do_{command} methods may be missing,
             but all existing do_{command} methods must match a command.
-        valid_extra_commands : `set`[`str`]
-            List of extra commands that can be included without
-            being part of the CSC interface.
 
         Raises
         ------
@@ -474,11 +469,7 @@ class Controller:
                         f"do_{name}" for name in sorted(unsupported_commands)
                     )
                     err_msgs.append(f"must add {needed_do_str} methods")
-            extra_commands = sorted(
-                set(supported_command_names)
-                - set(command_names)
-                - set(valid_extra_commands)
-            )
+            extra_commands = sorted(set(supported_command_names) - set(command_names))
             if extra_commands:
                 extra_do_str = ", ".join(
                     f"do_{name}" for name in sorted(extra_commands)

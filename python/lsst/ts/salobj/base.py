@@ -44,6 +44,7 @@ MAX_SAL_INDEX = (1 << 31) - 1
 # Regex for a SAL component name encoded as <name>[:<index>]
 _NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-][a-zA-Z0-9_-]*)(:(?P<index>\d+))?$")
 
+
 def _ackcmd_str(ackcmd: typing.Any) -> str:
     """Format an Ack as a string"""
     return (

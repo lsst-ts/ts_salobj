@@ -21,7 +21,7 @@ from __future__ import annotations
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["Domain", "QosSet"]
+__all__ = ["Domain"]
 
 import asyncio
 import os

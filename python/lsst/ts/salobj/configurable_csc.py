@@ -73,9 +73,6 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         `State.DISABLED` or `State.ENABLED`.
     simulation_mode : `int`, optional
         Simulation mode. The default is 0: do not simulate.
-    extra_commands : `set`[`str`]
-        List of commands that can be defined in the CSC but be missing
-        from the interface.
 
     Raises
     ------
@@ -144,7 +141,6 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         initial_state: None | State | int = None,
         override: str = "",
         simulation_mode: int = 0,
-        extra_commands: set[str] = set(),
     ) -> None:
         self.site = os.environ.get("LSST_SITE")
         if self.site is None:
@@ -183,7 +179,6 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             initial_state=initial_state,
             override=override,
             simulation_mode=simulation_mode,
-            extra_commands=extra_commands,
         )
 
         # Set static fields of the generic configuration events.

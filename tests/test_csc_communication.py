@@ -148,15 +148,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             await remote.close()
 
     async def test_duplicate_rejection(self) -> None:
-        async with self.make_csc(initial_state=salobj.State.STANDBY):
-            assert not self.csc.check_if_duplicate
-
-            duplicate_csc = salobj.TestCsc(
-                index=self.csc.salinfo.index, check_if_duplicate=True
-
         # TODO DM-36605 remove use of utils.modify_environ
         # once authlist support is enabled by default
-        with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST="1"):
+        async with utils.modify_environ(LSST_DDS_ENABLE_AUTHLIST="1"):
             async with self.make_csc(initial_state=salobj.State.ENABLED):
                 await self.assert_next_sample(
                     self.remote.evt_authList,
@@ -277,6 +271,10 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 authorizedUsers="",
                 nonAuthorizedCSCs="",
             )
+            duplicate_csc = salobj.TestCsc(
+                index=self.csc.salinfo.index, check_if_duplicate=True
+            )
+
             try:
                 # Change origin so heartbeat private_origin differs.
                 duplicate_csc.salinfo.domain.origin += 1

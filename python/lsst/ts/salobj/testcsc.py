@@ -128,7 +128,6 @@ class TestCsc(ConfigurableCsc):
             initial_state=initial_state,
             override=override,
             simulation_mode=simulation_mode,
-            extra_commands={"newCommand"},
         )
         self.cmd_wait.allow_multiple_callbacks = True  # type: ignore
         self.config: types.SimpleNamespace | None = None

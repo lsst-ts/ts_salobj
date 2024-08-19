@@ -413,6 +413,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             self.csc.assert_scalars_equal(cmd_data_list[0], tel_data)
 
             # `aget` should not interfere with `next`
+            for i in range(num_commands):
                 print(f"test {i}")
                 evt_data = await self.remote.evt_scalars.next(
                     flush=False, timeout=STD_TIMEOUT
