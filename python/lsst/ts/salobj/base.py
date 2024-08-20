@@ -29,6 +29,7 @@ __all__ = [
     "get_opensplice_version",
     "get_user_host",
     "name_to_name_index",
+    "WildcardIndexError",
 ]
 
 import getpass
@@ -51,7 +52,7 @@ MASTER_PRIORITY_ENV_VAR = "OSPL_MASTER_PRIORITY"
 MAX_SAL_INDEX = (1 << 31) - 1
 
 # Regex for a SAL component name encoded as <name>[:<index>]
-_NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-][a-zA-Z0-9_-]*)(:(?P<index>\d+))?$")
+_NAME_REGEX = re.compile(r"(?P<name>[a-zA-Z_-][a-zA-Z0-9_-]*)(:(?P<index>\d+|\*))?$")
 
 # OpenSplice version; None until get_opensplice_version is first called.
 _OPENSPLICE_VERSION: str | None = None
@@ -153,6 +154,14 @@ def get_user_host() -> str:
     return f"{getpass.getuser()}@{socket.getfqdn()}"
 
 
+class WildcardIndexError(ValueError):
+    """Custom exception to signify that the index is a wildcard ('*')."""
+
+    def __init__(self, name: str):
+        super().__init__(f"The index for component '{name}' is a wildcard ('*').")
+        self.name = name
+
+
 def name_to_name_index(name: str) -> tuple[str, int]:
     """Parse a SAL component name of the form name[:index].
 
@@ -190,5 +199,10 @@ def name_to_name_index(name: str) -> tuple[str, int]:
         raise ValueError(f"name {name!r} is not of the form 'name' or 'name:index'")
     name = match["name"]
     index_str = match["index"]
-    index = 0 if index_str is None else int(index_str)
-    return (name, index)
+
+    if index_str is None:
+        return name, 0  # Default index is 0
+    elif index_str == "*":
+        raise WildcardIndexError(name)  # Raise custom exception for wildcard
+    else:
+        return name, int(index_str)
