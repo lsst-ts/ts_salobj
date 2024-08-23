@@ -97,6 +97,9 @@ class Controller:
         This is intended for mock controllers, which may only support
         a subset of commands.
         Cannot be true unless ``do_callbacks`` is true.
+    extra_commands : `set`[`str`]
+        List of valid commands that can be defined in the CSC without
+        being in the interface.
 
     Attributes
     ----------
@@ -199,6 +202,17 @@ class Controller:
     * setLogLevel command
     * logLevel event
     * logMessage event
+
+    .. _adding_commands
+
+    **Adding Commands**
+
+    When adding new commands to the CSC interface, there might be a
+    time when one needs to support both the old interface (without
+    the new commands) and the new interface. In this situations one
+    can define the list of new commands using the `extra_commands`
+    parameters. Callback to those commands can be defined in the CSC
+    and they will work with both old and new interfaces.
     """
 
     def __init__(
@@ -209,6 +223,7 @@ class Controller:
         do_callbacks: bool = False,
         write_only: bool = False,
         allow_missing_callbacks: bool = False,
+        extra_commands: set[str] = set(),
     ) -> None:
         if do_callbacks and write_only:
             raise ValueError("Cannot specify do_callbacks and write_only both true")
@@ -245,7 +260,8 @@ class Controller:
                 # This must be called after the cmd_ attributes
                 # have been added.
                 self._assert_do_methods_present(
-                    allow_missing_callbacks=allow_missing_callbacks
+                    allow_missing_callbacks=allow_missing_callbacks,
+                    valid_extra_commands=extra_commands,
                 )
 
             for evt_name in self.salinfo.event_names:
@@ -429,7 +445,9 @@ class Controller:
         """Output the logLevel event."""
         await self.evt_logLevel.set_write(level=self.log.getEffectiveLevel())  # type: ignore
 
-    def _assert_do_methods_present(self, allow_missing_callbacks: bool) -> None:
+    def _assert_do_methods_present(
+        self, allow_missing_callbacks: bool, valid_extra_commands: set[str]
+    ) -> None:
         """Assert that the correct do_{command} methods are present.
 
         Parameters
@@ -439,6 +457,9 @@ class Controller:
             for each command: no extra methods and no missing methods.
             If true then do_{command} methods may be missing,
             but all existing do_{command} methods must match a command.
+        valid_extra_commands : `set`[`str`]
+            List of extra commands that can be included without
+            being part of the CSC interface.
 
         Raises
         ------
@@ -457,7 +478,11 @@ class Controller:
                         f"do_{name}" for name in sorted(unsupported_commands)
                     )
                     err_msgs.append(f"must add {needed_do_str} methods")
-            extra_commands = sorted(set(supported_command_names) - set(command_names))
+            extra_commands = sorted(
+                set(supported_command_names)
+                - set(command_names)
+                - set(valid_extra_commands)
+            )
             if extra_commands:
                 extra_do_str = ", ".join(
                     f"do_{name}" for name in sorted(extra_commands)
