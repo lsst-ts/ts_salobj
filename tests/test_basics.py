@@ -28,6 +28,7 @@ import unittest
 
 import pytest
 from lsst.ts import salobj, utils
+from lsst.ts.salobj import WildcardIndexError
 
 index_gen = utils.index_generator()
 
@@ -189,7 +190,13 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             ("Script:15 "),  # trailing space
             ("Script:"),  # colon with no index
             ("Script:zero"),  # index is not an integer
+            ("Script:*"),  # Wildcard index
         ):
             with self.subTest(bad_name=bad_name):
                 with pytest.raises(ValueError):
                     salobj.name_to_name_index(bad_name)
+
+        # Invalid case for WildcardIndexError
+        with self.subTest(bad_name="Script:*"):
+            with pytest.raises(WildcardIndexError):
+                salobj.name_to_name_index("Script:*")

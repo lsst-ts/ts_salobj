@@ -9,6 +9,13 @@ Version History
 
 .. Version 8 of salobj will contain the kafka release.
 
+v7.7.1
+------
+
+* Added ``WildcardIndexError`` to handle wildcard indices in SAL components,
+  ensuring backward compatibility.
+
+
 v7.7.0
 ------
 
