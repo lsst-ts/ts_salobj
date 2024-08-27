@@ -667,7 +667,7 @@ class SalInfo:
             # Create Kafka topics, serializers, and deserializers.
             # Set self._serializers_and_contexts and
             # self._deserializers_and_contexts.
-            await self.loop.run_in_executor(self.pool, func=self._blocking_setup_kafka)
+            await self.loop.run_in_executor(self.pool, self._blocking_setup_kafka)
 
             if not self._read_topics:
                 # There are no read topics, so self.start_task has to be
