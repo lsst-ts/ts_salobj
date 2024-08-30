@@ -22,12 +22,14 @@
 __all__ = [
     "assertRaisesAckError",
     "assertRaisesAckTimeoutError",
+    "set_test_topic_subname",
     "set_random_lsst_dds_partition_prefix",
 ]
 
 import base64
 import contextlib
 import os
+import warnings
 from collections.abc import Generator
 
 import astropy.coordinates
@@ -93,15 +95,44 @@ def assertRaisesAckTimeoutError(
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
 
 
-def set_random_lsst_dds_partition_prefix() -> None:
-    """Set a random value for environment variable LSST_DDS_PARTITION_PREFIX
+def set_test_topic_subname(randomize: bool = False) -> None:
+    """Set a test value for environment variable LSST_TOPIC_SUBNAME
 
+    Parameters
+    ----------
+    randomize :  `bool`
+        If set to `True` create a random topic subname.
+
+    Notes
+    -----
     Call this for each unit test method that uses SAL message passing,
     in order to avoid collisions with other tests. Note that pytest
     can run unit test methods in parallel.
 
-    The random value is generated using the os.urandom, so that it cannot
-    be seeded. This avoids collisions with previous test runs.
+    By default (randomize=False), the topic subname value is generated using
+    the os.getpid(). Since parallel tests in pytest uses different processes,
+    this avoids collisions with previous test runs and reduces the number of
+    schema and topics creation.
+
+    If a more fine grained isolation mechanism is needed one can pass
+    randomize=True, which will generate a random unique topic subname using
+    os.urandom.
     """
-    random_str = base64.urlsafe_b64encode(os.urandom(12)).decode().replace("=", "_")
-    os.environ["LSST_DDS_PARTITION_PREFIX"] = f"test_{random_str}"
+    pid = os.getpid()
+    length = (pid.bit_length() + 7) // 8
+    root_value = (
+        pid.to_bytes(length=length, byteorder="big")
+        if not randomize
+        else os.urandom(12)
+    )
+
+    topic_subname_suffix = (
+        base64.urlsafe_b64encode(root_value).decode().replace("=", "")
+    )
+    os.environ["LSST_TOPIC_SUBNAME"] = f"test_{topic_subname_suffix}"
+
+
+def set_random_lsst_dds_partition_prefix() -> None:
+    """A deprecated synonym for set_random_topic_subname."""
+    warnings.warn("Call set_random_topic_subname instead", DeprecationWarning)
+    set_test_topic_subname()
