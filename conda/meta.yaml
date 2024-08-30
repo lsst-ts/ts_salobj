@@ -14,10 +14,9 @@ build:
 test:
   requires:
     - ts-conda-build =0.4
-    - ts-dds
-    - ts-ddsconfig
     - ts-idl {{ idl_version }}
     - ts-utils
+    - ts-xml
   source_files:
       # .git is needed to test reading older git hashes of config files
     - .git
@@ -32,23 +31,21 @@ test:
 requirements:
   host:
     - pip
-    - pytest-asyncio
     - pytest-flake8
-    - pytest-runner
     - python {{ python }}
     - setuptools
     - setuptools_scm
   run:
-    - astropy >=5
+    - astropy >=5.2
     - boto3
+    - fastavro
     - jsonschema
     - moto >=5
-    - numpy ~=1.20
+    - {{ pin_compatible('numpy') }}
     - python {{ python }}
+    - python-confluent-kafka =1.9
     - pyyaml
     - setuptools
     - setuptools_scm
-    - ts-dds
-    - ts-ddsconfig
-    - ts-idl {{ idl_version }}
     - ts-utils
+    - ts-xml >=20
