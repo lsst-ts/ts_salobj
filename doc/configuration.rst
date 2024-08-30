@@ -11,60 +11,42 @@ Configuring ts_salobj
 Environment Variables
 ---------------------
 
-ADLink OpenSplice is configured using environment variables described in `ts_ddsconfig environment variables`_.
-
-ts_salobj reads (or, in the case of ``OSPL_MASTER_PRIORITY`` writes) the following environment variables:
-
-Used by `Domain` (indirectly):
-
-* ``OSPL_MASTER_PRIORITY`` (optional) sets the priority for which durability service is the master.
-  Described in `ts_ddsconfig environment variables`_.
-  Temporarily set to 0 by `BaseScript` while constructing its `Domain` to prevent SAL scripts from becoming master
-  (though this only affects unit tests; in production SAL scripts use a shared memory daemon for their durability service).
-  Constant ``lsst.ts.salobj.MASTER_PRIORITY_ENV_VAR`` is available to make this easier to set from Python.
+ts_salobj reads the following environment variables:
 
 Used by `SalInfo`:
 
-* ``LSST_DDS_PARTITION_PREFIX`` (required): a prefix for DDS partition names.
-  This is read by `SalInfo` so that different instances of `SalInfo` (thus different `Remote`\ s and `Controller`\ s)
-  can communicate with different DDS partitions, even though all share the same `Domain`.
-  See `ts_ddsconfig environment variables`_ for details.
-* ``LSST_DDS_ENABLE_AUTHLIST`` (optional): if set to "1"
-    enable authlist-based command authorization.
-    If "0" or undefined, do not enable authorization.
-* ``LSST_DDS_HISTORYSYNC`` (optional): time limit (sec) for waiting for historical (late-joiner) data.
-  If, and only if, you are running DDS without a durability service then set this negative to avoid waiting for historical data.
+* ``LSST_DDS_ENABLE_AUTHLIST`` (optional): set to "1" enable authlist-based command authorization.
+  Set to "0" or leave undefined to disable authlist-based command authorization.
+  In the long run we intend to eliminate this environment variable and always enable authlist-based command authorization.
+
+* ``LSST_KAFKA_BROKER_ADDR`` (optional): the address of the Kafka broker.
+  If you are running Kafka locally, using the docker compose file, then set as follows:
+
+  * Leave it blank or set it to ``broker:29092`` (the default), for running unit tests within a Docker container.
+  * Use ``localhost:9092`` for running unit tests directly on your computer.
+
+* ``LSST_SCHEMA_REGISTRY_URL`` (optional): url of the Confluent schema registry.
+  If you are running Kafka locally, using the docker compose file, then set as follows:
+
+  * Leave blank or set to ``http://schema-registry:8081`` (the default) for running unit tests within a Docker container.
+  * Use ``http://localhost:8081`` for running unit tests directly on your computer.
+
+* ``LSST_TOPIC_SUBNAME`` (required): a component of Kafka topic names and schema namespaces.
+  Use a value of "sal" for production code, and any other value for experimental code and unit tests.
+  This allows experimental code to not interfere with production code, and unit tests to not interfere with each other.
+  Each `Remote` and `Controller` (hence ``CSC``) can have a different sub-namespace.
 
 Used by `ConfigurableCsc`:
 
-* ``LSST_SITE`` (required): the site, e.g. "summit", "base", or "tucson".
-  Used to select the site-specific configuration file, if it exists, to supplement ``_init.yaml``.
-  For example if LSST_SITE="summit" then the default CSC configuration (configurationOverride="") is given by reading ``_init.yaml`` followed by ``_summit.yaml`` (if it exists).
+* ``LSST_SITE`` (required): the site.
+  Used to select the site-specific configuration file, if one exists, to supplement ``_init.yaml``.
+  Standard values include "summit", "base", and "tucson".
+  For example if LSST_SITE="summit" then the default CSC configuration (configurationOverride="") is given by reading ``_init.yaml`` (which must exist), followed by ``_summit.yaml`` (if it exists).
 
 Used by `AsyncS3Bucket`:
 
 * ``S3_ENDPOINT_URL``: The endpoint URL for the S3 server, e.g. ``http://foo.bar:9000``.
   You must specify a value in order to use an S3 service that is not part of Amazon Web Services (AWS).
-  Eventually we hope that ``endpoint_url`` can be defined in ``~/.aws/config``.
-  Once that is supported you can leave this environment variable unset, and we can deprecate it.
+  Eventually we hope that ``endpoint_url`` can be defined in ``~/.aws/config``; if that is ever supported, we can deprecate this environment variable.
 
 .. _lsst.ts.salobj-configuration_other:
-
-Other Configuration
--------------------
-
-In addition to the environment variables described above, you will need the following Python packages:
-
-* `ts_ddsconfig`_ for OpenSplice DDS configuration.
-* `ts_idl`_ for the IDL files that define SAL topic schemas, and associated enum modules.
-* `ts_sal`_ to build IDL files and to run ts_salobj unit tests.
-
-DDS topic schemas are defined by ``OMG IDL`` files, which are contained in the ``idl`` directory of the `ts_idl`_ package.
-You may generate new IDL files using the ``make_idl_files.py`` command-line script in the `ts_sal`_ package.
-
-.. _Vortex OpenSplice: https://istkb.adlinktech.com/article/vortex-opensplice-documentation/
-.. _ts_ddsconfig: https://github.com/lsst-ts/ts_ddsconfig
-.. _ts_ddsconfig environment variables: https://ts-ddsconfig.lsst.io/#environment-variables-in-ospl-configuration-files
-.. _ts_idl: https://github.com/lsst-ts/ts_idl
-.. _ts_sal: https://github.com/lsst-ts/ts_sal
-.. _ts_utils: https://github.com/lsst-ts/ts_utils
