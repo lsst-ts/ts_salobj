@@ -64,12 +64,12 @@ class NoIndexCsc(salobj.TestCsc):
 
 class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
     def run(self, result: typing.Any = None) -> None:  # type: ignore
-        """Override `run` to set a random LSST_DDS_PARTITION_PREFIX
+        """Override `run` to set a random LSST_TOPIC_SUBNAME
         and set LSST_SITE=test for every test.
 
         https://stackoverflow.com/a/11180583
         """
-        salobj.set_random_lsst_dds_partition_prefix()
+        salobj.set_test_topic_subname()
         with utils.modify_environ(LSST_SITE="test"):
             super().run(result)
 
