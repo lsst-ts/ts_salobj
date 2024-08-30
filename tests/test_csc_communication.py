@@ -29,7 +29,7 @@ import subprocess
 import typing
 import unittest
 import warnings
-from collections.abc import AsyncGenerator, Iterator, Sequence
+from collections.abc import AsyncGenerator, Sequence
 
 import numpy as np
 import pytest
@@ -37,9 +37,9 @@ from lsst.ts import salobj, utils
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
-STD_TIMEOUT = 60
+STD_TIMEOUT = 20
 # Timeout for when we expect no new data (seconds).
-NODATA_TIMEOUT = 0.5
+NO_DATA_TIMEOUT = 1
 
 np.random.seed(47)
 
@@ -48,7 +48,9 @@ TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
 TEST_CONFIG_DIR = TEST_DATA_DIR / "configs" / "good_no_site_file"
 
 
-def all_permutations(items: Sequence[typing.Any]) -> Iterator[typing.Any]:
+def all_permutations(
+    items: Sequence[typing.Any],
+) -> typing.Iterator[typing.Any]:
     """Return all permutations of a list of items and of all sublists,
     including [].
     """
@@ -167,12 +169,11 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
     async def test_heartbeat(self) -> None:
         async with self.make_csc(initial_state=salobj.State.STANDBY):
-            self.csc.heartbeat_interval = 0.1
             timeout = self.csc.heartbeat_interval * 5
             await self.remote.evt_heartbeat.next(flush=True, timeout=STD_TIMEOUT)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
-            await self.remote.evt_heartbeat.next(flush=True, timeout=timeout)
+            await self.remote.evt_heartbeat.next(flush=False, timeout=timeout)
+            await self.remote.evt_heartbeat.next(flush=False, timeout=timeout)
+            await self.remote.evt_heartbeat.next(flush=False, timeout=timeout)
 
     async def test_bin_script_run(self) -> None:
         """Test running the Test CSC from the bin script.
@@ -210,23 +211,26 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             domain=domain,
             name="Test",
             index=index,
-            include=["summaryState"],
+            include=["summaryState", "heartbeat"],
         ) as self.remote:
             process1 = await asyncio.create_subprocess_exec(
                 *args,
                 stderr=subprocess.PIPE,
             )
             try:
-                await self.assert_next_summary_state(
-                    salobj.State.STANDBY, timeout=STD_TIMEOUT
+                await self.assert_next_sample(
+                    topic=self.remote.evt_heartbeat,  # type: ignore
+                    flush=True,
+                    timeout=STD_TIMEOUT,
                 )
+
                 # Start a duplicate CSC and wait for it to quit early.
                 process2 = await asyncio.create_subprocess_exec(
                     *args,
                     stderr=subprocess.PIPE,
                 )
                 try:
-                    await asyncio.wait_for(process2.wait(), timeout=STD_TIMEOUT)
+                    await asyncio.wait_for(process2.wait(), timeout=STD_TIMEOUT * 2)
                     assert process2.returncode is not None
                     assert process2.returncode > 0
                     assert process2.stderr is not None  # make mypy happy
@@ -240,6 +244,21 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 except asyncio.TimeoutError:
                     process2.terminate()
                     await asyncio.wait_for(process2.wait(), timeout=STD_TIMEOUT)
+                    try:
+                        if process2.stdout is not None:
+                            std_out_bytes = await asyncio.wait_for(
+                                process2.stdout.read(), timeout=STD_TIMEOUT
+                            )
+                            print(std_out_bytes.decode())
+
+                        if process2.stderr is not None:
+                            errbytes = await asyncio.wait_for(
+                                process2.stderr.read(), timeout=STD_TIMEOUT
+                            )
+                            print(errbytes.decode())
+                    except asyncio.TimeoutError:
+                        print("Timeout waiting for process2 std out and/or std err")
+
                     raise AssertionError("CSC 2 did not die in time.")
             finally:
                 if process1.returncode is None:
@@ -293,16 +312,21 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             initial_state=salobj.State.STANDBY, log_level=logging.DEBUG
         ):
             assert self.csc.log.getEffectiveLevel() == logging.DEBUG
+            # Check that the remote has the same log
+            # (and hence the same effective log level).
+            assert self.remote.salinfo.log is self.csc.log
 
+        max_log_level = salobj.sal_info.MAX_LOG_LEVEL
+        excessive_log_level = max_log_level + 5
         async with self.make_csc(
-            initial_state=salobj.State.STANDBY, log_level=logging.WARNING
+            initial_state=salobj.State.STANDBY, log_level=excessive_log_level
         ):
-            assert self.csc.log.getEffectiveLevel() == logging.WARNING
+            assert self.csc.log.getEffectiveLevel() == excessive_log_level
 
         # At this point log level is WARNING; now check that by default
         # log verbosity is increased (log level decreased) to INFO.
         async with self.make_csc(initial_state=salobj.State.STANDBY):
-            assert self.csc.log.getEffectiveLevel() == logging.INFO
+            assert self.csc.log.getEffectiveLevel() == max_log_level
 
     async def test_setArrays_command(self) -> None:
         async with self.make_csc(initial_state=salobj.State.ENABLED):
@@ -431,7 +455,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             await self.assert_next_summary_state(salobj.State.FAULT)
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_errorCode.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
@@ -513,11 +537,11 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     # make sure FAULT state and errorCode are only sent once
                     with pytest.raises(asyncio.TimeoutError):
                         await remote.evt_summaryState.next(
-                            flush=False, timeout=NODATA_TIMEOUT
+                            flush=False, timeout=NO_DATA_TIMEOUT
                         )
                     with pytest.raises(asyncio.TimeoutError):
                         await remote.evt_errorCode.next(
-                            flush=False, timeout=NODATA_TIMEOUT
+                            flush=False, timeout=NO_DATA_TIMEOUT
                         )
 
     async def test_make_csc_timeout(self) -> None:

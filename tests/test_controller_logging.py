@@ -29,12 +29,13 @@ import unittest
 import numpy as np
 import pytest
 from lsst.ts import salobj, utils
+from lsst.ts.xml.type_hints import BaseMsgType
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
-STD_TIMEOUT = 60
+STD_TIMEOUT = 20
 # Timeout for when we expect no new data (seconds).
-NODATA_TIMEOUT = 0.1
+NO_DATA_TIMEOUT = 1
 
 np.random.seed(47)
 
@@ -50,7 +51,7 @@ class FailedCallbackCsc(salobj.TestCsc):
         super().__init__(*args, **kwargs)
         self.exc_msg = "do_wait raised an exception on purpose"
 
-    async def do_wait(self, data: salobj.BaseMsgType) -> None:
+    async def do_wait(self, data: BaseMsgType) -> None:
         raise RuntimeError(self.exc_msg)
 
 
@@ -81,6 +82,7 @@ class ControllerLoggingTestCase(
 
             info_message = "test info message"
             self.csc.log.info(info_message)
+            # Skip initial messages until we find this new one.
             while True:
                 msg = await self.remote.evt_logMessage.next(
                     flush=False, timeout=STD_TIMEOUT
@@ -120,8 +122,10 @@ class ControllerLoggingTestCase(
 
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
+
+            self.remote.evt_logLevel.flush()
 
             await self.remote.cmd_setLogLevel.set_start(
                 level=logging.ERROR, timeout=STD_TIMEOUT
@@ -136,14 +140,14 @@ class ControllerLoggingTestCase(
             self.csc.log.info(info_message)
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
             warn_message = "test warn message"
             self.csc.log.warning(warn_message)
             with pytest.raises(asyncio.TimeoutError):
                 await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NODATA_TIMEOUT
+                    flush=False, timeout=NO_DATA_TIMEOUT
                 )
 
             with salobj.assertRaisesAckError():
