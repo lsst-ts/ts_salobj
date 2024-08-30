@@ -29,7 +29,7 @@ from lsst.ts import salobj, utils
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.
-STD_TIMEOUT = 60
+STD_TIMEOUT = 20
 
 np.random.seed(47)
 
@@ -136,7 +136,7 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
             # and ignore them.
             scalar_fields = [
                 field
-                for field in self.csc.cmd_setScalars.DataType().get_vars().keys()
+                for field in vars(self.csc.cmd_setScalars.DataType()).keys()
                 if not field.startswith("private_") and field != "salIndex"
             ]
             bool_index = scalar_fields.index("boolean0")
