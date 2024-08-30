@@ -32,8 +32,9 @@ import typing
 from collections.abc import AsyncGenerator, Sequence
 
 from lsst.ts import utils
+from lsst.ts.xml import sal_enums, type_hints
 
-from . import base_csc, sal_enums, testutils, type_hints
+from . import base_csc, testutils
 from .csc_utils import get_expected_summary_states
 from .domain import Domain
 from .remote import Remote
@@ -41,7 +42,10 @@ from .topics.read_topic import ReadTopic
 
 # Standard timeout (sec)
 # Long to avoid unnecessary timeouts on slow CI systems.
-STD_TIMEOUT = 60
+STD_TIMEOUT = 30
+
+# Timeout when constructing a CSC with duplicate checking enabled.
+STD_WITH_DUPLICATE_CHECK_TIMEOUT = STD_TIMEOUT + 10
 
 
 class BaseCscTestCase(metaclass=abc.ABCMeta):
@@ -61,24 +65,30 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     """
 
     _index_iter = utils.index_generator()
+    # The following attribute allows users to enforce randomizing topic
+    # subname. You can set it up in setUpClass, by setting
+    # cls._randomize_topic_subname=True.
+    _randomize_topic_subname = False
 
     def run(self, result: typing.Any = None) -> None:  # type: ignore
-        """Set a random LSST_DDS_PARTITION_PREFIX
+        """Set a random LSST_TOPIC_SUBNAME
         and set LSST_SITE=test for every test.
 
         Unlike setUp, a user cannot forget to override this.
         (This is also a good place for context managers).
         """
-        testutils.set_random_lsst_dds_partition_prefix()
+        testutils.set_test_topic_subname(randomize=self._randomize_topic_subname)
+
         # set LSST_SITE using os.environ instead of utils.modify_environ
         # so that check_bin_script works.
         os.environ["LSST_SITE"] = "test"
+        self.csc_start_time = utils.current_tai()
         super().run(result)  # type: ignore
 
     @abc.abstractmethod
     def basic_make_csc(
         self,
-        initial_state: sal_enums.State | int,
+        initial_state: sal_enums.State | int | None,
         config_dir: str | pathlib.Path | None,
         simulation_mode: int,
         **kwargs: typing.Any,
@@ -107,7 +117,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     @contextlib.asynccontextmanager
     async def make_csc(
         self,
-        initial_state: sal_enums.State = sal_enums.State.STANDBY,
+        initial_state: sal_enums.State | int | None = None,
         config_dir: str | pathlib.Path | None = None,
         simulation_mode: int = 0,
         log_level: int | None = None,
@@ -130,7 +140,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         name : `str`
             Name of SAL component.
         initial_state : `lsst.ts.salobj.State` or `int`, optional
-            The initial state of the CSC. Defaults to STANDBY.
+            The initial state of the CSC.
+            If None use the CSC's default initial state.
         config_dir : `str`, optional
             Directory of configuration files, or `None` (the default)
             for the standard configuration directory (obtained from
@@ -155,7 +166,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         asyncio.TimeoutError
             If the CSC cannot be constructed within the specified time limit.
         """
-        items_to_close: typing.List[base_csc.BaseCsc | Remote] = []
+        items_to_close: list[base_csc.BaseCsc | Remote] = []
         try:
             # Create the CSC, but prevent it from starting
             # until the remote is fully started
@@ -166,6 +177,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 **kwargs,
             )
             self.csc.delay_start_event.clear()
+            self.csc_start_time = utils.current_tai()
             items_to_close.append(self.csc)
 
             # Create and start the remote
@@ -275,6 +287,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             If no message is available within the specified time limit.
         """
         data = await topic.next(flush=flush, timeout=timeout)
+        while data.private_sndStamp <= self.csc_start_time:
+            print(f"Discarding old sample: {data}.")
+            data = await topic.next(flush=flush, timeout=timeout)
+
         for field_name, expected_value in kwargs.items():
             read_value = getattr(data, field_name, None)
             if read_value is None:
@@ -298,7 +314,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         initial_state: sal_enums.State | None = None,
         override: str | None = None,
         cmdline_args: Sequence[str] = (),
-        timeout: float = STD_TIMEOUT,
+        timeout: float = STD_WITH_DUPLICATE_CHECK_TIMEOUT,
     ) -> None:
         """Test running the CSC command line script.
 
@@ -355,6 +371,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             domain=domain, name=name, index=index
         ) as self.remote:
             print("check_bin_script running:", " ".join(args))
+            self.csc_start_time = utils.current_tai()
             process = await asyncio.create_subprocess_exec(
                 *args,
                 stderr=subprocess.PIPE,
