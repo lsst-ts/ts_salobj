@@ -35,32 +35,17 @@ from collections.abc import Sequence
 
 import yaml
 from lsst.ts import utils
-from lsst.ts.idl.enums.Script import (
+from lsst.ts.xml import type_hints
+from lsst.ts.xml.enums.Script import (
     MetadataCoordSys,
     MetadataDome,
     MetadataRotSys,
     ScriptState,
 )
 
-from . import base, controller, type_hints, validator
-from .remote import Remote
+from . import base, controller, validator
 
 HEARTBEAT_INTERVAL = 5  # seconds
-
-
-def _make_remote_name(remote: Remote) -> str:
-    """Make a remote name from a remote, for output as script metadata.
-
-    Parameters
-    ----------
-    remote : `salobj.Remote`
-        Remote
-    """
-    name = remote.salinfo.name
-    index = remote.salinfo.index
-    if index is not None:
-        name = name + ":" + str(index)
-    return name
 
 
 class StateType:
@@ -141,9 +126,12 @@ class BaseScript(controller.Controller, abc.ABC):
             description=str(descr),
             help=str(help),
         )
-        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
     async def start(self) -> None:
+        await super().start()
+        self._heartbeat_task.cancel()  # Paranoia
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+
         remote_names = set()
         remote_start_tasks = []
         for salinfo in self.domain.salinfo_set:
@@ -151,8 +139,6 @@ class BaseScript(controller.Controller, abc.ABC):
                 continue
             remote_names.add(f"{salinfo.name}:{salinfo.index}")
             remote_start_tasks.append(salinfo.start_task)
-
-        await super().start()
         await asyncio.gather(*remote_start_tasks)
 
         await self.evt_state.set_write(state=ScriptState.UNCONFIGURED)  # type: ignore
