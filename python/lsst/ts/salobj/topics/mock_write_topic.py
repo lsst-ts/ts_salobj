@@ -25,7 +25,8 @@ __all__ = ["MockWriteTopic"]
 
 import typing
 
-from .. import type_hints
+from lsst.ts.xml import type_hints
+
 from .write_topic import MAX_SEQ_NUM, WriteTopic
 
 if typing.TYPE_CHECKING:
@@ -85,7 +86,21 @@ class MockWriteTopic(WriteTopic):
         )
         self.data_list: list[type_hints.BaseMsgType] = []
 
-    def _basic_write(self) -> type_hints.BaseMsgType:
+    async def write(self) -> type_hints.BaseMsgType:
+        """Write the current data and return a copy of the data written.
+
+        Returns
+        -------
+        data : self.DataType
+            The data that was written.
+            This can be useful to avoid race conditions
+            (as found in RemoteCommand).
+
+        Raises
+        ------
+        RuntimeError
+            If not running.
+        """
         data = self._prepare_data_to_write()
         self.data_list.append(data)
         return data
