@@ -866,7 +866,7 @@ class SalInfo:
 
         producer_configuration = {
             "acks": os.environ.get(
-                "LSST_KAFKA_PRODUCER_WAIT_ACKS ",
+                "LSST_KAFKA_PRODUCER_WAIT_ACKS",
                 DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS,
             ),
             "queue.buffering.max.ms": 0,
