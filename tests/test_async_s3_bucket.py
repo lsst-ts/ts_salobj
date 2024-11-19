@@ -221,6 +221,18 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
         )
         assert key == expected_key
 
+        # Repeat the test with a specified value for "stem"
+        key = salobj.AsyncS3Bucket.make_key(
+            salname=salname,
+            salindexname=5,
+            generator=generator,
+            date=date,
+            stem="FF_O_20200402_000001",
+            suffix=".fits",
+        )
+        expected_key = "Foo:5/testFiberSpecBlue/2020/04/02/FF_O_20200402_000001.fits"
+        assert key == expected_key
+
     def test_env_var_secrets(self) -> None:
         """Check that moto.mock ovewrites authorization env vars."""
         env_names = (
