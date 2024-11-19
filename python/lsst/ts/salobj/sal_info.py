@@ -89,7 +89,7 @@ MAX_SEQUENTIAL_READ_ERRORS = 2
 SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD = 10
 
 # Number of _deserializers_and_contexts to wait for when sending Kafka data.
-DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS = "all"
+DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS = "1"
 
 
 def get_random_string() -> str:
