@@ -38,6 +38,7 @@ import types
 import typing
 from concurrent.futures import ThreadPoolExecutor
 
+import yaml
 from confluent_kafka import (
     OFFSET_BEGINNING,
     Consumer,
@@ -835,6 +836,13 @@ class SalInfo:
             broker_client_configuration["sasl.username"] = self.sasl_plain_username
             broker_client_configuration["sasl.password"] = self.sasl_plain_password
 
+        if "LSST_KAFKA_BROKER_CLIENT_CONFIGURATION" in os.environ:
+            with open(os.environ["LSST_KAFKA_BROKER_CLIENT_CONFIGURATION"]) as fp:
+                additional_broker_client_configuration = yaml.safe_load(fp)
+                broker_client_configuration.update(
+                    additional_broker_client_configuration
+                )
+
         return broker_client_configuration
 
     def _blocking_create_consumer(self) -> None:
@@ -863,6 +871,11 @@ class SalInfo:
             "auto.offset.reset": "earliest",
         }
 
+        if "LSST_KAFKA_CONSUMER_CONFIGURATION" in os.environ:
+            with open(os.environ["LSST_KAFKA_CONSUMER_CONFIGURATION"]) as fp:
+                additional_consumer_configuration = yaml.safe_load(fp)
+                consumer_configuration.update(additional_consumer_configuration)
+
         consumer_configuration.update(self.get_broker_client_configuration())
 
         self._consumer = Consumer(consumer_configuration)
@@ -887,6 +900,11 @@ class SalInfo:
             ),
             "queue.buffering.max.ms": 0,
         }
+
+        if "LSST_KAFKA_PRODUCER_CONFIGURATION" in os.environ:
+            with open(os.environ["LSST_KAFKA_PRODUCER_CONFIGURATION"]) as fp:
+                additional_producer_configuration = yaml.safe_load(fp)
+                producer_configuration.update(additional_producer_configuration)
 
         producer_configuration.update(self.get_broker_client_configuration())
 
