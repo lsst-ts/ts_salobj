@@ -1449,7 +1449,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             for base_value in (3, 4, 5):
                 for writer in writers:
                     value = writer.salinfo.index * 10 + base_value
+                    print(f"Pre data write: salindex={writer.salinfo.index} {value=}.")
                     await writer.set_write(errorCode=value)
+                    await asyncio.sleep(0.2)
 
             # Create readers.
             # The index 0 reader should read data from all writers.
@@ -1472,7 +1474,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             for base_value in (6, 7, 8):
                 for writer in writers:
                     value = base_value + writer.salinfo.index * 10
+                    print(f"Post data write: salindex={writer.salinfo.index} {value=}.")
                     await writer.set_write(errorCode=value)
+                    await asyncio.sleep(0.2)
 
             # Dict of salIndex: list of errorCodes read for that salIndex
             read_codes: dict[int, list[int]] = collections.defaultdict(list)
