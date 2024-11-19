@@ -30,7 +30,6 @@ from collections.abc import AsyncGenerator
 from unittest.mock import MagicMock
 
 import astropy.units as u
-import pytest
 from lsst.ts import salobj, utils
 from lsst.ts.xml.component_info import ComponentInfo
 
@@ -119,6 +118,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         salobj.set_test_topic_subname()
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"
         self.index = next(index_gen)
+        self.start_time = utils.current_tai()
 
     def insert_measurement(self, measurement: verify.Measurement) -> None:
         measurement.metric = self.verify_job.metrics[measurement.metric_name]  # type: ignore
@@ -173,18 +173,25 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             verify.Measurement("salobj.CreateClasses", creation_speed * u.ct / u.second)
         )
 
-    @pytest.mark.xfail(
-        reason="This test pushes the CI system to its limit and, as such, can fail from time to time.",
-    )
     async def test_command_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
-            await remote.evt_summaryState.next(flush=False, timeout=60)
+            summary_state = await remote.evt_summaryState.next(flush=False, timeout=60)
+            while summary_state.private_sndStamp < self.start_time:
+                print(f"Discarding old topic: {summary_state}")
+                summary_state = await remote.evt_summaryState.next(
+                    flush=False, timeout=60
+                )
             t0 = time.monotonic()
             num_commands = 1000
-            for _ in range(num_commands):
+            print(f"Writting {num_commands} commands.")
+            for i in range(num_commands):
+                if i % 100 == 0:
+                    dt = time.monotonic() - t0
+                    print(f"Wrote {i} commands {dt:7.2f}s.")
                 await remote.cmd_fault.start(timeout=STD_TIMEOUT)
             dt = time.monotonic() - t0
             command_speed = num_commands / dt
+            assert command_speed > 20
             print(
                 f"Issued {command_speed:0.0f} fault commands/second ({num_commands} commands)"
             )
@@ -195,11 +202,15 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 )
             )
 
-    @pytest.mark.xfail(
-        reason="This test pushes the CI system to its limit and, as such, can fail from time to time.",
-    )
     async def test_read_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
+            summary_state = await remote.evt_summaryState.next(flush=False, timeout=60)
+            while summary_state.private_sndStamp < self.start_time:
+                print(f"Discarding old topic: {summary_state}")
+                summary_state = await remote.evt_summaryState.next(
+                    flush=False, timeout=60
+                )
+
             await salobj.set_summary_state(
                 remote=remote,
                 state=salobj.State.ENABLED,

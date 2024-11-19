@@ -38,6 +38,7 @@ import types
 import typing
 from concurrent.futures import ThreadPoolExecutor
 
+import yaml
 from confluent_kafka import (
     OFFSET_BEGINNING,
     Consumer,
@@ -88,7 +89,7 @@ MAX_SEQUENTIAL_READ_ERRORS = 2
 SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD = 10
 
 # Number of _deserializers_and_contexts to wait for when sending Kafka data.
-DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS = "all"
+DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS = "1"
 
 
 def get_random_string() -> str:
@@ -243,6 +244,7 @@ class SalInfo:
         # for topics for which we want historical data
         # and historical data is available (offset > 0).
         self._history_offsets: dict[str, int] = dict()
+        self._history_offsets_retrieved = False
 
         # Dict of kafka topic name: dict of index: data
         # Only used for indexed components.
@@ -349,6 +351,11 @@ class SalInfo:
         # wait_timeout is a failsafe for shutdown; normally all you have to do
         # is call `close` to trigger the guard condition and stop the wait
         self._read_loop_task = utils.make_done_future()
+
+        # Task for the flush loop.
+        self._flush_loop_task = utils.make_done_future()
+        # The pooling time for flushing in seconds.
+        self._flush_period = 0.025
 
         self._run_kafka_task = utils.make_done_future()
 
@@ -544,6 +551,15 @@ class SalInfo:
 
         try:
             await asyncio.wait_for(
+                self._flush_loop_task,
+                timeout=0.5,
+            )
+        except Exception as e:
+            print(f"Flush loop failed: {e!r}")
+            self.log.exception("Exception waiting for read loop to finish.")
+
+        try:
+            await asyncio.wait_for(
                 self._run_kafka_task,
                 timeout=0.5,
             )
@@ -648,6 +664,8 @@ class SalInfo:
 
         self._run_kafka_task = asyncio.create_task(self._run_kafka())
         await self.start_task
+
+        self._flush_loop_task = asyncio.create_task(self.flush_loop())
 
     async def _run_kafka(self) -> None:
         """Initialize Kafka and run the read loop.
@@ -818,6 +836,13 @@ class SalInfo:
             broker_client_configuration["sasl.username"] = self.sasl_plain_username
             broker_client_configuration["sasl.password"] = self.sasl_plain_password
 
+        if "LSST_KAFKA_BROKER_CLIENT_CONFIGURATION" in os.environ:
+            with open(os.environ["LSST_KAFKA_BROKER_CLIENT_CONFIGURATION"]) as fp:
+                additional_broker_client_configuration = yaml.safe_load(fp)
+                broker_client_configuration.update(
+                    additional_broker_client_configuration
+                )
+
         return broker_client_configuration
 
     def _blocking_create_consumer(self) -> None:
@@ -846,6 +871,11 @@ class SalInfo:
             "auto.offset.reset": "earliest",
         }
 
+        if "LSST_KAFKA_CONSUMER_CONFIGURATION" in os.environ:
+            with open(os.environ["LSST_KAFKA_CONSUMER_CONFIGURATION"]) as fp:
+                additional_consumer_configuration = yaml.safe_load(fp)
+                consumer_configuration.update(additional_consumer_configuration)
+
         consumer_configuration.update(self.get_broker_client_configuration())
 
         self._consumer = Consumer(consumer_configuration)
@@ -865,11 +895,16 @@ class SalInfo:
 
         producer_configuration = {
             "acks": os.environ.get(
-                "LSST_KAFKA_PRODUCER_WAIT_ACKS ",
+                "LSST_KAFKA_PRODUCER_WAIT_ACKS",
                 DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS,
             ),
             "queue.buffering.max.ms": 0,
         }
+
+        if "LSST_KAFKA_PRODUCER_CONFIGURATION" in os.environ:
+            with open(os.environ["LSST_KAFKA_PRODUCER_CONFIGURATION"]) as fp:
+                additional_producer_configuration = yaml.safe_load(fp)
+                producer_configuration.update(additional_producer_configuration)
 
         producer_configuration.update(self.get_broker_client_configuration())
 
@@ -878,6 +913,13 @@ class SalInfo:
         # confluent-kafka-dotnet/issues/701
         # a 1 second delay in the first message for a topic.
         self._producer.list_topics()
+
+    async def flush_loop(self) -> None:
+        """Constantly call flush to force data to be delivered."""
+
+        while self._producer is not None and self.isopen:
+            self._producer.flush()
+            await asyncio.sleep(self._flush_period)
 
     def _blocking_register_schema(
         self, schema_registry_client: SchemaRegistryClient
@@ -1019,11 +1061,8 @@ class SalInfo:
         #     print(f"  {partition}")
 
         self._history_offsets = history_offsets
+        self._history_offsets_retrieved = True
         # print(f"{self.index} {history_offsets=}")
-
-        # Give threads time to work
-        if not self.start_task.done():
-            self.loop.call_soon_threadsafe(self.start_task.set_result, None)
 
     def _blocking_write(
         self,
@@ -1054,11 +1093,12 @@ class SalInfo:
                     future.set_exception, KafkaException(err)
                 )
             else:
-                self.loop.call_soon_threadsafe(future.set_result, None)
                 dt = time.monotonic() - t0
+                self.loop.call_soon_threadsafe(future.set_result, None)
                 if dt > 0.1:
                     print(
-                        f"warning: {self.index} write {kafka_name} took {dt:0.2f} seconds"
+                        f"warning: {self.name}:{self.index} write "
+                        f"{topic_info.sal_name} took {dt:0.2f} seconds."
                     )
 
         self._producer.produce(
@@ -1071,7 +1111,6 @@ class SalInfo:
             value=raw_data,
             on_delivery=callback,
         )
-        self._producer.flush()
 
     def _close_kafka(self) -> None:
         """Close the Kafka objects and shut down self.pool.
@@ -1082,6 +1121,7 @@ class SalInfo:
         self.pool.shutdown(wait=True, cancel_futures=True)
 
         if self._producer is not None:
+            self._producer.flush()
             self._producer.purge()
         self._producer = None
         self._consumer = None
@@ -1109,6 +1149,8 @@ class SalInfo:
                     self.pool, self._consumer.poll, 0.1
                 )
                 if message is None:
+                    if not self.start_task.done() and self._history_offsets_retrieved:
+                        self.start_task.set_result(None)
                     continue
                 message_error = message.error()
                 if message_error is not None:
@@ -1207,6 +1249,8 @@ class SalInfo:
                         self.log.info(
                             f"Reading historic data took {read_history_duration:0.2f} seconds"
                         )
+                        if not self.start_task.done():
+                            self.start_task.set_result(None)
 
         except asyncio.CancelledError:
             if not self.start_task.done():
@@ -1241,7 +1285,6 @@ class SalInfo:
             await self.loop.run_in_executor(
                 self.pool, self._blocking_write, topic_info, data_dict, future
             )
-            await future
 
         except Exception:
             self.log.exception(
