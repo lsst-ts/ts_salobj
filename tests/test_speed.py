@@ -118,6 +118,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         salobj.set_test_topic_subname()
         self.datadir = pathlib.Path(__file__).resolve().parent / "data"
         self.index = next(index_gen)
+        self.start_time = utils.current_tai()
 
     def insert_measurement(self, measurement: verify.Measurement) -> None:
         measurement.metric = self.verify_job.metrics[measurement.metric_name]  # type: ignore
@@ -174,7 +175,12 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_command_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
-            await remote.evt_summaryState.next(flush=False, timeout=60)
+            summary_state = await remote.evt_summaryState.next(flush=False, timeout=60)
+            while summary_state.private_sndStamp < self.start_time:
+                print(f"Discarding old topic: {summary_state}")
+                summary_state = await remote.evt_summaryState.next(
+                    flush=False, timeout=60
+                )
             t0 = time.monotonic()
             num_commands = 1000
             print(f"Writting {num_commands} commands.")
@@ -198,6 +204,13 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_read_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
+            summary_state = await remote.evt_summaryState.next(flush=False, timeout=60)
+            while summary_state.private_sndStamp < self.start_time:
+                print(f"Discarding old topic: {summary_state}")
+                summary_state = await remote.evt_summaryState.next(
+                    flush=False, timeout=60
+                )
+
             await salobj.set_summary_state(
                 remote=remote,
                 state=salobj.State.ENABLED,
