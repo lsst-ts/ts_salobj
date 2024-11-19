@@ -1052,11 +1052,12 @@ class SalInfo:
                     future.set_exception, KafkaException(err)
                 )
             else:
-                self.loop.call_soon_threadsafe(future.set_result, None)
                 dt = time.monotonic() - t0
+                self.loop.call_soon_threadsafe(future.set_result, None)
                 if dt > 0.1:
                     print(
-                        f"warning: {self.index} write {kafka_name} took {dt:0.2f} seconds"
+                        f"warning: {self.name}:{self.index} write "
+                        f"{topic_info.sal_name} took {dt:0.2f} seconds."
                     )
 
         self._producer.produce(
@@ -1069,7 +1070,6 @@ class SalInfo:
             value=raw_data,
             on_delivery=callback,
         )
-        self._producer.flush()
 
     def _close_kafka(self) -> None:
         """Close the Kafka objects and shut down self.pool.
@@ -1243,7 +1243,6 @@ class SalInfo:
             await self.loop.run_in_executor(
                 self.pool, self._blocking_write, topic_info, data_dict, future
             )
-            await future
 
         except Exception:
             self.log.exception(
