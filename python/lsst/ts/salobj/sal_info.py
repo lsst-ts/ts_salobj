@@ -351,6 +351,11 @@ class SalInfo:
         # is call `close` to trigger the guard condition and stop the wait
         self._read_loop_task = utils.make_done_future()
 
+        # Task for the flush loop.
+        self._flush_loop_task = utils.make_done_future()
+        # The pooling time for flushing in seconds.
+        self._flush_period = 0.025
+
         self._run_kafka_task = utils.make_done_future()
 
         self._run_kafka_result = utils.make_done_future()
@@ -545,6 +550,15 @@ class SalInfo:
 
         try:
             await asyncio.wait_for(
+                self._flush_loop_task,
+                timeout=0.5,
+            )
+        except Exception as e:
+            print(f"Flush loop failed: {e!r}")
+            self.log.exception("Exception waiting for read loop to finish.")
+
+        try:
+            await asyncio.wait_for(
                 self._run_kafka_task,
                 timeout=0.5,
             )
@@ -649,6 +663,8 @@ class SalInfo:
 
         self._run_kafka_task = asyncio.create_task(self._run_kafka())
         await self.start_task
+
+        self._flush_loop_task = asyncio.create_task(self.flush_loop())
 
     async def _run_kafka(self) -> None:
         """Initialize Kafka and run the read loop.
@@ -880,6 +896,13 @@ class SalInfo:
         # a 1 second delay in the first message for a topic.
         self._producer.list_topics()
 
+    async def flush_loop(self) -> None:
+        """Constantly call flush to force data to be delivered."""
+
+        while self._producer is not None and self.isopen:
+            self._producer.flush()
+            await asyncio.sleep(self._flush_period)
+
     def _blocking_register_schema(
         self, schema_registry_client: SchemaRegistryClient
     ) -> None:
@@ -1080,6 +1103,7 @@ class SalInfo:
         self.pool.shutdown(wait=True, cancel_futures=True)
 
         if self._producer is not None:
+            self._producer.flush()
             self._producer.purge()
         self._producer = None
         self._consumer = None
