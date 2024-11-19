@@ -243,6 +243,7 @@ class SalInfo:
         # for topics for which we want historical data
         # and historical data is available (offset > 0).
         self._history_offsets: dict[str, int] = dict()
+        self._history_offsets_retrieved = False
 
         # Dict of kafka topic name: dict of index: data
         # Only used for indexed components.
@@ -1019,11 +1020,8 @@ class SalInfo:
         #     print(f"  {partition}")
 
         self._history_offsets = history_offsets
+        self._history_offsets_retrieved = True
         # print(f"{self.index} {history_offsets=}")
-
-        # Give threads time to work
-        if not self.start_task.done():
-            self.loop.call_soon_threadsafe(self.start_task.set_result, None)
 
     def _blocking_write(
         self,
@@ -1109,6 +1107,8 @@ class SalInfo:
                     self.pool, self._consumer.poll, 0.1
                 )
                 if message is None:
+                    if not self.start_task.done() and self._history_offsets_retrieved:
+                        self.start_task.set_result(None)
                     continue
                 message_error = message.error()
                 if message_error is not None:
@@ -1207,6 +1207,8 @@ class SalInfo:
                         self.log.info(
                             f"Reading historic data took {read_history_duration:0.2f} seconds"
                         )
+                        if not self.start_task.done():
+                            self.start_task.set_result(None)
 
         except asyncio.CancelledError:
             if not self.start_task.done():
