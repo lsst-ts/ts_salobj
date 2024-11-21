@@ -257,7 +257,7 @@ class AsyncS3Bucket:
         fileobj: typing.BinaryIO,
         key: str,
         callback: Callable[[int], None] | None = None,
-    ) -> None:
+    ) -> str:
         """Upload a file-like object to the bucket.
 
         Parameters
@@ -275,6 +275,11 @@ class AsyncS3Bucket:
             The function is called by the ``boto3`` library, which is why
             it must be synchronous.
 
+        Returns
+        -------
+        url : `str`
+            The assembled URL needed for a largeFileObjectAvailable event URL.
+
         Notes
         -----
         To create a file-like object ``fileobj`` from an
@@ -283,9 +288,16 @@ class AsyncS3Bucket:
             fileobj = io.BytesIO()
             hdulist.writeto(fileobj)
             fileobj.seek(0)
+
+        The returned URL has the format::
+
+            {S3_ENDPOINT_URL}/{bucket_name}/{key}
         """
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._sync_upload, fileobj, key, callback)
+        return (
+            f"{self.service_resource.meta.client.meta.endpoint_url}/{self.name}/{key}"
+        )
 
     async def download(
         self, key: str, callback: Callable[[int], None] | None = None
