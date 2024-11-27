@@ -1044,6 +1044,7 @@ class SalInfo:
             if partition.topic not in read_history_topics:
                 # No historical data wanted; start from now
                 partition.offset = max_offset
+                continue
             else:
                 if self.indexed:
                     max_history = MAX_HISTORY_READ
@@ -1149,7 +1150,15 @@ class SalInfo:
                     self.pool, self._consumer.poll, 0.1
                 )
                 if message is None:
-                    if not self.start_task.done() and self._history_offsets_retrieved:
+                    if (
+                        not self.start_task.done()
+                        and self._history_offsets_retrieved
+                        and not self._history_offsets
+                    ):
+                        started_duration = (
+                            time.monotonic() - read_history_start_monotonic
+                        )
+                        self.log.info(f"Started in {started_duration:0.2f} seconds")
                         self.start_task.set_result(None)
                     continue
                 message_error = message.error()
@@ -1169,6 +1178,7 @@ class SalInfo:
                     if sequential_read_errors > MAX_SEQUENTIAL_READ_ERRORS:
                         raise RuntimeError("Too many sequential read errors; giving up")
                     continue
+                self.log.debug(f"{self.group_id=}::Got message for {kafka_name=}.")
 
                 sequential_read_errors = 0
 
