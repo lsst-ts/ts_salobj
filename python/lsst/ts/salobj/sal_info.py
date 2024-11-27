@@ -1178,7 +1178,6 @@ class SalInfo:
                     if sequential_read_errors > MAX_SEQUENTIAL_READ_ERRORS:
                         raise RuntimeError("Too many sequential read errors; giving up")
                     continue
-                self.log.debug(f"{self.group_id=}::Got message for {kafka_name=}.")
 
                 sequential_read_errors = 0
 
@@ -1238,6 +1237,10 @@ class SalInfo:
                     self._history_index_data[kafka_name][data.salIndex] = data
 
                 if offset >= history_offset:
+
+                    self.log.debug(
+                        f"{self.group_id=}::Finished handling historical data for {kafka_name=}."
+                    )
                     # We're done with history for this topic
                     del self._history_offsets[kafka_name]
 
