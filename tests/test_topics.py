@@ -1008,10 +1008,16 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             # Try an array that is too short
             # (note: arrays that are too long are silently truncated)
             short_int0_value = np.arange(len(input_dict["int0"]) - 1, dtype=int)
-            with pytest.raises(ValueError):
+            # This became a warning instead of an error.
+            with pytest.warns(UserWarning):
                 await write_topic.set_write(int0=short_int0_value)
 
-        # Make sure no additional samples were written
+            # Make sure data can be read successfully.
+            data = await read_topic.next(flush=False, timeout=NO_DATA_TIMEOUT)
+            assert len(data.int0) == len(short_int0_value)
+            assert (data.int0 == short_int0_value).all()
+
+        # Make sure data can be read successfully.
         with pytest.raises(asyncio.TimeoutError):
             await read_topic.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
