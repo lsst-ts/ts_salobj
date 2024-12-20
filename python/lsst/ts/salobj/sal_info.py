@@ -1142,6 +1142,23 @@ class SalInfo:
         self._deserializers_and_contexts = dict()
         self._schema_registry_client = None
 
+        # Delete consumer group
+        broker_client_configuration = self.get_broker_client_configuration()
+
+        broker_client = AdminClient(broker_client_configuration)
+
+        deleted_groups = broker_client.delete_consumer_groups([self.group_id])
+
+        for future in deleted_groups.values():
+            try:
+                self.log.debug("Waiting for consumer group to be deleted.")
+                future.result(timeout=10)
+                self.log.debug("Consumer groups deleted.")
+            except Exception:
+                self.log.exception(
+                    "Error while waiting for consumer group to be deleted."
+                )
+
     async def _read_loop(self) -> None:
         """Read and process messages."""
         self.domain.num_read_loops += 1
