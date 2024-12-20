@@ -1131,6 +1131,13 @@ class SalInfo:
         self._deserializers_and_contexts = dict()
         self._schema_registry_client = None
 
+        # Delete consumer group
+        broker_client_configuration = self.get_broker_client_configuration()
+
+        broker_client = AdminClient(broker_client_configuration)
+
+        broker_client.delete_consumer_groups([self.group_id])
+
     async def _read_loop(self) -> None:
         """Read and process messages."""
         self.domain.num_read_loops += 1
