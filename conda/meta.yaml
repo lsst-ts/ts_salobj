@@ -43,7 +43,7 @@ requirements:
     - moto >=5
     - {{ pin_compatible('numpy') }}
     - python {{ python }}
-    - python-confluent-kafka =1.9
+    - python-confluent-kafka >=2.0.2
     - pyyaml
     - setuptools
     - setuptools_scm
