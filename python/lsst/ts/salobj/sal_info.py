@@ -912,7 +912,8 @@ class SalInfo:
         # Work around https://github.com/confluentinc/
         # confluent-kafka-dotnet/issues/701
         # a 1 second delay in the first message for a topic.
-        self._producer.list_topics()
+        for topic in self._write_topics.keys():
+            self._producer.list_topics(topic=topic, timeout=1)
 
     async def flush_loop(self) -> None:
         """Constantly call flush to force data to be delivered."""
