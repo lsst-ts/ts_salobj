@@ -60,7 +60,15 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
             assert bucket.service_resource.meta.client.meta.endpoint_url == endpoint_url
 
     async def test_file_transfer(self) -> None:
-        await self.bucket.upload(fileobj=self.fileobj, key=self.key)
+        truth_lfoa_url = "/".join(
+            [
+                self.bucket.service_resource.meta.client.meta.endpoint_url,
+                self.bucket_name,
+                self.key,
+            ]
+        )
+        lfoa_url = await self.bucket.upload(fileobj=self.fileobj, key=self.key)
+        assert lfoa_url == truth_lfoa_url
         roundtrip_fileobj = await self.bucket.download(key=self.key)
         roundtrip_data = roundtrip_fileobj.read()
         assert self.file_data == roundtrip_data
