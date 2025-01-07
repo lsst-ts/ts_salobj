@@ -174,6 +174,7 @@ class AsyncS3Bucket:
         generator: str,
         date: astropy.time.Time,
         other: str | None = None,
+        stem: str | None = None,
         suffix: str = ".dat",
     ) -> str:
         """Make a key for an item of data.
@@ -197,6 +198,9 @@ class AsyncS3Bucket:
             If `None` use ``date.tai.isot``: ``date`` as TAI,
             in ISO-8601 format, with a "T" between the date and time
             and a precision of milliseconds.
+        stem : `str`, optional
+            Use this parameter for the full file stem in place of the genrated
+            name.
         suffix : `str`, optional
             Key suffix, e.g. ".fits".
 
@@ -224,6 +228,10 @@ class AsyncS3Bucket:
           the date to milliseconds, so the reported observing day
           is consistent with the default value for ``other``.
 
+        If the ``stem`` option is used, the returned key has format::
+
+            {fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{stem}{suffix}
+
         Note that the url field of the ``largeFileObjectAvailable`` event
         should have the format f"s3://{bucket}/{key}"
         """
@@ -237,14 +245,19 @@ class AsyncS3Bucket:
         dd = shifted_isot[8:10]
         if other is None:
             other = taidate.isot
-        return f"{fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{fullsalname}_{generator}_{other}{suffix}"
+        if stem is not None:
+            file_stem = stem
+        else:
+            file_stem = f"{fullsalname}_{generator}_{other}"
+
+        return f"{fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{file_stem}{suffix}"
 
     async def upload(
         self,
         fileobj: typing.BinaryIO,
         key: str,
         callback: Callable[[int], None] | None = None,
-    ) -> None:
+    ) -> str:
         """Upload a file-like object to the bucket.
 
         Parameters
@@ -262,6 +275,11 @@ class AsyncS3Bucket:
             The function is called by the ``boto3`` library, which is why
             it must be synchronous.
 
+        Returns
+        -------
+        url : `str`
+            The assembled URL needed for a largeFileObjectAvailable event URL.
+
         Notes
         -----
         To create a file-like object ``fileobj`` from an
@@ -270,9 +288,16 @@ class AsyncS3Bucket:
             fileobj = io.BytesIO()
             hdulist.writeto(fileobj)
             fileobj.seek(0)
+
+        The returned URL has the format::
+
+            {S3_ENDPOINT_URL}/{bucket_name}/{key}
         """
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._sync_upload, fileobj, key, callback)
+        return (
+            f"{self.service_resource.meta.client.meta.endpoint_url}/{self.name}/{key}"
+        )
 
     async def download(
         self, key: str, callback: Callable[[int], None] | None = None

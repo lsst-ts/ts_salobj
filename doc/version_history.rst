@@ -9,6 +9,13 @@ Version History
 
 .. Version 8 of salobj will contain the kafka release.
 
+v7.8.0
+------
+
+* Added optional ``stem`` parameter to ``AsyncS3Bucket::make_key``.
+* Implemeted URL return from ``AsyncS3Bucket::upload``.
+
+
 v7.7.1
 ------
 
