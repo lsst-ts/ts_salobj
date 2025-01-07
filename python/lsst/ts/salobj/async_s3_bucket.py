@@ -174,6 +174,7 @@ class AsyncS3Bucket:
         generator: str,
         date: astropy.time.Time,
         other: str | None = None,
+        stem: str | None = None,
         suffix: str = ".dat",
     ) -> str:
         """Make a key for an item of data.
@@ -197,6 +198,9 @@ class AsyncS3Bucket:
             If `None` use ``date.tai.isot``: ``date`` as TAI,
             in ISO-8601 format, with a "T" between the date and time
             and a precision of milliseconds.
+        stem : `str`, optional
+            Use this parameter for the full file stem in place of the genrated
+            name.
         suffix : `str`, optional
             Key suffix, e.g. ".fits".
 
@@ -224,6 +228,10 @@ class AsyncS3Bucket:
           the date to milliseconds, so the reported observing day
           is consistent with the default value for ``other``.
 
+        If the ``stem`` option is used, the returned key has format::
+
+            {fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{stem}{suffix}
+
         Note that the url field of the ``largeFileObjectAvailable`` event
         should have the format f"s3://{bucket}/{key}"
         """
@@ -237,7 +245,12 @@ class AsyncS3Bucket:
         dd = shifted_isot[8:10]
         if other is None:
             other = taidate.isot
-        return f"{fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{fullsalname}_{generator}_{other}{suffix}"
+        if stem is not None:
+            file_stem = stem
+        else:
+            file_stem = f"{fullsalname}_{generator}_{other}"
+
+        return f"{fullsalname}/{generator}/{yyyy}/{mm}/{dd}/{file_stem}{suffix}"
 
     async def upload(
         self,
