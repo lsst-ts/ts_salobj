@@ -3,7 +3,6 @@
 # Confluent schema-registry images:
 # https://github.com/confluentinc/schema-registry-images/tags
 
-version: '3'
 networks:
   kafka:
     name: kafka
@@ -11,7 +10,7 @@ networks:
 services:
 
   broker:
-    image: quay.io/strimzi/kafka:0.36.1-kafka-3.5.1
+    image: quay.io/strimzi/kafka:0.43.0-kafka-3.8.0
     hostname: broker
     container_name: broker
     command: [
@@ -37,7 +36,7 @@ services:
       LOG_DIR: "/tmp/logs"
 
   schema-registry:
-    image: confluentinc/cp-schema-registry:7.4.0
+    image: confluentinc/cp-schema-registry:7.7.1
     hostname: schema-registry
     container_name: schema-registry
     depends_on:

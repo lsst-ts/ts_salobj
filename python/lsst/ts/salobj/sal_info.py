@@ -912,7 +912,19 @@ class SalInfo:
         # Work around https://github.com/confluentinc/
         # confluent-kafka-dotnet/issues/701
         # a 1 second delay in the first message for a topic.
-        self._producer.list_topics()
+        failed_list_topics = set()
+        for topic in self._write_topics.keys():
+            try:
+                self._producer.list_topics(topic=topic, timeout=1)
+            except Exception:
+                failed_list_topics.add(topic)
+
+        if failed_list_topics:
+            failed_list_str = ", ".join(failed_list_topics)
+            self.log.warning(
+                f"Failed to retrieve metadata for {failed_list_str}. "
+                "This may cause delays in writing the first sample of these topics."
+            )
 
     async def flush_loop(self) -> None:
         """Constantly call flush to force data to be delivered."""
@@ -1129,6 +1141,23 @@ class SalInfo:
         self._serializers_and_contexts = dict()
         self._deserializers_and_contexts = dict()
         self._schema_registry_client = None
+
+        # Delete consumer group
+        broker_client_configuration = self.get_broker_client_configuration()
+
+        broker_client = AdminClient(broker_client_configuration)
+
+        deleted_groups = broker_client.delete_consumer_groups([self.group_id])
+
+        for future in deleted_groups.values():
+            try:
+                self.log.debug("Waiting for consumer group to be deleted.")
+                future.result(timeout=10)
+                self.log.debug("Consumer groups deleted.")
+            except Exception:
+                self.log.exception(
+                    "Error while waiting for consumer group to be deleted."
+                )
 
     async def _read_loop(self) -> None:
         """Read and process messages."""
