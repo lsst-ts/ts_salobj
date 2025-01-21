@@ -1178,6 +1178,10 @@ class SalInfo:
         if self._consumer is None:
             self.log.error("No consumer; quitting")
             return
+        last_sample_timestamps: dict[str, dict[int, float]] = dict(
+            [(kafka_name, dict()) for kafka_name in self._read_topics]
+        )
+
         try:
             # Read historical and new data
             read_history_start_monotonic = time.monotonic()
@@ -1255,6 +1259,23 @@ class SalInfo:
                     schema_resolution_errors[kafka_name] += 1
                     continue
 
+                index = data_dict.get("salIndex", 0)
+                last_sample_timestamp = last_sample_timestamps[kafka_name].get(
+                    index, 0.0
+                )
+
+                if data_dict["private_sndStamp"] < last_sample_timestamp:
+                    delay = (
+                        last_sample_timestamp - data_dict["private_sndStamp"]
+                    ) * 1000
+                    self.log.warning(
+                        "Ignoring old topic sample. "
+                        f"Topic sent {delay:0.2f}ms before last sample of {kafka_name}:{index}."
+                    )
+                    continue
+                last_sample_timestamps[kafka_name][index] = data_dict[
+                    "private_sndStamp"
+                ]
                 data_dict["private_rcvStamp"] = utils.current_tai()
                 data = read_topic.DataType(**data_dict)
 
