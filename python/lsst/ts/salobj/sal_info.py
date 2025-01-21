@@ -1169,7 +1169,7 @@ class SalInfo:
                 self.log.debug("Consumer groups deleted.")
             except Exception:
                 self.log.exception(
-                    "Error while waiting for consumer group to be deleted."
+                    f"Error while waiting for consumer group {self.group_id} to be deleted."
                 )
 
     async def _read_loop(self) -> None:
