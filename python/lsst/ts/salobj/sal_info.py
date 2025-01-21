@@ -263,7 +263,7 @@ class SalInfo:
         # Dict of kafka topic name: (serializer, serialization context)
         # for write topics.
         self._serializers_and_contexts: dict[
-            str, tuple[AvroSerializer, SerializationContext]
+            str, tuple[AvroSerializer, SerializationContext, str]
         ] = dict()
 
         topic_subname = os.environ.get("LSST_TOPIC_SUBNAME", None)
@@ -986,6 +986,19 @@ class SalInfo:
                 SerializationContext(
                     topic=topic.topic_info.kafka_name, field=MessageField.VALUE
                 ),
+                (
+                    ""
+                    if topic.topic_info.attr_name.startswith("tel_")
+                    else (
+                        f'{{ "name": "{self.name}", "topic": "{topic.topic_info.sal_name}" }}'
+                        if not self.indexed
+                        else (
+                            f'{{ "name": "{self.name}", '
+                            f'"index": {self.index}, '
+                            f'"topic": "{topic.topic_info.sal_name}" }}'
+                        )
+                    )
+                ),
             )
             for topic in self._write_topics.values()
         }
@@ -1095,7 +1108,11 @@ class SalInfo:
         assert self._producer is not None  # Make mypy happy
 
         kafka_name = topic_info.kafka_name
-        serializer, serialization_context = self._serializers_and_contexts[kafka_name]
+        (
+            serializer,
+            serialization_context,
+            key,
+        ) = self._serializers_and_contexts[kafka_name]
         raw_data = serializer(data_dict, serialization_context)
 
         t0 = time.monotonic()
@@ -1116,11 +1133,7 @@ class SalInfo:
 
         self._producer.produce(
             kafka_name,
-            key=(
-                f'{{ "name": "{self.name}", "topic": "{topic_info.sal_name}" }}'
-                if not self.indexed
-                else f'{{ "name": "{self.name}", "index": {self.index}, "topic": "{topic_info.sal_name}" }}'
-            ),
+            key=key,
             value=raw_data,
             on_delivery=callback,
         )
