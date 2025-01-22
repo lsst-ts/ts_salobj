@@ -41,9 +41,11 @@ requirements:
     - fastavro
     - jsonschema
     - moto >=5
-    - {{ pin_compatible('numpy') }}
+    - {{ pin_compatible('numpy', min_pin='x.x', max_pin='x') }}
     - python {{ python }}
     - python-confluent-kafka >=2.0.2
+    - {{ pin_compatible('httpx', min_pin='x.x', max_pin='x') }}
+    - {{ pin_compatible('cachetools', min_pin='x.x', max_pin='x') }}
     - pyyaml
     - setuptools
     - setuptools_scm
