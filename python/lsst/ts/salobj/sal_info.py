@@ -263,7 +263,7 @@ class SalInfo:
         # Dict of kafka topic name: (serializer, serialization context)
         # for write topics.
         self._serializers_and_contexts: dict[
-            str, tuple[AvroSerializer, SerializationContext]
+            str, tuple[AvroSerializer, SerializationContext, str]
         ] = dict()
 
         topic_subname = os.environ.get("LSST_TOPIC_SUBNAME", None)
@@ -986,6 +986,19 @@ class SalInfo:
                 SerializationContext(
                     topic=topic.topic_info.kafka_name, field=MessageField.VALUE
                 ),
+                (
+                    ""
+                    if topic.topic_info.attr_name.startswith("tel_")
+                    else (
+                        f'{{ "name": "{self.name}", "topic": "{topic.topic_info.sal_name}" }}'
+                        if not self.indexed
+                        else (
+                            f'{{ "name": "{self.name}", '
+                            f'"index": {self.index}, '
+                            f'"topic": "{topic.topic_info.sal_name}" }}'
+                        )
+                    )
+                ),
             )
             for topic in self._write_topics.values()
         }
@@ -1095,7 +1108,11 @@ class SalInfo:
         assert self._producer is not None  # Make mypy happy
 
         kafka_name = topic_info.kafka_name
-        serializer, serialization_context = self._serializers_and_contexts[kafka_name]
+        (
+            serializer,
+            serialization_context,
+            key,
+        ) = self._serializers_and_contexts[kafka_name]
         raw_data = serializer(data_dict, serialization_context)
 
         t0 = time.monotonic()
@@ -1116,11 +1133,7 @@ class SalInfo:
 
         self._producer.produce(
             kafka_name,
-            key=(
-                f'{{ "name": "{self.name}", "topic": "{topic_info.sal_name}" }}'
-                if not self.indexed
-                else f'{{ "name": "{self.name}", "index": {self.index}, "topic": "{topic_info.sal_name}" }}'
-            ),
+            key=key,
             value=raw_data,
             on_delivery=callback,
         )
@@ -1156,7 +1169,7 @@ class SalInfo:
                 self.log.debug("Consumer groups deleted.")
             except Exception:
                 self.log.exception(
-                    "Error while waiting for consumer group to be deleted."
+                    f"Error while waiting for consumer group {self.group_id} to be deleted."
                 )
 
     async def _read_loop(self) -> None:
@@ -1165,6 +1178,10 @@ class SalInfo:
         if self._consumer is None:
             self.log.error("No consumer; quitting")
             return
+        last_sample_timestamps: dict[str, dict[int, float]] = dict(
+            [(kafka_name, dict()) for kafka_name in self._read_topics]
+        )
+
         try:
             # Read historical and new data
             read_history_start_monotonic = time.monotonic()
@@ -1242,6 +1259,23 @@ class SalInfo:
                     schema_resolution_errors[kafka_name] += 1
                     continue
 
+                index = data_dict.get("salIndex", 0)
+                last_sample_timestamp = last_sample_timestamps[kafka_name].get(
+                    index, 0.0
+                )
+
+                if data_dict["private_sndStamp"] < last_sample_timestamp:
+                    delay = (
+                        last_sample_timestamp - data_dict["private_sndStamp"]
+                    ) * 1000
+                    self.log.warning(
+                        "Ignoring old topic sample. "
+                        f"Topic sent {delay:0.2f}ms before last sample of {kafka_name}:{index}."
+                    )
+                    continue
+                last_sample_timestamps[kafka_name][index] = data_dict[
+                    "private_sndStamp"
+                ]
                 data_dict["private_rcvStamp"] = utils.current_tai()
                 data = read_topic.DataType(**data_dict)
 
