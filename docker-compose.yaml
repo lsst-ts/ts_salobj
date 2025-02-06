@@ -49,3 +49,24 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_MASTER_ELIGIBILITY: true
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "broker:29092"
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.1.0
+    profiles:
+      - gui
+    hostname: kafdrop
+    container_name: kafdrop
+    depends_on:
+      - broker
+      - schema-registry
+    networks:
+      - kafka
+    ports:
+      - "9000:9000"
+    environment:
+      SERVER_PORT: 9000
+      SCHEMAREGISTRY_CONNECT: "http://schema-registry:8081"
+      KAFKA_BROKERCONNECT: "broker:29092"
+      JVM_OPTS: "-Xms32M -Xmx64M"
+      SERVER_SERVLET_CONTEXTPATH: "/"
+      CMD_ARGS: "--message.format=AVRO --message.keyFormat=DEFAULT --topic.deleteEnabled=false --topic.createEnabled=false"
