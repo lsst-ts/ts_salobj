@@ -32,8 +32,9 @@ import typing
 
 import yaml
 from lsst.ts import utils
+from lsst.ts.xml import type_hints
 
-from . import base, type_hints
+from . import base
 from .base_csc import BaseCsc, State
 from .hierarchical_update import hierarchical_update
 from .validator import StandardValidator
@@ -59,9 +60,14 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         at startup (before starting the heartbeat loop)?
         Defaults to False in order to speed up unit tests,
         but `amain` sets it true.
-    initial_state : `State` or `int`, optional
-        The initial state of the CSC. This is provided for unit testing,
-        as real CSCs should start up in `State.STANDBY`, the default.
+    initial_state : `State`, `int` or `None`, optional
+        Initial state for this CSC.
+        If None use the class attribute ``default_initial_state``.
+        Typically `State.STANDBY` (or `State.OFFLINE` for an
+        externally commandable CSC) but can also be
+        `State.DISABLED`, or `State.ENABLED`,
+        in which case you may also want to specify
+        ``override`` for a configurable CSC.
     override : `str`, optional
         Configuration override file to apply if ``initial_state`` is
         `State.DISABLED` or `State.ENABLED`.
@@ -135,7 +141,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         config_schema: dict[str, typing.Any],
         config_dir: str | pathlib.Path | None = None,
         check_if_duplicate: bool = False,
-        initial_state: State = State.STANDBY,
+        initial_state: State | int | None = None,
         override: str = "",
         simulation_mode: int = 0,
         extra_commands: set[str] = set(),

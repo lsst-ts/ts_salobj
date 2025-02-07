@@ -64,9 +64,15 @@ class SalLogHandler(logging.Handler):
         message = "(unknown)"
         try:
             self.format(record)
-            message = record.message.encode("utf-8", "replace").decode(
-                "latin-1", "replace"
-            )
+            message = record.message
+            if not self.controller.salinfo.running:
+                print(
+                    f"SalLogHandler.emit of level={record.levelno}, "
+                    f"message={message!r} not possible: ",
+                    f"{self.controller.salinfo} is not running",
+                    file=sys.stderr,
+                )
+                return
             if threading.get_ident() == self.main_thread_id:
                 new_future: MixedFutureType = asyncio.create_task(
                     self._async_emit(

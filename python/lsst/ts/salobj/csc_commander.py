@@ -36,7 +36,9 @@ import typing
 import warnings
 from collections.abc import AsyncGenerator, Callable, Sequence
 
-from . import csc_utils, domain, remote, sal_enums, type_hints
+from lsst.ts.xml import sal_enums, type_hints
+
+from . import csc_utils, domain, remote
 
 # A dict of valid values for bool command arguments.
 # The argument should be converted to lowercase before using.
@@ -369,7 +371,7 @@ help  # print this help
         """
         return dict(
             (key, value)
-            for key, value in data.get_vars().items()
+            for key, value in vars(data).items()
             if self.field_is_public(key)
         )
 
@@ -381,7 +383,7 @@ help  # print this help
         """
         return {
             key: round_any(value, digits=digits)
-            for key, value in data.get_vars().items()
+            for key, value in vars(data).items()
             if self.field_is_public(key)
         }
 
@@ -617,7 +619,7 @@ help  # print this help
             )
         for (name, default_value), str_value in zip(kwargs.items(), args):
             try:
-                if type(default_value) is bool:
+                if isinstance(default_value, bool):
                     kwargs[name] = BOOL_DICT[str_value.lower()]
                 else:
                     kwargs[name] = type(default_value)(str_value)

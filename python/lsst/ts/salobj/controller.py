@@ -27,13 +27,14 @@ import asyncio
 import types
 import typing
 
-from . import type_hints
+from lsst.ts.xml import type_hints
+from lsst.ts.xml.type_hints import BaseMsgType
+
 from .base import ExpectedError
 from .domain import Domain
 from .sal_info import SalInfo
 from .sal_log_handler import SalLogHandler
 from .topics import ControllerCommand, ControllerEvent, ControllerTelemetry
-from .type_hints import BaseMsgType
 
 # Delay before closing the domain participant (seconds).
 # This gives remotes time to read final DDS messages before they disappear.
@@ -376,7 +377,7 @@ class Controller:
         -----
         Removes the SAL log handler, calls `close_tasks` to stop
         all background tasks, pauses briefly to allow final SAL messages
-        to be sent, then closes the dds domain.
+        to be sent, then closes the domain.
         """
         if not hasattr(self, "start_task"):
             # Not fully constructed; nothing to do.
@@ -426,7 +427,7 @@ class Controller:
         """Shut down pending tasks. Called by `close`.
 
         Perform all cleanup other than disabling logging to SAL
-        and closing the dds domain.
+        and closing the domain.
         """
         pass
 

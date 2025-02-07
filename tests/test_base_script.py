@@ -21,7 +21,6 @@
 
 import asyncio
 import logging
-import os
 import pathlib
 import subprocess
 import types
@@ -33,11 +32,12 @@ from collections.abc import Iterable
 import pytest
 import yaml
 from lsst.ts import salobj, utils
-from lsst.ts.idl.enums.Script import ScriptState
+from lsst.ts.xml.enums.Script import ScriptState
+from lsst.ts.xml.type_hints import BaseMsgType
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
-STD_TIMEOUT = 60
+STD_TIMEOUT = 20
 
 index_gen = utils.index_generator()
 
@@ -66,7 +66,7 @@ class NonConfigurableScript(salobj.BaseScript):
     async def run(self) -> None:
         self.run_called = True
 
-    def set_metadata(self, metadata: salobj.BaseMsgType) -> None:
+    def set_metadata(self, metadata: BaseMsgType) -> None:
         self.set_metadata_called = True
 
 
@@ -76,7 +76,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
     """
 
     def setUp(self) -> None:
-        salobj.set_random_lsst_dds_partition_prefix()
+        salobj.set_test_topic_subname()
         self.index = next(index_gen)
 
     async def configure_and_check(
@@ -184,25 +184,6 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             with pytest.raises(salobj.ExpectedError):
                 await script.do_configure(data)
             assert script.config is None
-
-    async def test_script_environ(self) -> None:
-        """Test that creating a script does not modify os.environ.
-
-        I would like to also test that a script has master priority 0
-        (which is done by temporarily setting env var
-        salobj.MASTER_PRIORITY_ENV_VAR to "0"),
-        but that information is not available.
-        """
-        for master_priority in ("21", None):
-            with utils.modify_environ(
-                **{salobj.MASTER_PRIORITY_ENV_VAR: master_priority}
-            ):
-                initial_environ = os.environ.copy()
-                async with NonConfigurableScript(index=self.index):
-                    assert os.environ == initial_environ
-                # Test again when script is closed, just to be sure;
-                # closing a script should not modify the environment.
-                assert os.environ == initial_environ
 
     async def test_setCheckpoints(self) -> None:
         async with salobj.TestScript(index=self.index) as script:
@@ -502,7 +483,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         Parameters
         ----------
         fail_run : `bool`
-            If true then fail in the script's ``run`` method,
+            If True then fail in the script's ``run`` method,
             else fail in the script's ``cleanup`` method.
         """
         wait_time = 0.1
@@ -590,7 +571,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                     )
                     await asyncio.wait_for(remote.start_task, timeout=STD_TIMEOUT)
 
-                    async def logcallback(data: salobj.BaseMsgType) -> None:
+                    async def logcallback(data: BaseMsgType) -> None:
                         print(f"message={data.message}")
 
                     remote.evt_logMessage.callback = logcallback

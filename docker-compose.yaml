@@ -1,0 +1,72 @@
+# Strimzi images:
+# https://quay.io/repository/strimzi/kafka?tab=tags
+# Confluent schema-registry images:
+# https://github.com/confluentinc/schema-registry-images/tags
+
+networks:
+  kafka:
+    name: kafka
+    driver: bridge
+services:
+
+  broker:
+    image: quay.io/strimzi/kafka:0.43.0-kafka-3.8.0
+    hostname: broker
+    container_name: broker
+    command: [
+      "sh", "-c",
+      "./bin/kafka-storage.sh format
+        -t $$(./bin/kafka-storage.sh random-uuid)
+        -c ./config/kraft/server.properties &&
+      ./bin/kafka-server-start.sh ./config/kraft/server.properties
+        --override advertised.listeners=PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+        --override listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL
+        --override listeners=PLAINTEXT://:29092,PLAINTEXT_HOST://:9092,CONTROLLER://:9093
+        --override auto.create.topics.enable=false
+        --override group.initial.rebalance.delay.ms=0
+        --override offsets.topic.replication.factor=1
+        --override log.retention.minutes=10
+      "
+    ]
+    networks:
+      - kafka
+    ports:
+      - "9092:9092"
+    environment:
+      LOG_DIR: "/tmp/logs"
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.7.1
+    hostname: schema-registry
+    container_name: schema-registry
+    depends_on:
+      - broker
+    networks:
+      - kafka
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_MASTER_ELIGIBILITY: true
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "broker:29092"
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.1.0
+    profiles:
+      - gui
+    hostname: kafdrop
+    container_name: kafdrop
+    depends_on:
+      - broker
+      - schema-registry
+    networks:
+      - kafka
+    ports:
+      - "9000:9000"
+    environment:
+      SERVER_PORT: 9000
+      SCHEMAREGISTRY_CONNECT: "http://schema-registry:8081"
+      KAFKA_BROKERCONNECT: "broker:29092"
+      JVM_OPTS: "-Xms32M -Xmx64M"
+      SERVER_SERVLET_CONTEXTPATH: "/"
+      CMD_ARGS: "--message.format=AVRO --message.keyFormat=DEFAULT --topic.deleteEnabled=false --topic.createEnabled=false"

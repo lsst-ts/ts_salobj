@@ -26,7 +26,6 @@ __all__ = ["BaseScript"]
 import abc
 import argparse
 import asyncio
-import os
 import re
 import sys
 import types
@@ -36,32 +35,17 @@ from collections.abc import Sequence
 
 import yaml
 from lsst.ts import utils
-from lsst.ts.idl.enums.Script import (
+from lsst.ts.xml import type_hints
+from lsst.ts.xml.enums.Script import (
     MetadataCoordSys,
     MetadataDome,
     MetadataRotSys,
     ScriptState,
 )
 
-from . import base, controller, type_hints, validator
-from .remote import Remote
+from . import base, controller, validator
 
 HEARTBEAT_INTERVAL = 5  # seconds
-
-
-def _make_remote_name(remote: Remote) -> str:
-    """Make a remote name from a remote, for output as script metadata.
-
-    Parameters
-    ----------
-    remote : `salobj.Remote`
-        Remote
-    """
-    name = remote.salinfo.name
-    index = remote.salinfo.index
-    if index is not None:
-        name = name + ":" + str(index)
-    return name
 
 
 class StateType:
@@ -100,7 +84,7 @@ class BaseScript(controller.Controller, abc.ABC):
         A logger.
     done_task : `asyncio.Task`
         A task that is done when the script has fully executed.
-    timestamps : `dict` [``lsst.ts.idl.enums.ScriptState``, `float`]
+    timestamps : `dict` [``lsst.ts.xml.enums.ScriptState``, `float`]
         Dict of script state: TAI unix timestamp.
         Used to set timestamp data in the ``script`` event.
     """
@@ -135,27 +119,19 @@ class BaseScript(controller.Controller, abc.ABC):
 
         self._heartbeat_task: asyncio.Future = asyncio.Future()
 
-        # Speed up script loading time and avoid expensive system alignments
-        # by making sure scripts never become master.
-        # The env var must be set while the `DomainParticipant` is created.
-        initial_master_prority = os.environ.get(base.MASTER_PRIORITY_ENV_VAR, None)
-        os.environ[base.MASTER_PRIORITY_ENV_VAR] = "0"
-        try:
-            super().__init__("Script", index, do_callbacks=True)
-        finally:
-            if initial_master_prority is None:
-                del os.environ[base.MASTER_PRIORITY_ENV_VAR]
-            else:
-                os.environ[base.MASTER_PRIORITY_ENV_VAR] = initial_master_prority
+        super().__init__("Script", index, do_callbacks=True)
 
         self.evt_description.set(  # type: ignore
             classname=type(self).__name__,
             description=str(descr),
             help=str(help),
         )
-        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
     async def start(self) -> None:
+        await super().start()
+        self._heartbeat_task.cancel()  # Paranoia
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+
         remote_names = set()
         remote_start_tasks = []
         for salinfo in self.domain.salinfo_set:
@@ -163,8 +139,6 @@ class BaseScript(controller.Controller, abc.ABC):
                 continue
             remote_names.add(f"{salinfo.name}:{salinfo.index}")
             remote_start_tasks.append(salinfo.start_task)
-
-        await super().start()
         await asyncio.gather(*remote_start_tasks)
 
         await self.evt_state.set_write(state=ScriptState.UNCONFIGURED)  # type: ignore
@@ -231,8 +205,8 @@ class BaseScript(controller.Controller, abc.ABC):
         -----
         The final return code will be:
 
-        * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
-          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`.
+        * 0 if final state is `lsst.ts.xml.enums.Script.ScriptState.DONE`
+          or `lsst.ts.xml.enums.Script.ScriptState.STOPPED`.
         * 1 if final state is anything else, or if script.done_task is an
           exception (which would be raised by the script's cleanup code).
 
@@ -315,7 +289,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Returns ``self.evt_state.data``, which has these fields:
 
-        * ``state``: `lsst.ts.idl.enums.Script.ScriptState`
+        * ``state``: `lsst.ts.xml.enums.Script.ScriptState`
             The current state.
         * ``lastCheckpoint``: `str`
             Name of most recently seen checkpoint.
@@ -515,7 +489,7 @@ class BaseScript(controller.Controller, abc.ABC):
         ----------
         action : `str`
             Description of what you want to do.
-        states : `list` [`lsst.ts.idl.enums.Script.ScriptState`]
+        states : `list` [`lsst.ts.xml.enums.Script.ScriptState`]
             Allowed states.
         """
         if self._is_exiting:
@@ -538,7 +512,7 @@ class BaseScript(controller.Controller, abc.ABC):
         ------
         base.ExpectedError
             If ``self.state.state`` is not
-            `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED`.
+            `lsst.ts.xml.enums.Script.ScriptState.UNCONFIGURED`.
 
         Notes
         -----
@@ -552,7 +526,7 @@ class BaseScript(controller.Controller, abc.ABC):
         * Call `set_metadata`.
         * Output the metadata event.
         * Change the script state to
-          `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
+          `lsst.ts.xml.enums.Script.ScriptState.CONFIGURED`.
         """
         self.assert_state("configure", [ScriptState.UNCONFIGURED])
         config_yaml: str = data.config  # type: ignore
@@ -619,7 +593,7 @@ class BaseScript(controller.Controller, abc.ABC):
         ------
         base.ExpectedError
             If ``self.state.state`` is not
-            `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
+            `lsst.ts.xml.enums.Script.ScriptState.CONFIGURED`.
             If ``self.group_id`` is blank.
         """
         self.assert_state("run", [ScriptState.CONFIGURED])
@@ -652,7 +626,7 @@ class BaseScript(controller.Controller, abc.ABC):
         ------
         base.ExpectedError
             If ``self.state.state`` is not
-            `lsst.ts.idl.enums.Script.ScriptState.PAUSED`.
+            `lsst.ts.xml.enums.Script.ScriptState.PAUSED`.
         """
         self.assert_state("resume", [ScriptState.PAUSED])
         if self._pause_future is None or self._pause_future.done():
@@ -676,10 +650,10 @@ class BaseScript(controller.Controller, abc.ABC):
         base.ExpectedError
             If ``self.state.state`` is not one of:
 
-            * `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED`
-            * `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`
-            * `lsst.ts.idl.enums.Script.ScriptState.RUNNING`
-            * `lsst.ts.idl.enums.Script.ScriptState.PAUSED`
+            * `lsst.ts.xml.enums.Script.ScriptState.UNCONFIGURED`
+            * `lsst.ts.xml.enums.Script.ScriptState.CONFIGURED`
+            * `lsst.ts.xml.enums.Script.ScriptState.RUNNING`
+            * `lsst.ts.xml.enums.Script.ScriptState.PAUSED`
         """
         self.assert_state(
             "setCheckpoints",
@@ -708,7 +682,7 @@ class BaseScript(controller.Controller, abc.ABC):
         ------
         base.ExpectedError
             If ``state.state`` is not
-            `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
+            `lsst.ts.xml.enums.Script.ScriptState.CONFIGURED`.
         """
         self.assert_state("setGroupId", [ScriptState.CONFIGURED])
         await self.evt_state.set_write(groupId=data.groupId, force_output=True)  # type: ignore

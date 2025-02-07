@@ -27,7 +27,9 @@ import asyncio
 import inspect
 import typing
 
-from .. import base, sal_enums, type_hints
+from lsst.ts.xml import sal_enums, type_hints
+
+from .. import base
 from . import read_topic, write_topic
 
 if typing.TYPE_CHECKING:
@@ -107,6 +109,13 @@ class ControllerCommand(read_topic.ReadTopic):
             Data for the command being acknowledged.
         ackcmd : `salobj.AckCmdType`
             Command acknowledgement data.
+
+        Raises
+        ------
+        RuntimeError
+            If self.salinfo is not running. This may occur at shutdown.
+            (It is much less likely if the SalInfo as not started,
+            because the SalInfo will not have received any commands.)
         """
         # mypy thinks salinfo._ackcmd_writer can be None, but it can't.
         # Testing is expensive, so hide the warnings.
@@ -134,6 +143,13 @@ class ControllerCommand(read_topic.ReadTopic):
             Estimated command duration (sec).
         result : `str`, optional
             Reason for acknowledgement. Typically left "".
+
+        Raises
+        ------
+        RuntimeError
+            If self.salinfo is not running. This may occur at shutdown.
+            (It is much less likely if the SalInfo as not started,
+            because the SalInfo will not have received any commands.)
         """
         ackcmd = self.salinfo.make_ackcmd(
             private_seqNum=data.private_seqNum,
@@ -176,8 +192,31 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         return await super().next(flush=False, timeout=timeout)
 
+    async def _ack_if_running(
+        self, data: type_hints.BaseMsgType, ackcmd: type_hints.AckCmdDataType
+    ) -> None:
+        """Wrapper around self.ack that logs a warning if not salinfo.running.
+
+        This allows methods of this class to safely acknowledge commands,
+        without having to test if the SalInfo is still running.
+        The ack will succeed if it can, and log a warning if it can't.
+        There isn't much else that a ControllerCommand instance can do
+        if a command finishes or fails while the SalInfo is shutting down.
+
+        Parameters
+        ----------
+        data : `DataType`
+            Data for the command being acknowledged.
+        ackcmd : `salobj.AckCmdType`
+            Command acknowledgement data.
+        """
+        if not self.salinfo.running:
+            self.log.warning(f"Cannot issue {ackcmd=}; SalInfo is not running")
+            return
+        await self.ack(data=data, ackcmd=ackcmd)
+
     def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
-        """Convert the value to an ``ackcmd`` and queue it.
+        """Queue the message if it has a valid sequence number.
 
         This override checks for a positive private_seqNum
         and raises ValueError if not.
@@ -207,7 +246,7 @@ class ControllerCommand(read_topic.ReadTopic):
                     ack=sal_enums.SalRetCode.CMD_COMPLETE,
                     result="Done",
                 )
-            await self.ack(data, ack)
+            await self._ack_if_running(data, ack)
         except asyncio.CancelledError:
             ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
@@ -215,7 +254,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 error=1,
                 result="Aborted",
             )
-            await self.ack(data, ack)
+            await self._ack_if_running(data, ack)
         except asyncio.TimeoutError:
             ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
@@ -223,7 +262,7 @@ class ControllerCommand(read_topic.ReadTopic):
                 error=1,
                 result="Timeout",
             )
-            await self.ack(data, ack)
+            await self._ack_if_running(data, ack)
         except Exception as e:
             ack = self.salinfo.make_ackcmd(
                 private_seqNum=data.private_seqNum,
@@ -231,6 +270,6 @@ class ControllerCommand(read_topic.ReadTopic):
                 error=1,
                 result=f"Failed: {e}",
             )
-            await self.ack(data, ack)
+            await self._ack_if_running(data, ack)
             if not isinstance(e, base.ExpectedError):
                 self.log.exception(f"Callback {self.callback} failed with data={data}")
