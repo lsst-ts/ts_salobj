@@ -14,9 +14,8 @@ build:
 test:
   requires:
     - ts-conda-build =0.4
-    - ts-idl {{ idl_version }}
     - ts-utils
-    - ts-xml
+    - ts-xml  {{ xml_conda_version }}
   source_files:
       # .git is needed to test reading older git hashes of config files
     - .git
@@ -31,7 +30,6 @@ test:
 requirements:
   host:
     - pip
-    - pytest-flake8
     - python {{ python }}
     - setuptools
     - setuptools_scm
@@ -41,7 +39,7 @@ requirements:
     - fastavro
     - jsonschema
     - moto >=5
-    - numpy <2
+    - numpy
     - python {{ python }}
     - python-confluent-kafka >=2.0.2
     - httpx
