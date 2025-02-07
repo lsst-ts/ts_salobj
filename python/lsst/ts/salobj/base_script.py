@@ -84,7 +84,7 @@ class BaseScript(controller.Controller, abc.ABC):
         A logger.
     done_task : `asyncio.Task`
         A task that is done when the script has fully executed.
-    timestamps : `dict` [``lsst.ts.idl.enums.ScriptState``, `float`]
+    timestamps : `dict` [``lsst.ts.xml.enums.ScriptState``, `float`]
         Dict of script state: TAI unix timestamp.
         Used to set timestamp data in the ``script`` event.
     """
@@ -205,8 +205,8 @@ class BaseScript(controller.Controller, abc.ABC):
         -----
         The final return code will be:
 
-        * 0 if final state is `lsst.ts.idl.enums.Script.ScriptState.DONE`
-          or `lsst.ts.idl.enums.Script.ScriptState.STOPPED`.
+        * 0 if final state is `lsst.ts.xml.enums.Script.ScriptState.DONE`
+          or `lsst.ts.xml.enums.Script.ScriptState.STOPPED`.
         * 1 if final state is anything else, or if script.done_task is an
           exception (which would be raised by the script's cleanup code).
 
@@ -289,7 +289,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         Returns ``self.evt_state.data``, which has these fields:
 
-        * ``state``: `lsst.ts.idl.enums.Script.ScriptState`
+        * ``state``: `lsst.ts.xml.enums.Script.ScriptState`
             The current state.
         * ``lastCheckpoint``: `str`
             Name of most recently seen checkpoint.
@@ -489,7 +489,7 @@ class BaseScript(controller.Controller, abc.ABC):
         ----------
         action : `str`
             Description of what you want to do.
-        states : `list` [`lsst.ts.idl.enums.Script.ScriptState`]
+        states : `list` [`lsst.ts.xml.enums.Script.ScriptState`]
             Allowed states.
         """
         if self._is_exiting:
@@ -512,7 +512,7 @@ class BaseScript(controller.Controller, abc.ABC):
         ------
         base.ExpectedError
             If ``self.state.state`` is not
-            `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED`.
+            `lsst.ts.xml.enums.Script.ScriptState.UNCONFIGURED`.
 
         Notes
         -----
@@ -526,7 +526,7 @@ class BaseScript(controller.Controller, abc.ABC):
         * Call `set_metadata`.
         * Output the metadata event.
         * Change the script state to
-          `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
+          `lsst.ts.xml.enums.Script.ScriptState.CONFIGURED`.
         """
         self.assert_state("configure", [ScriptState.UNCONFIGURED])
         config_yaml: str = data.config  # type: ignore
@@ -593,7 +593,7 @@ class BaseScript(controller.Controller, abc.ABC):
         ------
         base.ExpectedError
             If ``self.state.state`` is not
-            `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
+            `lsst.ts.xml.enums.Script.ScriptState.CONFIGURED`.
             If ``self.group_id`` is blank.
         """
         self.assert_state("run", [ScriptState.CONFIGURED])
@@ -626,7 +626,7 @@ class BaseScript(controller.Controller, abc.ABC):
         ------
         base.ExpectedError
             If ``self.state.state`` is not
-            `lsst.ts.idl.enums.Script.ScriptState.PAUSED`.
+            `lsst.ts.xml.enums.Script.ScriptState.PAUSED`.
         """
         self.assert_state("resume", [ScriptState.PAUSED])
         if self._pause_future is None or self._pause_future.done():
@@ -650,10 +650,10 @@ class BaseScript(controller.Controller, abc.ABC):
         base.ExpectedError
             If ``self.state.state`` is not one of:
 
-            * `lsst.ts.idl.enums.Script.ScriptState.UNCONFIGURED`
-            * `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`
-            * `lsst.ts.idl.enums.Script.ScriptState.RUNNING`
-            * `lsst.ts.idl.enums.Script.ScriptState.PAUSED`
+            * `lsst.ts.xml.enums.Script.ScriptState.UNCONFIGURED`
+            * `lsst.ts.xml.enums.Script.ScriptState.CONFIGURED`
+            * `lsst.ts.xml.enums.Script.ScriptState.RUNNING`
+            * `lsst.ts.xml.enums.Script.ScriptState.PAUSED`
         """
         self.assert_state(
             "setCheckpoints",
@@ -682,7 +682,7 @@ class BaseScript(controller.Controller, abc.ABC):
         ------
         base.ExpectedError
             If ``state.state`` is not
-            `lsst.ts.idl.enums.Script.ScriptState.CONFIGURED`.
+            `lsst.ts.xml.enums.Script.ScriptState.CONFIGURED`.
         """
         self.assert_state("setGroupId", [ScriptState.CONFIGURED])
         await self.evt_state.set_write(groupId=data.groupId, force_output=True)  # type: ignore
