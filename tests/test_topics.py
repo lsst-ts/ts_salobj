@@ -1556,3 +1556,43 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                     assert getattr(write_topic.data, field) == pytest.approx(
                         predicted_data_dict[field]
                     )
+
+    async def test_read_num_messages_read_timeout(self) -> None:
+        """Test modifying the value of num_messages and message_read_timeout
+        in SalInfo read loop."""
+        num_messages = 100
+        consume_messages_timeout = 2.5
+        async with salobj.Domain() as domain, salobj.SalInfo(
+            domain=domain,
+            name="Test",
+            index=3,
+            num_messages=num_messages,
+            consume_messages_timeout=consume_messages_timeout,
+        ) as salinfo:
+            tel_reader = salobj.topics.ReadTopic(
+                salinfo=salinfo, attr_name="tel_scalars", max_history=0
+            )
+            tel_writter = salobj.topics.WriteTopic(
+                salinfo=salinfo, attr_name="tel_scalars"
+            )
+            await asyncio.wait_for(salinfo.start(), timeout=STD_TIMEOUT)
+
+            # Write 99 messages and try to read them with a short timeout.
+            # This should timeout because the read loop has a timeout of 5s.
+            for i in range(num_messages - 1):
+                await tel_writter.write()
+
+            with pytest.raises(asyncio.TimeoutError):
+                await tel_reader.aget(timeout=consume_messages_timeout - 1)
+
+            for i in range(num_messages - 1):
+                await tel_reader.next(flush=False, timeout=consume_messages_timeout)
+
+            # Write num_messages messages and try to read them with a
+            # short timeout. This should not timeout because the read
+            # loop only waits for num_messages.
+            for i in range(num_messages):
+                await tel_writter.write()
+
+            for i in range(num_messages):
+                await tel_reader.next(flush=False, timeout=NO_DATA_TIMEOUT)
