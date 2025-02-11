@@ -72,7 +72,7 @@ class ControllerWithDoMethods(salobj.Controller):
 
 class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        salobj.set_random_lsst_dds_partition_prefix()
+        salobj.set_test_topic_subname()
 
     async def test_do_callbacks_false(self) -> None:
         index = next(index_gen)

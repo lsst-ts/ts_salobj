@@ -21,21 +21,48 @@
 
 import getpass
 import os
-import random
-import re
+import pathlib
 import socket
 import unittest
 
 import pytest
 from lsst.ts import salobj, utils
-from lsst.ts.salobj import WildcardIndexError
 
 index_gen = utils.index_generator()
 
 
+class TestBaseCscTestCaseIsolation(
+    salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase
+):
+    def basic_make_csc(
+        self,
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
+        simulation_mode: int,
+    ) -> salobj.BaseCsc:
+        index = self.next_index()
+
+        return salobj.TestCsc(
+            index=index,
+            initial_state=initial_state,
+            config_dir=config_dir,
+            simulation_mode=simulation_mode,
+        )
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._randomize_topic_subname = True
+
+    def test_topic_subname(self) -> None:
+        topic_subname_random = os.environ.get("LSST_TOPIC_SUBNAME")
+        salobj.set_test_topic_subname()
+        topic_subname = os.environ.get("LSST_TOPIC_SUBNAME")
+        assert topic_subname_random != topic_subname
+
+
 class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        salobj.set_random_lsst_dds_partition_prefix()
+        salobj.set_test_topic_subname()
 
     async def test_assert_raises_ack_error(self) -> None:
         """Test the assertRaisesAckError function."""
@@ -136,27 +163,35 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             for item in ("AckError", msg, private_seqNum, ack, error, result):
                 assert str(item) in repr_err
 
-    async def test_get_opensplice_version(self) -> None:
-        ospl_version = salobj.get_opensplice_version()
-        assert re.search(r"^\d+\.\d+\.\d+", ospl_version) is not None
-
     async def test_get_user_host(self) -> None:
         expected_user_host = getpass.getuser() + "@" + socket.getfqdn()
         user_host = salobj.get_user_host()
         assert expected_user_host == user_host
 
-    def test_set_random_lsst_dds_partition_prefix(self) -> None:
-        random.seed(42)
+    async def test_set_test_topic_subname_randomize(self) -> None:
         NumToTest = 1000
         names = set()
-        for i in range(NumToTest):
-            salobj.set_random_lsst_dds_partition_prefix()
-            name = os.environ.get("LSST_DDS_PARTITION_PREFIX")
+
+        for _ in range(NumToTest):
+            salobj.set_test_topic_subname(randomize=True)
+            name = os.environ.get("LSST_TOPIC_SUBNAME")
             assert name
             names.add(name)
             assert "." not in name  # type: ignore
         # any duplicate names will reduce the size of names
         assert len(names) == NumToTest
+
+    async def test_set_test_topic_subname(self) -> None:
+        NumToTest = 1000
+        names = set()
+
+        for _ in range(NumToTest):
+            salobj.set_test_topic_subname()
+            name = os.environ.get("LSST_TOPIC_SUBNAME")
+            assert name
+            names.add(name)
+            assert "." not in name  # type: ignore
+        assert len(names) == 1
 
     async def test_domain_attr(self) -> None:
         async with salobj.Domain() as domain:
@@ -164,14 +199,6 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
 
             assert domain.user_host == salobj.get_user_host()
             assert domain.default_identity == domain.user_host
-            assert domain.ackcmd_qos_set.profile_name == "AckcmdProfile"
-            assert domain.command_qos_set.profile_name == "CommandProfile"
-            assert domain.event_qos_set.profile_name == "EventProfile"
-            assert domain.telemetry_qos_set.profile_name == "TelemetryProfile"
-            assert domain.ackcmd_qos_set.volatile
-            assert domain.command_qos_set.volatile
-            assert not domain.event_qos_set.volatile
-            assert domain.telemetry_qos_set.volatile
 
     def test_name_to_name_index(self) -> None:
         for name, expected_result in (
@@ -190,13 +217,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             ("Script:15 "),  # trailing space
             ("Script:"),  # colon with no index
             ("Script:zero"),  # index is not an integer
-            ("Script:*"),  # Wildcard index
         ):
             with self.subTest(bad_name=bad_name):
                 with pytest.raises(ValueError):
                     salobj.name_to_name_index(bad_name)
-
-        # Invalid case for WildcardIndexError
-        with self.subTest(bad_name="Script:*"):
-            with pytest.raises(WildcardIndexError):
-                salobj.name_to_name_index("Script:*")

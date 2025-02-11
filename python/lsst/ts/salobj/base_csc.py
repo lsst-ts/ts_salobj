@@ -26,17 +26,18 @@ __all__ = ["BaseCsc"]
 import argparse
 import asyncio
 import enum
-import os
 import sys
 import typing
 from collections.abc import Sequence
 
 from lsst.ts import utils
+from lsst.ts.xml import __version__ as xml_version
+from lsst.ts.xml import type_hints
+from lsst.ts.xml.sal_enums import State
 
-from . import base, type_hints
+from . import base
 from .controller import Controller
 from .csc_utils import make_state_transition_dict
-from .sal_enums import State
 from .sal_info import SalInfo
 from .topics.remote_event import RemoteEvent
 
@@ -62,8 +63,9 @@ class BaseCsc(Controller):
         at startup (before starting the heartbeat loop)?
         Defaults to False in order to speed up unit tests,
         but `amain` sets it true.
-    initial_state : `State` or `int`, optional
+    initial_state : `State`, `int` or `None`, optional
         Initial state for this CSC.
+        If None use the class attribute ``default_initial_state``.
         Typically `State.STANDBY` (or `State.OFFLINE` for an
         externally commandable CSC) but can also be
         `State.DISABLED`, or `State.ENABLED`,
@@ -180,7 +182,7 @@ class BaseCsc(Controller):
         name: str,
         index: int | None = None,
         check_if_duplicate: bool = False,
-        initial_state: State = State.STANDBY,
+        initial_state: State | int | None = None,
         override: str = "",
         simulation_mode: int = 0,
         allow_missing_callbacks: bool = False,
@@ -194,6 +196,8 @@ class BaseCsc(Controller):
 
         # Cast initial_state from an int or State to a State,
         # and reject invalid int values with ValueError
+        if initial_state is None:
+            initial_state = self.default_initial_state
         initial_state = State(initial_state)
         if initial_state == State.FAULT:
             raise ValueError("initial_state cannot be FAULT")
@@ -230,10 +234,8 @@ class BaseCsc(Controller):
             return "?" if version is None else version
 
         self.evt_softwareVersions.set(  # type: ignore
-            salVersion=format_version(self.salinfo.metadata.sal_version),
-            xmlVersion=format_version(self.salinfo.metadata.xml_version),
-            openSpliceVersion=os.environ.get("OSPL_RELEASE", "?"),
             cscVersion=getattr(self, "version", "?"),
+            xmlVersion=xml_version,
         )
 
     async def check_for_duplicate_heartbeat(
@@ -276,13 +278,14 @@ class BaseCsc(Controller):
                 salinfo=salinfo, name="heartbeat", max_history=0
             )
             await salinfo.start()
-            for _ in range(num_messages):
+            try:
                 data = await heartbeat_topic.next(
                     flush=False, timeout=self.heartbeat_interval * 3
                 )
-                if data.private_origin != self.salinfo.domain.origin:
-                    return data.private_origin
-            return 0
+            except asyncio.TimeoutError:
+                return 0
+            else:
+                return data.private_origin
 
     async def start(self) -> None:
         """Finish constructing the CSC.
@@ -294,7 +297,6 @@ class BaseCsc(Controller):
         """
         await super().start()
         self._heartbeat_task.cancel()  # Paranoia
-        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         if self.check_if_duplicate:
             descr = f"{self.salinfo.name}:{self.salinfo.index} with origin={self.salinfo.domain.origin}"
             self.log.info(f"{descr} checking for an already-running instance.")
@@ -303,6 +305,7 @@ class BaseCsc(Controller):
                 raise base.ExpectedError(
                     f"{descr} quitting: found another instance with origin={duplicate_origin}."
                 )
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         await self.set_simulation_mode(self.simulation_mode)
         await self.evt_softwareVersions.write()  # type: ignore
 
@@ -351,6 +354,7 @@ class BaseCsc(Controller):
     async def close_tasks(self) -> None:
         """Shut down pending tasks. Called by `close`."""
         self._heartbeat_task.cancel()
+        await super().close_tasks()
 
     @classmethod
     def make_from_cmd_line(
@@ -935,10 +939,11 @@ class BaseCsc(Controller):
         """Output heartbeat at regular intervals."""
         while True:
             try:
-                await asyncio.sleep(self.heartbeat_interval)
                 await self.evt_heartbeat.write()  # type: ignore
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 # don't use the log because it also uses DDS messaging
                 print(f"Heartbeat output failed: {e!r}", file=sys.stderr)
+            finally:
+                await asyncio.sleep(self.heartbeat_interval)

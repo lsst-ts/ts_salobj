@@ -6,8 +6,53 @@
 Version History
 ###############
 
+v8.0.0
+------
 
-.. Version 8 of salobj will contain the kafka release.
+This new major release of salobj replaces DDS with Kafka.
+
+* Update to use Kafka instead of DDS to read and write messages.
+
+* CSCs may specify initial_state=None to use the default state.
+
+* Changes that are most likely to break existing code:
+
+    * `SalInfo`:
+
+        * You must call ``start`` before writing data.
+        * Deleted the deprecated ``makeAckCmd`` method; call ``make_ackcmd`` instead.
+        * The `SalInfo` ``metadata`` attribute has been replaced by ``component_info``.
+          ``component_info`` is more comprehensive (it is used to generate Kafka topics) and is derived directly from the XML files.
+
+    * Messages no longer support the ``get_vars`` method; use the ``vars`` built-in function instead.
+      In other words change ``message.get_vars()`` to ``vars(message)``.
+    * Deleted function ``get_opensplice_version``.
+
+* Added bin script and entry point ``get_component_info`` to get information about a SAL component from ts_xml.
+  The information includes enumerations, Avro schemas for topics, and array lengths for fields.
+
+* `BaseCsc`: stop setting $OSPL_MASTER_PRIORITY; it is not needed for Kafka.
+  Delete constant ``MASTER_PRIORITY_ENV_VAR``.
+
+* Move the following submodules to ts_xml:
+
+  * ``component_info.py``
+  * ``field_info.py``
+  * ``get_component_info.py``
+  * ``sal_enums.py``
+  * ``get_enums_from_xml.py``
+  * ``xml_utils.py``
+  * ``type_hints.py``
+  * ``topic_info.py``
+
+* Re-export the following submodules to maintain backward compatibility.
+
+    * ``lsst.ts.xml.sal_enums``.
+    * ``lsst.ts.xml.type_hints``.
+
+* Remove the do_setAuthList command.
+
+* Give a local variable a more pythonesque name.
 
 v7.8.0
 ------

@@ -32,10 +32,10 @@ import typing
 import warnings
 from collections.abc import Awaitable, Callable, Collection
 
-import dds
 from lsst.ts import utils
+from lsst.ts.xml import type_hints
 
-from .. import base, type_hints
+from .. import base
 from .base_topic import BaseTopic
 
 if typing.TYPE_CHECKING:
@@ -51,7 +51,7 @@ MIN_QUEUE_LEN = 10
 # TODO DM-37502: change "_BasicReturnType | Awaitable[_BasicReturnType]"
 # to "Awaitable[_BasicReturnType]"
 # once we drop support for synchronous callback functions.
-_BasicReturnType = type_hints.AckCmdDataType | None
+_BasicReturnType = typing.Type[type_hints.AckCmdDataType | None]
 CallbackType = Callable[
     [type_hints.BaseMsgType],
     _BasicReturnType | Awaitable[_BasicReturnType],
@@ -205,18 +205,11 @@ class ReadTopic(BaseTopic):
     queue_len : `int`, optional
         The maximum number of messages that can be read and not dealt with
         by a callback function or `next` before older messages will be dropped.
-    filter_ackcmd : `bool`, optional
-        Filter out ackcmd topics so we only see responses to commands
-        that we sent? This is normally what you want, but it is not wanted
-        for SAL/Kafka producers.
-        Ignored if ``name`` != "ackcmd".
 
     Raises
     ------
     ValueError
         If max_history < 0.
-    ValueError
-        If max_history > 0 and the topic is volatile (command or ackcmd).
     ValueError
         If queue_len < MIN_QUEUE_LEN.
     ValueError
@@ -236,35 +229,19 @@ class ReadTopic(BaseTopic):
     isopen : `bool`
         Is this read topic open? `True` until `close` or `basic_close`
         is called.
-    dds_queue_length_checker : `QueueCapacityChecker`
-        Queue length checker for the DDS queue.
     python_queue_length_checker : `QueueCapacityChecker`:
         Queue length checker for the Python queue.
 
     Notes
     -----
-    **Queues**
-
-    There are two queues: a Python queue whose length is set by ``queue_len``
-    and a dds queue whose length is set by the DDS Quality of Service file.
-    (The Python queue is needed because of limitations in the API for
-    the OpenSplice DDS queue, including no access to the most recent message,
-    no ability to ask how many messages are on the queue, and no asyncio
-    support). In the doc strings for the methods, below, any reference
-    to the queue refers to the Python queue.
-
-    Data can be lost from either queue:
-
-    - If this class cannot read messages from the DDS queue fast enough,
-      then older messages will be dropped from the DDS queue. You will get
-      several warning log messages as the DDS queue fills.
-    - As messages are read from the DDS queue they are put on the Python queue.
-      If a callback function or `next` does not process data quickly enough
-      then older messages are dropped from the Python queue.
-      If you have a callback function then you will get several
-      warning log messages as the Python queue fills up;
-      you get no warning otherwise because `ReadTopic` has no way of knowing
-      whether or not you intend to read all messages.
+    There is a queue for data whose length is set by ``queue_len``.
+    Data can be lost from this queue if a callback function
+    or `next` does not process data quickly enough
+    then older messages are dropped from the Python queue.
+    If you have a callback function then you will get several
+    warning log messages as the Python queue fills up;
+    you get no warning otherwise because `ReadTopic` has no way of knowing
+    whether or not you intend to read all messages.
 
     **Reading**
 
@@ -287,15 +264,12 @@ class ReadTopic(BaseTopic):
         attr_name: str,
         max_history: int,
         queue_len: int = DEFAULT_QUEUE_LEN,
-        filter_ackcmd: bool = True,
     ) -> None:
         super().__init__(salinfo=salinfo, attr_name=attr_name)
         self.isopen = True
         self._allow_multiple_callbacks = False
         if max_history < 0:
             raise ValueError(f"max_history={max_history} must be >= 0")
-        if max_history > 0 and self.volatile:
-            raise ValueError(f"max_history={max_history} must be 0 for volatile topics")
         if salinfo.indexed and salinfo.index == 0 and max_history > 1:
             raise ValueError(
                 f"max_history={max_history} must be 0 or 1 "
@@ -309,75 +283,25 @@ class ReadTopic(BaseTopic):
             raise ValueError(
                 f"max_history={max_history} must be <= queue_len={queue_len}"
             )
-        if (
-            max_history > self.qos_set.reader_qos.history.depth
-            or max_history > self.qos_set.topic_qos.durability_service.history_depth
-        ):
-            warnings.warn(
-                f"max_history={max_history} > history depth={self.qos_set.reader_qos.history.depth} "
-                f"and/or {self.qos_set.topic_qos.durability_service.history_depth}; "
-                "you will get less historical data than you asked for.",
-                UserWarning,
-            )
         self._max_history = int(max_history)
         self._data_queue: collections.deque[type_hints.BaseMsgType] = collections.deque(
             maxlen=queue_len
         )
         self._current_data: type_hints.BaseMsgType | None = None
-        # Event that is set when new data arrives. Used by aget.
-        self._new_data_event = asyncio.Event()
         # Task that `next` waits on.
         # Its result is set to the oldest message on the queue.
         # We do this instead of having `next` itself pop the oldest message
         # because it allows multiple callers of `next` to all get the same
         # message, and it avoids a potential race condition with `flush`.
         self._next_task = utils.make_done_future()
+        # Event that is set when new data arrives. Used by aget.
+        self._new_data_event = asyncio.Event()
         self._callback: CallbackType | None = None
         self._callback_tasks: set[asyncio.Task] = set()
         self._callback_loop_task = utils.make_done_future()
-        self.dds_queue_length_checker = QueueCapacityChecker(
-            descr=f"{attr_name} DDS read queue",
-            log=self.log,
-            queue_len=self.qos_set.reader_qos.history.depth,
-        )
         self.python_queue_length_checker = QueueCapacityChecker(
             descr=f"{attr_name} python read queue", log=self.log, queue_len=queue_len
         )
-        # Command topics use a different a partition name than
-        # all other topics, including ackcmd, and the partition name
-        # is part of the publisher and subscriber.
-        # This split allows us to create just one subscriber and one publisher
-        # for each Controller or Remote:
-        # `Controller` only needs a cmd_subscriber and data_publisher,
-        # `Remote` only needs a cmd_publisher and data_subscriber.
-        if attr_name.startswith("cmd_"):
-            subscriber = salinfo.cmd_subscriber
-        else:
-            subscriber = salinfo.data_subscriber
-        self._reader = subscriber.create_datareader(
-            self._topic, self.qos_set.reader_qos
-        )
-        # TODO DM-26411: replace ANY_INSTANCE_STATE with ALIVE_INSTANCE_STATE
-        # once the OpenSplice issue 00020647 is fixed.
-        read_mask = [
-            dds.DDSStateKind.NOT_READ_SAMPLE_STATE,
-            dds.DDSStateKind.ANY_INSTANCE_STATE,
-        ]
-        queries = []
-        if salinfo.index > 0:
-            queries.append(f"salIndex = {salinfo.index}")
-        if attr_name == "ack_ackcmd" and filter_ackcmd:
-            queries += [
-                f"origin = {salinfo.domain.origin}",
-                f"identity = '{salinfo.identity}'",
-            ]
-        if queries:
-            full_query = " AND ".join(queries)
-            read_condition = dds.QueryCondition(self._reader, read_mask, full_query)
-        else:
-            read_condition = self._reader.create_readcondition(read_mask)
-        self._read_condition = read_condition
-
         salinfo.add_reader(self)
 
     @property
@@ -500,7 +424,6 @@ class ReadTopic(BaseTopic):
             self._next_task.cancel()
         except RuntimeError:
             pass
-        self._reader.close()
         self._data_queue.clear()
 
     async def close(self) -> None:
@@ -512,18 +435,12 @@ class ReadTopic(BaseTopic):
         self.basic_close()
 
     async def aget(self, timeout: float | None = None) -> type_hints.BaseMsgType:
-        """Get the most recently seen message (with no delay), or wait for
-        data if no data has ever been seen (`has_data` False).
+        """Get the most recent message, or wait for data if no data has
+        ever been seen (`has_data` False).
 
-        This is almost exactly like `get`. The only difference: if no data
-        has ever been received by this topic it will wait for data.
-        Once the topic has received *any* data, calling `aget` is identical
-        to calling `get` (except for the need to use ``await``) and the call
-        will return almost instantly.
-
-        Please avoid `aget`, if possible, because it tends to confuse users.
-        Use `get` to get the current data or `next` to wait for new data
-        (you will almost never need both for the same topic).
+        This method does not change which message will be returned by
+        any other method (except for the fact that new data
+        will arrive while waiting).
 
         Parameters
         ----------
@@ -545,16 +462,6 @@ class ReadTopic(BaseTopic):
 
         Notes
         -----
-        This method does not remove data from the queue, so it does not
-        change which data is returned by `next`.
-        In that respect it is not quite identical to this snippet,
-        which otherwise does the same thing as `aget`::
-
-            data = self.get()
-            if data is None:
-                data = await self.next(flush=False, timeout=timeout)
-            return data
-
         Do not modify the returned data. To make a copy that you can
         safely modify, use ``copy.copy(data)``.
         """
@@ -743,7 +650,6 @@ class ReadTopic(BaseTopic):
         for data in data_list:
             self._queue_one_item(data)
         self._current_data = data
-        self._new_data_event.set()
         self._report_next()
 
     def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
@@ -762,3 +668,4 @@ class ReadTopic(BaseTopic):
         if not self._next_task.done() and self._data_queue:
             oldest_message = self._data_queue.popleft()
             self._next_task.set_result(oldest_message)
+        self._new_data_event.set()
