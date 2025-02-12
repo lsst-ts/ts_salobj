@@ -98,6 +98,17 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 assert isinstance(salinfo.index, SalIndex)
                 assert salinfo.index == SalIndex.ONE
 
+            async with salobj.SalInfo(
+                domain=domain,
+                name="Script",
+                index=SalIndex.ONE,
+                num_messages=100,
+                consume_messages_timeout=0.01,
+            ) as salinfo:
+
+                assert salinfo.num_messages == 100
+                assert salinfo.consume_messages_timeout == 0.01
+
     async def test_salinfo_attributes(self) -> None:
         index = next(index_gen)
         async with salobj.Domain() as domain, salobj.SalInfo(

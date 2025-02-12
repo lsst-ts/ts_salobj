@@ -74,6 +74,10 @@ class Remote:
         and call `start` manually after you have added all topics.
         Warning: if `False` then `self.start_task` will not exist
         and the remote cannot be used as an async context manager.
+    num_messages : `int`
+        Number of messages to consume in the read loop.
+    consume_messages_timeout : `float`
+        Timeout to wait for new messages to arrive in the read loop.
 
     Raises
     ------
@@ -144,6 +148,8 @@ class Remote:
         exclude: Iterable[str] | None = None,
         evt_max_history: int = 1,
         start: bool = True,
+        num_messages: int = 1,
+        consume_messages_timeout: float = 0.1,
     ) -> None:
         if include is not None and exclude is not None:
             raise ValueError("Cannot specify both include and exclude")
@@ -153,7 +159,13 @@ class Remote:
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
 
-        self.salinfo = SalInfo(domain=domain, name=name, index=index)
+        self.salinfo = SalInfo(
+            domain=domain,
+            name=name,
+            index=index,
+            num_messages=num_messages,
+            consume_messages_timeout=consume_messages_timeout,
+        )
         try:
             if not readonly:
                 for cmd_name in self.salinfo.command_names:

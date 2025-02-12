@@ -240,3 +240,15 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
             assert f"index={index}" in reprstr
             assert f"name={remote.salinfo.name}" in reprstr
             await remote.close()
+
+    async def test_num_messages_consume_timeout(self) -> None:
+        index = next(index_gen)
+        async with salobj.Domain() as domain, salobj.Remote(
+            domain=domain,
+            name="Test",
+            index=index,
+            num_messages=100,
+            consume_messages_timeout=0.01,
+        ) as remote:
+            assert remote.salinfo.num_messages == 100
+            assert remote.salinfo.consume_messages_timeout == 0.01

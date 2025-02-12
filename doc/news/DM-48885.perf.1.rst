@@ -1,0 +1,1 @@
+Updated ``Remote`` to allow users to specify ``num_messages`` and ``consume_messages_timeout``, which is passed on to ``SalInfo`` and used to set how the read loop behaves.

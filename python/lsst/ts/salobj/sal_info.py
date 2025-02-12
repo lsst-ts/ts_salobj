@@ -37,6 +37,7 @@ import traceback
 import types
 import typing
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
 import yaml
 from confluent_kafka import (
@@ -110,6 +111,10 @@ class SalInfo:
         Component index; 0 or None if this component is not indexed.
     write_only : `bool`
         If False this SalInfo will not subscribe to any topics.
+    num_messages : `int`
+        Number of messages to consume in the read loop.
+    consume_messages_timeout : `float`
+        Timeout to wait for new messages to arrive in the read loop.
 
     Raises
     ------
@@ -125,6 +130,10 @@ class SalInfo:
         The ``domain`` constructor argument.
     index : `int`
         The ``index`` constructor argument.
+    num_messages : `int`
+        Number of messages to consume in the read loop.
+    consume_messages_timeout : `float`
+        Timeout to wait for new messages to arrive in the read loop.
     identity : `str`
         Value used for the private_identity field of DDS messages.
         Defaults to username@host, but CSCs should use the CSC name:
@@ -220,6 +229,8 @@ class SalInfo:
         name: str,
         index: int | None = 0,
         write_only: bool = False,
+        num_messages: int = 1,
+        consume_messages_timeout: float = 0.1,
     ) -> None:
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
@@ -235,7 +246,10 @@ class SalInfo:
         self.loop = asyncio.get_running_loop()
         self.pool = ThreadPoolExecutor(max_workers=100)
         self.write_only = write_only
+        self.num_messages = num_messages
+        self.consume_messages_timeout = consume_messages_timeout
         self.identity = domain.default_identity
+        self.read_history_start_monotonic = 0.0
 
         self.start_called = False
         self.on_assign_called = False
@@ -1181,152 +1195,45 @@ class SalInfo:
         last_sample_timestamps: dict[str, dict[int, float]] = dict(
             [(kafka_name, dict()) for kafka_name in self._read_topics]
         )
+        consume = partial(
+            self._consumer.consume,
+            num_messages=self.num_messages,
+            timeout=self.consume_messages_timeout,
+        )
 
         try:
             # Read historical and new data
-            read_history_start_monotonic = time.monotonic()
+            self.read_history_start_monotonic = time.monotonic()
 
             sequential_read_errors = 0
             schema_resolution_errors: dict[str, int] = dict()
 
-            self.log.info(f"Starting read loop, {self.group_id=}.")
+            self.log.info(
+                "Starting read loop, "
+                f"{self.group_id=} {self.num_messages=} {self.consume_messages_timeout=}s."
+            )
 
             while self.isopen:
-                message = await self.loop.run_in_executor(
-                    self.pool, self._consumer.poll, 0.1
-                )
-                if message is None:
+                messages = await self.loop.run_in_executor(self.pool, consume)
+                if not messages:
                     if (
                         not self.start_task.done()
                         and self._history_offsets_retrieved
                         and not self._history_offsets
                     ):
                         started_duration = (
-                            time.monotonic() - read_history_start_monotonic
+                            time.monotonic() - self.read_history_start_monotonic
                         )
                         self.log.info(f"Started in {started_duration:0.2f} seconds")
                         self.start_task.set_result(None)
                     continue
-                message_error = message.error()
-                if message_error is not None:
-                    sequential_read_errors += 1
-                    self.log.warning(
-                        f"Ignoring Kafka message with error {message_error!r}"
+                for message in messages:
+                    sequential_read_errors = self._process_message(
+                        message=message,
+                        initial_sequential_read_errors=sequential_read_errors,
+                        schema_resolution_errors=schema_resolution_errors,
+                        last_sample_timestamps=last_sample_timestamps,
                     )
-                    if sequential_read_errors > MAX_SEQUENTIAL_READ_ERRORS:
-                        raise RuntimeError("Too many sequential read errors; giving up")
-                    continue
-
-                kafka_name = message.topic()
-                if kafka_name is None:
-                    sequential_read_errors += 1
-                    self.log.warning("Ignoring Kafka message with null topic name")
-                    if sequential_read_errors > MAX_SEQUENTIAL_READ_ERRORS:
-                        raise RuntimeError("Too many sequential read errors; giving up")
-                    continue
-
-                sequential_read_errors = 0
-
-                read_topic = self._read_topics[kafka_name]
-
-                deserializer, context = self._deserializers_and_contexts[kafka_name]
-                try:
-                    data_dict = deserializer(message.value(), context)
-                except (SchemaResolutionError, SerializationError):
-                    if kafka_name not in schema_resolution_errors:
-                        self.log.exception(
-                            f"Failed to deserialize {kafka_name}. This usually means the topic was published "
-                            "with an incompatible version of the schema from this instance. You might need "
-                            "to check which component has the incompatible schema and update it. It could be "
-                            "that the publisher is incompatible or this instance reading the topic. "
-                            "If this is a single old historical data, it might be safe to ignore this "
-                            "error. Additional deserialization error messages of this topic will be "
-                            "suppressed and will show as shorter error messages every "
-                            f"{SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD} failed attempt. If this error persist "
-                            "you should investigate it further."
-                        )
-
-                        schema_resolution_errors[kafka_name] = 0
-                    elif (
-                        schema_resolution_errors[kafka_name]
-                        % SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD
-                        == 0
-                    ):
-                        self.log.error(
-                            f"Failed to deserialize {schema_resolution_errors[kafka_name]} samples of "
-                            f"{kafka_name}. Check schema compatibility!"
-                        )
-                    schema_resolution_errors[kafka_name] += 1
-                    continue
-
-                index = data_dict.get("salIndex", 0)
-                last_sample_timestamp = last_sample_timestamps[kafka_name].get(
-                    index, 0.0
-                )
-
-                if data_dict["private_sndStamp"] < last_sample_timestamp:
-                    delay = (
-                        last_sample_timestamp - data_dict["private_sndStamp"]
-                    ) * 1000
-                    self.log.warning(
-                        "Ignoring old topic sample. "
-                        f"Topic sent {delay:0.2f}ms before last sample of {kafka_name}:{index}."
-                    )
-                    continue
-                last_sample_timestamps[kafka_name][index] = data_dict[
-                    "private_sndStamp"
-                ]
-                data_dict["private_rcvStamp"] = utils.current_tai()
-                data = read_topic.DataType(**data_dict)
-
-                history_offset = self._history_offsets.get(kafka_name)
-                if history_offset is None:
-                    if self.index != 0 and self.index != data.salIndex:
-                        # Ignore data with mismatched index
-                        continue
-
-                    # This is the normal case once we've read all history
-                    # print(f"{self.index} queue new {kafka_name} data")
-                    read_topic._queue_data([data])
-                    continue
-
-                offset = message.offset()
-                if offset is None:
-                    raise RuntimeError(
-                        f"Cannot get offset of message for topic {kafka_name}"
-                    )
-
-                if self.indexed and (self.index == 0 or self.index == data.salIndex):
-                    self._history_index_data[kafka_name][data.salIndex] = data
-
-                if offset >= history_offset:
-
-                    self.log.debug(
-                        f"{self.group_id=}::Finished handling historical data for {kafka_name=}."
-                    )
-                    # We're done with history for this topic
-                    del self._history_offsets[kafka_name]
-
-                    if self.indexed:
-                        # Publish the most recent historical message seen
-                        # for each index (data with mis-matched index
-                        # was not put into index_data, so it's all valid).
-                        index_data = self._history_index_data.pop(kafka_name, None)
-                        if index_data is not None:
-                            for hist_data in index_data.values():
-                                read_topic._queue_data([hist_data])
-                    else:
-                        read_topic._queue_data([data])
-
-                    if not self._history_offsets:
-                        read_history_duration = (
-                            time.monotonic() - read_history_start_monotonic
-                        )
-                        self.log.info(
-                            f"Reading historic data took {read_history_duration:0.2f} seconds"
-                        )
-                        if not self.start_task.done():
-                            self.start_task.set_result(None)
 
         except asyncio.CancelledError:
             if not self.start_task.done():
@@ -1341,6 +1248,160 @@ class SalInfo:
             raise
         finally:
             self.domain.num_read_loops -= 1
+
+    def _process_message(
+        self,
+        message: Message,
+        initial_sequential_read_errors: int,
+        schema_resolution_errors: dict[str, int],
+        last_sample_timestamps: dict[str, dict[int, float]],
+    ) -> int:
+        """Process message.
+
+        Parameters
+        ----------
+        message :
+            Message to process.
+        initial_sequential_read_errors : `int`
+            Initial number of sequential read errors.
+        schema_resolution_errors : `dict`[`str`, `int`]
+            Dictionary with schema resolution errors for
+            each individual topic. This dictionary will be
+            edited by the method with any new errors.
+        last_sample_timestamps : `dict`[`str`, `float`]
+            Dictionary with last sample timestamps for each
+            topic. This dictionary will be edited by the
+            method with new timestamps.
+
+        Returns
+        -------
+        sequential_read_errors : `int`
+            Number of sequential read errors.
+
+        Raises
+        ------
+        RuntimeError
+            If number of sequential read errors surpasses maximum sequential
+            read errors.
+        """
+        sequential_read_errors = initial_sequential_read_errors
+
+        message_error = message.error()
+        if message_error is not None:
+            sequential_read_errors += 1
+            self.log.warning(f"Ignoring Kafka message with error {message_error!r}")
+            if sequential_read_errors > MAX_SEQUENTIAL_READ_ERRORS:
+                raise RuntimeError("Too many sequential read errors; giving up")
+            return sequential_read_errors
+
+        kafka_name = message.topic()
+        if kafka_name is None:
+            sequential_read_errors += 1
+            self.log.warning("Ignoring Kafka message with null topic name")
+            if sequential_read_errors > MAX_SEQUENTIAL_READ_ERRORS:
+                raise RuntimeError("Too many sequential read errors; giving up")
+            return sequential_read_errors
+
+        sequential_read_errors = 0
+
+        read_topic = self._read_topics[kafka_name]
+
+        deserializer, context = self._deserializers_and_contexts[kafka_name]
+        try:
+            data_dict = deserializer(message.value(), context)
+        except (SchemaResolutionError, SerializationError):
+            if kafka_name not in schema_resolution_errors:
+                self.log.exception(
+                    f"Failed to deserialize {kafka_name}."
+                    "This usually means the topic was published "
+                    "with an incompatible version of the schema from this instance. "
+                    "You might need to check which component has the incompatible schema and "
+                    "update it. "
+                    "It could be that the publisher is incompatible or this instance reading "
+                    "the topic. "
+                    "If this is a single old historical data, it might be safe to ignore this "
+                    "error. Additional deserialization error messages of this topic will be "
+                    "suppressed and will show as shorter error messages every "
+                    f"{SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD} failed attempt. "
+                    "If this error persist "
+                    "you should investigate it further."
+                )
+
+                schema_resolution_errors[kafka_name] = 0
+            elif (
+                schema_resolution_errors[kafka_name]
+                % SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD
+                == 0
+            ):
+                self.log.error(
+                    f"Failed to deserialize {schema_resolution_errors[kafka_name]} samples of "
+                    f"{kafka_name}. Check schema compatibility!"
+                )
+            schema_resolution_errors[kafka_name] += 1
+            return sequential_read_errors
+
+        index = data_dict.get("salIndex", 0)
+        last_sample_timestamp = last_sample_timestamps[kafka_name].get(index, 0.0)
+
+        if data_dict["private_sndStamp"] < last_sample_timestamp:
+            delay = (last_sample_timestamp - data_dict["private_sndStamp"]) * 1000
+            self.log.warning(
+                "Ignoring old topic sample. "
+                f"Topic sent {delay:0.2f}ms before last sample of {kafka_name}:{index}."
+            )
+            return sequential_read_errors
+        last_sample_timestamps[kafka_name][index] = data_dict["private_sndStamp"]
+        data_dict["private_rcvStamp"] = utils.current_tai()
+        data = read_topic.DataType(**data_dict)
+
+        history_offset = self._history_offsets.get(kafka_name)
+        if history_offset is None:
+            if self.index != 0 and self.index != data.salIndex:
+                # Ignore data with mismatched index
+                return sequential_read_errors
+
+            # This is the normal case once we've read all history
+            # print(f"{self.index} queue new {kafka_name} data")
+            read_topic._queue_data([data])
+            return sequential_read_errors
+
+        offset = message.offset()
+        if offset is None:
+            raise RuntimeError(f"Cannot get offset of message for topic {kafka_name}")
+
+        if self.indexed and (self.index == 0 or self.index == data.salIndex):
+            self._history_index_data[kafka_name][data.salIndex] = data
+
+        if offset >= history_offset:
+
+            self.log.debug(
+                f"{self.group_id=}::Finished handling historical data for {kafka_name=}."
+            )
+            # We're done with history for this topic
+            del self._history_offsets[kafka_name]
+
+            if self.indexed:
+                # Publish the most recent historical message seen
+                # for each index (data with mis-matched index
+                # was not put into index_data, so it's all valid).
+                index_data = self._history_index_data.pop(kafka_name, None)
+                if index_data is not None:
+                    for hist_data in index_data.values():
+                        read_topic._queue_data([hist_data])
+            else:
+                read_topic._queue_data([data])
+
+            if not self._history_offsets:
+                read_history_duration = (
+                    time.monotonic() - self.read_history_start_monotonic
+                )
+                self.log.info(
+                    f"Reading historic data took {read_history_duration:0.2f} seconds"
+                )
+                if not self.start_task.done():
+                    self.start_task.set_result(None)
+
+        return sequential_read_errors
 
     async def write_data(
         self, topic_info: TopicInfo, data_dict: dict[str, typing.Any]

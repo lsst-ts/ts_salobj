@@ -54,6 +54,20 @@ Examples:
   In particular, it does not output telemetry at regular intervals.
 * `TestScript` is an example of a trivial :ref:`Python SAL Script<lsst.ts.salobj_python_sal_scripts>`.
 
+.. _lsst.ts.salobj-fine-tune-read-loop:
+
+Fine Tunning the Read Loop
+--------------------------
+
+It is possible to fine tune the read loop by a combination of two arguments in the `Remote` class; `num_messages` and `consume_messages_timeout`.
+By default these parameters are set to work for the majority of use cases, e.g.; normal CSC and SAL Script operations.
+However, in some applications, it might be necessary to tune the read loop to improve handling of high throughput topics.
+
+If dealing with a high volume of data one might want to increase `num_messages` and reduce `consume_messages_timeout`.
+This allows the read loop to batch process a higher number of messages at each loop.
+However, when increasing the number of messages processed at every loop, this might increase the read latency as the loop only processes the messages if it received the number of messages requested or `consume_messages_timeout` has passed.
+When trying to optimize the read loop it is import to test a combination of values for these parameters.
+
 .. _lsst.ts.salobj-cleanup:
 
 Cleanup
