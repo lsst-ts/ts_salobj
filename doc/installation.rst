@@ -67,4 +67,4 @@ See :ref:`lsst.ts.salobj-configuration_environment_variables` for more informati
 Unit tests must set these two environment variables (rather than assuming the user has set them).
 `BaseCscTestCase` sets both environment variables for you; but if not using it, you must set them yourself.
 Each test should run with a different value of  ``LSST_TOPIC_SUBNAME``.
-To do this, we recommend calling `set_random_topic_subname` in ``setUp`` or similar.
+To do this, we recommend calling `set_test_topic_subname` in ``setUp`` or similar.

@@ -133,6 +133,6 @@ def set_test_topic_subname(randomize: bool = False) -> None:
 
 
 def set_random_lsst_dds_partition_prefix() -> None:
-    """A deprecated synonym for set_random_topic_subname."""
-    warnings.warn("Call set_random_topic_subname instead", DeprecationWarning)
+    """A deprecated synonym for set_test_topic_subname."""
+    warnings.warn("Call set_test_topic_subname instead", DeprecationWarning)
     set_test_topic_subname()
