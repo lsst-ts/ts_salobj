@@ -1,0 +1,2 @@
+Refactored `SalInfo` to use the `KafkaConsumer` class in a separate process to handle reading data.
+

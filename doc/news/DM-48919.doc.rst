@@ -1,1 +1,0 @@
-Replace ``set_random_topic_subname`` references with ``set_test_topic_subname``.
