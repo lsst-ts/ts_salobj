@@ -1089,9 +1089,16 @@ class SalInfo:
 
         try:
             while self.isopen:
-                data = await self.loop.run_in_executor(self.pool, self._data_queue.get)
+                if self._data_queue.empty():
+                    data = await self.loop.run_in_executor(
+                        self.pool, self._data_queue.get
+                    )
+                else:
+                    data = self._data_queue.get_nowait()
+
                 if data is None:
                     break
+
                 kafka_name, data_dict = data
                 if data_dict is None:
                     self.log.info("Started.")
