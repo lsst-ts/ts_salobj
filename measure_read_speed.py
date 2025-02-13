@@ -71,13 +71,15 @@ parser.add_argument(
 parser.add_argument(
     "-n", "--number", type=int, default=2000, help="Number of messages to read"
 )
-args = parser.parse_args()
-component_name, sal_index = salobj.name_to_name_index(args.component_name_index)
-asyncio.run(
-    measure_read_speed(
-        component_name=component_name,
-        sal_index=sal_index,
-        attr_name=args.topic_attr_name,
-        num_messages=args.number,
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    component_name, sal_index = salobj.name_to_name_index(args.component_name_index)
+    asyncio.run(
+        measure_read_speed(
+            component_name=component_name,
+            sal_index=sal_index,
+            attr_name=args.topic_attr_name,
+            num_messages=args.number,
+        )
     )
-)
