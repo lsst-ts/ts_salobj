@@ -1,0 +1,1 @@
+Add new `KafkaConsumer` class that provides an isolated way to run the consumer part of the middleware.
