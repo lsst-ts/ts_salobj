@@ -414,7 +414,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             # the aget should not interfere with next
             for i in range(num_commands):
-                print(f"test {i}")
+                print(f"test {i+1} of {num_commands}")
                 evt_data = await self.remote.evt_scalars.next(
                     flush=False, timeout=STD_TIMEOUT
                 )
@@ -426,7 +426,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
             # aget should return the last value seen,
             # no matter now many times it is called
-            evt_data_list = [await self.remote.evt_scalars.aget() for _ in range(5)]
+            evt_data_list = [
+                await self.remote.evt_scalars.aget(timeout=NO_DATA_TIMEOUT)
+                for _ in range(5)
+            ]
             for evt_data in evt_data_list:
                 assert evt_data is not None
                 self.csc.assert_scalars_equal(cmd_data_list[-1], evt_data)
@@ -1581,7 +1584,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(salinfo.start(), timeout=STD_TIMEOUT)
 
             # Write 99 messages and try to read them with a short timeout.
-            # This should timeout because the read loop has a timeout of 5s.
+            # This should timeout because the read loop has a longer timeout.
             for i in range(num_messages - 1):
                 await tel_writter.write()
 
