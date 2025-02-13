@@ -277,5 +277,5 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             # Check that starting a write-only SalInfo
             # does not start the read loop
             await salinfo.start()
-            assert salinfo._consumer is None
+            assert salinfo._kafka_consumer_process is None
             assert salinfo._read_loop_task.done()
