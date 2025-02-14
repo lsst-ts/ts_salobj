@@ -1107,23 +1107,35 @@ class SalInfo:
         try:
             while self.isopen:
                 if self._data_queue.empty():
-                    data = await self.loop.run_in_executor(
-                        self.pool, self._data_queue.get
-                    )
+                    queue_data = [
+                        await self.loop.run_in_executor(self.pool, self._data_queue.get)
+                    ]
                 else:
-                    data = self._data_queue.get_nowait()
+                    queue_data = []
+                    while not (self._data_queue.empty()):
+                        queue_data.append(self._data_queue.get_nowait())
 
-                if data is None:
-                    break
+                tmap: dict[topics.ReadTopic, type_hints.BaseTopic] = {}
 
-                kafka_name, data_dict = data
-                if data_dict is None:
-                    self.log.info("Started.")
-                    self.start_task.set_result(None)
-                    continue
-                read_topic = self._read_topics[kafka_name]
-                data = read_topic.DataType(**data_dict)
-                read_topic._queue_data([data])
+                for qdata in queue_data:
+                    if qdata is None:
+                        return
+
+                    kafka_name, data_dict = qdata
+                    if data_dict is None:
+                        self.log.info("Started.")
+                        self.start_task.set_result(None)
+                        continue
+                    read_topic = self._read_topics[kafka_name]
+                    data = read_topic.DataType(**data_dict)
+                    if read_topic in tmap:
+                        tmap[read_topic].append(data)
+                    else:
+                        tmap[read_topic] = [data]
+
+                for rt, dt in tmap.items():
+                    rt._queue_data(dt)
+
         except asyncio.CancelledError:
             if not self.start_task.done():
                 self.start_task.cancel()
