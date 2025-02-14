@@ -478,9 +478,6 @@ class KafkaConsumer:
                                 self.max_throttle,
                             ]
                         )
-                        self.log.info(
-                            f"{kafka_name}: {index=} throutput={n_read/dt} messages/s ({throttle=})."
-                        )
                         old_throttle = self.throttle_telemetry[kafka_name].get(
                             index, throttle
                         )
@@ -488,6 +485,9 @@ class KafkaConsumer:
                             throttle = old_throttle + self.max_throttle_change
                         elif throttle < old_throttle - self.max_throttle_change:
                             throttle = old_throttle - self.max_throttle_change
+                        self.log.info(
+                            f"{kafka_name}: {index=} throutput={n_read/dt} messages/s ({throttle=})."
+                        )
                         self.throttle_telemetry[kafka_name][index] = throttle
                         self.telemetry_n_reads[kafka_name][index] = 1
             self.throutput_measurement_n_reads = 0
