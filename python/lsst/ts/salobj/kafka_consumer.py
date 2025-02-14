@@ -27,6 +27,8 @@ import collections
 import dataclasses
 import json
 import logging
+import os
+import pathlib
 import signal
 import time
 import types
@@ -34,6 +36,7 @@ from concurrent.futures import Future
 from functools import partial
 from multiprocessing import Queue
 
+import yaml
 from confluent_kafka import OFFSET_BEGINNING, Consumer, Message, TopicPartition
 from confluent_kafka.schema_registry import Schema, SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
@@ -61,6 +64,76 @@ class KafkaConsumerInfo:
     avro_schema: Schema
 
 
+@dataclasses.dataclass
+class ThrottleSettings:
+    """Enable throttling?"""
+
+    enable_throttling: bool = True
+
+    """The throuput used to trigger throttling (messages/s)."""
+    throughput_measurement_warn_threshold: int = 100
+
+    """The queue size limit to trigger throttling."""
+    auto_throttle_qsize_limit: int = 5
+
+    """Maximum throttle. This is how many messages are discarded
+    for each message kept. A value of 10 means we only keep 1 message
+    every 10."""
+    max_throttle: int = 50
+
+    """Maximum change in throttle value at each throttling iteration.
+    This helps prevent throttling from spiking up and down constantly."""
+    max_throttle_change: int = 3
+
+    """How many times we pass the throttling loop without adjusting
+    it before we try to adjust it."""
+    no_throttle_pass_adjust: int = 5
+
+    """Topics to include in the throttling. All telemetry topics are
+    included by default, use this to include events. One should be
+    carefull when including events as they usually carry important
+    asynchronous information, but things like logMessage can be
+    throttled without issue."""
+    include_topics: list[str] = dataclasses.field(default_factory=list)
+
+    """Topics to exclude from throttling. Use this to exclude telemetry
+    from throttling. For example if it is something needed for critical
+    operations and no throttling should be done."""
+    exclude_topics: list[str] = dataclasses.field(default_factory=list)
+
+    """Apply a fixed throttle value for selected topics. If this is
+    defined, the topics listed here will be throttled from the start
+    with the specified value and throttle will not be adjusted."""
+    static_throttle: dict[str, dict[int, int]] = dataclasses.field(default_factory=dict)
+
+
+def get_throttle_settings() -> ThrottleSettings:
+    """Build ThrottleSettings from a configuration file if
+    the environment variable LSST_KAFKA_THROTTLE_SETTINGS is
+    defined and points to a valid configuration file or returns
+    the default settings.
+
+    Returns
+    -------
+    throttle_settings : `ThrottleSettings`
+        Throttle settings.
+    """
+
+    settings = dict()
+    if "LSST_KAFKA_THROTTLE_SETTINGS" in os.environ:
+        throttle_settings_path = pathlib.Path(
+            os.environ["LSST_KAFKA_THROTTLE_SETTINGS"]
+        )
+        assert throttle_settings_path.exists()
+        with open(throttle_settings_path) as fp:
+            settings = yaml.safe_load(fp)
+            assert (
+                settings is not None
+            ), f"Settings cannot be empty. Bad configuration for KafkaConsumer: {throttle_settings_path}."
+
+    return ThrottleSettings(**settings)
+
+
 class KafkaConsumer:
     def __init__(
         self,
@@ -82,9 +155,52 @@ class KafkaConsumer:
 
         self._partitions: dict[str, TopicPartition] = dict()
         self._read_topics_names_info = read_topic_names_info
+        self.throttle_settings = get_throttle_settings()
+
         self.deserializers_and_contexts: dict[
             str, tuple[AvroDeserializer, SerializationContext]
         ] = dict()
+
+        self.last_sample_timestamps: dict[str, dict[int, float]] = dict(
+            [(kafka_name, dict()) for kafka_name in self._read_topics_names_info]
+        )
+        self.telemetry_n_reads: dict[str, dict[int, int]] = dict(
+            [
+                (kafka_name, dict())
+                for kafka_name in self._read_topics_names_info
+                if "logevent" not in kafka_name
+                and "ackcmd" not in kafka_name
+                and "command" not in kafka_name
+                and kafka_name not in self.throttle_settings.exclude_topics
+                or kafka_name in self.throttle_settings.include_topics
+            ]
+        )
+        self.throughput_measurement_n_messages = max([self.num_messages, 1000])
+        self.throughput_measurement_n_reads = 0
+        self.throughput_measurement_start = utils.current_tai()
+
+        self.throttle_telemetry: dict[str, dict[int, int]] = dict(
+            [
+                (kafka_name, dict())
+                for kafka_name in self._read_topics_names_info
+                if "logevent" not in kafka_name
+                and "ackcmd" not in kafka_name
+                and "command" not in kafka_name
+                and kafka_name not in self.throttle_settings.exclude_topics
+                or kafka_name in self.throttle_settings.include_topics
+            ]
+        )
+        self.throttle_telemetry.update(self.throttle_settings.static_throttle)
+
+        # How many times we passed the throttle
+        # loop without changing throttling sets?
+        # This might be an indication that we need
+        # to reduce throttling.
+        self._no_throttle_passes = 0
+
+        self.schema_resolution_errors: dict[str, int] = dict()
+
+        self.support_auto_throttle = self._supports_auto_throttle()
 
         self._subscription_done: Future = Future()
         self.start_task: Future = Future()
@@ -209,9 +325,6 @@ class KafkaConsumer:
 
     def read_loop(self) -> None:
 
-        last_sample_timestamps: dict[str, dict[int, float]] = dict(
-            [(kafka_name, dict()) for kafka_name in self._read_topics_names_info]
-        )
         consume = partial(
             self._consumer.consume,
             num_messages=self.num_messages,
@@ -223,12 +336,12 @@ class KafkaConsumer:
         self.read_history_start_monotonic = time.monotonic()
 
         sequential_read_errors = 0
-        schema_resolution_errors: dict[str, int] = dict()
 
         self.log.info(
             "Starting read loop, "
             f"{self.group_id=} {self.num_messages=} {self.consume_messages_timeout=}s."
         )
+
         while self.isopen:
             messages = consume()
             if not messages:
@@ -248,9 +361,9 @@ class KafkaConsumer:
                 sequential_read_errors = self._process_message(
                     message=message,
                     initial_sequential_read_errors=sequential_read_errors,
-                    schema_resolution_errors=schema_resolution_errors,
-                    last_sample_timestamps=last_sample_timestamps,
                 )
+                self._handle_throttle()
+
         self.log.info("Read loop finished.")
         self._consumer.close()
 
@@ -258,8 +371,6 @@ class KafkaConsumer:
         self,
         message: Message,
         initial_sequential_read_errors: int,
-        schema_resolution_errors: dict[str, int],
-        last_sample_timestamps: dict[str, dict[int, float]],
     ) -> int:
         """Process message.
 
@@ -269,14 +380,6 @@ class KafkaConsumer:
             Message to process.
         initial_sequential_read_errors : `int`
             Initial number of sequential read errors.
-        schema_resolution_errors : `dict`[`str`, `int`]
-            Dictionary with schema resolution errors for
-            each individual topic. This dictionary will be
-            edited by the method with any new errors.
-        last_sample_timestamps : `dict`[`str`, `float`]
-            Dictionary with last sample timestamps for each
-            topic. This dictionary will be edited by the
-            method with new timestamps.
 
         Returns
         -------
@@ -313,7 +416,7 @@ class KafkaConsumer:
         try:
             data_dict = deserializer(message.value(), context)
         except (SchemaResolutionError, SerializationError):
-            if kafka_name not in schema_resolution_errors:
+            if kafka_name not in self.schema_resolution_errors:
                 self.log.exception(
                     f"Failed to deserialize {kafka_name}."
                     "This usually means the topic was published "
@@ -330,21 +433,21 @@ class KafkaConsumer:
                     "you should investigate it further."
                 )
 
-                schema_resolution_errors[kafka_name] = 0
+                self.schema_resolution_errors[kafka_name] = 0
             elif (
-                schema_resolution_errors[kafka_name]
+                self.schema_resolution_errors[kafka_name]
                 % SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD
                 == 0
             ):
                 self.log.error(
-                    f"Failed to deserialize {schema_resolution_errors[kafka_name]} samples of "
+                    f"Failed to deserialize {self.schema_resolution_errors[kafka_name]} samples of "
                     f"{kafka_name}. Check schema compatibility!"
                 )
-            schema_resolution_errors[kafka_name] += 1
+            self.schema_resolution_errors[kafka_name] += 1
             return sequential_read_errors
 
         index = data_dict.get("salIndex", 0)
-        last_sample_timestamp = last_sample_timestamps[kafka_name].get(index, 0.0)
+        last_sample_timestamp = self.last_sample_timestamps[kafka_name].get(index, 0.0)
 
         if data_dict["private_sndStamp"] < last_sample_timestamp:
             delay = (last_sample_timestamp - data_dict["private_sndStamp"]) * 1000
@@ -353,7 +456,22 @@ class KafkaConsumer:
                 f"Topic sent {delay:0.2f}ms before last sample of {kafka_name}:{index}."
             )
             return sequential_read_errors
-        last_sample_timestamps[kafka_name][index] = data_dict["private_sndStamp"]
+        self.last_sample_timestamps[kafka_name][index] = data_dict["private_sndStamp"]
+        throttle = False
+        if (
+            self.throttle_settings.enable_throttling
+            and kafka_name in self.telemetry_n_reads
+        ):
+            if index in self.telemetry_n_reads[kafka_name]:
+                self.telemetry_n_reads[kafka_name][index] += 1
+            else:
+                self.telemetry_n_reads[kafka_name][index] = 1
+            throttle = (
+                self.telemetry_n_reads[kafka_name][index]
+                % self.throttle_telemetry[kafka_name].get(index, 1)
+                > 0
+            )
+
         data_dict["private_rcvStamp"] = utils.current_tai()
 
         history_offset = self._history_offsets.get(kafka_name)
@@ -364,7 +482,8 @@ class KafkaConsumer:
 
             # This is the normal case once we've read all history
             # print(f"{self.index} queue new {kafka_name} data")
-            self.data_queue.put((kafka_name, data_dict))
+            if not throttle:
+                self.data_queue.put((kafka_name, data_dict))
             return sequential_read_errors
 
         offset = message.offset()
@@ -406,6 +525,106 @@ class KafkaConsumer:
 
         return sequential_read_errors
 
+    def _handle_throttle(self) -> None:
+        """Check if data needs to be throttled.
+
+        If running on a system that supports auto-throtle,
+        (e.g. we can measure queue size) will use the queue
+        size to determine throttle conditions. If not, will
+        throttle using some pre-defined parameters.
+        """
+        if not self.throttle_settings.enable_throttling:
+            return
+
+        self.throughput_measurement_n_reads += 1
+
+        if (
+            self.throughput_measurement_n_reads
+            >= self.throughput_measurement_n_messages
+        ):
+            now = utils.current_tai()
+            dt = now - self.throughput_measurement_start
+            throughput = self.throughput_measurement_n_reads / dt
+            qsize = (
+                self.data_queue.qsize()
+                if self.support_auto_throttle
+                else self.throttle_settings.auto_throttle_qsize_limit
+            )
+            should_throttle = (
+                qsize > self.throttle_settings.auto_throttle_qsize_limit
+                if self.support_auto_throttle
+                else True
+            )
+            if (
+                throughput
+                > self.throttle_settings.throughput_measurement_warn_threshold
+                and should_throttle
+            ):
+                self.log.debug(f"{throughput=} messages/s / {qsize=}.")
+                self.adjust_throttle(throughput=throughput, dt=dt, qsize=qsize)
+            elif (
+                self._no_throttle_passes
+                > self.throttle_settings.no_throttle_pass_adjust
+            ):
+                self.adjust_throttle(
+                    throughput=throughput,
+                    dt=dt,
+                    qsize=qsize if self.support_auto_throttle else 1,
+                )
+                self._no_throttle_passes = 0
+            else:
+                self._no_throttle_passes += 1
+                for kafka_name, index_n_reads in self.telemetry_n_reads.items():
+                    for index, n_read in index_n_reads.items():
+                        self.telemetry_n_reads[kafka_name][index] = 1
+            self.throughput_measurement_n_reads = 0
+            self.throughput_measurement_start = now
+
+    def adjust_throttle(self, throughput: float, dt: float, qsize: int) -> None:
+        """Adjut the topic throttle values."""
+        if not self.telemetry_n_reads:
+            # No telemetry read.
+            return
+
+        allocation = throughput / len(self.telemetry_n_reads)
+        for kafka_name, index_n_reads in self.telemetry_n_reads.items():
+            self.log.debug(f"{kafka_name=}; {index_n_reads=}")
+            for index, n_read in index_n_reads.items():
+                if (
+                    kafka_name in self.throttle_settings.static_throttle
+                    and index in self.throttle_settings.static_throttle[kafka_name]
+                ):
+                    continue
+                throttle = min(
+                    [
+                        max(
+                            [
+                                int(
+                                    n_read
+                                    / dt
+                                    * qsize
+                                    / allocation
+                                    / self.throttle_settings.auto_throttle_qsize_limit
+                                ),
+                                1,
+                            ]
+                        ),
+                        self.throttle_settings.max_throttle,
+                    ]
+                )
+                old_throttle = self.throttle_telemetry[kafka_name].get(index, throttle)
+                if throttle > old_throttle + self.throttle_settings.max_throttle_change:
+                    throttle = old_throttle + self.throttle_settings.max_throttle_change
+                elif (
+                    throttle < old_throttle - self.throttle_settings.max_throttle_change
+                ):
+                    throttle = old_throttle - self.throttle_settings.max_throttle_change
+                self.log.debug(
+                    f"{kafka_name}: {index=} throughput={n_read/dt} messages/s ({throttle=})."
+                )
+                self.throttle_telemetry[kafka_name][index] = throttle
+                self.telemetry_n_reads[kafka_name][index] = 1
+
     @classmethod
     def run(
         cls,
@@ -416,10 +635,11 @@ class KafkaConsumer:
         data_queue: Queue,
         num_messages: int = 1,
         consume_messages_timeout: float = 0.1,
+        log_level: int = logging.INFO,
     ) -> None:
 
         logging.basicConfig(
-            level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+            level=log_level, format="%(asctime)s - %(levelname)s - %(message)s"
         )
         kafka_consumer = cls(
             index=index,
@@ -438,3 +658,15 @@ class KafkaConsumer:
     ) -> None:
         self.log.info("Terminating...")
         self.isopen = False
+
+    def _supports_auto_throttle(self) -> bool:
+        """Check if system supports auto-throtle.
+
+        On MacOS there is no support for Queue.qsize()
+        so it is not possible to run auto throttle.
+        """
+        try:
+            self.data_queue.qsize()
+            return True
+        except NotImplementedError:
+            return False
