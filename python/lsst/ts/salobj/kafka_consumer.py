@@ -113,7 +113,7 @@ class KafkaConsumer:
             ]
         )
         self.auto_throttle_qsize_limit = 5
-        self.max_throttle = 20
+        self.max_throttle = 50
 
         self.schema_resolution_errors: dict[str, int] = dict()
 
@@ -480,7 +480,10 @@ class KafkaConsumer:
                         self.log.info(
                             f"{kafka_name}: {index=} throutput={n_read/dt} messages/s ({throttle=})."
                         )
-                        self.throttle_telemetry[kafka_name][index] = throttle
+                        old_throttle = self.throttle_telemetry[kafka_name].get(index, 0)
+                        self.throttle_telemetry[kafka_name][index] = int(
+                            (old_throttle + throttle) / 2.0
+                        )
                         self.telemetry_n_reads[kafka_name][index] = 1
             self.throutput_measurement_n_reads = 0
             self.throutput_measurement_start = now
