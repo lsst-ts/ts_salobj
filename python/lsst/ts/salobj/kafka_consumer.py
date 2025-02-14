@@ -480,7 +480,9 @@ class KafkaConsumer:
                         self.log.info(
                             f"{kafka_name}: {index=} throutput={n_read/dt} messages/s ({throttle=})."
                         )
-                        old_throttle = self.throttle_telemetry[kafka_name].get(index, 0)
+                        old_throttle = self.throttle_telemetry[kafka_name].get(
+                            index, throttle
+                        )
                         self.throttle_telemetry[kafka_name][index] = int(
                             (old_throttle + throttle) / 2.0
                         )
