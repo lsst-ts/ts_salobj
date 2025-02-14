@@ -113,6 +113,7 @@ class KafkaConsumer:
             ]
         )
         self.auto_throttle_qsize_limit = 5
+        self.max_throttle = 20
 
         self.schema_resolution_errors: dict[str, int] = dict()
 
@@ -466,11 +467,16 @@ class KafkaConsumer:
                 throutput > self.throutput_measurement_warn_threshold
                 and should_throttle
             ):
-                self.log.warning(f"{throutput=} messages/s.")
+                self.log.warning(f"{throutput=} messages/s / {qsize=}.")
                 allocation = throutput / len(self.telemetry_n_reads)
                 for kafka_name, index_n_reads in self.telemetry_n_reads.items():
                     for index, n_read in index_n_reads.items():
-                        throttle = max([int(n_read / dt * qsize / allocation), 1])
+                        throttle = min(
+                            [
+                                max([int(n_read / dt * qsize / allocation), 1]),
+                                self.max_throttle,
+                            ]
+                        )
                         self.log.info(
                             f"{kafka_name}: {index=} throutput={n_read/dt} messages/s ({throttle=})."
                         )
@@ -478,6 +484,9 @@ class KafkaConsumer:
                         self.telemetry_n_reads[kafka_name][index] = 1
             self.throutput_measurement_n_reads = 0
             self.throutput_measurement_start = now
+            for kafka_name, index_n_reads in self.telemetry_n_reads.items():
+                for index, n_read in index_n_reads.items():
+                    self.telemetry_n_reads[kafka_name][index] = 0
 
     @classmethod
     def run(
