@@ -21,6 +21,7 @@
 
 import itertools
 import logging
+import re
 import unittest
 
 import pytest
@@ -87,11 +88,21 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
                             continue
                         else:
                             nitems = qlc.warn_thresholds[end_index] - 1
-                        expected_log_level = (
-                            logging.WARNING if end_index < nthresh else logging.ERROR
+                        expected_log_level, expected_log_message = (
+                            (logging.DEBUG, "is filling")
+                            if end_index < nthresh
+                            else (logging.WARNING, "is full")
                         )
-                        with self.assertLogs(logger=qlc.log, level=expected_log_level):
+                        with self.assertLogs(
+                            logger=qlc.log, level=expected_log_level
+                        ) as cm:
                             did_log = qlc.check_nitems(nitems)
+                            assert any(
+                                [
+                                    re.search(expected_log_message, output)
+                                    for output in cm.output
+                                ]
+                            )
                         assert did_log
                         if end_index == nthresh:
                             expected_warn_threshold = None
@@ -145,11 +156,16 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
         nthresh = len(qlc.warn_thresholds)
         if warn_index > 0:
             nitems = qlc.warn_thresholds[warn_index - 1]
-            expected_log_level = (
-                logging.WARNING if warn_index < nthresh else logging.ERROR
+            expected_log_level, expected_log_message = (
+                (logging.DEBUG, "is filling")
+                if warn_index < nthresh
+                else (logging.WARNING, "is full")
             )
-            with self.assertLogs(logger=qlc.log, level=expected_log_level):
+            with self.assertLogs(logger=qlc.log, level=expected_log_level) as cm:
                 did_log = qlc.check_nitems(nitems)
+                assert any(
+                    [re.search(expected_log_message, output) for output in cm.output]
+                )
             assert did_log
 
             if warn_index == nthresh:
