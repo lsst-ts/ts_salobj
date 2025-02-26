@@ -158,14 +158,14 @@ class QueueCapacityChecker:
             if nitems >= self.queue_len:
                 self.warn_threshold = None
                 self.reset_threshold = self._reset_thresholds[-1]
-                self.log.error(
+                self.log.warning(
                     f"{self.descr} is full ({self.queue_len} elements); data may be lost"
                 )
             else:
                 index = bisect.bisect_right(self.warn_thresholds, nitems)
                 self.warn_threshold = self.warn_thresholds[index]
                 self.reset_threshold = self._reset_thresholds[index - 1]
-                self.log.warning(
+                self.log.debug(
                     f"{self.descr} is filling: {nitems} of {self.queue_len} elements"
                 )
             return True
