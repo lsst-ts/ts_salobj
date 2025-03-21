@@ -1,0 +1,1 @@
+Improves SalInfo._blocking_create_topics to list the existing topics and only attempt to create the ones that don't exist.
