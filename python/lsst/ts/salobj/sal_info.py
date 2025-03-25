@@ -804,25 +804,42 @@ class SalInfo:
         broker_client_configuration = self.get_broker_client_configuration()
 
         broker_client = AdminClient(broker_client_configuration)
-        create_result = broker_client.create_topics(new_topic_list)
-        for kafka_name, future in create_result.items():
-            exception = future.exception()
-            if exception is None:
-                # Topic created; that's good
-                continue
-            elif (
-                isinstance(exception.args[0], KafkaError)
-                and exception.args[0].code() == KafkaError.TOPIC_ALREADY_EXISTS
-            ):
-                continue
-            else:
-                self.log.exception(
-                    f"Failed to create topic {kafka_name}: {exception!r}"
-                )
-                raise exception
-        # The existence of the poll method is not documented, but failing
-        # to call it causes tests/test_speed.py test_write to fail.
-        broker_client.poll(1)
+
+        topics_list = broker_client.list_topics()
+
+        topics_to_create = [
+            topic for topic in new_topic_list if topic.topic not in topics_list.topics
+        ]
+
+        while topics_to_create:
+            create_result = broker_client.create_topics(new_topic_list)
+
+            for kafka_name, future in create_result.items():
+                exception = future.exception()
+                if exception is None:
+                    # Topic created; that's good
+                    continue
+                elif (
+                    isinstance(exception.args[0], KafkaError)
+                    and exception.args[0].code() == KafkaError.TOPIC_ALREADY_EXISTS
+                ):
+                    continue
+                else:
+                    self.log.exception(
+                        f"Failed to create topic {kafka_name}: {exception!r}"
+                    )
+                    raise exception
+            # The existence of the poll method is not documented, but failing
+            # to call it causes tests/test_speed.py test_write to fail.
+            broker_client.poll(1)
+
+            topics_list = broker_client.list_topics()
+
+            topics_to_create = [
+                topic
+                for topic in new_topic_list
+                if topic.topic not in topics_list.topics
+            ]
 
     def get_broker_client_configuration(self) -> dict[str, typing.Any]:
         """Get the broker client configuration.
