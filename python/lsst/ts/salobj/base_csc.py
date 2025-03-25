@@ -26,6 +26,7 @@ __all__ = ["BaseCsc"]
 import argparse
 import asyncio
 import enum
+import signal
 import sys
 import typing
 from collections.abc import Sequence
@@ -216,6 +217,10 @@ class BaseCsc(Controller):
         self._heartbeat_task = utils.make_done_future()
         # Interval between heartbeat events (sec)
         self.heartbeat_interval = HEARTBEAT_INTERVAL
+
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, self.signal_handler)
 
         # Postpone assigning command callbacks until `start` is done (but call
         # assert_do_methods_present to fail early if there is a problem).
@@ -516,6 +521,13 @@ class BaseCsc(Controller):
         """
         csc = cls.make_from_cmd_line(index=index, check_if_duplicate=True, **kwargs)
         await csc.done_task
+        await csc.close()
+
+    def signal_handler(self) -> None:
+        """Handle termination signals."""
+        self.log.info("signal_handler")
+        print("signal_handler")
+        self.done_task.set_result(None)
 
     @classmethod
     def add_arguments(cls, parser: argparse.ArgumentParser) -> None:
