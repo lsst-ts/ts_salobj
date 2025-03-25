@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
 import pathlib
 import typing
 import unittest
@@ -83,12 +82,27 @@ class MissingDoMethodCsc(salobj.BaseCsc):
         )
 
 
-class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
+class TestCscConstructorTestCase(
+    salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase
+):
     """Test the TestCsc constructor.
 
     Note: all of these tests must run async because the constructor
     requires an event loop.
     """
+
+    def basic_make_csc(
+        self,
+        initial_state: salobj.State | int,
+        config_dir: str | pathlib.Path | None,
+        simulation_mode: int,
+    ) -> salobj.BaseCsc:
+        return salobj.TestCsc(
+            self.next_index(),
+            initial_state=initial_state,
+            config_dir=config_dir,
+            simulation_mode=simulation_mode,
+        )
 
     def run(self, result: typing.Any) -> None:  # type: ignore
         """Override `run` to set a random LSST_TOPIC_SUBNAME
@@ -179,15 +193,14 @@ class TestCscConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             MissingDoMethodCsc(index=index, allow_missing_callbacks=False)
 
         index = next(index_gen)
-        csc = MissingDoMethodCsc(index=index, allow_missing_callbacks=True)
-        await asyncio.wait_for(csc.start_task, timeout=STD_TIMEOUT)
-        for command_topic in (
-            csc.cmd_setArrays,
-            csc.cmd_setScalars,
-            csc.cmd_wait,
-            csc.cmd_fault,
-        ):
-            assert command_topic.callback == csc._unsupported_cmd_callback
+        async with MissingDoMethodCsc(index=index, allow_missing_callbacks=True) as csc:
+            for command_topic in (
+                csc.cmd_setArrays,
+                csc.cmd_setScalars,
+                csc.cmd_wait,
+                csc.cmd_fault,
+            ):
+                assert command_topic.callback == csc._unsupported_cmd_callback
 
     async def test_valid_simulation_modes_none(self) -> None:
         index = next(index_gen)
