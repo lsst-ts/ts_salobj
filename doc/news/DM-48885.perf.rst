@@ -1,2 +1,0 @@
-Updated ``SalInfo`` to replace the use of ``Consumer.pool`` with ``Consumer.consume`` and allow users to specify the number of images to consume and the timeout.
-By default, ``num_messages=1`` and ``timeout=0.1``, which falls back to the original behavior with ``Consumer.pool``.

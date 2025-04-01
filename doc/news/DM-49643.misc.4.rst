@@ -1,1 +1,0 @@
-Adds a signal handler for BaseScript to capture SIGINT and SIGTEM and ensure that correct cleanup is executed after receiving a signal.
