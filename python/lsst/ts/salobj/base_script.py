@@ -27,6 +27,7 @@ import abc
 import argparse
 import asyncio
 import re
+import signal
 import sys
 import types
 import typing
@@ -118,6 +119,10 @@ class BaseScript(controller.Controller, abc.ABC):
         self.timestamps: dict[ScriptState, float] = dict()
 
         self._heartbeat_task: asyncio.Future = asyncio.Future()
+
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, self.signal_handler)
 
         super().__init__("Script", index, do_callbacks=True)
 
@@ -227,6 +232,7 @@ class BaseScript(controller.Controller, abc.ABC):
 
         try:
             await script.done_task
+            await script.close()
         except Exception as e:
             # The script failed in cleanup
             if script.state.state != ScriptState.FAILED:
@@ -239,6 +245,11 @@ class BaseScript(controller.Controller, abc.ABC):
 
         if script.state.state not in {ScriptState.DONE, ScriptState.STOPPED}:
             sys.exit(1)
+
+    def signal_handler(self) -> None:
+        """Handle termination signals."""
+        self.log.info("Handling termination signal.")
+        self.done_task.set_result(None)
 
     @property
     def checkpoints(self) -> typing.Any:

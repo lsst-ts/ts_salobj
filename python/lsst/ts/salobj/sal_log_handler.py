@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["SalLogHandler"]
 
 import asyncio
+import collections
 import concurrent.futures
 import logging
 import sys
@@ -34,6 +35,8 @@ if typing.TYPE_CHECKING:
     from .controller import Controller
 
 MixedFutureType = asyncio.Future | concurrent.futures.Future
+
+MAX_LEN = 10
 
 
 class SalLogHandler(logging.Handler):
@@ -52,6 +55,9 @@ class SalLogHandler(logging.Handler):
         self.loop = asyncio.get_running_loop()
         self.main_thread_id = threading.get_ident()
         self.futures: list[MixedFutureType] = list()
+        self._pre_start_records: collections.deque[logging.LogRecord] = (
+            collections.deque(maxlen=MAX_LEN)
+        )
         super().__init__()
 
     def close(self) -> None:
@@ -66,13 +72,14 @@ class SalLogHandler(logging.Handler):
             self.format(record)
             message = record.message
             if not self.controller.salinfo.running:
-                print(
-                    f"SalLogHandler.emit of level={record.levelno}, "
-                    f"message={message!r} not possible: ",
-                    f"{self.controller.salinfo} is not running",
-                    file=sys.stderr,
-                )
+                self._pre_start_records.append(record)
                 return
+            elif self._pre_start_records:
+                pre_start_records = [record for record in self._pre_start_records]
+                self._pre_start_records.clear()
+                for pre_start_record in pre_start_records:
+                    self.emit(record)
+
             if threading.get_ident() == self.main_thread_id:
                 new_future: MixedFutureType = asyncio.create_task(
                     self._async_emit(

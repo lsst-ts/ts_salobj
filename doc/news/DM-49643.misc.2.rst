@@ -1,0 +1,1 @@
+Updates check for duplicate heartbeat, when starting a CSC, to create its own Domain and Remote. This improves resource cleanup, preventing consumers from dangling around.

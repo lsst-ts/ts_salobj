@@ -26,6 +26,7 @@ __all__ = ["BaseCsc"]
 import argparse
 import asyncio
 import enum
+import signal
 import sys
 import typing
 from collections.abc import Sequence
@@ -38,8 +39,8 @@ from lsst.ts.xml.sal_enums import State
 from . import base
 from .controller import Controller
 from .csc_utils import make_state_transition_dict
-from .sal_info import SalInfo
-from .topics.remote_event import RemoteEvent
+from .domain import Domain
+from .remote import Remote
 
 HEARTBEAT_INTERVAL = 1  # seconds
 
@@ -217,6 +218,10 @@ class BaseCsc(Controller):
         # Interval between heartbeat events (sec)
         self.heartbeat_interval = HEARTBEAT_INTERVAL
 
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, self.signal_handler)
+
         # Postpone assigning command callbacks until `start` is done (but call
         # assert_do_methods_present to fail early if there is a problem).
         super().__init__(
@@ -271,16 +276,16 @@ class BaseCsc(Controller):
         # to the heartbeat topic for a short time.
         if num_messages < 1:
             raise ValueError(f"{num_messages=} must be positive")
-        async with SalInfo(
-            domain=self.salinfo.domain, name=self.salinfo.name, index=self.salinfo.index
-        ) as salinfo:
-            heartbeat_topic = RemoteEvent(
-                salinfo=salinfo, name="heartbeat", max_history=0
-            )
-            await salinfo.start()
+        async with Domain() as domain, Remote(
+            domain=domain,
+            name=self.salinfo.name,
+            index=self.salinfo.index,
+            readonly=True,
+            include=["heartbeat"],
+        ) as remote:
             try:
-                data = await heartbeat_topic.next(
-                    flush=False, timeout=self.heartbeat_interval * 3
+                data = await remote.evt_heartbeat.next(  # type: ignore[attr-defined]
+                    flush=True, timeout=self.heartbeat_interval * 3
                 )
             except asyncio.TimeoutError:
                 return 0
@@ -516,6 +521,13 @@ class BaseCsc(Controller):
         """
         csc = cls.make_from_cmd_line(index=index, check_if_duplicate=True, **kwargs)
         await csc.done_task
+        await csc.close()
+
+    def signal_handler(self) -> None:
+        """Handle termination signals."""
+        self.log.info("signal_handler")
+        print("signal_handler")
+        self.done_task.set_result(None)
 
     @classmethod
     def add_arguments(cls, parser: argparse.ArgumentParser) -> None:

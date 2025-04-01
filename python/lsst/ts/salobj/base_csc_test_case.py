@@ -31,6 +31,8 @@ import subprocess
 import typing
 from collections.abc import AsyncGenerator, Sequence
 
+from confluent_kafka.admin import AdminClient
+from confluent_kafka.schema_registry import SchemaRegistryClient
 from lsst.ts import utils
 from lsst.ts.xml import sal_enums, type_hints
 
@@ -38,6 +40,7 @@ from . import base_csc, testutils
 from .csc_utils import get_expected_summary_states
 from .domain import Domain
 from .remote import Remote
+from .sal_info import SalInfo
 from .topics.read_topic import ReadTopic
 
 # Standard timeout (sec)
@@ -70,6 +73,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
     # cls._randomize_topic_subname=True.
     _randomize_topic_subname = False
 
+    _broker_configuration: None | dict[str, typing.Any] = None
+    _schema_registry_url: None | str = None
+
     def run(self, result: typing.Any = None) -> None:  # type: ignore
         """Set a random LSST_TOPIC_SUBNAME
         and set LSST_SITE=test for every test.
@@ -84,6 +90,74 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         os.environ["LSST_SITE"] = "test"
         self.csc_start_time = utils.current_tai()
         super().run(result)  # type: ignore
+
+    async def asyncTearDown(self) -> None:
+        """Runs after each test is completed.
+
+        This will delete all the topics and schema from the
+        kafka cluster.
+        """
+        if self._broker_configuration is None:
+            async with Domain() as d, SalInfo(d, "Test", 0) as salinfo:
+                self._broker_configuration = salinfo.get_broker_client_configuration()
+                self._schema_registry_url = salinfo.schema_registry_url
+
+        def assert_topic_has_no_consumers(
+            admin_client: AdminClient, topic: str
+        ) -> None:
+            """Check if any consumer group has an assignment
+            that includes the given topic.
+            """
+            groups = admin_client.list_consumer_groups().result()
+            for group in groups.valid:
+                group_id = group.group_id
+                group_descs = admin_client.describe_consumer_groups([group_id])
+                for desc in group_descs.values():
+                    for member in desc.result().members:
+                        topics = [tp.topic for tp in member.assignment.topic_partitions]
+                        assert (
+                            topic not in topics
+                        ), f"Found consumer in group '{group_id}' assigned to topic '{topic}'."
+
+        if self._broker_configuration is not None:
+            topic_subname = os.environ["LSST_TOPIC_SUBNAME"]
+
+            admin_client = AdminClient(self._broker_configuration)
+            topics_list = admin_client.list_topics()
+            topics_to_delete = [
+                topic for topic in topics_list.topics if topic_subname in topic
+            ]
+
+            if topics_to_delete:
+                for topic in topics_to_delete:
+                    assert_topic_has_no_consumers(
+                        admin_client=admin_client, topic=topic
+                    )
+
+                delete_futures = admin_client.delete_topics(
+                    topics_to_delete, operation_timeout=60
+                )
+                for topic, future in delete_futures.items():
+                    try:
+                        future.result()
+                        print(f"{topic=} deleted.")
+                    except Exception as e:
+                        print(f"Failed to delete {topic=}: {e}")
+
+        if self._schema_registry_url is not None:
+            print(f"Deleting topic schema from for {topic_subname=}.")
+            schema_registry_client = SchemaRegistryClient(
+                dict(url=self._schema_registry_url)
+            )
+            subjects = schema_registry_client.get_subjects()
+            schemas_do_delete = [topic for topic in subjects if topic_subname in topic]
+            if schemas_do_delete:
+                for subject in schemas_do_delete:
+                    try:
+                        schema_registry_client.delete_subject(subject, permanent=True)
+                        print(f"{subject=} removed.")
+                    except Exception as e:
+                        print(f"Failed to delete {subject=}: {e}")
 
     @abc.abstractmethod
     def basic_make_csc(
@@ -186,6 +260,13 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 name=self.csc.salinfo.name,
                 index=self.csc.salinfo.index,
             )
+            if self._broker_configuration is None:
+                self._broker_configuration = (
+                    self.csc.salinfo.get_broker_client_configuration()
+                )
+            if self._schema_registry_url is None:
+                self._schema_registry_url = self.csc.salinfo.schema_registry_url
+
             items_to_close.append(self.remote)
             await asyncio.wait_for(self.remote.start_task, timeout=timeout)
 
@@ -511,6 +592,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 continue
             with self.subTest(command=command):  # type: ignore
                 cmd_attr = getattr(self.remote, f"cmd_{command}")
+                print(f"{command=}")
                 with testutils.assertRaisesAckError(
                     ack=sal_enums.SalRetCode.CMD_FAILED
                 ):
