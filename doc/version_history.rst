@@ -8,6 +8,37 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.0 (2025-04-01)
+===================
+
+Other Changes and Additions
+---------------------------
+
+- Adds a tearDown method to the BaseCscTescCase class to cleanup the broker after the test is executed. (`DM-49643 <https://rubinobs.atlassian.net//browse/DM-49643>`_)
+- Improves SalInfo._blocking_create_topics to list the existing topics and only attempt to create the ones that don't exist. (`DM-49643 <https://rubinobs.atlassian.net//browse/DM-49643>`_)
+- Adds a signal handler for BaseScript to capture SIGINT and SIGTEM and ensure that correct cleanup is executed after receiving a signal. (`DM-49643 <https://rubinobs.atlassian.net//browse/DM-49643>`_)
+- Make general unit tests improvements. Mostly around cleaning up resources after the unit tests are executed to ensure we are not leaving crud behind in the test kafka cluster. (`DM-49643 <https://rubinobs.atlassian.net//browse/DM-49643>`_)
+- Adds a signal handler for BaseCSC to capture SIGINT and SIGTEM and ensure that correct cleanup is executed after receiving a signal. (`DM-49643 <https://rubinobs.atlassian.net//browse/DM-49643>`_)
+- Updates check for duplicate heartbeat, when starting a CSC, to create its own Domain and Remote. This improves resource cleanup, preventing consumers from dangling around. (`DM-49643 <https://rubinobs.atlassian.net//browse/DM-49643>`_)
+- Updates SalLogHandler to store any message logged before the controller has started and emit them once it is. (`DM-49643 <https://rubinobs.atlassian.net//browse/DM-49643>`_)
+
+
+v8.1.0
+------
+
+Performance Enhancement
+-----------------------
+
+- Updated ``SalInfo`` to replace the use of ``Consumer.pool`` with ``Consumer.consume`` and allow users to specify the number of images to consume and the timeout.
+  By default, ``num_messages=1`` and ``timeout=0.1``, which falls back to the original behavior with ``Consumer.pool``. (`DM-48885 <https://rubinobs.atlassian.net//browse/DM-48885>`_)
+- Updated ``Remote`` to allow users to specify ``num_messages`` and ``consume_messages_timeout``, which is passed on to ``SalInfo`` and used to set how the read loop behaves. (`DM-48885 <https://rubinobs.atlassian.net//browse/DM-48885>`_)
+
+Documentation
+-------------
+
+- Replace ``set_random_topic_subname`` references with ``set_test_topic_subname``. (`DM-48919 <https://rubinobs.atlassian.net//browse/DM-48919>`_)
+
+
 v8.0.0
 ------
 
