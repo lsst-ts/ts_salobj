@@ -1026,6 +1026,9 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         running at the same time.
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
+            await self.assert_next_sample(
+                self.remote.evt_heartbeat, flush=True, timeout=STD_TIMEOUT
+            )
             assert self.csc.cmd_wait.has_callback
             assert self.csc.cmd_wait.allow_multiple_callbacks
 

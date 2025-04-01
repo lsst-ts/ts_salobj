@@ -1,0 +1,1 @@
+Updates SalLogHandler to store any message logged before the controller has started and emit them once it is.

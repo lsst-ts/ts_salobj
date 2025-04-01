@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
 import typing
 import unittest
 from collections.abc import Iterable
@@ -111,30 +110,32 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
                 # With allow_missing_callbacks=False (the default)
                 # missing do_{command} methods should raise TypeError
                 with pytest.raises(TypeError):
-                    ControllerWithDoMethods(incomplete_names)
+                    async with ControllerWithDoMethods(incomplete_names):
+                        pass
 
             # With allow_missing_callbacks=True missing do_{command} callbacks
             # should be allowed, and the associated command topic(s)
             # should have callback controller._unsupported_cmd_callback.
             # Note that command callbacks are not assigned until
             # the CSC is started.
-            controller = ControllerWithDoMethods(
+            async with ControllerWithDoMethods(
                 incomplete_names, allow_missing_callbacks=True
-            )
-            await asyncio.wait_for(controller.start_task, timeout=STD_TIMEOUT)
-            for name in command_names:
-                command_topic = getattr(controller, f"cmd_{name}")
-                if name == missing_name:
-                    assert (
-                        command_topic.callback == controller._unsupported_cmd_callback
-                    )
-                else:
-                    do_method = getattr(controller, f"do_{name}")
-                    assert command_topic.callback == do_method
+            ) as controller:
+                for name in command_names:
+                    command_topic = getattr(controller, f"cmd_{name}")
+                    if name == missing_name:
+                        assert (
+                            command_topic.callback
+                            == controller._unsupported_cmd_callback
+                        )
+                    else:
+                        do_method = getattr(controller, f"do_{name}")
+                        assert command_topic.callback == do_method
 
         extra_names = list(command_names) + ["extra_command"]
         with pytest.raises(TypeError):
-            ControllerWithDoMethods(extra_names)
+            async with ControllerWithDoMethods(extra_names):
+                pass
 
     async def test_write_only_true(self) -> None:
         index = next(index_gen)
