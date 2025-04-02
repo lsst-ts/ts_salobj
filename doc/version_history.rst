@@ -8,6 +8,15 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.1 (2025-04-01)
+===================
+
+Other Changes and Additions
+---------------------------
+
+- Updates conda recipe to replace xml_conda_version with xml_version. (`DM-49653 <https://rubinobs.atlassian.net//browse/DM-49653>`_)
+
+
 v8.2.0 (2025-04-01)
 ===================
 
