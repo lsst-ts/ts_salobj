@@ -42,6 +42,7 @@ requirements:
     - numpy
     - python {{ python }}
     - python-confluent-kafka >=2.0.2
+    - authlib
     - httpx
     - cachetools
     - pyyaml
