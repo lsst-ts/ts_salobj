@@ -1072,7 +1072,12 @@ class SalInfo:
             self._kafka_consumer_process is not None
             and self._kafka_consumer_process.is_alive()
         ):
+            self.log.info("Terminating kafka consumer process.")
             self._kafka_consumer_process.terminate()
+            self.log.info("Cleaning up data queue.")
+            while not (self._data_queue.empty()):
+                self._data_queue.get_nowait()
+            self.log.info("Waiting for process to finish.")
             self._kafka_consumer_process.join()
         self.pool.shutdown(wait=True, cancel_futures=True)
 
