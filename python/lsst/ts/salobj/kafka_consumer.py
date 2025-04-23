@@ -449,7 +449,10 @@ class KafkaConsumer:
         index = data_dict.get("salIndex", 0)
         last_sample_timestamp = self.last_sample_timestamps[kafka_name].get(index, 0.0)
 
-        if data_dict["private_sndStamp"] < last_sample_timestamp:
+        if (
+            data_dict["private_sndStamp"] < last_sample_timestamp
+            and self.start_task.done()
+        ):
             delay = (last_sample_timestamp - data_dict["private_sndStamp"]) * 1000
             self.log.warning(
                 "Ignoring old topic sample. "
