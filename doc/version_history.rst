@@ -8,6 +8,15 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.2 (2025-04-23)
+===================
+
+Bug Fixes
+---------
+
+- Added the authlib dependency. (`DM-50407 <https://rubinobs.atlassian.net//browse/DM-50407>`_)
+
+
 v8.2.1 (2025-04-01)
 ===================
 
