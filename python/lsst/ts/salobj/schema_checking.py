@@ -33,6 +33,8 @@ from confluent_kafka.schema_registry import (
 from lsst.ts.xml import subsystems
 from lsst.ts.xml.component_info import ComponentInfo
 
+MULTIPARTION_CSCS = ["MTM1M3", "MTMount", "MTVMS"]
+
 
 def msg(chk: bool) -> str:
     """Assemble short string for boolean.
@@ -48,6 +50,28 @@ def msg(chk: bool) -> str:
           Resulting string for state of check.
     """
     return "is" if chk else "is not"
+
+
+def print_new_topic_summary(info: list[tuple[str, bool]], message: str) -> None:
+    """Print summary information from a new topic list.
+
+    Parameters
+    ----------
+    info : list[(str, bool)]
+        Information needing to be printed.
+    message : str
+        Message to print before list or if list is empty.
+    """
+    if info:
+        print(message)
+        for t, e in info:
+            if e:
+                o = f"{t} (needs partition expansion)"
+            else:
+                o = t
+            print(o)
+    else:
+        print(f"No {message.lower()} found")
 
 
 def print_summary(info: list[str], message: str) -> None:
@@ -122,7 +146,11 @@ def checks(csc: str, subname: str, src: SchemaRegistryClient, verbose: bool) -> 
         except SchemaRegistryError:
             if verbose:
                 print(f"{topic} is new")
-            new_topics.append(topic)
+            needs_expansion = False
+            if csc in MULTIPARTION_CSCS:
+                if not ("logevent" in topic or "command" in topic or "ackcmd" in topic):
+                    needs_expansion = True
+            new_topics.append((topic, needs_expansion))
 
         check = src.test_compatibility(full_topic, schema_class)
         if verbose:
@@ -133,7 +161,7 @@ def checks(csc: str, subname: str, src: SchemaRegistryClient, verbose: bool) -> 
     if new_topics or current_topics or incompatible_schemas:
         print(csc)
         print()
-        print_summary(new_topics, "New topics")
+        print_new_topic_summary(new_topics, "New topics")
         print()
         print_summary(current_topics, "Renamed/Removed topics")
         print()
