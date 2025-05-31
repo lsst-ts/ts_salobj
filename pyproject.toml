@@ -20,6 +20,7 @@ where = [ "python" ]
 command_test_csc = "lsst.ts.salobj:command_test_csc"
 run_test_csc = "lsst.ts.salobj:run_test_csc"
 create_topics = "lsst.ts.salobj.create_topics:create_topics"
+schema_checking = "lsst.ts.salobj.schema_checking:schema_checking"
 
 [tool.setuptools_scm]
 write_to = "python/lsst/ts/salobj/version.py"
