@@ -154,10 +154,17 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             if schemas_do_delete:
                 for subject in schemas_do_delete:
                     try:
-                        schema_registry_client.delete_subject(subject, permanent=True)
-                        print(f"{subject=} removed.")
+                        schema_registry_client.delete_subject(subject)
+                        print(f"{subject=} preemptively removed.")
                     except Exception as e:
-                        print(f"Failed to delete {subject=}: {e}")
+                        print(f"Failed to preemptively delete {subject=}: {e}")
+
+                for subject in schemas_do_delete:
+                    try:
+                        schema_registry_client.delete_subject(subject, permanent=True)
+                        print(f"{subject=} permanently removed.")
+                    except Exception as e:
+                        print(f"Failed to permanently delete {subject=}: {e}")
 
     @abc.abstractmethod
     def basic_make_csc(
