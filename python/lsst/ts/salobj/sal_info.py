@@ -851,7 +851,6 @@ class SalInfo:
         """
         broker_client_configuration = {
             "bootstrap.servers": self.kafka_broker_addr,
-            "api.version.request": True,
         }
 
         if (
