@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["schema_checking"]
+__all__ = ["check_schema"]
 
 import argparse
 import json
@@ -191,7 +191,7 @@ def main(opts: argparse.Namespace) -> None:
         checks(component_name, topic_subname, schema_registry_client, opts.verbose)
 
 
-def schema_checking() -> None:
+def check_schema() -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
