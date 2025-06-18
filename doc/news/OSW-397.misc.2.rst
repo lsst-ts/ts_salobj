@@ -1,1 +1,0 @@
-Updated the ``BaseCscTestCase.asyncTearDown`` method to use the new ``DeleteTopics`` class to handle topic deletion.
