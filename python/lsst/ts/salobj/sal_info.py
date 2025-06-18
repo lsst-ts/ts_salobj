@@ -851,7 +851,6 @@ class SalInfo:
         """
         broker_client_configuration = {
             "bootstrap.servers": self.kafka_broker_addr,
-            "api.version.request": True,
         }
 
         if (
@@ -1198,6 +1197,12 @@ class SalInfo:
                 self.log.debug("Waiting for consumer group to be deleted.")
                 future.result(timeout=10)
                 self.log.debug("Consumer groups deleted.")
+            except KafkaException as kafka_exception:
+                kafka_error = kafka_exception.args[0]
+                if kafka_error.code() == KafkaError.GROUP_ID_NOT_FOUND:
+                    pass
+                else:
+                    self.log.info(f"Ignoring {kafka_error=}.")
             except Exception:
                 self.log.exception(
                     f"Error while waiting for consumer group {self.group_id} to be deleted."
