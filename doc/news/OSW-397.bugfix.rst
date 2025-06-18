@@ -1,1 +1,0 @@
-Updated schema deletion operation in ``BaseCscTestCase`` to mark schemas for deletion before permanently deleting them.

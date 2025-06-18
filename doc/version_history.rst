@@ -8,6 +8,30 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.3 (2025-06-18)
+===================
+
+New Features
+------------
+
+- Added schema checking script (`DM-50528 <https://rubinobs.atlassian.net//browse/DM-50528>`_)
+- Add new delete_topics submodule with utilities to delete topics and schema from the Kafka broker. (`OSW-397 <https://rubinobs.atlassian.net//browse/OSW-397>`_)
+
+
+Bug Fixes
+---------
+
+- Updated schema deletion operation in ``BaseCscTestCase`` to mark schemas for deletion before permanently deleting them. (`OSW-397 <https://rubinobs.atlassian.net//browse/OSW-397>`_)
+
+
+Other Changes and Additions
+---------------------------
+
+- Updated broker client configuration to remove deprecated request for api version. (`OSW-397 <https://rubinobs.atlassian.net//browse/OSW-397>`_)
+- Updated the ``BaseCscTestCase.asyncTearDown`` method to use the new ``DeleteTopics`` class to handle topic deletion. (`OSW-397 <https://rubinobs.atlassian.net//browse/OSW-397>`_)
+- Improved handling of exception when deleting consumer group in ``SalInfo``. (`OSW-397 <https://rubinobs.atlassian.net//browse/OSW-397>`_)
+
+
 v8.2.2 (2025-04-23)
 ===================
 

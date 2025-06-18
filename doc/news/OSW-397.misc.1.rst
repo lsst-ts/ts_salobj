@@ -1,1 +1,0 @@
-Improved handling of exception when deleting consumer group in ``SalInfo``.
