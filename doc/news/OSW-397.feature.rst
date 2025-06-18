@@ -1,0 +1,1 @@
+Add new delete_topics submodule with utilities to delete topics and schema from the Kafka broker.
