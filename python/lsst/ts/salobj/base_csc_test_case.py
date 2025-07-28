@@ -110,6 +110,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
 
         delete_topics.execute(delete_topics_args)
 
+        # Sleep some time to let the cluster have time to finish the deletion
+        await asyncio.sleep(5.0)
+
     @abc.abstractmethod
     def basic_make_csc(
         self,
