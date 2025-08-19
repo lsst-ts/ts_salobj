@@ -33,7 +33,7 @@ from confluent_kafka.schema_registry import (
 from lsst.ts.xml import subsystems
 from lsst.ts.xml.component_info import ComponentInfo
 
-MULTIPARTION_CSCS = ["MTM1M3", "MTMount", "MTVMS"]
+MULTIPARTION_CSCS = ["MTM1M3", "MTM2", "MTHexapod", "MTMount", "MTVMS"]
 
 
 def msg(chk: bool) -> str:
