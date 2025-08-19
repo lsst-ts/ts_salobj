@@ -8,6 +8,22 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.4 (2025-08-19)
+===================
+
+Bug Fixes
+---------
+
+- Sleep some time when deleting the topics in unit tests. (`OSW-783 <https://rubinobs.atlassian.net//browse/OSW-783>`_)
+
+
+Other Changes and Additions
+---------------------------
+
+- Update multipartition CSC list in check_schema.py (`OSW-800 <https://rubinobs.atlassian.net//browse/OSW-800>`_)
+- Add orjson to conda requirements (`OSW-800 <https://rubinobs.atlassian.net//browse/OSW-800>`_)
+
+
 v8.2.3 (2025-06-18)
 ===================
 
