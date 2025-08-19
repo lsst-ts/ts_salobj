@@ -1,0 +1,1 @@
+Add orjson to conda requirements

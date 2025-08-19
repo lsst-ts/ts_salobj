@@ -45,6 +45,7 @@ requirements:
     - authlib
     - httpx
     - cachetools
+    - orjson
     - pyyaml
     - setuptools
     - setuptools_scm
