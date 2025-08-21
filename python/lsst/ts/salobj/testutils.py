@@ -109,14 +109,17 @@ def set_test_topic_subname(randomize: bool = False) -> None:
     in order to avoid collisions with other tests. Note that pytest
     can run unit test methods in parallel.
 
-    By default (randomize=False), the topic subname value is generated using
-    the os.getpid(). Since parallel tests in pytest uses different processes,
+    By default, (randomize=False), the topic subname value is generated using
+    the os.getpid(). Since parallel tests in pytest use different processes,
     this avoids collisions with previous test runs and reduces the number of
     schema and topics creation.
 
-    If a more fine grained isolation mechanism is needed one can pass
+    If a more fine-grained isolation mechanism is needed one can pass
     randomize=True, which will generate a random unique topic subname using
     os.urandom.
+
+    In all cases, `=` and `-` in the topic subname can lead to unexpected
+    behavior, so those characters are removed from the string.
     """
     pid = os.getpid()
     length = (pid.bit_length() + 7) // 8
@@ -127,7 +130,10 @@ def set_test_topic_subname(randomize: bool = False) -> None:
     )
 
     topic_subname_suffix = (
-        base64.urlsafe_b64encode(root_value).decode().replace("=", "")
+        base64.urlsafe_b64encode(root_value)
+        .decode()
+        .replace("=", "")  # Not sure why this needs to be removed
+        .replace("-", "")  # Used as separator between subname and component
     )
     os.environ["LSST_TOPIC_SUBNAME"] = f"test_{topic_subname_suffix}"
 
