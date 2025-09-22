@@ -1,1 +1,0 @@
-Fix version handling for conda packaging.
