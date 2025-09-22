@@ -8,6 +8,22 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.5 (2025-09-22)
+===================
+
+Bug Fixes
+---------
+
+- Avoided use of '-' in topic subname suffix string. (`OSW-888 <https://rubinobs.atlassian.net//browse/OSW-888>`_)
+
+
+Other Changes and Additions
+---------------------------
+
+- Fix version handling for conda packaging. (`OSW-729 <https://rubinobs.atlassian.net//browse/OSW-729>`_)
+- Update image versions in docker-compose.yaml for Cycle 42. (`OSW-729 <https://rubinobs.atlassian.net//browse/OSW-729>`_)
+
+
 v8.2.4 (2025-08-19)
 ===================
 

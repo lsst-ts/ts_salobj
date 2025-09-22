@@ -1,1 +1,0 @@
-Update image versions in docker-compose.yaml for Cycle 42.
