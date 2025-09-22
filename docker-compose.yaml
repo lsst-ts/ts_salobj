@@ -10,7 +10,7 @@ networks:
 services:
 
   broker:
-    image: quay.io/strimzi/kafka:0.43.0-kafka-3.8.0
+    image: quay.io/strimzi/kafka:0.47.0-kafka-3.9.1
     hostname: broker
     container_name: broker
     command: [
@@ -36,7 +36,7 @@ services:
       LOG_DIR: "/tmp/logs"
 
   schema-registry:
-    image: confluentinc/cp-schema-registry:7.7.1
+    image: confluentinc/cp-schema-registry:8.0.0
     hostname: schema-registry
     container_name: schema-registry
     depends_on:
@@ -51,7 +51,7 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "broker:29092"
 
   kafdrop:
-    image: obsidiandynamics/kafdrop:4.1.0
+    image: obsidiandynamics/kafdrop:4.2.0
     profiles:
       - gui
     hostname: kafdrop
