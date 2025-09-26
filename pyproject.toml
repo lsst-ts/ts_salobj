@@ -24,7 +24,7 @@ check_schema = "lsst.ts.salobj.check_schema:check_schema"
 delete_topics = "lsst.ts.salobj.delete_topics:delete_topics"
 
 [tool.setuptools_scm]
-
+local_scheme="no-local-version"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
