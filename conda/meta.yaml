@@ -13,8 +13,7 @@ build:
 
 test:
   requires:
-    - ts-conda-build =0.4
-    - ts-utils
+    - ts-conda-build =0.5
     - ts-xml  {{ xml_version }}
   source_files:
       # .git is needed to test reading older git hashes of config files
