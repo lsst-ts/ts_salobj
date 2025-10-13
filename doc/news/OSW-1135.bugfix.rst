@@ -1,1 +1,0 @@
-Set local_scheme to 'no-local-version' to remove git hash from dev package version.
