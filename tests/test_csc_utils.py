@@ -165,4 +165,5 @@ class SetSummaryStateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
                         # starts with the correct state.
                         for expected_state in states[1:]:
                             await self.assert_next_summary_state(expected_state)
+                        assert self.csc.config is not None
                         assert self.csc.config.string0 == "default value for string0"

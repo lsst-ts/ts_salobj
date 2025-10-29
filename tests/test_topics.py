@@ -213,7 +213,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             cmd_callback_event = asyncio.Event()
 
             async def cmd_reader_callback(data: salobj.BaseMsgType) -> None:
-                nonlocal nread, cmd_callback_event
+                nonlocal nread
                 # Write final ackcmd, after tweaking data if appropriate.
                 ackcmdwriter.set(
                     private_seqNum=data.private_seqNum,
