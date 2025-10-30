@@ -810,14 +810,14 @@ class BaseCsc(Controller):
                         traceback=traceback,
                         force_output=True,
                     )
-                except Exception:
+                except BaseException:
                     self.log.exception(
                         f"Failed to output errorCode: code={code!r}; report={report!r}"
                     )
                 self.log.critical(f"Fault! errorCode={code}, errorReport={report!r}")
             try:
                 await self._report_summary_state()
-            except Exception:
+            except BaseException:
                 self.log.exception(
                     "_report_summary_state failed while going to FAULT; "
                     "some code may not have run."

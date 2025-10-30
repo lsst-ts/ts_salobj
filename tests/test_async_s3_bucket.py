@@ -92,11 +92,9 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
         downloaded_nbytes = []
 
         def upload_callback(nbytes: int) -> None:
-            nonlocal uploaded_nbytes
             uploaded_nbytes.append(nbytes)
 
         def download_callback(nbytes: int) -> None:
-            nonlocal downloaded_nbytes
             downloaded_nbytes.append(nbytes)
 
         await self.bucket.upload(
