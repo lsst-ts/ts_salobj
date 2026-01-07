@@ -1,1 +1,0 @@
-Made `fault` state handler more robust.

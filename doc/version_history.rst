@@ -8,6 +8,15 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.7 (2026-01-07)
+===================
+
+Bug Fixes
+---------
+
+- Made `fault` state handler more robust. (`OSW-1294 <https://rubinobs.atlassian.net//browse/OSW-1294>`_)
+
+
 v8.2.6 (2025-10-13)
 ===================
 
