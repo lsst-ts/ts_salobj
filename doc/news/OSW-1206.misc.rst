@@ -1,1 +1,0 @@
-Updated conda recipe to use ts-conda-build 0.5.

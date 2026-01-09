@@ -8,6 +8,36 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.7 (2026-01-07)
+===================
+
+Bug Fixes
+---------
+
+- Made `fault` state handler more robust. (`OSW-1294 <https://rubinobs.atlassian.net//browse/OSW-1294>`_)
+
+
+v8.2.6 (2025-10-13)
+===================
+
+Bug Fixes
+---------
+
+- Set local_scheme to 'no-local-version' to remove git hash from dev package version. (`OSW-1135 <https://rubinobs.atlassian.net//browse/OSW-1135>`_)
+
+
+Performance Enhancement
+-----------------------
+
+- Set conda build string. (`OSW-1207 <https://rubinobs.atlassian.net//browse/OSW-1207>`_)
+
+
+Other Changes and Additions
+---------------------------
+
+- Updated conda recipe to use ts-conda-build 0.5. (`OSW-1206 <https://rubinobs.atlassian.net//browse/OSW-1206>`_)
+
+
 v8.2.5 (2025-09-22)
 ===================
 
