@@ -92,6 +92,9 @@ SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD = 10
 # Number of _deserializers_and_contexts to wait for when sending Kafka data.
 DEFAULT_LSST_KAFKA_PRODUCER_WAIT_ACKS = "1"
 
+# Wait time [sec] for tasks to be done.
+TASK_DONE_WAIT_TIME = 0.5
+
 
 def get_random_string() -> str:
     """Get a random string."""
@@ -557,7 +560,7 @@ class SalInfo:
         try:
             await asyncio.wait_for(
                 self._read_loop_task,
-                timeout=0.5,
+                timeout=self.consume_messages_timeout + TASK_DONE_WAIT_TIME,
             )
         except Exception as e:
             print(f"Read loop failed: {e!r}")
@@ -566,7 +569,7 @@ class SalInfo:
         try:
             await asyncio.wait_for(
                 self._flush_loop_task,
-                timeout=0.5,
+                timeout=TASK_DONE_WAIT_TIME,
             )
         except Exception as e:
             print(f"Flush loop failed: {e!r}")
@@ -575,7 +578,7 @@ class SalInfo:
         try:
             await asyncio.wait_for(
                 self._run_kafka_task,
-                timeout=0.5,
+                timeout=TASK_DONE_WAIT_TIME,
             )
         except asyncio.TimeoutError:
             pass
@@ -679,6 +682,7 @@ class SalInfo:
         self._run_kafka_task = asyncio.create_task(self._run_kafka())
         await self.start_task
 
+        # Deliberately running this after the start task is done.
         self._flush_loop_task = asyncio.create_task(self.flush_loop())
 
     async def _run_kafka(self) -> None:
