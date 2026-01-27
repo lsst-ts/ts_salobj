@@ -34,7 +34,7 @@ requirements:
     - setuptools
     - setuptools_scm
   run:
-    - astropy >=5.2
+    - astropy >=7.2
     - boto3
     - fastavro
     - jsonschema
