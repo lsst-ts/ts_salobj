@@ -1,1 +1,0 @@
-Pinned astropy version to at least 7.2.

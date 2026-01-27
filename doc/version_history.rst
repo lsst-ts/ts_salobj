@@ -8,6 +8,15 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.8 (2026-01-27)
+===================
+
+Performance Enhancement
+-----------------------
+
+- Pinned astropy version to at least 7.2. (`OSW-1750 <https://rubinobs.atlassian.net//browse/OSW-1750>`_)
+
+
 v8.2.7 (2026-01-07)
 ===================
 
