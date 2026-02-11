@@ -7,7 +7,7 @@ name = "ts_salobj"
 description = "Object-oriented interface to LSST SAL communications middleware."
 license = { text = "GPL" }
 classifiers = [ "Programming Language :: Python :: 3" ]
-urls = { documentation = "https://ts-salobj.lsst.io", repository = "https://github.com/lsst-ts/ts_salobj" }
+urls = { documentation = "https://ts-salobj.lsst.io", source_code = "https://github.com/lsst-ts/ts_salobj" }
 dynamic = [ "version" ]
 
 [tool.setuptools.dynamic]

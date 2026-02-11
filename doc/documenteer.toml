@@ -1,0 +1,21 @@
+# This template contains enough information for documenteer to build
+
+[project]
+# The title of the index page.
+title = "ts_salobj"
+# Copyright information displayed on the footer of each page
+copyright = "2019-2026 Association of Universities for Research in Astronomy, Inc. (AURA)"
+
+[project.python]
+# pyproject.toml package name, fills out unseen metadata
+package = "ts_salobj"
+documentation_url_key = "documentation"
+github_url_key = "source_code"
+
+[sphinx]
+extensions = ["sphinx-jsonschema"]
+
+[sphinx.intersphinx.projects]
+ts-xml = "https://ts-xml.lsst.io"
+ts-utils = "https://ts-utils.lsst.io"
+python = "https://docs.python.org/3.13/"
