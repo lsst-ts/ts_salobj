@@ -52,6 +52,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         initial_state: salobj.State | int,
         config_dir: str | pathlib.Path | None,
         simulation_mode: int,
+        **kwargs: typing.Any,
     ) -> salobj.BaseCsc:
         return salobj.TestCsc(
             self.next_index(),
@@ -789,7 +790,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
     async def test_controller_command_callback_canceled(self) -> None:
         """Test exception raised by remote command when controller command
-        callback is cancelled (raises asyncio.CancelledError).
+        callback is canceled (raises asyncio.CancelledError).
         """
         async with self.make_csc(initial_state=salobj.State.ENABLED):
 
@@ -807,7 +808,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         result_contains: str | None = None,
     ) -> None:
         """Check the exception raised by a remote command when the controller
-        controller command raises an exception or returns a failed ackcmd.
+        command raises an exception or returns a failed ackcmd.
 
         Parameters
         ----------
@@ -1039,7 +1040,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
 
         Test that RemoteCommand.set and set_start both begin with a new sample
         for each call, rather than remembering anything from the previous
-        command. This is different than WriteTopic.set.
+        command. This is different from WriteTopic.set.
         """
         async with salobj.Domain() as domain, salobj.SalInfo(domain=domain, name="Test", index=1) as salinfo:
             cmdreader = salobj.topics.ControllerCommand(salinfo=salinfo, name="setScalars")
@@ -1118,7 +1119,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 topic.get_oldest()
             with pytest.raises(RuntimeError):
                 # Use a timeout of 0 because the exception
-                # should occur before the timeout is used
+                # should occur before the timeout is used,
                 # and we cannot afford to wait -- the read loop might start.
                 await topic.aget(timeout=0)
             with pytest.raises(RuntimeError):
@@ -1476,7 +1477,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(salinfo.start(), timeout=STD_TIMEOUT)
 
             # Write 99 messages and try to read them with a short timeout.
-            # This should timeout because the read loop has a timeout of 5s.
+            # This should time out because the read loop has a timeout of 5s.
             for i in range(num_messages - 1):
                 await tel_writter.write()
 
@@ -1487,7 +1488,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                 await tel_reader.next(flush=False, timeout=consume_messages_timeout)
 
             # Write num_messages messages and try to read them with a
-            # short timeout. This should not timeout because the read
+            # short timeout. This should not time out because the read
             # loop only waits for num_messages.
             for i in range(num_messages):
                 await tel_writter.write()

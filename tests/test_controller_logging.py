@@ -62,6 +62,7 @@ class ControllerLoggingTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncio
         initial_state: salobj.State | int,
         config_dir: str | pathlib.Path | None,
         simulation_mode: int,
+        **kwargs: typing.Any,
     ) -> salobj.BaseCsc:
         return FailedCallbackCsc(
             initial_state=initial_state,

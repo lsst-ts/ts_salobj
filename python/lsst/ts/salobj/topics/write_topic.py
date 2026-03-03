@@ -131,15 +131,10 @@ class WriteTopic(BaseTopic):
         # Record which field names are float, double or array of either,
         # to make it easy to compare float fields with nan equal.
         self._float_field_names = set()
-        for name, value in vars(self._data).items():
-            if isinstance(value, list):
-                # In our SAL schemas arrays are fixed length
-                # and must contain at least one element.
-                elt = value[0]
-            else:
-                elt = value
-            if isinstance(elt, float):
-                self._float_field_names.add(name)
+        for field in self.topic_info.fields:
+            field_info = self.topic_info.fields[field]
+            if field_info.sal_type in ["float", "double"]:
+                self._float_field_names.add(field)
 
         salinfo.add_writer(self)
 
@@ -261,9 +256,16 @@ class WriteTopic(BaseTopic):
                 except Exception as e:
                     raise TypeError(f"Cannot set {self.attr_name}.{field_name}={value!r}; wrong type.") from e
             data_dict[field_name] = value
+
+        # TODO OSW-1915 Remove backward compatibility with python data types.
         # Check the data by creating a DataType, because no checking is done
         # when directly setting attributes of a dataclass.
-        self.data = self.DataType(**data_dict)
+        if hasattr(self.topic_info, "convert_to_numpy_dict"):
+            numpy_data_dic = self.topic_info.convert_to_numpy_dict(data_dict)
+            self.data = self.DataType(**numpy_data_dic)
+        else:
+            self.data = self.DataType(**data_dict)
+
         return did_change
 
     async def set_write(self, *, force_output: bool | None = None, **kwargs: typing.Any) -> SetWriteResult:

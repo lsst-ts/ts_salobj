@@ -28,6 +28,7 @@ import atexit
 import base64
 import collections
 import enum
+import inspect
 import itertools
 import json
 import logging
@@ -361,7 +362,15 @@ class SalInfo:
         if self.index != 0 and not self.indexed:
             raise ValueError(f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component")
         if len(self.command_names) > 0:
-            self._ackcmd_type = self.component_info.topics["ack_ackcmd"].make_dataclass()
+            # TODO OSW-1915 Remove backward compatibility with python data
+            #  types.
+            # hasattr doesn't work so use inspect instead.
+            ack_topic_info = self.component_info.topics["ack_ackcmd"]
+            args = inspect.getfullargspec(ack_topic_info.make_dataclass).args
+            if "with_numpy_types" in args:
+                self._ackcmd_type = ack_topic_info.make_dataclass(with_numpy_types=True)
+            else:
+                self._ackcmd_type = ack_topic_info.make_dataclass()
 
         domain.add_salinfo(self)
 
@@ -1294,7 +1303,13 @@ class SalInfo:
             return sequential_read_errors
         last_sample_timestamps[kafka_name][index] = data_dict["private_sndStamp"]
         data_dict["private_rcvStamp"] = utils.current_tai()
-        data = read_topic.DataType(**data_dict)
+
+        # TODO OSW-1915 Remove backward compatibility with python data types.
+        if hasattr(read_topic.topic_info, "convert_to_numpy_dict"):
+            numpy_data_dic = read_topic.topic_info.convert_to_numpy_dict(data_dict)
+            data = read_topic.DataType(**numpy_data_dic)
+        else:
+            data = read_topic.DataType(**data_dict)
 
         history_offset = self._history_offsets.get(kafka_name)
         if history_offset is None:

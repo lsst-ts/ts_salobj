@@ -382,7 +382,7 @@ class Controller:
 
         if not self.isopen:
             # Closed or closing (we know this instance is fully constructed
-            # because we checked that start_task is exists).
+            # because we checked that start_task exists).
             # Wait for done_task to be finished,
             # ignoring any exception. If you want to know about the exception
             # you can examine done_task yourself.
@@ -433,7 +433,8 @@ class Controller:
         data : ``cmd_setLogLevel.DataType``
             Logging level.
         """
-        self.log.setLevel(data.level)  # type: ignore
+        # Explicitly cast to int so numpy int types are accepted.
+        self.log.setLevel(int(data.level))  # type: ignore
         await self.put_log_level()
 
     async def put_log_level(self) -> None:

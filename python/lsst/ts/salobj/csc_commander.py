@@ -36,6 +36,8 @@ import typing
 import warnings
 from collections.abc import AsyncGenerator, Callable, Sequence
 
+import numpy as np
+
 from lsst.ts.xml import sal_enums, type_hints
 
 from . import csc_utils, domain, remote
@@ -584,8 +586,12 @@ help  # print this help
             raise ValueError(f"Command {command_name} requires {len(kwargs)} arguments; got {len(args)}")
         for (name, default_value), str_value in zip(kwargs.items(), args):
             try:
+                # TODO OSW-1915 Remove backward compatibility with python
+                #  data types.
                 if isinstance(default_value, bool):
                     kwargs[name] = BOOL_DICT[str_value.lower()]
+                elif isinstance(default_value, np.bool):
+                    kwargs[name] = np.bool(BOOL_DICT[str_value.lower()])
                 else:
                     kwargs[name] = type(default_value)(str_value)
             except Exception:
