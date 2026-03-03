@@ -24,6 +24,7 @@ import pathlib
 import unittest
 
 import pytest
+
 from lsst.ts import salobj
 
 
@@ -36,16 +37,12 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
         schema = self.get_schema(csc_package_root=csc_package_root, sal_name="Test")
         assert isinstance(schema, dict)
 
-        schema2 = self.get_schema(
-            csc_package_root=csc_package_root, schema_subpath="schema/Test.yaml"
-        )
+        schema2 = self.get_schema(csc_package_root=csc_package_root, schema_subpath="schema/Test.yaml")
         assert schema == schema2
 
         with pytest.raises(AssertionError):
             # Invalid sal_name
-            self.get_schema(
-                csc_package_root=csc_package_root, sal_name="NoSuchSalComponent"
-            )
+            self.get_schema(csc_package_root=csc_package_root, sal_name="NoSuchSalComponent")
         with pytest.raises(AssertionError):
             # Invalid schema_subpath
             self.get_schema(
@@ -144,13 +141,9 @@ class ConfigTestCase(salobj.BaseConfigTestCase, unittest.TestCase):
         configs_root = pathlib.Path(__file__).parent / "data" / "configs"
 
         for config_dir in configs_root.glob("good_*"):
-            self.check_config_files(
-                config_dir=config_dir, schema=self.schema, exclude_glob="bad_*"
-            )
+            self.check_config_files(config_dir=config_dir, schema=self.schema, exclude_glob="bad_*")
 
         for config_dir in configs_root.glob("bad_*"):
             with self.subTest(config_dir=str(config_dir)):
                 with pytest.raises(AssertionError):
-                    self.check_config_files(
-                        config_dir=config_dir, schema=self.schema, exclude_glob="bad_*"
-                    )
+                    self.check_config_files(config_dir=config_dir, schema=self.schema, exclude_glob="bad_*")

@@ -29,6 +29,7 @@ import typing
 from collections.abc import Generator
 
 import numpy as np
+
 from lsst.ts import utils
 from lsst.ts.xml import type_hints
 
@@ -237,9 +238,7 @@ class WriteTopic(BaseTopic):
         data_dict = vars(self.data)
         unknown_fields = kwargs.keys() - data_dict.keys()
         if unknown_fields:
-            raise AttributeError(
-                f"{self.attr_name} has no fields {sorted(unknown_fields)}"
-            )
+            raise AttributeError(f"{self.attr_name} has no fields {sorted(unknown_fields)}")
 
         for field_name, value in kwargs.items():
             if value is None:
@@ -260,18 +259,14 @@ class WriteTopic(BaseTopic):
                         equal_nan=is_float,  # type: ignore
                     )
                 except Exception as e:
-                    raise TypeError(
-                        f"Cannot set {self.attr_name}.{field_name}={value!r}; wrong type."
-                    ) from e
+                    raise TypeError(f"Cannot set {self.attr_name}.{field_name}={value!r}; wrong type.") from e
             data_dict[field_name] = value
         # Check the data by creating a DataType, because no checking is done
         # when directly setting attributes of a dataclass.
         self.data = self.DataType(**data_dict)
         return did_change
 
-    async def set_write(
-        self, *, force_output: bool | None = None, **kwargs: typing.Any
-    ) -> SetWriteResult:
+    async def set_write(self, *, force_output: bool | None = None, **kwargs: typing.Any) -> SetWriteResult:
         """Set zero or more fields of ``self.data`` and write if any field
         changed or if output forced.
 
@@ -304,9 +299,7 @@ class WriteTopic(BaseTopic):
         if did_change:
             do_output = True
         else:
-            do_output = (
-                self.default_force_output if force_output is None else force_output
-            )
+            do_output = self.default_force_output if force_output is None else force_output
         if do_output:
             data = await self.write()
         else:

@@ -67,9 +67,7 @@ class BaseTopic(abc.ABC):
             self._type = self.topic_info.make_dataclass()
 
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to create topic {salinfo.name}.{attr_name}"
-            ) from e
+            raise RuntimeError(f"Failed to create topic {salinfo.name}.{attr_name}") from e
 
     @property
     def attr_name(self) -> str:

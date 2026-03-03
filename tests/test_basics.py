@@ -26,14 +26,13 @@ import socket
 import unittest
 
 import pytest
+
 from lsst.ts import salobj, utils
 
 index_gen = utils.index_generator()
 
 
-class TestBaseCscTestCaseIsolation(
-    salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase
-):
+class TestBaseCscTestCaseIsolation(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self,
         initial_state: salobj.State | int,
@@ -67,9 +66,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_assert_raises_ack_error(self) -> None:
         """Test the assertRaisesAckError function."""
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain, "Test", index=index
-        ) as salinfo:
+        async with salobj.Domain() as domain, salobj.SalInfo(domain, "Test", index=index) as salinfo:
             private_seqNum = 5
             ack = 23
             error = -6
@@ -94,9 +91,7 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             ):
                 with pytest.raises(ExceptionClass):
                     with salobj.assertRaisesAckError():
-                        raise ExceptionClass(
-                            "assertRaisesAckError should ignore other exception types"
-                        )
+                        raise ExceptionClass("assertRaisesAckError should ignore other exception types")
 
             with pytest.raises(AssertionError):
                 with salobj.assertRaisesAckError(ack=5):
@@ -123,27 +118,19 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
             with salobj.assertRaisesAckError(ack=1, error=2, result_contains=result):
                 raise salobj.AckError(
                     "match ack, error and full result",
-                    ackcmd=salinfo.make_ackcmd(
-                        private_seqNum=4, ack=1, error=2, result=result
-                    ),
+                    ackcmd=salinfo.make_ackcmd(private_seqNum=4, ack=1, error=2, result=result),
                 )
             # test result_contains with a substring of the result string
-            with salobj.assertRaisesAckError(
-                ack=1, error=2, result_contains=result[2:-2]
-            ):
+            with salobj.assertRaisesAckError(ack=1, error=2, result_contains=result[2:-2]):
                 raise salobj.AckError(
                     "match ack, error and a substring of result",
-                    ackcmd=salinfo.make_ackcmd(
-                        private_seqNum=4, ack=1, error=2, result=result
-                    ),
+                    ackcmd=salinfo.make_ackcmd(private_seqNum=4, ack=1, error=2, result=result),
                 )
 
     async def test_ack_error_repr(self) -> None:
         """Test AckError.__str__ and AckError.__repr__"""
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain, "Test", index=index
-        ) as salinfo:
+        async with salobj.Domain() as domain, salobj.SalInfo(domain, "Test", index=index) as salinfo:
             msg = "a message"
             private_seqNum = 5
             ack = 23

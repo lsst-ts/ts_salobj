@@ -23,6 +23,7 @@ import copy
 import unittest
 
 import pytest
+
 from lsst.ts import salobj
 
 
@@ -62,21 +63,15 @@ class HierarchicalTestCase(unittest.IsolatedAsyncioTestCase):
 
         # Overriding a dict with itself should produce no changes
         dict1copy = copy.deepcopy(dict1)
-        salobj.hierarchical_update(
-            main=dict1copy, override=dict1, main_name="main", override_name="override"
-        )
+        salobj.hierarchical_update(main=dict1copy, override=dict1, main_name="main", override_name="override")
         assert dict1copy == dict1
 
         dict2copy = copy.deepcopy(dict2)
-        salobj.hierarchical_update(
-            main=dict2copy, override=dict2, main_name="main", override_name="override"
-        )
+        salobj.hierarchical_update(main=dict2copy, override=dict2, main_name="main", override_name="override")
         assert dict2copy == dict2
 
         dict1copy = copy.deepcopy(dict1)
-        salobj.hierarchical_update(
-            main=dict1copy, override=dict2, main_name="dict1", override_name="dict2"
-        )
+        salobj.hierarchical_update(main=dict1copy, override=dict2, main_name="dict1", override_name="dict2")
         assert dict1copy == dict(
             key1="dict2 value1",
             key2="dict2 value2",

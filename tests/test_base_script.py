@@ -31,6 +31,7 @@ from collections.abc import Iterable
 
 import pytest
 import yaml
+
 from lsst.ts import salobj, utils
 from lsst.ts.xml.enums.Script import ScriptState
 from lsst.ts.xml.type_hints import BaseMsgType
@@ -378,10 +379,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(script.done_task, timeout=STD_TIMEOUT)
             assert script.state.lastCheckpoint == end_checkpoint
             assert script.state.numCheckpoints == 2
-            duration = (
-                script.timestamps[ScriptState.ENDING]
-                - script.timestamps[ScriptState.RUNNING]
-            )
+            duration = script.timestamps[ScriptState.ENDING] - script.timestamps[ScriptState.RUNNING]
             desired_duration = wait_time
             print(f"test_pause duration={duration:0.2f}")
             assert abs(duration - desired_duration) < 0.2
@@ -405,10 +403,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             assert script.state.lastCheckpoint == end_checkpoint
             assert script.state.numCheckpoints == 2
             assert script.state.state == ScriptState.STOPPED
-            duration = (
-                script.timestamps[ScriptState.STOPPING]
-                - script.timestamps[ScriptState.RUNNING]
-            )
+            duration = script.timestamps[ScriptState.STOPPING] - script.timestamps[ScriptState.RUNNING]
             # waited and then stopped at the "end" checkpoint
             desired_duration = wait_time
             print(f"test_stop_at_checkpoint duration={duration:0.2f}")
@@ -438,10 +433,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             assert script.state.lastCheckpoint == start_checkpoint
             assert script.state.numCheckpoints == 1
             assert script.state.state == ScriptState.STOPPED
-            duration = (
-                script.timestamps[ScriptState.STOPPING]
-                - script.timestamps[ScriptState.RUNNING]
-            )
+            duration = script.timestamps[ScriptState.STOPPING] - script.timestamps[ScriptState.RUNNING]
             # the script ran quickly because we stopped the script
             # just as soon as it paused at the "start" checkpoint
             desired_duration = 0
@@ -468,10 +460,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             assert script.state.lastCheckpoint == start_checkpoint
             assert script.state.numCheckpoints == 1
             assert script.state.state == ScriptState.STOPPED
-            duration = (
-                script.timestamps[ScriptState.STOPPING]
-                - script.timestamps[ScriptState.RUNNING]
-            )
+            duration = script.timestamps[ScriptState.STOPPING] - script.timestamps[ScriptState.RUNNING]
             # we waited `pause_time` seconds after the "start" checkpoint
             desired_duration = pause_time
             print(f"test_stop_while_running duration={duration:0.2f}")
@@ -507,10 +496,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 assert script.state.lastCheckpoint == "end"
                 assert script.state.numCheckpoints == 2
                 end_run_state = ScriptState.ENDING
-            duration = (
-                script.timestamps[end_run_state]
-                - script.timestamps[ScriptState.RUNNING]
-            )
+            duration = script.timestamps[end_run_state] - script.timestamps[ScriptState.RUNNING]
             # if fail_run then failed before waiting,
             # otherwise failed after
             desired_duration = 0 if fail_run else wait_time
@@ -542,9 +528,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
                 # use remotes that read history here, to check that
                 # script.start_task waits for the start_task in each remote.
                 for rind in remote_indices:
-                    remotes.append(
-                        salobj.Remote(domain=self.domain, name="Test", index=rind)
-                    )
+                    remotes.append(salobj.Remote(domain=self.domain, name="Test", index=rind))
                 self.remotes = remotes
 
         remote_indices = [5, 7]
@@ -576,57 +560,39 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
 
                     remote.evt_logMessage.callback = logcallback
 
-                    process = await asyncio.create_subprocess_exec(
-                        str(script_path), str(index)
-                    )
+                    process = await asyncio.create_subprocess_exec(str(script_path), str(index))
                     try:
                         assert process.returncode is None
 
-                        descr = await remote.evt_description.next(
-                            flush=False, timeout=STD_TIMEOUT
-                        )
+                        descr = await remote.evt_description.next(flush=False, timeout=STD_TIMEOUT)
                         assert descr.classname == "TestScript"
                         assert descr.description == "test script"
                         assert "test script that waits" in descr.help
                         assert descr.remotes == ""
 
-                        state = await remote.evt_state.next(
-                            flush=False, timeout=STD_TIMEOUT
-                        )
+                        state = await remote.evt_state.next(flush=False, timeout=STD_TIMEOUT)
                         assert state.state == ScriptState.UNCONFIGURED
                         assert state.groupId == ""
 
-                        logLevel_data = await remote.evt_logLevel.next(
-                            flush=False, timeout=STD_TIMEOUT
-                        )
+                        logLevel_data = await remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
                         assert logLevel_data.level == logging.INFO
 
                         wait_time = 0.1
                         config = f"wait_time: {wait_time}"
                         if fail:
                             config = config + f"\n{fail}: True"
-                        await remote.cmd_configure.set_start(
-                            config=config, timeout=STD_TIMEOUT
-                        )
-                        state = await remote.evt_state.next(
-                            flush=False, timeout=STD_TIMEOUT
-                        )
+                        await remote.cmd_configure.set_start(config=config, timeout=STD_TIMEOUT)
+                        state = await remote.evt_state.next(flush=False, timeout=STD_TIMEOUT)
                         assert state.state == ScriptState.CONFIGURED
                         assert state.groupId == ""
 
-                        metadata = await remote.evt_metadata.next(
-                            flush=False, timeout=STD_TIMEOUT
-                        )
+                        metadata = await remote.evt_metadata.next(flush=False, timeout=STD_TIMEOUT)
                         assert metadata.duration == wait_time
                         assert metadata.totalCheckpoints == 2
 
                         group_id = "a non-blank group ID"
-                        await remote.cmd_setGroupId.set_start(
-                            groupId=group_id, timeout=STD_TIMEOUT
-                        )
-                        state = await remote.evt_state.next(
-                            flush=False, timeout=STD_TIMEOUT
-                        )
+                        await remote.cmd_setGroupId.set_start(groupId=group_id, timeout=STD_TIMEOUT)
+                        state = await remote.evt_state.next(flush=False, timeout=STD_TIMEOUT)
                         assert state.groupId == group_id
 
                         await remote.cmd_run.start(timeout=STD_TIMEOUT)
@@ -665,9 +631,7 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
             stderr=subprocess.PIPE,
         )
         try:
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=STD_TIMEOUT
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=STD_TIMEOUT)
             schema = yaml.safe_load(stdout)
             assert schema == salobj.TestScript.get_schema()
             await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
@@ -675,6 +639,4 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         finally:
             if process.returncode is None:
                 process.terminate()
-                warnings.warn(
-                    "Killed a process that was not properly terminated", RuntimeWarning
-                )
+                warnings.warn("Killed a process that was not properly terminated", RuntimeWarning)

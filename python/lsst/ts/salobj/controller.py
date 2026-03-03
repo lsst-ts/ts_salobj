@@ -244,9 +244,7 @@ class Controller:
 
         domain = Domain()
         try:
-            self.salinfo = SalInfo(
-                domain=domain, name=name, index=index, write_only=write_only
-            )
+            self.salinfo = SalInfo(domain=domain, name=name, index=index, write_only=write_only)
             new_identity = self.salinfo.name_index
             self.salinfo.identity = new_identity
             domain.default_identity = new_identity
@@ -332,9 +330,7 @@ class Controller:
             try:
                 self._assign_cmd_callbacks()
             except Exception:
-                self.log.exception(
-                    "Failed in start on _assign_cmd_callbacks; quitting."
-                )
+                self.log.exception("Failed in start on _assign_cmd_callbacks; quitting.")
                 await self.close()
                 return
 
@@ -351,9 +347,7 @@ class Controller:
     def domain(self) -> Domain:
         return self.salinfo.domain
 
-    async def close(
-        self, exception: Exception | None = None, cancel_start: bool = True
-    ) -> None:
+    async def close(self, exception: Exception | None = None, cancel_start: bool = True) -> None:
         """Shut down, clean up resources and set done_task done.
 
         May be called multiple times. The first call closes the Controller;
@@ -475,19 +469,13 @@ class Controller:
             if not allow_missing_callbacks:
                 unsupported_commands = set(command_names) - set(supported_command_names)
                 if unsupported_commands:
-                    needed_do_str = ", ".join(
-                        f"do_{name}" for name in sorted(unsupported_commands)
-                    )
+                    needed_do_str = ", ".join(f"do_{name}" for name in sorted(unsupported_commands))
                     err_msgs.append(f"must add {needed_do_str} methods")
             extra_commands = sorted(
-                set(supported_command_names)
-                - set(command_names)
-                - set(valid_extra_commands)
+                set(supported_command_names) - set(command_names) - set(valid_extra_commands)
             )
             if extra_commands:
-                extra_do_str = ", ".join(
-                    f"do_{name}" for name in sorted(extra_commands)
-                )
+                extra_do_str = ", ".join(f"do_{name}" for name in sorted(extra_commands))
                 err_msgs.append(f"must remove {extra_do_str} methods")
             if not err_msgs:
                 return

@@ -26,6 +26,7 @@ import os
 import unittest
 
 import pytest
+
 from lsst.ts import salobj, utils
 
 # Long enough to perform any reasonable operation
@@ -52,9 +53,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                     salobj.SalInfo(domain=domain, name="Test", index=invalid_index)
 
             index = next(index_gen)
-            async with salobj.SalInfo(
-                domain=domain, name="Test", index=index
-            ) as salinfo:
+            async with salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo:
                 assert salinfo.name == "Test"
                 assert salinfo.index == index
                 assert not salinfo.start_task.done()
@@ -92,9 +91,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 ONE = 1
                 TWO = 2
 
-            async with salobj.SalInfo(
-                domain=domain, name="Script", index=SalIndex.ONE
-            ) as salinfo:
+            async with salobj.SalInfo(domain=domain, name="Script", index=SalIndex.ONE) as salinfo:
                 assert isinstance(salinfo.index, SalIndex)
                 assert salinfo.index == SalIndex.ONE
 
@@ -105,15 +102,15 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 num_messages=100,
                 consume_messages_timeout=0.01,
             ) as salinfo:
-
                 assert salinfo.num_messages == 100
                 assert salinfo.consume_messages_timeout == 0.01
 
     async def test_salinfo_attributes(self) -> None:
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain=domain, name="Test", index=index
-        ) as salinfo:
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo,
+        ):
             assert salinfo.name_index == f"Test:{index}"
 
             # Expected commands; must be complete and sorted alphabetically.
@@ -152,12 +149,8 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert expected_telemetry == salinfo.telemetry_names
 
             expected_sal_topic_names = ["ackcmd"]
-            expected_sal_topic_names += [
-                f"command_{name}" for name in salinfo.command_names
-            ]
-            expected_sal_topic_names += [
-                f"logevent_{name}" for name in salinfo.event_names
-            ]
+            expected_sal_topic_names += [f"command_{name}" for name in salinfo.command_names]
+            expected_sal_topic_names += [f"logevent_{name}" for name in salinfo.event_names]
             expected_sal_topic_names += [name for name in salinfo.telemetry_names]
             assert sorted(expected_sal_topic_names) == list(salinfo.sal_topic_names)
 
@@ -169,9 +162,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert not salinfo2.indexed
             assert salinfo2.name_index == "MTRotator"
 
-            assert (
-                salinfo.component_info.topic_subname == os.environ["LSST_TOPIC_SUBNAME"]
-            )
+            assert salinfo.component_info.topic_subname == os.environ["LSST_TOPIC_SUBNAME"]
 
     async def test_salinfo_component_info(self) -> None:
         """Test some of the component info in SalInfo.
@@ -179,9 +170,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
         The main tests of ComponentInfo are elsewhere.
         """
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain=domain, name="Test", index=index
-        ) as salinfo:
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo,
+        ):
             # Check some topic and field metadata
             for attr_name, topic_info in salinfo.component_info.topics.items():
                 assert attr_name == topic_info.attr_name
@@ -197,9 +189,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 "tel_arrays",
                 "tel_scalars",
             )
-            assert set(some_expected_attr_names).issubset(
-                salinfo.component_info.topics.keys()
-            )
+            assert set(some_expected_attr_names).issubset(salinfo.component_info.topics.keys())
 
     async def test_lsst_topic_subname_required(self) -> None:
         # Delete LSST_TOPIC_SUBNAME. This should prevent constructing
@@ -235,9 +225,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_make_ack_cmd(self) -> None:
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain=domain, name="Test", index=index
-        ) as salinfo:
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo,
+        ):
             # Use all defaults
             seq_num = 55
             ack = salobj.SalRetCode.CMD_COMPLETE
@@ -265,14 +256,13 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_write_only(self) -> None:
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain=domain, name="Test", index=index, write_only=True
-        ) as salinfo:
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(domain=domain, name="Test", index=index, write_only=True) as salinfo,
+        ):
             # Cannot add a read topic to a write-only SalInfo
             with pytest.raises(RuntimeError):
-                salobj.topics.ReadTopic(
-                    salinfo=salinfo, attr_name="evt_summaryState", max_history=0
-                )
+                salobj.topics.ReadTopic(salinfo=salinfo, attr_name="evt_summaryState", max_history=0)
 
             # Check that starting a write-only SalInfo
             # does not start the read loop

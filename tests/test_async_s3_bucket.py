@@ -25,6 +25,7 @@ import unittest
 import astropy.time
 import moto
 import pytest
+
 from lsst.ts import salobj, utils
 
 
@@ -97,12 +98,8 @@ class AsyncS3BucketTest(unittest.IsolatedAsyncioTestCase):
         def download_callback(nbytes: int) -> None:
             downloaded_nbytes.append(nbytes)
 
-        await self.bucket.upload(
-            fileobj=self.fileobj, key=self.key, callback=upload_callback
-        )
-        roundtrip_fileobj = await self.bucket.download(
-            key=self.key, callback=download_callback
-        )
+        await self.bucket.upload(fileobj=self.fileobj, key=self.key, callback=upload_callback)
+        roundtrip_fileobj = await self.bucket.download(key=self.key, callback=download_callback)
         roundtrip_data = roundtrip_fileobj.getbuffer()
         assert self.file_data == roundtrip_data
         assert len(uploaded_nbytes) >= 1
@@ -163,8 +160,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             salname=salname, salindexname=salindexname, generator=generator, date=date
         )
         expected_key = (
-            "Foo:Blue/testFiberSpecBlue/2020/04/01/"
-            "Foo:Blue_testFiberSpecBlue_2020-04-02T11:59:59.999.dat"
+            "Foo:Blue/testFiberSpecBlue/2020/04/01/Foo:Blue_testFiberSpecBlue_2020-04-02T11:59:59.999.dat"
         )
         assert key == expected_key
 
@@ -174,8 +170,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             salname=salname, salindexname=salindexname, generator=generator, date=date
         )
         expected_key = (
-            "Foo:Blue/testFiberSpecBlue/2020/04/02/"
-            "Foo:Blue_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
+            "Foo:Blue/testFiberSpecBlue/2020/04/02/Foo:Blue_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
         )
         assert key == expected_key
 
@@ -183,19 +178,13 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
         key = salobj.AsyncS3Bucket.make_key(
             salname=salname, salindexname=None, generator=generator, date=date
         )
-        expected_key = (
-            "Foo/testFiberSpecBlue/2020/04/02/"
-            "Foo_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
-        )
+        expected_key = "Foo/testFiberSpecBlue/2020/04/02/Foo_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
         assert key == expected_key
 
         # Repeat the test with an integer sal index name
-        key = salobj.AsyncS3Bucket.make_key(
-            salname=salname, salindexname=5, generator=generator, date=date
-        )
+        key = salobj.AsyncS3Bucket.make_key(salname=salname, salindexname=5, generator=generator, date=date)
         expected_key = (
-            "Foo:5/testFiberSpecBlue/2020/04/02/"
-            "Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
+            "Foo:5/testFiberSpecBlue/2020/04/02/Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000.dat"
         )
         assert key == expected_key
 
@@ -207,10 +196,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             date=date,
             other="othertext",
         )
-        expected_key = (
-            "Foo:5/testFiberSpecBlue/2020/04/02/"
-            "Foo:5_testFiberSpecBlue_othertext.dat"
-        )
+        expected_key = "Foo:5/testFiberSpecBlue/2020/04/02/Foo:5_testFiberSpecBlue_othertext.dat"
         assert key == expected_key
 
         # Repeat the test with a specified value for "suffix"
@@ -222,8 +208,7 @@ class AsyncS3BucketClassmethodTest(unittest.IsolatedAsyncioTestCase):
             suffix="suffixtext",
         )
         expected_key = (
-            "Foo:5/testFiberSpecBlue/2020/04/02/"
-            "Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000suffixtext"
+            "Foo:5/testFiberSpecBlue/2020/04/02/Foo:5_testFiberSpecBlue_2020-04-02T12:00:00.000suffixtext"
         )
         assert key == expected_key
 

@@ -276,13 +276,16 @@ class BaseCsc(Controller):
         # to the heartbeat topic for a short time.
         if num_messages < 1:
             raise ValueError(f"{num_messages=} must be positive")
-        async with Domain() as domain, Remote(
-            domain=domain,
-            name=self.salinfo.name,
-            index=self.salinfo.index,
-            readonly=True,
-            include=["heartbeat"],
-        ) as remote:
+        async with (
+            Domain() as domain,
+            Remote(
+                domain=domain,
+                name=self.salinfo.name,
+                index=self.salinfo.index,
+                readonly=True,
+                include=["heartbeat"],
+            ) as remote,
+        ):
             try:
                 data = await remote.evt_heartbeat.next(  # type: ignore[attr-defined]
                     flush=True, timeout=self.heartbeat_interval * 3
@@ -336,9 +339,7 @@ class BaseCsc(Controller):
             # Use the current state instead of default_initial_state
             # because of Hexapod and Rotator, which do not know their
             # current state until they connect to the low-level controller.
-            command_state_list = state_transition_dict[
-                (self.summary_state, self._initial_state)
-            ]
+            command_state_list = state_transition_dict[(self.summary_state, self._initial_state)]
             state_transition_commands = [item[0] for item in command_state_list]
             try:
                 for command in state_transition_commands:
@@ -352,9 +353,7 @@ class BaseCsc(Controller):
                     # will have a different timestamp than the previous one.
                     await asyncio.sleep(0.001)
             except Exception:
-                self.log.exception(
-                    f"Failed in start on state transition command {command}; continuing."
-                )
+                self.log.exception(f"Failed in start on state transition command {command}; continuing.")
 
     async def close_tasks(self) -> None:
         """Shut down pending tasks. Called by `close`."""
@@ -412,7 +411,8 @@ class BaseCsc(Controller):
             # when index is an int or bool.
             choices = [int(item.value) for item in index]  # type: ignore
             names_str = ", ".join(
-                f"{item.value}: {item.name.lower()}" for item in index  # type: ignore
+                f"{item.value}: {item.name.lower()}"
+                for item in index  # type: ignore
             )
             help_text = f"SAL index, one of: {names_str}"
             parser.add_argument("index", type=int, help=help_text, choices=choices)
@@ -428,10 +428,7 @@ class BaseCsc(Controller):
                 dest="initial_state",
                 help="initial state",
             )
-        add_simulate_arg = (
-            cls.valid_simulation_modes is not None
-            and len(cls.valid_simulation_modes) > 1
-        )
+        add_simulate_arg = cls.valid_simulation_modes is not None and len(cls.valid_simulation_modes) > 1
         if add_simulate_arg:
             assert cls.valid_simulation_modes is not None  # make mypy happy
             if 0 in cls.valid_simulation_modes:
@@ -443,9 +440,7 @@ class BaseCsc(Controller):
                 # Make --simulate a flag that takes no value and stores
                 # the other value, if specified.
                 simulation_help = (
-                    "Run in simulation mode?"
-                    if cls.simulation_help is None
-                    else cls.simulation_help
+                    "Run in simulation mode?" if cls.simulation_help is None else cls.simulation_help
                 )
                 nonzero_value = (set(cls.valid_simulation_modes) - set([0])).pop()
                 parser.add_argument(
@@ -458,11 +453,7 @@ class BaseCsc(Controller):
             else:
                 # There are more than 2 simulation modes or none of them is 0.
                 # Make --simulate an argument that requires a value.
-                simulation_help = (
-                    "Simulation mode"
-                    if cls.simulation_help is None
-                    else cls.simulation_help
-                )
+                simulation_help = "Simulation mode" if cls.simulation_help is None else cls.simulation_help
                 parser.add_argument(
                     "--simulate",
                     type=int,
@@ -497,9 +488,7 @@ class BaseCsc(Controller):
         return csc
 
     @classmethod
-    async def amain(
-        cls, index: int | enum.IntEnum | bool | None, **kwargs: typing.Any
-    ) -> None:
+    async def amain(cls, index: int | enum.IntEnum | bool | None, **kwargs: typing.Any) -> None:
         """Make a CSC from command-line arguments and run it.
 
         Parameters
@@ -546,9 +535,7 @@ class BaseCsc(Controller):
         pass
 
     @classmethod
-    def add_kwargs_from_args(
-        cls, args: argparse.Namespace, kwargs: dict[str, typing.Any]
-    ) -> None:
+    def add_kwargs_from_args(cls, args: argparse.Namespace, kwargs: dict[str, typing.Any]) -> None:
         """Add constructor keyword arguments based on parsed arguments.
 
         Parameters
@@ -608,9 +595,7 @@ class BaseCsc(Controller):
         data : ``cmd_standby.DataType``
             Command data
         """
-        await self._do_change_state(
-            data, "standby", [State.DISABLED, State.FAULT], State.STANDBY
-        )
+        await self._do_change_state(data, "standby", [State.DISABLED, State.FAULT], State.STANDBY)
 
     async def do_start(self, data: type_hints.BaseMsgType) -> None:
         """Transition from `State.STANDBY` to `State.DISABLED`.
@@ -811,16 +796,13 @@ class BaseCsc(Controller):
                         force_output=True,
                     )
                 except BaseException:
-                    self.log.exception(
-                        f"Failed to output errorCode: code={code!r}; report={report!r}"
-                    )
+                    self.log.exception(f"Failed to output errorCode: code={code!r}; report={report!r}")
                 self.log.critical(f"Fault! errorCode={code}, errorReport={report!r}")
             try:
                 await self._report_summary_state()
             except BaseException:
                 self.log.exception(
-                    "_report_summary_state failed while going to FAULT; "
-                    "some code may not have run."
+                    "_report_summary_state failed while going to FAULT; some code may not have run."
                 )
                 await self.evt_summaryState.set_write(  # type: ignore
                     summaryState=self._summary_state,
@@ -921,28 +903,20 @@ class BaseCsc(Controller):
         try:
             await getattr(self, f"begin_{cmd_name}")(data)
         except base.ExpectedError as e:
-            self.log.error(
-                f"begin_{cmd_name} failed; remaining in state {curr_state!r}: {e}"
-            )
+            self.log.error(f"begin_{cmd_name} failed; remaining in state {curr_state!r}: {e}")
             raise
         except Exception:
-            self.log.exception(
-                f"begin_{cmd_name} failed; remaining in state {curr_state!r}"
-            )
+            self.log.exception(f"begin_{cmd_name} failed; remaining in state {curr_state!r}")
             raise
         self._summary_state = new_state
         try:
             await getattr(self, f"end_{cmd_name}")(data)
         except base.ExpectedError as e:
-            self.log.error(
-                f"end_{cmd_name} failed; reverting to state {curr_state!r}: {e}"
-            )
+            self.log.error(f"end_{cmd_name} failed; reverting to state {curr_state!r}: {e}")
             raise
         except Exception:
             self._summary_state = curr_state
-            self.log.exception(
-                f"end_{cmd_name} failed; reverting to state {curr_state!r}"
-            )
+            self.log.exception(f"end_{cmd_name} failed; reverting to state {curr_state!r}")
             raise
         await self.handle_summary_state()
         await self._report_summary_state()

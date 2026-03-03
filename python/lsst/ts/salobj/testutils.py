@@ -66,9 +66,7 @@ def assertRaisesAckError(
         if error is not None and e.ackcmd.error != error:
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
         if result_contains is not None and result_contains not in e.ackcmd.result:
-            raise AssertionError(
-                f"ackcmd.result={e.ackcmd.result} does not contain {result_contains}"
-            )
+            raise AssertionError(f"ackcmd.result={e.ackcmd.result} does not contain {result_contains}")
 
 
 @contextlib.contextmanager
@@ -123,11 +121,7 @@ def set_test_topic_subname(randomize: bool = False) -> None:
     """
     pid = os.getpid()
     length = (pid.bit_length() + 7) // 8
-    root_value = (
-        pid.to_bytes(length=length, byteorder="big")
-        if not randomize
-        else os.urandom(12)
-    )
+    root_value = pid.to_bytes(length=length, byteorder="big") if not randomize else os.urandom(12)
 
     topic_subname_suffix = (
         base64.urlsafe_b64encode(root_value)

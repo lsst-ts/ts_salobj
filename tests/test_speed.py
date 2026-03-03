@@ -30,6 +30,7 @@ from collections.abc import AsyncGenerator
 from unittest.mock import MagicMock
 
 import astropy.units as u
+
 from lsst.ts import salobj, utils
 from lsst.ts.xml.component_info import ComponentInfo
 
@@ -45,9 +46,7 @@ try:
 
     raise ImportError("TODO: re-enable verify when we decide to use Kafkfa")
 except ImportError:
-    warnings.warn(
-        "verify could not be imported; measurements will not be uploaded", UserWarning
-    )
+    warnings.warn("verify could not be imported; measurements will not be uploaded", UserWarning)
     verify = MockVerify
 
 # Long enough to perform any reasonable operation
@@ -133,17 +132,14 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         Return the remote.
         """
         script_path = self.datadir / "topic_writer.py"
-        process = await asyncio.create_subprocess_exec(
-            str(script_path), str(self.index)
-        )
+        process = await asyncio.create_subprocess_exec(str(script_path), str(self.index))
         try:
-            async with salobj.Domain() as domain, salobj.Remote(
-                domain=domain, name="Test", index=self.index
-            ) as remote:
+            async with (
+                salobj.Domain() as domain,
+                salobj.Remote(domain=domain, name="Test", index=self.index) as remote,
+            ):
                 yield remote
-                await salobj.set_summary_state(
-                    remote=remote, state=salobj.State.OFFLINE, timeout=STD_TIMEOUT
-                )
+                await salobj.set_summary_state(remote=remote, state=salobj.State.OFFLINE, timeout=STD_TIMEOUT)
                 await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
         finally:
             if process.returncode is None:
@@ -159,9 +155,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         topic_subname = os.environ["LSST_TOPIC_SUBNAME"]
         t0 = time.monotonic()
         component_info = ComponentInfo(topic_subname=topic_subname, name="MTM1M3")
-        data_classes = [
-            topic_info.make_dataclass() for topic_info in component_info.topics.values()
-        ]
+        data_classes = [topic_info.make_dataclass() for topic_info in component_info.topics.values()]
         dt = time.monotonic() - t0
         ntopics = len(data_classes)
         creation_speed = ntopics / dt
@@ -169,18 +163,14 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             f"Created {creation_speed:0.1f} topic classes/sec ({ntopics} topic classes); "
             f"total duration {dt:0.2f} seconds."
         )
-        self.insert_measurement(
-            verify.Measurement("salobj.CreateClasses", creation_speed * u.ct / u.second)
-        )
+        self.insert_measurement(verify.Measurement("salobj.CreateClasses", creation_speed * u.ct / u.second))
 
     async def test_command_speed(self) -> None:
         async with self.make_remote_and_topic_writer() as remote:
             summary_state = await remote.evt_summaryState.next(flush=False, timeout=60)
             while summary_state.private_sndStamp < self.start_time:
                 print(f"Discarding old topic: {summary_state}")
-                summary_state = await remote.evt_summaryState.next(
-                    flush=False, timeout=60
-                )
+                summary_state = await remote.evt_summaryState.next(flush=False, timeout=60)
             t0 = time.monotonic()
             num_commands = 1000
             print(f"Writting {num_commands} commands.")
@@ -192,14 +182,10 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             dt = time.monotonic() - t0
             command_speed = num_commands / dt
             assert command_speed > 20
-            print(
-                f"Issued {command_speed:0.0f} fault commands/second ({num_commands} commands)"
-            )
+            print(f"Issued {command_speed:0.0f} fault commands/second ({num_commands} commands)")
 
             self.insert_measurement(
-                verify.Measurement(
-                    "salobj.IssueCommands", command_speed * u.ct / u.second
-                )
+                verify.Measurement("salobj.IssueCommands", command_speed * u.ct / u.second)
             )
 
     async def test_read_speed(self) -> None:
@@ -207,9 +193,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             summary_state = await remote.evt_summaryState.next(flush=False, timeout=60)
             while summary_state.private_sndStamp < self.start_time:
                 print(f"Discarding old topic: {summary_state}")
-                summary_state = await remote.evt_summaryState.next(
-                    flush=False, timeout=60
-                )
+                summary_state = await remote.evt_summaryState.next(flush=False, timeout=60)
 
             await salobj.set_summary_state(
                 remote=remote,
@@ -243,9 +227,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 )
             )
 
-            await salobj.set_summary_state(
-                remote=remote, state=salobj.State.STANDBY, timeout=STD_TIMEOUT
-            )
+            await salobj.set_summary_state(remote=remote, state=salobj.State.STANDBY, timeout=STD_TIMEOUT)
             await salobj.set_summary_state(
                 remote=remote,
                 state=salobj.State.ENABLED,
@@ -281,9 +263,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
             )
 
     async def test_write_speed(self) -> None:
-        async with salobj.Controller(
-            name="Test", index=self.index, do_callbacks=False
-        ) as controller:
+        async with salobj.Controller(name="Test", index=self.index, do_callbacks=False) as controller:
             num_samples = 1000
 
             t0 = time.monotonic()
@@ -291,9 +271,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 await controller.tel_arrays.write()
             dt = time.monotonic() - t0
             arrays_write_speed = num_samples / dt
-            print(
-                f"Wrote {arrays_write_speed:0.0f} arrays samples/second ({num_samples} samples)"
-            )
+            print(f"Wrote {arrays_write_speed:0.0f} arrays samples/second ({num_samples} samples)")
 
             self.insert_measurement(
                 verify.Measurement(
@@ -308,9 +286,7 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
                 await asyncio.sleep(0)
             dt = time.monotonic() - t0
             log_level_write_speed = num_samples / dt
-            print(
-                f"Wrote {log_level_write_speed:0.0f} logLevel samples/second ({num_samples} samples)"
-            )
+            print(f"Wrote {log_level_write_speed:0.0f} logLevel samples/second ({num_samples} samples)")
 
             self.insert_measurement(
                 verify.Measurement(

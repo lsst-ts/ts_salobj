@@ -28,6 +28,7 @@ import unittest
 
 import numpy as np
 import pytest
+
 from lsst.ts import salobj, utils
 from lsst.ts.xml.type_hints import BaseMsgType
 
@@ -55,9 +56,7 @@ class FailedCallbackCsc(salobj.TestCsc):
         raise RuntimeError(self.exc_msg)
 
 
-class ControllerLoggingTestCase(
-    salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase
-):
+class ControllerLoggingTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self,
         initial_state: salobj.State | int,
@@ -72,21 +71,15 @@ class ControllerLoggingTestCase(
         )
 
     async def test_logging(self) -> None:
-        async with self.make_csc(
-            initial_state=salobj.State.ENABLED, config_dir=TEST_CONFIG_DIR
-        ):
-            logLevel = await self.remote.evt_logLevel.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
+        async with self.make_csc(initial_state=salobj.State.ENABLED, config_dir=TEST_CONFIG_DIR):
+            logLevel = await self.remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
             assert logLevel.level == logging.INFO
 
             info_message = "test info message"
             self.csc.log.info(info_message)
             # Skip initial messages until we find this new one.
             while True:
-                msg = await self.remote.evt_logMessage.next(
-                    flush=False, timeout=STD_TIMEOUT
-                )
+                msg = await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
                 if msg.message == info_message:
                     break
             assert msg.level == logging.INFO
@@ -95,15 +88,11 @@ class ControllerLoggingTestCase(
             info_message = "message from background thread"
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, self.csc.log.info, info_message)
-            await self.assert_next_sample(
-                topic=self.remote.evt_logMessage, message=info_message
-            )
+            await self.assert_next_sample(topic=self.remote.evt_logMessage, message=info_message)
 
             filepath = pathlib.Path(__file__)
             subpath = "/".join(filepath.parts[-2:])
-            assert msg.filePath.endswith(
-                subpath
-            ), f"{msg.filePath} does not end with {subpath!r}"
+            assert msg.filePath.endswith(subpath), f"{msg.filePath} does not end with {subpath!r}"
             assert msg.functionName == "test_logging"
             assert msg.lineNumber > 0
             assert msg.process == os.getpid()
@@ -112,50 +101,36 @@ class ControllerLoggingTestCase(
             encodable_message = "test warn message"
             warn_message = encodable_message + "\u2013"
             self.csc.log.warning(warn_message)
-            msg = await self.remote.evt_logMessage.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
+            msg = await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
             encodable_len = len(encodable_message)
             assert msg.message[0:encodable_len] == encodable_message
             assert msg.level == logging.WARNING
             assert msg.traceback == ""
 
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NO_DATA_TIMEOUT
-                )
+                await self.remote.evt_logMessage.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
             self.remote.evt_logLevel.flush()
 
-            await self.remote.cmd_setLogLevel.set_start(
-                level=logging.ERROR, timeout=STD_TIMEOUT
-            )
+            await self.remote.cmd_setLogLevel.set_start(level=logging.ERROR, timeout=STD_TIMEOUT)
 
-            logLevel = await self.remote.evt_logLevel.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
+            logLevel = await self.remote.evt_logLevel.next(flush=False, timeout=STD_TIMEOUT)
             assert logLevel.level == logging.ERROR
 
             info_message = "test info message"
             self.csc.log.info(info_message)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NO_DATA_TIMEOUT
-                )
+                await self.remote.evt_logMessage.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
             warn_message = "test warn message"
             self.csc.log.warning(warn_message)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_logMessage.next(
-                    flush=False, timeout=NO_DATA_TIMEOUT
-                )
+                await self.remote.evt_logMessage.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
             with salobj.assertRaisesAckError():
                 await self.remote.cmd_wait.set_start(duration=5, timeout=STD_TIMEOUT)
 
-            msg = await self.remote.evt_logMessage.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
+            msg = await self.remote.evt_logMessage.next(flush=False, timeout=STD_TIMEOUT)
             assert self.csc.exc_msg in msg.traceback
             assert "Traceback" in msg.traceback
             assert "RuntimeError" in msg.traceback

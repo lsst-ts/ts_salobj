@@ -1,10 +1,10 @@
-black: true
+black: false
 check-xml: true
 check-yaml: true
 clang-format: false
-flake8: true
+flake8: false
 format-xmllint: false
-isort: true
+isort: false
 mypy: true
-ruff: false
+ruff: true
 towncrier: true

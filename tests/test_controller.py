@@ -25,6 +25,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import pytest
+
 from lsst.ts import salobj, utils
 
 np.random.seed(47)
@@ -52,9 +53,7 @@ class ControllerWithDoMethods(salobj.Controller):
         a subset of commands.
     """
 
-    def __init__(
-        self, command_names: Iterable[str], allow_missing_callbacks: bool = False
-    ) -> None:
+    def __init__(self, command_names: Iterable[str], allow_missing_callbacks: bool = False) -> None:
         index = next(index_gen)
         for name in command_names:
             setattr(self, f"do_{name}", self.mock_do_method)
@@ -86,9 +85,10 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_do_callbacks_true(self) -> None:
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain=domain, name="Test", index=index
-        ) as salinfo:
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo,
+        ):
             command_names = salinfo.command_names
 
         # Build a controller and check that callbacks are assigned.
@@ -104,9 +104,7 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             if missing_name in skip_names:
                 continue
             with self.subTest(missing_name=missing_name):
-                incomplete_names = [
-                    name for name in command_names if name != missing_name
-                ]
+                incomplete_names = [name for name in command_names if name != missing_name]
                 # With allow_missing_callbacks=False (the default)
                 # missing do_{command} methods should raise TypeError
                 with pytest.raises(TypeError):
@@ -118,16 +116,11 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
             # should have callback controller._unsupported_cmd_callback.
             # Note that command callbacks are not assigned until
             # the CSC is started.
-            async with ControllerWithDoMethods(
-                incomplete_names, allow_missing_callbacks=True
-            ) as controller:
+            async with ControllerWithDoMethods(incomplete_names, allow_missing_callbacks=True) as controller:
                 for name in command_names:
                     command_topic = getattr(controller, f"cmd_{name}")
                     if name == missing_name:
-                        assert (
-                            command_topic.callback
-                            == controller._unsupported_cmd_callback
-                        )
+                        assert command_topic.callback == controller._unsupported_cmd_callback
                     else:
                         do_method = getattr(controller, f"do_{name}")
                         assert command_topic.callback == do_method
@@ -140,9 +133,7 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_write_only_true(self) -> None:
         index = next(index_gen)
         # Build a controller and check that callbacks are assigned.
-        async with salobj.Controller(
-            name="Test", index=index, write_only=True
-        ) as controller:
+        async with salobj.Controller(name="Test", index=index, write_only=True) as controller:
             for name in controller.salinfo.command_names:
                 assert not hasattr(controller, f"cmd_{name}")
 
@@ -154,6 +145,4 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
 
         # Check that do_callbacks cannot be true if write_only is true.
         with pytest.raises(ValueError):
-            salobj.Controller(
-                name="Test", index=index, do_callbacks=True, write_only=True
-            )
+            salobj.Controller(name="Test", index=index, do_callbacks=True, write_only=True)

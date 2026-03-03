@@ -28,6 +28,7 @@ import typing
 import unittest
 
 import yaml
+
 from lsst.ts.xml import type_hints
 
 from .configurable_csc import ConfigurableCsc
@@ -130,9 +131,9 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
         assert config_package_root.is_dir()
 
         version = schema["title"].split()[-1]
-        assert version.startswith(
-            "v"
-        ), f"version={version} from schema title {schema['title']} does not start with 'v'"
+        assert version.startswith("v"), (
+            f"version={version} from schema title {schema['title']} does not start with 'v'"
+        )
 
         config_dir = pathlib.Path(config_package_root) / sal_name / version
         assert config_dir.is_dir()
@@ -167,18 +168,14 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
 
             config_validator = StandardValidator(schema)
             schema_version = schema["title"].split()[-1]
-            assert schema_version.startswith(
-                "v"
-            ), f"version={schema_version} from schema title {schema['title']} does not start with 'v'"
+            assert schema_version.startswith("v"), (
+                f"version={schema_version} from schema title {schema['title']} does not start with 'v'"
+            )
 
             config_files = list(config_dir.glob("*.yaml"))
             if exclude_glob:
                 files_to_exclude = set(config_dir.glob(exclude_glob))
-                config_files = [
-                    filename
-                    for filename in config_files
-                    if filename not in files_to_exclude
-                ]
+                config_files = [filename for filename in config_files if filename not in files_to_exclude]
             found_init = False
             site_files = []
             override_files = [""]
@@ -195,15 +192,11 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
             if not site_files:
                 site_files = [""]
         except Exception as e:
-            raise AssertionError(
-                f"Failed on {config_dir=}, {schema_version=}: {e!r}"
-            ) from e
+            raise AssertionError(f"Failed on {config_dir=}, {schema_version=}: {e!r}") from e
 
         try:
             # Check each site and each site with each override file
-            for site_file, override_file in itertools.product(
-                site_files, override_files
-            ):
+            for site_file, override_file in itertools.product(site_files, override_files):
                 ConfigurableCsc.read_config_files(
                     config_validator=config_validator,
                     config_dir=config_dir,
@@ -211,8 +204,7 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
                 )
         except Exception as e:
             raise AssertionError(
-                f"Failed on {config_dir=}, {schema_version=}, "
-                f"{site_file=}, {override_file=}: {e!r}"
+                f"Failed on {config_dir=}, {schema_version=}, {site_file=}, {override_file=}: {e!r}"
             ) from e
 
     def check_standard_config_files(
@@ -260,9 +252,7 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
 
         if config_dir is None:
             if config_package_root is None:
-                raise RuntimeError(
-                    "config_package_root must be specified if config_dir is None."
-                )
+                raise RuntimeError("config_package_root must be specified if config_dir is None.")
             if sal_name is None:
                 raise ValueError("sal_name must be specified if config_dir is None")
             config_dir = self.get_config_dir(
