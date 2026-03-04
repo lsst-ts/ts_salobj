@@ -36,6 +36,8 @@ import typing
 import warnings
 from collections.abc import AsyncGenerator, Callable, Sequence
 
+import numpy as np
+
 from lsst.ts.xml import sal_enums, type_hints
 
 from . import csc_utils, domain, remote
@@ -52,9 +54,7 @@ BOOL_DICT = {
 }
 
 
-async def stream_as_generator(
-    stream: typing.TextIO, exit_str: str = ""
-) -> AsyncGenerator[str, None]:
+async def stream_as_generator(stream: typing.TextIO, exit_str: str = "") -> AsyncGenerator[str, None]:
     """Await lines of text from stdin or another text input stream.
 
     Example usage:
@@ -237,17 +237,11 @@ class CscCommander:
         telemetry_fields_compare_digits: dict[str, int] | None = None,
     ) -> None:
         self.domain = domain.Domain()
-        self.remote = remote.Remote(
-            domain=self.domain, name=name, index=index, exclude=exclude
-        )
+        self.remote = remote.Remote(domain=self.domain, name=name, index=index, exclude=exclude)
         self.fields_to_ignore = frozenset(fields_to_ignore)
-        self.telemetry_fields_to_not_compare = frozenset(
-            telemetry_fields_to_not_compare
-        )
+        self.telemetry_fields_to_not_compare = frozenset(telemetry_fields_to_not_compare)
         self.telemetry_fields_compare_digits = (
-            {}
-            if telemetry_fields_compare_digits is None
-            else telemetry_fields_compare_digits
+            {} if telemetry_fields_compare_digits is None else telemetry_fields_compare_digits
         )
         self.tasks: set[asyncio.Future] = set()
         self.help_dict: dict[str, str] = dict()
@@ -270,9 +264,7 @@ class CscCommander:
             topic = getattr(self.remote, topic_attr_name)
             callback = getattr(self, f"{topic_attr_name}_callback", None)
             if callback is None:
-                callback = functools.partial(
-                    self.telemetry_callback, name=telemetry_name
-                )
+                callback = functools.partial(self.telemetry_callback, name=telemetry_name)
             setattr(topic, "callback", callback)
 
         # Dict of command name: RemoteCommand topic:
@@ -289,8 +281,7 @@ class CscCommander:
         sync_do_member_names = [
             member[0]
             for member in all_members
-            if member[0].startswith("do_")
-            and not inspect.iscoroutinefunction(member[1])
+            if member[0].startswith("do_") and not inspect.iscoroutinefunction(member[1])
         ]
         if sync_do_member_names:
             warnings.warn(
@@ -369,15 +360,9 @@ help  # print this help
         data : `BaseMsgType`
             Message.
         """
-        return dict(
-            (key, value)
-            for key, value in vars(data).items()
-            if self.field_is_public(key)
-        )
+        return dict((key, value) for key, value in vars(data).items() if self.field_is_public(key))
 
-    def get_rounded_public_data(
-        self, data: type_hints.BaseMsgType, digits: int = 2
-    ) -> dict[str, typing.Any]:
+    def get_rounded_public_data(self, data: type_hints.BaseMsgType, digits: int = 2) -> dict[str, typing.Any]:
         """Get a dict of field_name: value for public fields of a DDS sample
         with float values rounded.
         """
@@ -404,9 +389,7 @@ help  # print this help
             ``telemetry_fields_compare_digits``.
         """
         return {
-            key: round_any(
-                value, digits=self.telemetry_fields_compare_digits.get(key, digits)
-            )
+            key: round_any(value, digits=self.telemetry_fields_compare_digits.get(key, digits))
             for key, value in public_dict.items()
             if key not in self.telemetry_fields_to_not_compare
         }
@@ -428,9 +411,7 @@ help  # print this help
         public_data = {key: getattr(data, key) for key in ("name", "level", "message")}
         if data.traceback:  # type: ignore
             public_data["traceback"] = data.traceback  # type: ignore
-        self.output(
-            f"{data.private_sndStamp:0.3f}: logMessage: {self.format_dict(public_data)}"
-        )
+        self.output(f"{data.private_sndStamp:0.3f}: logMessage: {self.format_dict(public_data)}")
 
     async def evt_summaryState_callback(self, data: type_hints.BaseMsgType) -> None:
         state_int: int = data.summaryState  # type: ignore
@@ -438,13 +419,9 @@ help  # print this help
             state_repr: str = repr(sal_enums.State(state_int))
         except Exception:
             state_repr = f"{state_int} (not a known state!)"
-        self.output(
-            f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state_repr}"
-        )
+        self.output(f"{data.private_sndStamp:0.3f}: summaryState: summaryState={state_repr}")
 
-    async def telemetry_callback(
-        self, data: type_hints.BaseMsgType, name: str, digits: int = 2
-    ) -> None:
+    async def telemetry_callback(self, data: type_hints.BaseMsgType, name: str, digits: int = 2) -> None:
         """Default callback for telemetry topics.
 
         Print the telemetry information if it has changed enough
@@ -475,9 +452,7 @@ help  # print this help
         """
         prev_value_name = f"previous_{name}"
         public_dict = self.get_public_data(data)
-        comparison_dict = self.get_telemetry_comparison_dict(
-            public_dict=public_dict, digits=digits
-        )
+        comparison_dict = self.get_telemetry_comparison_dict(public_dict=public_dict, digits=digits)
         if comparison_dict != getattr(self, prev_value_name, None):
             setattr(self, prev_value_name, comparison_dict)
             formatted_data = self.format_dict(public_dict)
@@ -541,9 +516,7 @@ help  # print this help
             """
             if isinstance(name, tuple):
                 if len(name) != 2:
-                    raise RuntimeError(
-                        "Cannot parse {name} as (name, casting function)"
-                    )
+                    raise RuntimeError("Cannot parse {name} as (name, casting function)")
                 arg_name, cast_func = name
                 return (arg_name, cast_func(arg))
             else:
@@ -580,14 +553,11 @@ help  # print this help
             help_strings.append(f"{command_name} {field_names_str}")
 
         other_command_names = sorted(
-            command_name
-            for command_name in self.help_dict
-            if command_name not in self.command_dict
+            command_name for command_name in self.help_dict if command_name not in self.command_dict
         )
         help_strings += ["", "Other Commands:"]
         help_strings += [
-            f"{command_name} {self.help_dict[command_name]}"
-            for command_name in other_command_names
+            f"{command_name} {self.help_dict[command_name]}" for command_name in other_command_names
         ]
         return help_strings
 
@@ -613,14 +583,15 @@ help  # print this help
         sample = command.DataType()
         kwargs = self.get_public_data(sample)
         if len(kwargs) != len(args):
-            raise ValueError(
-                f"Command {command_name} requires "
-                f"{len(kwargs)} arguments; got {len(args)}"
-            )
+            raise ValueError(f"Command {command_name} requires {len(kwargs)} arguments; got {len(args)}")
         for (name, default_value), str_value in zip(kwargs.items(), args):
             try:
+                # TODO OSW-1915 Remove backward compatibility with python
+                #  data types.
                 if isinstance(default_value, bool):
                     kwargs[name] = BOOL_DICT[str_value.lower()]
+                elif isinstance(default_value, np.bool):
+                    kwargs[name] = np.bool(BOOL_DICT[str_value.lower()])
                 else:
                     kwargs[name] = type(default_value)(str_value)
             except Exception:
@@ -702,9 +673,7 @@ help  # print this help
                 self.remote.evt_summaryState.callback = summary_state_callback  # type: ignore
 
     @classmethod
-    async def amain(
-        cls, *, index: int | enum.IntEnum | bool | None, **kwargs: typing.Any
-    ) -> None:
+    async def amain(cls, *, index: int | enum.IntEnum | bool | None, **kwargs: typing.Any) -> None:
         """Construct the commander and run it.
 
         Parse the command line to construct the commander,
@@ -759,9 +728,7 @@ help  # print this help
         pass
 
     @classmethod
-    def add_kwargs_from_args(
-        cls, args: argparse.Namespace, kwargs: dict[str, typing.Any]
-    ) -> None:
+    def add_kwargs_from_args(cls, args: argparse.Namespace, kwargs: dict[str, typing.Any]) -> None:
         """Add constructor keyword arguments based on parsed arguments.
 
         Parameters
@@ -821,13 +788,12 @@ help  # print this help
             # when index is an int or bool.
             choices = [int(item.value) for item in index]  # type: ignore
             names_str = ", ".join(
-                f"{item.value}: {item.name.lower()}" for item in index  # type: ignore
+                f"{item.value}: {item.name.lower()}"
+                for item in index  # type: ignore
             )
             help_text = f"SAL index, one of: {names_str}"
             parser.add_argument("index", type=int, help=help_text, choices=choices)
-        parser.add_argument(
-            "-e", "--enable", action="store_true", help="Enable the CSC?"
-        )
+        parser.add_argument("-e", "--enable", action="store_true", help="Enable the CSC?")
         cls.add_arguments(parser)
 
         args = parser.parse_args()

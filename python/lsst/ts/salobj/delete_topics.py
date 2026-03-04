@@ -51,8 +51,7 @@ class DeleteTopicsArgs:
         parser.add_argument(
             "components",
             nargs="*",
-            help="Names of SAL components, e.g. 'Script ScriptQueue'. "
-            "Ignored if --all is specified",
+            help="Names of SAL components, e.g. 'Script ScriptQueue'. Ignored if --all is specified",
         )
         parser.add_argument(
             "--all",
@@ -108,9 +107,7 @@ class DeleteTopics:
         log: logging.Logger | None = None,
     ) -> None:
         self.log = (
-            logging.getLogger(type(self).__name__)
-            if log is None
-            else log.getChild(type(self).__name__)
+            logging.getLogger(type(self).__name__) if log is None else log.getChild(type(self).__name__)
         )
         self.admin_client = admin_client
         self.schema_registry_client = schema_registry_client
@@ -136,9 +133,7 @@ class DeleteTopics:
 
         schema_registry_client = SchemaRegistryClient(dict(url=schema_registry_url))
 
-        return cls(
-            admin_client=admin_client, schema_registry_client=schema_registry_client
-        )
+        return cls(admin_client=admin_client, schema_registry_client=schema_registry_client)
 
     def retrieve_topic_summary(self) -> dict[str, dict[str, str]]:
         """Retrieve a summary of the topics in the broker.
@@ -231,9 +226,7 @@ class DeleteTopics:
         for topic in topics_to_delete:
             self.assert_topic_has_no_consumers(topic=topic)
 
-        delete_futures = self.admin_client.delete_topics(
-            topics_to_delete, operation_timeout=60
-        )
+        delete_futures = self.admin_client.delete_topics(topics_to_delete, operation_timeout=60)
         for topic, future in delete_futures.items():
             try:
                 future.result()
@@ -274,18 +267,14 @@ class DeleteTopics:
             for desc in group_descs.values():
                 for member in desc.result().members:
                     topics = [tp.topic for tp in member.assignment.topic_partitions]
-                    assert (
-                        topic not in topics
-                    ), f"Found consumer in group '{group_id}' assigned to topic '{topic}'."
+                    assert topic not in topics, (
+                        f"Found consumer in group '{group_id}' assigned to topic '{topic}'."
+                    )
 
     def execute(self, delete_topics_args: DeleteTopicsArgs | None = None) -> None:
         """Execute the delete topic operation."""
 
-        args = (
-            DeleteTopicsArgs.from_args()
-            if delete_topics_args is None
-            else delete_topics_args
-        )
+        args = DeleteTopicsArgs.from_args() if delete_topics_args is None else delete_topics_args
 
         if args.log_level is not None:
             logging.basicConfig(level=getattr(logging, args.log_level))
@@ -304,9 +293,7 @@ class DeleteTopics:
         topics_to_delete = [
             topic
             for topic in topics_summary
-            if (
-                args.all_topics or topics_summary[topic]["component"] in args.components
-            )
+            if (args.all_topics or topics_summary[topic]["component"] in args.components)
             and (
                 (args.all_topics and topics_summary[topic]["subname"] != "sal")
                 or topics_summary[topic]["subname"] == args.subname
@@ -316,10 +303,7 @@ class DeleteTopics:
         schema_to_delete = [
             subject
             for subject in schema_summary
-            if (
-                args.all_topics
-                or schema_summary[subject]["component"] in args.components
-            )
+            if (args.all_topics or schema_summary[subject]["component"] in args.components)
             and (
                 (args.all_topics and schema_summary[subject]["subname"] != "sal")
                 or schema_summary[subject]["subname"] == args.subname

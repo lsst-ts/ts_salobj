@@ -118,9 +118,7 @@ class QueueCapacityChecker:
 
     def __init__(self, descr: str, log: logging.Logger, queue_len: int) -> None:
         if queue_len < MIN_QUEUE_LEN:
-            raise ValueError(
-                f"queue_len {queue_len} must be >= MIN_QUEUE_LEN={MIN_QUEUE_LEN}"
-            )
+            raise ValueError(f"queue_len {queue_len} must be >= MIN_QUEUE_LEN={MIN_QUEUE_LEN}")
         self.descr = descr
         self.log = log
         self.queue_len = queue_len
@@ -132,9 +130,7 @@ class QueueCapacityChecker:
         if queue_len >= 20:
             warn_thresholds.append(queue_len // 2)
         self.warn_thresholds = tuple(sorted(warn_thresholds))
-        self._reset_thresholds = tuple(
-            warn_thresh // 2 for warn_thresh in self.warn_thresholds
-        )
+        self._reset_thresholds = tuple(warn_thresh // 2 for warn_thresh in self.warn_thresholds)
         self.warn_threshold: int | None = self.warn_thresholds[0]
         self.reset_threshold: int | None = None
 
@@ -158,16 +154,12 @@ class QueueCapacityChecker:
             if nitems >= self.queue_len:
                 self.warn_threshold = None
                 self.reset_threshold = self._reset_thresholds[-1]
-                self.log.error(
-                    f"{self.descr} is full ({self.queue_len} elements); data may be lost"
-                )
+                self.log.error(f"{self.descr} is full ({self.queue_len} elements); data may be lost")
             else:
                 index = bisect.bisect_right(self.warn_thresholds, nitems)
                 self.warn_threshold = self.warn_thresholds[index]
                 self.reset_threshold = self._reset_thresholds[index - 1]
-                self.log.warning(
-                    f"{self.descr} is filling: {nitems} of {self.queue_len} elements"
-                )
+                self.log.warning(f"{self.descr} is filling: {nitems} of {self.queue_len} elements")
             return True
         elif self.reset_threshold is not None and nitems <= self.reset_threshold:
             # Reset to lower warning and reset thresholds
@@ -272,21 +264,14 @@ class ReadTopic(BaseTopic):
             raise ValueError(f"max_history={max_history} must be >= 0")
         if salinfo.indexed and salinfo.index == 0 and max_history > 1:
             raise ValueError(
-                f"max_history={max_history} must be 0 or 1 "
-                "for an indexed component read with index=0"
+                f"max_history={max_history} must be 0 or 1 for an indexed component read with index=0"
             )
         if queue_len <= MIN_QUEUE_LEN:
-            raise ValueError(
-                f"queue_len={queue_len} must be >= MIN_QUEUE_LEN={MIN_QUEUE_LEN}"
-            )
+            raise ValueError(f"queue_len={queue_len} must be >= MIN_QUEUE_LEN={MIN_QUEUE_LEN}")
         if max_history > queue_len:
-            raise ValueError(
-                f"max_history={max_history} must be <= queue_len={queue_len}"
-            )
+            raise ValueError(f"max_history={max_history} must be <= queue_len={queue_len}")
         self._max_history = int(max_history)
-        self._data_queue: collections.deque[type_hints.BaseMsgType] = collections.deque(
-            maxlen=queue_len
-        )
+        self._data_queue: collections.deque[type_hints.BaseMsgType] = collections.deque(maxlen=queue_len)
         self._current_data: type_hints.BaseMsgType | None = None
         # Task that `next` waits on.
         # Its result is set to the oldest message on the queue.
@@ -357,9 +342,7 @@ class ReadTopic(BaseTopic):
         if func is not None:
             if not callable(func):
                 raise TypeError(f"callback {func} not callable")
-            if not inspect.iscoroutinefunction(
-                func
-            ) and not asyncio.iscoroutinefunction(
+            if not inspect.iscoroutinefunction(func) and not asyncio.iscoroutinefunction(
                 func.__call__  # type: ignore
             ):
                 # TODO DM-37502: modify this to raise (and update doc string)
@@ -542,9 +525,7 @@ class ReadTopic(BaseTopic):
             return self._data_queue.popleft()
         return None
 
-    async def next(
-        self, *, flush: bool, timeout: float | None = None
-    ) -> type_hints.BaseMsgType:
+    async def next(self, *, flush: bool, timeout: float | None = None) -> type_hints.BaseMsgType:
         """Pop and return the oldest message from the queue, waiting for data
         if the queue is empty.
 
@@ -607,9 +588,7 @@ class ReadTopic(BaseTopic):
             result = self._run_callback(data)
             if self.allow_multiple_callbacks:
                 # Purge done callback tasks and add a new one.
-                self._callback_tasks = {
-                    task for task in self._callback_tasks if not task.done()
-                }
+                self._callback_tasks = {task for task in self._callback_tasks if not task.done()}
                 self._callback_tasks.add(asyncio.create_task(result))
             else:
                 await result

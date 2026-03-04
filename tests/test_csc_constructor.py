@@ -25,6 +25,7 @@ import unittest
 
 import numpy as np
 import pytest
+
 from lsst.ts import salobj, utils
 
 np.random.seed(47)
@@ -77,14 +78,10 @@ class MissingDoMethodCsc(salobj.BaseCsc):
     version = "a version"
 
     def __init__(self, index: int, allow_missing_callbacks: bool) -> None:
-        super().__init__(
-            name="Test", index=index, allow_missing_callbacks=allow_missing_callbacks
-        )
+        super().__init__(name="Test", index=index, allow_missing_callbacks=allow_missing_callbacks)
 
 
-class TestCscConstructorTestCase(
-    salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase
-):
+class TestCscConstructorTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     """Test the TestCsc constructor.
 
     Note: all of these tests must run async because the constructor
@@ -170,9 +167,7 @@ class TestCscConstructorTestCase(
         index = next(index_gen)
         csc = salobj.TestCsc(index=index)
         try:
-            cmd_topics = [
-                getattr(csc, f"cmd_{name}") for name in csc.salinfo.command_names
-            ]
+            cmd_topics = [getattr(csc, f"cmd_{name}") for name in csc.salinfo.command_names]
             for topic in cmd_topics:
                 assert topic.callback is None
 

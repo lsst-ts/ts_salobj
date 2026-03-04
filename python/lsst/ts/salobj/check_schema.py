@@ -30,6 +30,7 @@ from confluent_kafka.schema_registry import (
     SchemaRegistryClient,
     SchemaRegistryError,
 )
+
 from lsst.ts.xml import subsystems
 from lsst.ts.xml.component_info import ComponentInfo
 
@@ -197,8 +198,7 @@ def check_schema() -> None:
     parser.add_argument(
         "components",
         nargs="*",
-        help="Names of SAL components, e.g. 'Script ScriptQueue'. "
-        "Ignored if --all is specified",
+        help="Names of SAL components, e.g. 'Script ScriptQueue'. Ignored if --all is specified",
     )
     parser.add_argument(
         "--all",
@@ -206,13 +206,9 @@ def check_schema() -> None:
         help="Create topics for all components.",
     )
 
-    parser.add_argument(
-        "-b", "--backward", action="store_true", help="Use backward compatibility"
-    )
+    parser.add_argument("-b", "--backward", action="store_true", help="Use backward compatibility")
 
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Add debug prints."
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Add debug prints.")
 
     args = parser.parse_args()
 

@@ -26,6 +26,7 @@ import unittest
 import jsonschema
 import pytest
 import yaml
+
 from lsst.ts import salobj
 
 
@@ -137,9 +138,7 @@ additionalProperties: false
             intarr0=[0, 2, -3, -5, 4],
             multi_type=5,
         )
-        bad_data = dict(
-            string0=45, bool0=35, int0=1.234, float0="hello", intarr0=45, multi_type=3.5
-        )
+        bad_data = dict(string0=45, bool0=35, int0=1.234, float0="hello", intarr0=45, multi_type=3.5)
         # set one field at a time to bad data
         for field in good_data:
             data = good_data.copy()

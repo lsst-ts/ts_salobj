@@ -29,6 +29,7 @@ import unittest
 
 import numpy as np
 import pytest
+
 from lsst.ts import salobj, utils
 
 np.random.seed(47)
@@ -79,9 +80,7 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
                 sys.argv = [sys.argv[0]]
                 arg1 = "astring"
                 arg2 = 2.75
-                async with NoIndexCsc.make_from_cmd_line(
-                    index=index, arg1=arg1, arg2=arg2
-                ) as csc:
+                async with NoIndexCsc.make_from_cmd_line(index=index, arg1=arg1, arg2=arg2) as csc:
                     assert csc.arg1 == arg1
                     assert csc.arg2 == arg2
 
@@ -99,17 +98,13 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
             assert not csc.check_if_duplicate
             await asyncio.wait_for(csc.start_task, timeout=STD_TIMEOUT)
 
-            duplicate_csc = salobj.TestCsc.make_from_cmd_line(
-                index=index, check_if_duplicate=True
-            )
+            duplicate_csc = salobj.TestCsc.make_from_cmd_line(index=index, check_if_duplicate=True)
             try:
                 # Change origin so heartbeat private_origin differs.
                 duplicate_csc.salinfo.domain.origin += 1
                 assert duplicate_csc.salinfo.index == index
                 assert duplicate_csc.check_if_duplicate
-                with pytest.raises(
-                    salobj.ExpectedError, match="found another instance"
-                ):
+                with pytest.raises(salobj.ExpectedError, match="found another instance"):
                     await asyncio.wait_for(duplicate_csc.done_task, timeout=STD_TIMEOUT)
             finally:
                 await duplicate_csc.close()

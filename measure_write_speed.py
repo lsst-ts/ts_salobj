@@ -58,9 +58,7 @@ async def measure_write_speed(
                 bool: lambda: random.choice([False, True]),
                 int: lambda: random.randint(0, 100),
                 float: lambda: random.randrange(-1000, 1000),
-                str: lambda: "".join(
-                    random.choice(string.ascii_letters) for _ in range(256)
-                ),
+                str: lambda: "".join(random.choice(string.ascii_letters) for _ in range(256)),
             }
             if isinstance(value, list):
                 arr_len = len(value)
@@ -87,15 +85,9 @@ async def measure_write_speed(
         await asyncio.sleep(1)
 
 
-parser = argparse.ArgumentParser(
-    "Measure the speed of writing messages for one SAL topic"
-)
-parser.add_argument(
-    "component_name_index", help="SAL component name[:sal_index], e.g. Test:1"
-)
-parser.add_argument(
-    "topic_attr_name", help="Topic attribute name, e.g. evt_summaryState"
-)
+parser = argparse.ArgumentParser("Measure the speed of writing messages for one SAL topic")
+parser.add_argument("component_name_index", help="SAL component name[:sal_index], e.g. Test:1")
+parser.add_argument("topic_attr_name", help="Topic attribute name, e.g. evt_summaryState")
 parser.add_argument(
     "-i",
     "--interval",
@@ -103,9 +95,7 @@ parser.add_argument(
     default=0,
     help="Interval between each message (seconds)",
 )
-parser.add_argument(
-    "-n", "--number", type=int, default=2000, help="Number of messages to write"
-)
+parser.add_argument("-n", "--number", type=int, default=2000, help="Number of messages to write")
 args = parser.parse_args()
 component_name, sal_index = salobj.name_to_name_index(args.component_name_index)
 asyncio.run(

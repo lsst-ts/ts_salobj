@@ -31,6 +31,7 @@ import types
 import typing
 
 import yaml
+
 from lsst.ts import utils
 from lsst.ts.xml import type_hints
 
@@ -167,9 +168,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             config_dir = pathlib.Path(config_dir)
 
         if not config_dir.is_dir():
-            raise ValueError(
-                f"config_dir={config_dir} does not exist or is not a directory"
-            )
+            raise ValueError(f"config_dir={config_dir} does not exist or is not a directory")
 
         self.config_dir = config_dir
         # Interval between reading the config dir (seconds)
@@ -221,9 +220,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     def config_dir(self, config_dir: str | pathlib.Path) -> None:
         config_dir = pathlib.Path(config_dir).resolve()
         if not config_dir.is_dir():
-            raise ValueError(
-                f"config_dir={config_dir} does not exist or is not a directory"
-            )
+            raise ValueError(f"config_dir={config_dir} does not exist or is not a directory")
         self._config_dir = config_dir
 
     @classmethod
@@ -287,9 +284,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             try:
                 config_data = yaml.safe_load(config_raw_data)
             except Exception as e:
-                raise base.ExpectedError(
-                    f"Could not parse data in {filepath} as a dict: {e!r}"
-                )
+                raise base.ExpectedError(f"Could not parse data in {filepath} as a dict: {e!r}")
             if config_data is not None:
                 hierarchical_update(
                     main=config_dict,
@@ -406,17 +401,11 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             if valid:
                 output_dict[label] = config_name
         if invalid_labels:
-            self.log.warning(
-                f"Ignoring invalid labels {invalid_labels} in {labels_path}"
-            )
+            self.log.warning(f"Ignoring invalid labels {invalid_labels} in {labels_path}")
         if invalid_files:
-            self.log.warning(
-                f"Ignoring invalid config file names {invalid_files} in {labels_path}"
-            )
+            self.log.warning(f"Ignoring invalid config file names {invalid_files} in {labels_path}")
         if missing_files:
-            self.log.warning(
-                f"Ignoring missing config files {missing_files} in {labels_path}"
-            )
+            self.log.warning(f"Ignoring missing config files {missing_files} in {labels_path}")
         return output_dict
 
     async def _report_summary_state(self) -> None:
@@ -541,14 +530,11 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         try:
             config_pkg_dir: type_hints.PathType = os.environ[config_env_var_name]
         except KeyError:
-            raise RuntimeError(
-                f"Environment variable {config_env_var_name} not defined"
-            )
+            raise RuntimeError(f"Environment variable {config_env_var_name} not defined")
         config_pkg_dir = pathlib.Path(config_pkg_dir).resolve()
         if not config_pkg_dir.is_dir():
             raise RuntimeError(
-                f"{config_pkg_dir!r} = ${config_env_var_name} "
-                "does not exists or is not a directory"
+                f"{config_pkg_dir!r} = ${config_env_var_name} does not exists or is not a directory"
             )
 
         config_dir = config_pkg_dir / name / self.schema_version
@@ -574,9 +560,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             )
 
     @classmethod
-    def add_kwargs_from_args(
-        cls, args: argparse.Namespace, kwargs: dict[str, typing.Any]
-    ) -> None:
+    def add_kwargs_from_args(cls, args: argparse.Namespace, kwargs: dict[str, typing.Any]) -> None:
         kwargs["config_dir"] = args.configdir
         if hasattr(args, "override"):
             kwargs["override"] = args.override

@@ -57,12 +57,8 @@ class AckCmdReader(read_topic.ReadTopic):
     SAL component.
     """
 
-    def __init__(
-        self, salinfo: SalInfo, queue_len: int = read_topic.DEFAULT_QUEUE_LEN
-    ) -> None:
-        super().__init__(
-            salinfo=salinfo, attr_name="ack_ackcmd", max_history=0, queue_len=queue_len
-        )
+    def __init__(self, salinfo: SalInfo, queue_len: int = read_topic.DEFAULT_QUEUE_LEN) -> None:
+        super().__init__(salinfo=salinfo, attr_name="ack_ackcmd", max_history=0, queue_len=queue_len)
 
     def _queue_one_item(self, data: type_hints.BaseMsgType) -> None:
         """Queue an ackcmd message if its ``identity`` and ``origin`` match
@@ -138,9 +134,7 @@ class CommandInfo:
 
         # we should see at most 3 acks, but leave room for one more,
         # just in case
-        self._ack_queue: collections.deque[type_hints.AckCmdDataType] = (
-            collections.deque(maxlen=4)
-        )
+        self._ack_queue: collections.deque[type_hints.AckCmdDataType] = collections.deque(maxlen=4)
         self._last_ackcmd: type_hints.AckCmdDataType | None = None
 
     def add_ackcmd(self, ackcmd: type_hints.AckCmdDataType) -> bool:
@@ -165,9 +159,7 @@ class CommandInfo:
         """Stop pending tasks."""
         self._wait_task.cancel()
 
-    async def next_ackcmd(
-        self, timeout: float = DEFAULT_TIMEOUT
-    ) -> type_hints.AckCmdDataType:
+    async def next_ackcmd(self, timeout: float = DEFAULT_TIMEOUT) -> type_hints.AckCmdDataType:
         """Get next command acknowledgement of interest.
 
         If ``wait_done`` true then return the final command acknowledgement,
@@ -200,9 +192,7 @@ class CommandInfo:
             If the command acknowledgement does not arrive in time.
         """
         try:
-            self._wait_task = asyncio.create_task(
-                self._basic_next_ackcmd(timeout=timeout)
-            )
+            self._wait_task = asyncio.create_task(self._basic_next_ackcmd(timeout=timeout))
             ackcmd = await self._wait_task
             if ackcmd.ack in self.failed_ack_codes:
                 raise base.AckError(msg="Command failed", ackcmd=ackcmd)
@@ -228,9 +218,7 @@ class CommandInfo:
         t0 = time.monotonic()
         elapsed_time: float = 0
         while True:
-            ackcmd = await asyncio.wait_for(
-                self._get_next_ackcmd(), timeout=timeout - elapsed_time
-            )
+            ackcmd = await asyncio.wait_for(self._get_next_ackcmd(), timeout=timeout - elapsed_time)
             if not self.wait_done or ackcmd.ack in self.done_ack_codes:
                 return ackcmd
             if ackcmd.ack == sal_enums.SalRetCode.CMD_INPROGRESS:
@@ -340,9 +328,7 @@ class RemoteCommand(write_topic.WriteTopic):
         """
         cmd_info = self.salinfo._running_cmds.get(ackcmd.private_seqNum, None)
         if cmd_info is None:
-            raise RuntimeError(
-                f"Command private_seqNum={ackcmd.private_seqNum} is unknown or finished"
-            )
+            raise RuntimeError(f"Command private_seqNum={ackcmd.private_seqNum} is unknown or finished")
         cmd_info.wait_done = wait_done
         return await cmd_info.next_ackcmd(timeout=timeout)
 
@@ -492,13 +478,9 @@ class RemoteCommand(write_topic.WriteTopic):
                     f"{self.attr_name} a command with seq_num={seq_num} is already running. "
                     "This may indicate a bug in ts_salobj SalInfo or RemoteCommand."
                 )
-            cmd_info = CommandInfo(
-                remote_command=self, seq_num=seq_num, wait_done=wait_done
-            )
+            cmd_info = CommandInfo(remote_command=self, seq_num=seq_num, wait_done=wait_done)
             self.salinfo._running_cmds[seq_num] = cmd_info
-            await self.salinfo.write_data(
-                topic_info=self.topic_info, data_dict=vars(data)
-            )
+            await self.salinfo.write_data(topic_info=self.topic_info, data_dict=vars(data))
         finally:
             self._in_start = False
 

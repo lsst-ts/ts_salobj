@@ -27,6 +27,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import pytest
+
 from lsst.ts import salobj, utils
 
 np.random.seed(47)
@@ -88,9 +89,7 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
             csc_class = self.make_csc_class(valid_simulation_modes)
             for simulation_mode in csc_class.valid_simulation_modes:
                 index = next(index_gen)
-                async with csc_class(
-                    index=index, simulation_mode=simulation_mode
-                ) as csc:
+                async with csc_class(index=index, simulation_mode=simulation_mode) as csc:
                     assert csc.simulation_mode == simulation_mode
 
     async def test_simulate_cmdline_arg(self) -> None:

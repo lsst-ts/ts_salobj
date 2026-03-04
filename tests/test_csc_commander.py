@@ -25,6 +25,7 @@ import unittest
 
 import numpy as np
 import pytest
+
 from lsst.ts import salobj, utils
 
 # Standard timeout (sec)
@@ -80,9 +81,10 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
         )
 
     async def test_basics(self) -> None:
-        async with self.make_csc(initial_state=salobj.State.STANDBY), BasicCscCommander(
-            index=self.csc.salinfo.index
-        ) as commander:
+        async with (
+            self.make_csc(initial_state=salobj.State.STANDBY),
+            BasicCscCommander(index=self.csc.salinfo.index) as commander,
+        ):
             commander.testing = True
             print("wait for summary state")
             await self.assert_next_summary_state(salobj.State.STANDBY)
@@ -101,9 +103,7 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
             t0 = utils.current_tai()
             wait_time = 2  # seconds
             print("run wait command")
-            await commander.run_command(
-                f"wait {salobj.SalRetCode.CMD_COMPLETE} {wait_time}"
-            )
+            await commander.run_command(f"wait {salobj.SalRetCode.CMD_COMPLETE} {wait_time}")
             dt = utils.current_tai() - t0
             # The margin of 0.2 compensates for the clock in Docker on macOS
             # not being strictly monotonic.
@@ -176,9 +176,7 @@ class CscCommanderTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestC
             # TODO DM-37502: modify this to expect construction to raise,
             # once we drop support for synchronous callback functions.
             with pytest.warns(DeprecationWarning):
-                async with SynchronousCustomCommandCscCommander(
-                    index=self.csc.salinfo.index
-                ) as commander:
+                async with SynchronousCustomCommandCscCommander(index=self.csc.salinfo.index) as commander:
                     commander.testing = True
                     print("wait for summary state")
                     # Test BasicCscCommander's "echo" command

@@ -28,6 +28,7 @@ import atexit
 import base64
 import collections
 import enum
+import inspect
 import itertools
 import json
 import logging
@@ -58,6 +59,7 @@ from confluent_kafka.serialization import (
     SerializationError,
 )
 from fastavro.read import SchemaResolutionError
+
 from lsst.ts import utils
 from lsst.ts.xml import sal_enums, type_hints
 from lsst.ts.xml.component_info import ComponentInfo
@@ -236,9 +238,7 @@ class SalInfo:
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
         if index is not None:
             if not (isinstance(index, int) or isinstance(index, enum.IntEnum)):
-                raise TypeError(
-                    f"index {index!r} must be an integer, enum.IntEnum, or None"
-                )
+                raise TypeError(f"index {index!r} must be an integer, enum.IntEnum, or None")
         self.isopen = False
         self._closing = False
         self.domain = domain
@@ -262,8 +262,8 @@ class SalInfo:
 
         # Dict of kafka topic name: dict of index: data
         # Only used for indexed components.
-        self._history_index_data: dict[str, dict[int, type_hints.BaseDdsDataType]] = (
-            collections.defaultdict(dict)
+        self._history_index_data: dict[str, dict[int, type_hints.BaseDdsDataType]] = collections.defaultdict(
+            dict
         )
 
         self._consumer: Consumer | None = None
@@ -271,37 +271,23 @@ class SalInfo:
 
         # Dict of kafka topic name: (deserializer, serialization context)
         # for read topics.
-        self.deserializers_and_contexts: dict[
-            str, tuple[AvroDeserializer, SerializationContext]
-        ] = dict()
+        self.deserializers_and_contexts: dict[str, tuple[AvroDeserializer, SerializationContext]] = dict()
         # Dict of kafka topic name: (serializer, serialization context)
         # for write topics.
-        self._serializers_and_contexts: dict[
-            str, tuple[AvroSerializer, SerializationContext, str]
-        ] = dict()
+        self._serializers_and_contexts: dict[str, tuple[AvroSerializer, SerializationContext, str]] = dict()
 
         topic_subname = os.environ.get("LSST_TOPIC_SUBNAME", None)
         if not topic_subname:
-            raise RuntimeError(
-                "You must define environment variable LSST_TOPIC_SUBNAME"
-            )
+            raise RuntimeError("You must define environment variable LSST_TOPIC_SUBNAME")
 
-        self.kafka_broker_addr = os.environ.get(
-            "LSST_KAFKA_BROKER_ADDR", DEFAULT_LSST_KAFKA_BROKER_ADDR
-        )
+        self.kafka_broker_addr = os.environ.get("LSST_KAFKA_BROKER_ADDR", DEFAULT_LSST_KAFKA_BROKER_ADDR)
         self.schema_registry_url = os.environ.get(
             "LSST_SCHEMA_REGISTRY_URL", DEFAULT_LSST_SCHEMA_REGISTRY_URL
         )
-        self.sasl_plain_username: None | str = os.environ.get(
-            "LSST_KAFKA_SECURITY_USERNAME", None
-        )
-        self.sasl_plain_password: None | str = os.environ.get(
-            "LSST_KAFKA_SECURITY_PASSWORD", None
-        )
+        self.sasl_plain_username: None | str = os.environ.get("LSST_KAFKA_SECURITY_USERNAME", None)
+        self.sasl_plain_password: None | str = os.environ.get("LSST_KAFKA_SECURITY_PASSWORD", None)
         self.replication_factor = int(
-            os.environ.get(
-                "LSST_KAFKA_REPLICATION_FACTOR", DEFAULT_LSST_KAFKA_REPLICATION_FACTOR
-            )
+            os.environ.get("LSST_KAFKA_REPLICATION_FACTOR", DEFAULT_LSST_KAFKA_REPLICATION_FACTOR)
         )
 
         self.component_info = ComponentInfo(topic_subname=topic_subname, name=name)
@@ -310,9 +296,7 @@ class SalInfo:
         # of the initialization.
         name_index = self.name_index
         group_id_identity = (
-            f"{self.identity}-{name_index}"
-            if self.identity != name_index
-            else f"{name_index}"
+            f"{self.identity}-{name_index}" if self.identity != name_index else f"{name_index}"
         )
         self.group_id = f"{group_id_identity}-{get_random_string()}"
         self.command_names = tuple(
@@ -376,13 +360,17 @@ class SalInfo:
         self._run_kafka_result = utils.make_done_future()
 
         if self.index != 0 and not self.indexed:
-            raise ValueError(
-                f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component"
-            )
+            raise ValueError(f"Index={index!r} must be 0 or None; {name} is not an indexed SAL component")
         if len(self.command_names) > 0:
-            self._ackcmd_type = self.component_info.topics[
-                "ack_ackcmd"
-            ].make_dataclass()
+            # TODO OSW-1915 Remove backward compatibility with python data
+            #  types.
+            # hasattr doesn't work so use inspect instead.
+            ack_topic_info = self.component_info.topics["ack_ackcmd"]
+            args = inspect.getfullargspec(ack_topic_info.make_dataclass).args
+            if "with_numpy_types" in args:
+                self._ackcmd_type = ack_topic_info.make_dataclass(with_numpy_types=True)
+            else:
+                self._ackcmd_type = ack_topic_info.make_dataclass()
 
         domain.add_salinfo(self)
 
@@ -459,9 +447,7 @@ class SalInfo:
     def started(self) -> bool:
         """Return True if successfully started, False otherwise."""
         return (
-            self.start_task.done()
-            and not self.start_task.cancelled()
-            and self.start_task.exception() is None
+            self.start_task.done() and not self.start_task.cancelled() and self.start_task.exception() is None
         )
 
     def assert_started(self) -> None:
@@ -655,9 +641,7 @@ class SalInfo:
         if self.start_called:
             raise RuntimeError("Cannot add topics after the start called")
         if topic.topic_info.kafka_name in self._write_topics:
-            raise ValueError(
-                f"Write topic {topic.topic_info.kafka_name} already present"
-            )
+            raise ValueError(f"Write topic {topic.topic_info.kafka_name} already present")
         self._write_topics[topic.topic_info.kafka_name] = topic
 
     async def start(self) -> None:
@@ -746,18 +730,10 @@ class SalInfo:
         * _serializers_and_contexts
         """
         self._blocking_create_topics()
-        self._schema_registry_client = SchemaRegistryClient(
-            dict(url=self.schema_registry_url)
-        )
-        self._blocking_register_schema(
-            schema_registry_client=self._schema_registry_client
-        )
-        self._blocking_create_deserializers(
-            schema_registry_client=self._schema_registry_client
-        )
-        self._blocking_create_serializers(
-            schema_registry_client=self._schema_registry_client
-        )
+        self._schema_registry_client = SchemaRegistryClient(dict(url=self.schema_registry_url))
+        self._blocking_register_schema(schema_registry_client=self._schema_registry_client)
+        self._blocking_create_deserializers(schema_registry_client=self._schema_registry_client)
+        self._blocking_create_serializers(schema_registry_client=self._schema_registry_client)
 
         self._blocking_create_producer()
         self._blocking_create_consumer()
@@ -769,9 +745,7 @@ class SalInfo:
         # and self._write_topics.
         topic_infos = {
             topic.topic_info.kafka_name: topic.topic_info
-            for topic in itertools.chain(
-                self._read_topics.values(), self._write_topics.values()
-            )
+            for topic in itertools.chain(self._read_topics.values(), self._write_topics.values())
         }
         if not topic_infos:
             self.log.warning(f"{self} has no topics")
@@ -783,11 +757,7 @@ class SalInfo:
                 topic=topic_info.kafka_name,
                 num_partitions=topic_info.partitions,
                 replication_factor=self.replication_factor,
-                config=(
-                    {"cleanup.policy": "compact"}
-                    if topic_info.attr_name.startswith("evt_")
-                    else {}
-                ),
+                config=({"cleanup.policy": "compact"} if topic_info.attr_name.startswith("evt_") else {}),
             )
             for topic_info in topic_infos.values()
         ]
@@ -807,9 +777,7 @@ class SalInfo:
 
         topics_list = broker_client.list_topics()
 
-        topics_to_create = [
-            topic for topic in new_topic_list if topic.topic not in topics_list.topics
-        ]
+        topics_to_create = [topic for topic in new_topic_list if topic.topic not in topics_list.topics]
 
         while topics_to_create:
             create_result = broker_client.create_topics(new_topic_list)
@@ -825,9 +793,7 @@ class SalInfo:
                 ):
                     continue
                 else:
-                    self.log.exception(
-                        f"Failed to create topic {kafka_name}: {exception!r}"
-                    )
+                    self.log.exception(f"Failed to create topic {kafka_name}: {exception!r}")
                     raise exception
             # The existence of the poll method is not documented, but failing
             # to call it causes tests/test_speed.py test_write to fail.
@@ -835,11 +801,7 @@ class SalInfo:
 
             topics_list = broker_client.list_topics()
 
-            topics_to_create = [
-                topic
-                for topic in new_topic_list
-                if topic.topic not in topics_list.topics
-            ]
+            topics_to_create = [topic for topic in new_topic_list if topic.topic not in topics_list.topics]
 
     def get_broker_client_configuration(self) -> dict[str, typing.Any]:
         """Get the broker client configuration.
@@ -853,10 +815,7 @@ class SalInfo:
             "bootstrap.servers": self.kafka_broker_addr,
         }
 
-        if (
-            self.sasl_plain_username is not None
-            and self.sasl_plain_password is not None
-        ):
+        if self.sasl_plain_username is not None and self.sasl_plain_password is not None:
             broker_client_configuration["security.protocol"] = os.environ.get(
                 "LSST_KAFKA_SECURITY_PROTOCOL", DEFAULT_SECURITY_PROTOCOL
             )
@@ -869,9 +828,7 @@ class SalInfo:
         if "LSST_KAFKA_BROKER_CLIENT_CONFIGURATION" in os.environ:
             with open(os.environ["LSST_KAFKA_BROKER_CLIENT_CONFIGURATION"]) as fp:
                 additional_broker_client_configuration = yaml.safe_load(fp)
-                broker_client_configuration.update(
-                    additional_broker_client_configuration
-                )
+                broker_client_configuration.update(additional_broker_client_configuration)
 
         return broker_client_configuration
 
@@ -911,9 +868,7 @@ class SalInfo:
         self._consumer = Consumer(consumer_configuration)
 
         read_topic_names = list(self._read_topics.keys())
-        self._consumer.subscribe(
-            read_topic_names, on_assign=self._blocking_on_assign_callback
-        )
+        self._consumer.subscribe(read_topic_names, on_assign=self._blocking_on_assign_callback)
 
     def _blocking_create_producer(self) -> None:
         """Create self._producer.
@@ -963,20 +918,14 @@ class SalInfo:
             self._producer.flush()
             await asyncio.sleep(self._flush_period)
 
-    def _blocking_register_schema(
-        self, schema_registry_client: SchemaRegistryClient
-    ) -> None:
+    def _blocking_register_schema(self, schema_registry_client: SchemaRegistryClient) -> None:
         """Register Avro schemas for all topics."""
-        for topic in itertools.chain(
-            self._read_topics.values(), self._write_topics.values()
-        ):
+        for topic in itertools.chain(self._read_topics.values(), self._write_topics.values()):
             topic_info = topic.topic_info
             schema = Schema(json.dumps(topic_info.make_avro_schema()), "AVRO")
             schema_registry_client.register_schema(topic_info.avro_subject, schema)
 
-    def _blocking_create_deserializers(
-        self, schema_registry_client: SchemaRegistryClient
-    ) -> None:
+    def _blocking_create_deserializers(self, schema_registry_client: SchemaRegistryClient) -> None:
         """Create Kafka deserializers for read topics.
 
         Set self._deserializers_and_contexts
@@ -989,17 +938,13 @@ class SalInfo:
                     schema_registry_client=schema_registry_client,
                     schema_str=json.dumps(topic.topic_info.make_avro_schema()),
                 ),
-                SerializationContext(
-                    topic=topic.topic_info.kafka_name, field=MessageField.VALUE
-                ),
+                SerializationContext(topic=topic.topic_info.kafka_name, field=MessageField.VALUE),
             )
             for topic in self._read_topics.values()
         }
         self._deserializers_and_contexts = deserializers_and_contexts
 
-    def _blocking_create_serializers(
-        self, schema_registry_client: SchemaRegistryClient
-    ) -> None:
+    def _blocking_create_serializers(self, schema_registry_client: SchemaRegistryClient) -> None:
         """Create Kafka serializers for write topics.
 
         Set self._serializers_and_contexts
@@ -1013,9 +958,7 @@ class SalInfo:
                     schema_str=json.dumps(topic.topic_info.make_avro_schema()),
                     conf={"auto.register.schemas": False},
                 ),
-                SerializationContext(
-                    topic=topic.topic_info.kafka_name, field=MessageField.VALUE
-                ),
+                SerializationContext(topic=topic.topic_info.kafka_name, field=MessageField.VALUE),
                 (
                     ""
                     if topic.topic_info.attr_name.startswith("tel_")
@@ -1034,9 +977,7 @@ class SalInfo:
         }
         self._serializers_and_contexts = serializers_and_contexts
 
-    def _blocking_on_assign_callback(
-        self, consumer: Consumer, partitions: list[TopicPartition]
-    ) -> None:
+    def _blocking_on_assign_callback(self, consumer: Consumer, partitions: list[TopicPartition]) -> None:
         """Set partition offsets to read historical data.
 
         Intended as the Consumer.subscribe on_assign callback function.
@@ -1082,9 +1023,7 @@ class SalInfo:
         history_offsets: dict[str, int] = dict()
 
         for partition in partitions:
-            min_offset, max_offset = self._consumer.get_watermark_offsets(
-                partition, cached=False
-            )
+            min_offset, max_offset = self._consumer.get_watermark_offsets(partition, cached=False)
             # print(
             #     f"{self.index} {partition.topic} "
             #     f"{min_offset=}, {max_offset=}"
@@ -1149,9 +1088,7 @@ class SalInfo:
 
         def callback(err: KafkaError, _: Message) -> None:
             if err:
-                self.loop.call_soon_threadsafe(
-                    future.set_exception, KafkaException(err)
-                )
+                self.loop.call_soon_threadsafe(future.set_exception, KafkaException(err))
             else:
                 dt = time.monotonic() - t0
                 self.loop.call_soon_threadsafe(future.set_result, None)
@@ -1204,9 +1141,7 @@ class SalInfo:
                 else:
                     self.log.info(f"Ignoring {kafka_error=}.")
             except Exception:
-                self.log.exception(
-                    f"Error while waiting for consumer group {self.group_id} to be deleted."
-                )
+                self.log.exception(f"Error while waiting for consumer group {self.group_id} to be deleted.")
 
     async def _read_loop(self) -> None:
         """Read and process messages."""
@@ -1243,9 +1178,7 @@ class SalInfo:
                         and self._history_offsets_retrieved
                         and not self._history_offsets
                     ):
-                        started_duration = (
-                            time.monotonic() - self.read_history_start_monotonic
-                        )
+                        started_duration = time.monotonic() - self.read_history_start_monotonic
                         self.log.info(f"Started in {started_duration:0.2f} seconds")
                         self.start_task.set_result(None)
                     continue
@@ -1350,11 +1283,7 @@ class SalInfo:
                 )
 
                 schema_resolution_errors[kafka_name] = 0
-            elif (
-                schema_resolution_errors[kafka_name]
-                % SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD
-                == 0
-            ):
+            elif schema_resolution_errors[kafka_name] % SCHEMA_RESOLUTION_LOG_ERROR_THRESHOLD == 0:
                 self.log.error(
                     f"Failed to deserialize {schema_resolution_errors[kafka_name]} samples of "
                     f"{kafka_name}. Check schema compatibility!"
@@ -1374,7 +1303,13 @@ class SalInfo:
             return sequential_read_errors
         last_sample_timestamps[kafka_name][index] = data_dict["private_sndStamp"]
         data_dict["private_rcvStamp"] = utils.current_tai()
-        data = read_topic.DataType(**data_dict)
+
+        # TODO OSW-1915 Remove backward compatibility with python data types.
+        if hasattr(read_topic.topic_info, "convert_to_numpy_dict"):
+            numpy_data_dic = read_topic.topic_info.convert_to_numpy_dict(data_dict)
+            data = read_topic.DataType(**numpy_data_dic)
+        else:
+            data = read_topic.DataType(**data_dict)
 
         history_offset = self._history_offsets.get(kafka_name)
         if history_offset is None:
@@ -1395,10 +1330,7 @@ class SalInfo:
             self._history_index_data[kafka_name][data.salIndex] = data
 
         if offset >= history_offset:
-
-            self.log.debug(
-                f"{self.group_id=}::Finished handling historical data for {kafka_name=}."
-            )
+            self.log.debug(f"{self.group_id=}::Finished handling historical data for {kafka_name=}.")
             # We're done with history for this topic
             del self._history_offsets[kafka_name]
 
@@ -1414,20 +1346,14 @@ class SalInfo:
                 read_topic._queue_data([data])
 
             if not self._history_offsets:
-                read_history_duration = (
-                    time.monotonic() - self.read_history_start_monotonic
-                )
-                self.log.info(
-                    f"Reading historic data took {read_history_duration:0.2f} seconds"
-                )
+                read_history_duration = time.monotonic() - self.read_history_start_monotonic
+                self.log.info(f"Reading historic data took {read_history_duration:0.2f} seconds")
                 if not self.start_task.done():
                     self.start_task.set_result(None)
 
         return sequential_read_errors
 
-    async def write_data(
-        self, topic_info: TopicInfo, data_dict: dict[str, typing.Any]
-    ) -> None:
+    async def write_data(self, topic_info: TopicInfo, data_dict: dict[str, typing.Any]) -> None:
         """Write a message.
 
         Parameters
@@ -1441,14 +1367,10 @@ class SalInfo:
 
         try:
             future = self.loop.create_future()
-            await self.loop.run_in_executor(
-                self.pool, self._blocking_write, topic_info, data_dict, future
-            )
+            await self.loop.run_in_executor(self.pool, self._blocking_write, topic_info, data_dict, future)
 
         except Exception:
-            self.log.exception(
-                f"write_data(topic_info={topic_info}, data_dict={data_dict} failed"
-            )
+            self.log.exception(f"write_data(topic_info={topic_info}, data_dict={data_dict} failed")
             raise
 
     async def __aenter__(self) -> SalInfo:

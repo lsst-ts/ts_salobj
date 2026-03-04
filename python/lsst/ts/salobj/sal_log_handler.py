@@ -55,9 +55,7 @@ class SalLogHandler(logging.Handler):
         self.loop = asyncio.get_running_loop()
         self.main_thread_id = threading.get_ident()
         self.futures: list[MixedFutureType] = list()
-        self._pre_start_records: collections.deque[logging.LogRecord] = (
-            collections.deque(maxlen=MAX_LEN)
-        )
+        self._pre_start_records: collections.deque[logging.LogRecord] = collections.deque(maxlen=MAX_LEN)
         super().__init__()
 
     def close(self) -> None:
@@ -110,8 +108,7 @@ class SalLogHandler(logging.Handler):
             self.futures = [f for f in self.futures if not f.done()] + [new_future]
         except Exception as e:
             print(
-                f"SalLogHandler.emit of level={record.levelno}, "
-                f"message={message!r} failed: {e!r}",
+                f"SalLogHandler.emit of level={record.levelno}, message={message!r} failed: {e!r}",
                 file=sys.stderr,
             )
         finally:
@@ -144,7 +141,6 @@ class SalLogHandler(logging.Handler):
             )
         except Exception as e:
             print(
-                f"SalLogHandler._async_emit of level={level}, "
-                f"message={message!r} failed: {e!r}",
+                f"SalLogHandler._async_emit of level={level}, message={message!r} failed: {e!r}",
                 file=sys.stderr,
             )

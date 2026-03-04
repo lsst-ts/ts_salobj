@@ -26,6 +26,7 @@ For most CSCs running a commander can be quite dangerous
 so please pick a script name that is not easily confused
 with the script that runs the CSC.
 """
+
 from lsst.ts.salobj import command_test_csc
 
 command_test_csc()

@@ -24,6 +24,7 @@ from __future__ import annotations
 __all__ = ["BaseTopic"]
 
 import abc
+import inspect
 import typing
 
 from lsst.ts.xml import type_hints
@@ -64,12 +65,18 @@ class BaseTopic(abc.ABC):
             self.topic_info = self.salinfo.component_info.topics[attr_name]
             self.rev_code = self.topic_info.get_revcode()
             self.log = salinfo.log.getChild(self.sal_name)
-            self._type = self.topic_info.make_dataclass()
+
+            # TODO OSW-1915 Remove backward compatibility with python data
+            #  types.
+            # hasattr doesn't work so use inspect instead.
+            args = inspect.getfullargspec(self.topic_info.make_dataclass).args
+            if "with_numpy_types" in args:
+                self._type = self.topic_info.make_dataclass(with_numpy_types=True)
+            else:
+                self._type = self.topic_info.make_dataclass()
 
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to create topic {salinfo.name}.{attr_name}"
-            ) from e
+            raise RuntimeError(f"Failed to create topic {salinfo.name}.{attr_name}") from e
 
     @property
     def attr_name(self) -> str:

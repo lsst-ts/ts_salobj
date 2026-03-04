@@ -151,15 +151,11 @@ class DefaultingValidator:
             for error in validate_properties(validator, properties, instance, schema):
                 yield error
 
-        WrappedValidator = jsonschema.validators.extend(
-            StandardValidatorClass, {"properties": set_defaults}
-        )
+        WrappedValidator = jsonschema.validators.extend(StandardValidatorClass, {"properties": set_defaults})
         WrappedValidator.check_schema(schema)
         self.defaults_validator = WrappedValidator(schema=schema)
 
-    def validate(
-        self, data_dict: dict[str, typing.Any] | None
-    ) -> dict[str, typing.Any]:
+    def validate(self, data_dict: dict[str, typing.Any] | None) -> dict[str, typing.Any]:
         """Validate data.
 
         Set missing values based on defaults in the schema,

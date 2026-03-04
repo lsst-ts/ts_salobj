@@ -82,9 +82,7 @@ class TestCscCommander(csc_commander.CscCommander):
             field_type = self.array_field_types[field]
             vals = [field_type(val) for val in valstr.split(",")]  # type: ignore
             if len(vals) > ARR_LEN:
-                raise RuntimeError(
-                    f"Field {field} has more than {ARR_LEN} values: {vals}"
-                )
+                raise RuntimeError(f"Field {field} has more than {ARR_LEN} values: {vals}")
             elif len(vals) < ARR_LEN:
                 n_to_append = ARR_LEN - len(vals)
                 vals += [field_type("0")] * n_to_append  # type: ignore
