@@ -23,9 +23,12 @@ import asyncio
 import enum
 import logging
 import os
+import pathlib
+import tempfile
 import unittest
 
 import pytest
+import yaml
 from lsst.ts import salobj, utils
 
 # Long enough to perform any reasonable operation
@@ -200,6 +203,44 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert set(some_expected_attr_names).issubset(
                 salinfo.component_info.topics.keys()
             )
+
+    async def validate_max_history(
+        self, domain: salobj.Domain, expected_max_history: int
+    ) -> None:
+        index = next(index_gen)
+        async with salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo:
+            max_history = salinfo.get_max_history_for_indexed_component()
+            assert max_history == expected_max_history
+
+    async def test_get_max_history_for_indexed_component(self) -> None:
+        async with salobj.Domain() as domain:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # Create a temporary directory and set the
+                # LSST_HISTORY_READ_CONFIG env var. The file doesn't exist
+                # yet and the code should handle that well.
+                tmppath = pathlib.Path(tmpdir) / "sal_info_history_config.yaml"
+                os.environ["LSST_HISTORY_READ_CONFIG"] = tmppath.as_posix()
+
+                # This should load the hard coded default value.
+                await self.validate_max_history(
+                    domain=domain, expected_max_history=salobj.sal_info.MAX_HISTORY_READ
+                )
+
+                # This should load the value set in the env var.
+                env_max_history = 750
+                os.environ["LSST_MAX_HISTORY_READ"] = f"{env_max_history}"
+                await self.validate_max_history(
+                    domain=domain, expected_max_history=env_max_history
+                )
+
+                # Now the config file is created so the value in there should
+                # be used.
+                config_max_history = 1000
+                with open(tmppath, "w") as fp:
+                    yaml.safe_dump({"Test": config_max_history}, fp)
+                await self.validate_max_history(
+                    domain=domain, expected_max_history=config_max_history
+                )
 
     async def test_lsst_topic_subname_required(self) -> None:
         # Delete LSST_TOPIC_SUBNAME. This should prevent constructing

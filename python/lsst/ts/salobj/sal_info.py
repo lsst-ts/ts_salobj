@@ -32,6 +32,7 @@ import itertools
 import json
 import logging
 import os
+import pathlib
 import time
 import traceback
 import types
@@ -76,7 +77,7 @@ MAX_LOG_LEVEL = logging.INFO
 # The maximum number of historical samples to read for each topic.
 # This only applies to indexed SAL components, and only if
 # the reader wants historical data.
-MAX_HISTORY_READ = 10000
+MAX_HISTORY_READ = 500
 
 DEFAULT_LSST_KAFKA_BROKER_ADDR = "broker:29092"
 DEFAULT_LSST_SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
@@ -1034,6 +1035,37 @@ class SalInfo:
         }
         self._serializers_and_contexts = serializers_and_contexts
 
+    def get_max_history_for_indexed_component(self) -> int:
+        """Get the max history size for an indexed component.
+
+        Returns
+        -------
+        max_history : `int`
+            The maximum number of historic messages to load.
+
+        Notes
+        -----
+        The default value is MAX_HISTORY_READ.
+
+        If the LSST_MAX_HISTORY_READ  env var is defined, that is used.
+
+        If the LSST_HISTORY_READ_CONFIG env var file name is defined and the
+        file exists and the component name is in the file, that value is used.
+        """
+        max_history = int(os.environ.get("LSST_MAX_HISTORY_READ", MAX_HISTORY_READ))
+
+        if max_history_config_file_name := os.environ.get(
+            "LSST_HISTORY_READ_CONFIG", None
+        ):
+            path = pathlib.Path(max_history_config_file_name)
+            if path.exists():
+                with open(path, "r") as fp:
+                    max_history_config = yaml.safe_load(fp)
+                if self.name in max_history_config:
+                    max_history = max_history_config[self.name]
+
+        return max_history
+
     def _blocking_on_assign_callback(
         self, consumer: Consumer, partitions: list[TopicPartition]
     ) -> None:
@@ -1102,7 +1134,7 @@ class SalInfo:
                 continue
             else:
                 if self.indexed:
-                    max_history = MAX_HISTORY_READ
+                    max_history = self.get_max_history_for_indexed_component()
                 else:
                     max_history = self._read_topics[partition.topic].max_history
                 desired_offset = max_offset - max_history
