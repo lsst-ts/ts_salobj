@@ -120,6 +120,10 @@ class SpeedTestCase(unittest.IsolatedAsyncioTestCase):
         self.index = next(index_gen)
         self.start_time = utils.current_tai()
 
+    async def asyncTearDown(self) -> None:
+        """Runs after each test is completed."""
+        await salobj.delete_kafka_topics()
+
     def insert_measurement(self, measurement: verify.Measurement) -> None:
         measurement.metric = self.verify_job.metrics[measurement.metric_name]  # type: ignore
         self.verify_job.measurements.insert(measurement)  # type: ignore

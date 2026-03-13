@@ -79,6 +79,10 @@ class BaseScriptTestCase(unittest.IsolatedAsyncioTestCase):
         salobj.set_test_topic_subname()
         self.index = next(index_gen)
 
+    async def asyncTearDown(self) -> None:
+        """Runs after each test is completed."""
+        await salobj.delete_kafka_topics()
+
     async def configure_and_check(
         self,
         script: salobj.TestScript,

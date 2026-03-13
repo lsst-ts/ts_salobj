@@ -64,6 +64,10 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         salobj.set_test_topic_subname()
 
+    async def asyncTearDown(self) -> None:
+        """Runs after each test is completed."""
+        await salobj.delete_kafka_topics()
+
     async def test_assert_raises_ack_error(self) -> None:
         """Test the assertRaisesAckError function."""
         index = next(index_gen)
@@ -213,10 +217,10 @@ class BasicsTestCase(unittest.IsolatedAsyncioTestCase):
                 assert result == expected_result
 
         for bad_name in (
-            (" Script:15"),  # leading space
-            ("Script:15 "),  # trailing space
-            ("Script:"),  # colon with no index
-            ("Script:zero"),  # index is not an integer
+            " Script:15",  # leading space
+            "Script:15 ",  # trailing space
+            "Script:",  # colon with no index
+            "Script:zero",  # index is not an integer
         ):
             with self.subTest(bad_name=bad_name):
                 with pytest.raises(ValueError):

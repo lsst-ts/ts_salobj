@@ -73,6 +73,10 @@ class CscMakeFromCmdLineTestCase(unittest.IsolatedAsyncioTestCase):
         with utils.modify_environ(LSST_SITE="test"):
             super().run(result)
 
+    async def asyncTearDown(self) -> None:
+        """Runs after each test is completed."""
+        await salobj.delete_kafka_topics()
+
     async def test_no_index(self) -> None:
         for index in (0, None):
             with self.subTest(index=index):

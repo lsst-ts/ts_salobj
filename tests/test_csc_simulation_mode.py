@@ -65,6 +65,10 @@ class SimulationModeTestCase(unittest.IsolatedAsyncioTestCase):
             (4, 1, 0),
         )
 
+    async def asyncTearDown(self) -> None:
+        """Runs after each test is completed."""
+        await salobj.delete_kafka_topics()
+
     def make_csc_class(self, modes: Iterable[int] | None) -> salobj.TestCsc:
         """Make a subclass of TestCsc with specified valid simulation modes"""
 

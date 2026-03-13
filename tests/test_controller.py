@@ -73,6 +73,10 @@ class ControllerConstructorTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         salobj.set_test_topic_subname()
 
+    async def asyncTearDown(self) -> None:
+        """Runs after each test is completed."""
+        await salobj.delete_kafka_topics()
+
     async def test_do_callbacks_false(self) -> None:
         index = next(index_gen)
         async with salobj.Controller("Test", index, do_callbacks=False) as controller:
