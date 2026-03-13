@@ -1397,7 +1397,12 @@ class SalInfo:
         index = data_dict.get("salIndex", 0)
         last_sample_timestamp = last_sample_timestamps[kafka_name].get(index, 0.0)
 
-        if data_dict["private_sndStamp"] < last_sample_timestamp:
+        # Only ignore old topic data in case of events and telemetry. Old
+        # command topic data should be handled by the CSC.
+        if (
+            read_topic.attr_name.startswith("evt_")
+            or read_topic.attr_name.startswith("tel_")
+        ) and data_dict["private_sndStamp"] < last_sample_timestamp:
             delay = (last_sample_timestamp - data_dict["private_sndStamp"]) * 1000
             self.log.warning(
                 "Ignoring old topic sample. "

@@ -32,11 +32,10 @@ import typing
 from collections.abc import AsyncGenerator, Sequence
 
 from lsst.ts import utils
-from lsst.ts.xml import sal_enums, subsystems, type_hints
+from lsst.ts.xml import sal_enums, type_hints
 
 from . import base_csc, testutils
 from .csc_utils import get_expected_summary_states
-from .delete_topics import DeleteTopics, DeleteTopicsArgs
 from .domain import Domain
 from .remote import Remote
 from .topics.read_topic import ReadTopic
@@ -90,28 +89,8 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         super().run(result)  # type: ignore
 
     async def asyncTearDown(self) -> None:
-        """Runs after each test is completed.
-
-        This will delete all the topics and schema from the
-        kafka cluster.
-        """
-        topic_subname = os.environ["LSST_TOPIC_SUBNAME"]
-
-        delete_topics = await DeleteTopics.new()
-
-        delete_topics_args = DeleteTopicsArgs(
-            all_topics=False,
-            subname=topic_subname,
-            force=False,
-            dry=False,
-            log_level=None,
-            components=subsystems,
-        )
-
-        delete_topics.execute(delete_topics_args)
-
-        # Sleep some time to let the cluster have time to finish the deletion
-        await asyncio.sleep(5.0)
+        """Runs after each test is completed."""
+        await testutils.delete_kafka_topics()
 
     @abc.abstractmethod
     def basic_make_csc(

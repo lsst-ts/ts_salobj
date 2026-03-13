@@ -30,10 +30,13 @@ import unittest
 import pytest
 import yaml
 from lsst.ts import salobj, utils
+from lsst.ts.salobj.topics import ReadTopic, WriteTopic
 
 # Long enough to perform any reasonable operation
 # including starting a CSC or loading a script (seconds)
 STD_TIMEOUT = 20
+
+TOPIC_READ_TIMEOUT = 1
 
 index_gen = utils.index_generator()
 
@@ -41,6 +44,10 @@ index_gen = utils.index_generator()
 class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         salobj.set_test_topic_subname()
+
+    async def asyncTearDown(self) -> None:
+        """Runs after each test is completed."""
+        await salobj.delete_kafka_topics()
 
     async def test_salinfo_constructor(self) -> None:
         with pytest.raises(TypeError):
@@ -114,9 +121,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_salinfo_attributes(self) -> None:
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain=domain, name="Test", index=index
-        ) as salinfo:
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo,
+        ):
             assert salinfo.name_index == f"Test:{index}"
 
             # Expected commands; must be complete and sorted alphabetically.
@@ -182,9 +190,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
         The main tests of ComponentInfo are elsewhere.
         """
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain=domain, name="Test", index=index
-        ) as salinfo:
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo,
+        ):
             # Check some topic and field metadata
             for attr_name, topic_info in salinfo.component_info.topics.items():
                 assert attr_name == topic_info.attr_name
@@ -276,9 +285,10 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_make_ack_cmd(self) -> None:
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain=domain, name="Test", index=index
-        ) as salinfo:
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo,
+        ):
             # Use all defaults
             seq_num = 55
             ack = salobj.SalRetCode.CMD_COMPLETE
@@ -306,9 +316,12 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_write_only(self) -> None:
         index = next(index_gen)
-        async with salobj.Domain() as domain, salobj.SalInfo(
-            domain=domain, name="Test", index=index, write_only=True
-        ) as salinfo:
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(
+                domain=domain, name="Test", index=index, write_only=True
+            ) as salinfo,
+        ):
             # Cannot add a read topic to a write-only SalInfo
             with pytest.raises(RuntimeError):
                 salobj.topics.ReadTopic(
@@ -320,3 +333,53 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             await salinfo.start()
             assert salinfo._consumer is None
             assert salinfo._read_loop_task.done()
+
+    async def test_read_old_topic_data(self) -> None:
+        index = next(index_gen)
+        read_topics: dict[str, ReadTopic] = {}
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo,
+        ):
+            for topic in ["ack_ackcmd", "cmd_setScalars", "evt_scalars", "tel_scalars"]:
+                WriteTopic(salinfo=salinfo, attr_name=topic)
+                read_topics[topic] = ReadTopic(
+                    salinfo=salinfo, attr_name=topic, max_history=10
+                )
+
+            await salinfo.start()
+
+            for topic in read_topics:
+                message_num = 0
+                for value in 1000, 100:
+                    message_num += 1
+                    ackcmd = salinfo.make_ackcmd(
+                        private_seqNum=value, ack=salobj.SalRetCode.CMD_COMPLETE
+                    )
+                    ackcmd.private_sndStamp = value
+                    ackcmd.salIndex = index
+                    topic_info = salinfo.component_info.topics[topic]
+                    await salinfo.write_data(
+                        topic_info=topic_info, data_dict=vars(ackcmd)
+                    )
+
+                    match message_num:
+                        case 1:
+                            # The first message should always be read.
+                            await read_topics[topic].next(
+                                flush=True, timeout=TOPIC_READ_TIMEOUT
+                            )
+                        case 2:
+                            if topic in ["ack_ackcmd", "cmd_setScalars"]:
+                                # Too old ommand messages should always be
+                                # read.
+                                await read_topics[topic].next(
+                                    flush=True, timeout=TOPIC_READ_TIMEOUT
+                                )
+                            else:
+                                # Too old event and telemetry data should be
+                                # discarded.
+                                with pytest.raises(TimeoutError):
+                                    await read_topics[topic].next(
+                                        flush=True, timeout=TOPIC_READ_TIMEOUT
+                                    )
