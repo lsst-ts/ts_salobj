@@ -885,6 +885,7 @@ class SalInfo:
         A no-op if there are no read topics.
         """
         if not self._read_topics:
+            self._history_offsets_retrieved = True
             return
 
         consumer_configuration = {
@@ -1098,6 +1099,7 @@ class SalInfo:
             # We must call self._consumer.assign in order to continue reading,
             # but do not want any more historical data.
             read_history_topics = set()
+            self._history_offsets_retrieved = True
         else:
             self.on_assign_called = True
             # Kafka topic names for topics for which we want history
