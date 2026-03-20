@@ -73,7 +73,7 @@ async def stream_as_generator(
     -------
     line : `str`
         A non-empty string that is stripped of leading and trailing whitespace,
-        \n, and \r.
+        \\n, and \\r.
     """
     loop = asyncio.get_running_loop()
 

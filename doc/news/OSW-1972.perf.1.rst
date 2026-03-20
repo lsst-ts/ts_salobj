@@ -1,0 +1,1 @@
+Avoided ignoring old command topic data.

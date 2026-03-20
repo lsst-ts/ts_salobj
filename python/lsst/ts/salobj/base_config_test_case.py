@@ -28,6 +28,7 @@ import typing
 import unittest
 
 import yaml
+from lsst.ts import salobj
 from lsst.ts.xml import type_hints
 
 from .configurable_csc import ConfigurableCsc
@@ -46,6 +47,10 @@ class BaseConfigTestCase(metaclass=abc.ABCMeta):
     * Add a method ``test_<foo>`` which calls
       `check_config_files`.
     """
+
+    async def asyncTearDown(self) -> None:
+        """Runs after each test is completed."""
+        await salobj.delete_kafka_topics()
 
     def get_schema(
         self,

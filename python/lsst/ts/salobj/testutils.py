@@ -22,10 +22,12 @@
 __all__ = [
     "assertRaisesAckError",
     "assertRaisesAckTimeoutError",
+    "delete_kafka_topics",
     "set_test_topic_subname",
     "set_random_lsst_dds_partition_prefix",
 ]
 
+import asyncio
 import base64
 import contextlib
 import os
@@ -33,8 +35,10 @@ import warnings
 from collections.abc import Generator
 
 import astropy.coordinates
+from lsst.ts.xml import subsystems
 
 from .base import AckError, AckTimeoutError
+from .delete_topics import DeleteTopics, DeleteTopicsArgs
 
 AngleOrDegType = astropy.coordinates.Angle | float
 
@@ -93,6 +97,35 @@ def assertRaisesAckTimeoutError(
             raise AssertionError(f"ackcmd.ack={e.ackcmd.ack} instead of {ack}")
         if error is not None and e.ackcmd.error != error:
             raise AssertionError(f"ackcmd.error={e.ackcmd.error} instead of {error}")
+
+
+async def delete_kafka_topics() -> None:
+    """Runs after each test is completed.
+
+    This will delete all the topics and schema from the
+    kafka cluster.
+    """
+    topic_subname: str | None = os.environ.get("LSST_TOPIC_SUBNAME", None)
+
+    if topic_subname is None:
+        # No topics to delete because there is no topic subname.
+        return
+
+    delete_topics = await DeleteTopics.new()
+
+    delete_topics_args = DeleteTopicsArgs(
+        all_topics=False,
+        subname=topic_subname,
+        force=False,
+        dry=False,
+        log_level=None,
+        components=subsystems,
+    )
+
+    delete_topics.execute(delete_topics_args)
+
+    # Sleep some time to let the cluster have time to finish the deletion
+    await asyncio.sleep(5.0)
 
 
 def set_test_topic_subname(randomize: bool = False) -> None:
