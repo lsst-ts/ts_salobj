@@ -1,0 +1,1 @@
+Made max_history for indexed components configurable via an env var and a config file.

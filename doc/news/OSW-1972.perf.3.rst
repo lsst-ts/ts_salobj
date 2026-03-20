@@ -1,0 +1,1 @@
+Possibly fixed an unreproducible bug never finishing reading historic data.

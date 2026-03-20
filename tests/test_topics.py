@@ -24,6 +24,7 @@ import collections
 import copy
 import itertools
 import math
+import os
 import pathlib
 import time
 import typing
@@ -1344,6 +1345,10 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
         """Test specifying topic subname with $LSST_TOPIC_SUBNAME."""
 
         salobj.set_test_topic_subname(randomize=True)
+
+        # Store the currently set topic subname for cleaning up later.
+        topic_subname = os.environ.get("LSST_TOPIC_SUBNAME")
+
         async with salobj.Domain() as domain, salobj.SalInfo(
             domain=domain, name="Test", index=0
         ) as salinfo_r1, salobj.SalInfo(
@@ -1429,6 +1434,16 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
                         raise
                 assert read_codes1 == expected_codes1
                 assert read_codes2 == expected_codes2
+
+        # Store the 2nd topic subname for cleaning up later.
+        topic_subname2 = os.environ.get("LSST_TOPIC_SUBNAME")
+
+        # Clean up the first topic subname.
+        os.environ["LSST_TOPIC_SUBNAME"] = f"{topic_subname}"
+        await salobj.delete_kafka_topics()
+
+        # Restore the 2nd topic subname so asyncTearDown can clean it up.
+        os.environ["LSST_TOPIC_SUBNAME"] = f"{topic_subname2}"
 
     async def test_sal_index(self) -> None:
         """Test separation of data using SAL index, including historical data.

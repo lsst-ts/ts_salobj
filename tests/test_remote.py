@@ -38,6 +38,10 @@ class RemoteTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         salobj.set_test_topic_subname()
 
+    async def asyncTearDown(self) -> None:
+        """Runs after each test is completed."""
+        await salobj.delete_kafka_topics()
+
     async def test_constructor_include_exclude(self) -> None:
         """Test the include and exclude arguments for salobj.Remote."""
 
