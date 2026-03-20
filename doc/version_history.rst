@@ -8,6 +8,24 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.9 (2026-03-20)
+===================
+
+Performance Enhancement
+-----------------------
+
+- Possibly fixed an unreproducible bug never finishing reading historic data. (`OSW-1972 <https://rubinobs.atlassian.net//browse/OSW-1972>`_)
+- Ensured all unit test cases delete their kafka topics. (`OSW-1972 <https://rubinobs.atlassian.net//browse/OSW-1972>`_)
+- Made max_history for indexed components configurable via an env var and a config file. (`OSW-1972 <https://rubinobs.atlassian.net//browse/OSW-1972>`_)
+- Avoided ignoring old command topic data. (`OSW-1972 <https://rubinobs.atlassian.net//browse/OSW-1972>`_)
+
+
+Other Changes and Additions
+---------------------------
+
+- Fixed the documentation build. (`OSW-1823 <https://rubinobs.atlassian.net//browse/OSW-1823>`_)
+
+
 v8.2.8 (2026-01-27)
 ===================
 
