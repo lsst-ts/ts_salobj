@@ -1445,9 +1445,13 @@ class SalInfo:
         # Only ignore old topic data in case of events and telemetry. Old
         # command topic data should be handled by the CSC.
         if (
-            read_topic.attr_name.startswith("evt_")
-            or read_topic.attr_name.startswith("tel_")
-        ) and data_dict["private_sndStamp"] < last_sample_timestamp:
+            (
+                read_topic.attr_name.startswith("evt_")
+                or read_topic.attr_name.startswith("tel_")
+            )
+            and data_dict["private_sndStamp"] < last_sample_timestamp
+            and kafka_name not in self._history_offsets
+        ):
             delay = (last_sample_timestamp - data_dict["private_sndStamp"]) * 1000
             self.log.warning(
                 "Ignoring old topic sample. "
