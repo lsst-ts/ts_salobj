@@ -885,6 +885,7 @@ class SalInfo:
         A no-op if there are no read topics.
         """
         if not self._read_topics:
+            self._history_offsets = {}
             self._history_offsets_retrieved = True
             return
 
@@ -913,9 +914,17 @@ class SalInfo:
         self._consumer = Consumer(consumer_configuration)
 
         read_topic_names = list(self._read_topics.keys())
-        self._consumer.subscribe(
-            read_topic_names, on_assign=self._blocking_on_assign_callback
-        )
+
+        try:
+            self._consumer.subscribe(
+                read_topic_names,
+                on_assign=self._blocking_on_assign_callback,
+                on_revoke=self._blocking_on_revoke_callback,
+                on_lost=self._blocking_on_lost_callback,
+            )
+        except (KafkaException, RuntimeError):
+            self.log.exception("Consumer subscription failed.")
+            raise
 
     def _blocking_create_producer(self) -> None:
         """Create self._producer.
@@ -1094,6 +1103,10 @@ class SalInfo:
         attribute of each of these partitions, regardless if whether want
         historical data for that topic.
         """
+        assert self._consumer is not None
+
+        self.log.debug(f"Assigning partitions: {partitions}")
+        self.log.debug(f"Currently assigned: {self._consumer.assignment()}")
         if self.on_assign_called:
             self.log.info("on_assign called again; partitions[0]=%s", partitions[0])
             # We must call self._consumer.assign in order to continue reading,
@@ -1109,8 +1122,6 @@ class SalInfo:
                 if read_topic.max_history > 0
             }
 
-        assert self._consumer is not None  # Make mypy happy
-
         # Local copy of self._history_offsets
         # (needed because this code runs in a thread)
         history_offsets: dict[str, int] = dict()
@@ -1119,10 +1130,7 @@ class SalInfo:
             min_offset, max_offset = self._consumer.get_watermark_offsets(
                 partition, cached=False
             )
-            # print(
-            #     f"{self.index} {partition.topic} "
-            #     f"{min_offset=}, {max_offset=}"
-            # )
+
             if max_offset <= 0:
                 # No data yet written, and we want all new data.
                 # Use OFFSET_BEGINNING in case new data arrives
@@ -1146,13 +1154,44 @@ class SalInfo:
             history_offsets[partition.topic] = max_offset - 1
 
         self._consumer.assign(partitions)
-        # print(f"{self.index} assign:")
-        # for partition in partitions:
-        #     print(f"  {partition}")
+        self.log.debug(f"Now assigned: {self._consumer.assignment()}")
 
         self._history_offsets = history_offsets
         self._history_offsets_retrieved = True
-        # print(f"{self.index} {history_offsets=}")
+
+    def _blocking_on_revoke_callback(
+        self, consumer: Consumer, partitions: list[TopicPartition]
+    ) -> None:
+        """Callback for when a partition is revoked.
+
+        Parameters
+        ----------
+        consumer
+            Kafka consumer (ignored).
+        partitions
+            List of TopicPartitions assigned to self._consumer.
+        """
+        self.log.debug(f"Partitions revoked: {partitions}")
+
+    def _blocking_on_lost_callback(
+        self, consumer: Consumer, partitions: list[TopicPartition]
+    ) -> None:
+        """Callback for when a partition is no longer available.
+
+        Parameters
+        ----------
+        consumer
+            Kafka consumer (ignored).
+        partitions
+            List of TopicPartitions assigned to self._consumer.
+
+        Notes
+        -----
+        This callback is intended to shed light on hanging components.
+        """
+        self.log.debug(f"Partitions lost: {partitions}")
+        self._history_offsets = {}
+        self._history_offsets_retrieved = True
 
     def _blocking_write(
         self,
@@ -1272,16 +1311,20 @@ class SalInfo:
             while self.isopen:
                 messages = await self.loop.run_in_executor(self.pool, consume)
                 if not messages:
-                    if (
-                        not self.start_task.done()
-                        and self._history_offsets_retrieved
-                        and not self._history_offsets
-                    ):
-                        started_duration = (
-                            time.monotonic() - self.read_history_start_monotonic
+                    if not self.start_task.done():
+                        self.log.info(
+                            f"History offsets retrieved? {self._history_offsets_retrieved}."
                         )
-                        self.log.info(f"Started in {started_duration:0.2f} seconds")
-                        self.start_task.set_result(None)
+                        self.log.info(f"History offets: {self._history_offsets}.")
+                        if (
+                            self._history_offsets_retrieved
+                            and not self._history_offsets
+                        ):
+                            started_duration = (
+                                time.monotonic() - self.read_history_start_monotonic
+                            )
+                            self.log.info(f"Started in {started_duration:0.2f} seconds")
+                            self.start_task.set_result(None)
                     continue
                 for message in messages:
                     sequential_read_errors = self._process_message(
@@ -1402,9 +1445,13 @@ class SalInfo:
         # Only ignore old topic data in case of events and telemetry. Old
         # command topic data should be handled by the CSC.
         if (
-            read_topic.attr_name.startswith("evt_")
-            or read_topic.attr_name.startswith("tel_")
-        ) and data_dict["private_sndStamp"] < last_sample_timestamp:
+            (
+                read_topic.attr_name.startswith("evt_")
+                or read_topic.attr_name.startswith("tel_")
+            )
+            and data_dict["private_sndStamp"] < last_sample_timestamp
+            and kafka_name not in self._history_offsets
+        ):
             delay = (last_sample_timestamp - data_dict["private_sndStamp"]) * 1000
             self.log.warning(
                 "Ignoring old topic sample. "
