@@ -8,6 +8,15 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.10 (2026-05-20)
+====================
+
+Performance Enhancement
+-----------------------
+
+- Added additional callbacks, debug statements and try-except blocks to SalInfo. (`OSW-2194 <https://rubinobs.atlassian.net//browse/OSW-2194>`_)
+
+
 v8.2.9 (2026-03-20)
 ===================
 
