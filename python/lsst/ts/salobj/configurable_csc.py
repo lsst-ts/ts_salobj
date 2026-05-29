@@ -76,6 +76,12 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
     extra_commands : `set`[`str`]
         List of commands that can be defined in the CSC but be missing
         from the interface.
+    discard_out_of_order_telemetry : `bool`
+        If True, discard telemetry messages that arrive out of order. The
+        default is True.
+    discard_out_of_order_events : `bool`
+        If True, discard event messages that arrive out of order. The default
+        is True.
 
     Raises
     ------
@@ -145,6 +151,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
         override: str = "",
         simulation_mode: int = 0,
         extra_commands: set[str] = set(),
+        discard_out_of_order_telemetry: bool = True,
+        discard_out_of_order_events: bool = True,
     ) -> None:
         self.site = os.environ.get("LSST_SITE")
         if self.site is None:
@@ -184,6 +192,8 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
             override=override,
             simulation_mode=simulation_mode,
             extra_commands=extra_commands,
+            discard_out_of_order_telemetry=discard_out_of_order_telemetry,
+            discard_out_of_order_events=discard_out_of_order_events,
         )
 
         # Set static fields of the generic configuration events.
@@ -448,7 +458,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
         # Get git hash, if relevant
         override: str = data.configurationOverride  # type: ignore
-        (override_filename, _, git_hash) = override.partition(":")
+        override_filename, _, git_hash = override.partition(":")
 
         # List of (config filename, must exist)
         files_to_read = ["_init.yaml"]

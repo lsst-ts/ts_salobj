@@ -86,6 +86,12 @@ class BaseCsc(Controller):
     extra_commands : `set`[`str`]
         List of commands that can be defined in the CSC but be missing
         from the interface.
+    discard_out_of_order_telemetry : `bool`
+        If True, discard telemetry messages that arrive out of order. The
+        default is True.
+    discard_out_of_order_events : `bool`
+        If True, discard event messages that arrive out of order. The default
+        is True.
 
     Raises
     ------
@@ -188,6 +194,8 @@ class BaseCsc(Controller):
         simulation_mode: int = 0,
         allow_missing_callbacks: bool = False,
         extra_commands: set[str] = set(),
+        discard_out_of_order_telemetry: bool = True,
+        discard_out_of_order_events: bool = True,
     ) -> None:
         # Check class variables
         if not hasattr(self, "version"):
@@ -230,6 +238,8 @@ class BaseCsc(Controller):
             do_callbacks=True,
             allow_missing_callbacks=allow_missing_callbacks,
             extra_commands=extra_commands,
+            discard_out_of_order_telemetry=discard_out_of_order_telemetry,
+            discard_out_of_order_events=discard_out_of_order_events,
         )
 
         # Set evt_simulationMode, now that it is available.
@@ -846,7 +856,7 @@ class BaseCsc(Controller):
             if self.summary_state == State.FAULT:
                 why = (
                     "in Fault state: "
-                    f"errorCode={errorCode}, "  # type:ignore
+                    f"errorCode={errorCode}, "  # type: ignore
                     f"errorReport={errorReport!r}"  # type: ignore
                 )
             else:
