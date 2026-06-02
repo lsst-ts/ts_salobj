@@ -101,6 +101,12 @@ class Controller:
     extra_commands : `set`[`str`]
         List of valid commands that can be defined in the CSC without
         being in the interface.
+    discard_out_of_order_telemetry : `bool`
+        If True, discard telemetry messages that arrive out of order. The
+        default is True.
+    discard_out_of_order_events : `bool`
+        If True, discard event messages that arrive out of order. The default
+        is True.
 
     Attributes
     ----------
@@ -225,6 +231,8 @@ class Controller:
         write_only: bool = False,
         allow_missing_callbacks: bool = False,
         extra_commands: set[str] = set(),
+        discard_out_of_order_telemetry: bool = True,
+        discard_out_of_order_events: bool = True,
     ) -> None:
         if do_callbacks and write_only:
             raise ValueError("Cannot specify do_callbacks and write_only both true")
@@ -245,7 +253,12 @@ class Controller:
         domain = Domain()
         try:
             self.salinfo = SalInfo(
-                domain=domain, name=name, index=index, write_only=write_only
+                domain=domain,
+                name=name,
+                index=index,
+                write_only=write_only,
+                discard_out_of_order_telemetry=discard_out_of_order_telemetry,
+                discard_out_of_order_events=discard_out_of_order_events,
             )
             new_identity = self.salinfo.name_index
             self.salinfo.identity = new_identity

@@ -116,6 +116,12 @@ class SalInfo:
         Number of messages to consume in the read loop.
     consume_messages_timeout : `float`
         Timeout to wait for new messages to arrive in the read loop.
+    discard_out_of_order_telemetry : `bool`
+        If True, discard telemetry messages that arrive out of order. The
+        default is True.
+    discard_out_of_order_events : `bool`
+        If True, discard event messages that arrive out of order. The default
+        is True.
 
     Raises
     ------
@@ -232,6 +238,8 @@ class SalInfo:
         write_only: bool = False,
         num_messages: int = 1,
         consume_messages_timeout: float = 0.1,
+        discard_out_of_order_telemetry: bool = True,
+        discard_out_of_order_events: bool = True,
     ) -> None:
         if not isinstance(domain, Domain):
             raise TypeError(f"domain {domain!r} must be an lsst.ts.salobj.Domain")
@@ -251,6 +259,8 @@ class SalInfo:
         self.consume_messages_timeout = consume_messages_timeout
         self.identity = domain.default_identity
         self.read_history_start_monotonic = 0.0
+        self.discard_out_of_order_telemetry = discard_out_of_order_telemetry
+        self.discard_out_of_order_events = discard_out_of_order_events
 
         self.start_called = False
         self.on_assign_called = False
@@ -1446,8 +1456,14 @@ class SalInfo:
         # command topic data should be handled by the CSC.
         if (
             (
-                read_topic.attr_name.startswith("evt_")
-                or read_topic.attr_name.startswith("tel_")
+                (
+                    read_topic.attr_name.startswith("evt_")
+                    and self.discard_out_of_order_events
+                )
+                or (
+                    read_topic.attr_name.startswith("tel_")
+                    and self.discard_out_of_order_telemetry
+                )
             )
             and data_dict["private_sndStamp"] < last_sample_timestamp
             and kafka_name not in self._history_offsets
