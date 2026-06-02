@@ -334,7 +334,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert salinfo._consumer is None
             assert salinfo._read_loop_task.done()
 
-    async def test_read_old_topic_data(self) -> None:
+    async def test_reject_old_topic_data(self) -> None:
         index = next(index_gen)
         read_topics: dict[str, ReadTopic] = {}
         async with (
@@ -371,7 +371,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                             )
                         case 2:
                             if topic in ["ack_ackcmd", "cmd_setScalars"]:
-                                # Too old ommand messages should always be
+                                # Too old command messages should always be
                                 # read.
                                 await read_topics[topic].next(
                                     flush=True, timeout=TOPIC_READ_TIMEOUT
@@ -383,3 +383,39 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                                     await read_topics[topic].next(
                                         flush=True, timeout=TOPIC_READ_TIMEOUT
                                     )
+
+    async def test_no_discard_out_of_order_topics(self) -> None:
+        index = next(index_gen)
+        read_topics: dict[str, ReadTopic] = {}
+        async with (
+            salobj.Domain() as domain,
+            salobj.SalInfo(
+                domain=domain,
+                name="Test",
+                index=index,
+                discard_out_of_order_events=False,
+                discard_out_of_order_telemetry=False,
+            ) as salinfo,
+        ):
+            for topic in ["ack_ackcmd", "cmd_setScalars", "evt_scalars", "tel_scalars"]:
+                WriteTopic(salinfo=salinfo, attr_name=topic)
+                read_topics[topic] = ReadTopic(
+                    salinfo=salinfo, attr_name=topic, max_history=10
+                )
+
+            await salinfo.start()
+
+            for topic in read_topics:
+                for value in 1000, 100:
+                    ackcmd = salinfo.make_ackcmd(
+                        private_seqNum=value, ack=salobj.SalRetCode.CMD_COMPLETE
+                    )
+                    ackcmd.private_sndStamp = value
+                    ackcmd.salIndex = index
+                    topic_info = salinfo.component_info.topics[topic]
+                    await salinfo.write_data(
+                        topic_info=topic_info, data_dict=vars(ackcmd)
+                    )
+                    await read_topics[topic].next(
+                        flush=True, timeout=TOPIC_READ_TIMEOUT
+                    )
