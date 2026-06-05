@@ -24,6 +24,7 @@
 
 Run with option ``--help`` for more information.
 """
+
 from lsst.ts.salobj import get_component_info
 
 get_component_info()
