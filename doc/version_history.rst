@@ -8,6 +8,15 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.11 (2026-06-02)
+====================
+
+Performance Enhancement
+-----------------------
+
+- Made discarding of out of order telemetry or event topics configurable. (`OSW-2329 <https://rubinobs.atlassian.net//browse/OSW-2329>`_)
+
+
 v8.2.10 (2026-05-20)
 ====================
 
