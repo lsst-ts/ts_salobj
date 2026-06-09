@@ -1,0 +1,1 @@
+Kept references to blocking write tasks and shield them to prevent cancellation.

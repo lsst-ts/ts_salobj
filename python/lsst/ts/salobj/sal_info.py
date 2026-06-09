@@ -401,6 +401,9 @@ class SalInfo:
         atexit.register(self.basic_close)
         self.isopen = True
 
+        # Keep track of the blocking write tasks.
+        self._blocking_write_tasks: set[asyncio.Future[None]] = set()
+
     @property
     def name(self) -> str:
         """Get the SAL component name (the ``name`` constructor argument)."""
@@ -1218,7 +1221,7 @@ class SalInfo:
         future : `asyncio.Future`
             Future to set done when the data has been acknowledged.
         """
-        assert self._producer is not None  # Make mypy happy
+        assert self._producer is not None
 
         kafka_name = topic_info.kafka_name
         (
@@ -1543,14 +1546,20 @@ class SalInfo:
 
         try:
             future = self.loop.create_future()
-            await self.loop.run_in_executor(
-                self.pool, self._blocking_write, topic_info, data_dict, future
+
+            # Keep a strong reference to the task and shield it to ensure it
+            # completes.
+            task = asyncio.shield(
+                self.loop.run_in_executor(
+                    self.pool, self._blocking_write, topic_info, data_dict, future
+                )
             )
+            self._blocking_write_tasks.add(task)
+            task.add_done_callback(self._blocking_write_tasks.discard)
+            await task
 
         except Exception:
-            self.log.exception(
-                f"write_data(topic_info={topic_info}, data_dict={data_dict} failed"
-            )
+            self.log.exception(f"write_data for {topic_info.kafka_name} failed.")
             raise
 
     async def __aenter__(self) -> SalInfo:
