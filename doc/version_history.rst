@@ -8,6 +8,17 @@ Version History
 
 .. towncrier release notes start
 
+v8.2.12 (2026-06-30)
+====================
+
+Performance Enhancement
+-----------------------
+
+- Kept references to blocking write tasks and shield them to prevent cancellation. (`OSW-2405 <https://rubinobs.atlassian.net//browse/OSW-2405>`_)
+- Made discarding of out of order telemetry or event topics configurable for Remote. (`OSW-2405 <https://rubinobs.atlassian.net//browse/OSW-2405>`_)
+- Reformatted the code with black. (`OSW-2405 <https://rubinobs.atlassian.net//browse/OSW-2405>`_)
+
+
 v8.2.11 (2026-06-02)
 ====================
 
