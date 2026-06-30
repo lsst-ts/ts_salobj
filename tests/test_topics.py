@@ -1586,6 +1586,7 @@ class TopicsTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
             index=3,
             num_messages=num_messages,
             consume_messages_timeout=consume_messages_timeout,
+            discard_out_of_order_telemetry=False,
         ) as salinfo:
             tel_reader = salobj.topics.ReadTopic(
                 salinfo=salinfo, attr_name="tel_scalars", max_history=0

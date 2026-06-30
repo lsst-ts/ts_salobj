@@ -32,8 +32,7 @@ from lsst.ts import salobj
 class ValidatorTestCase(unittest.TestCase):
     def setUp(self) -> None:
         # A version of the CONFIG_SCHEMA with added defaults
-        self.schema: dict[str, typing.Any] = yaml.safe_load(
-            """
+        self.schema: dict[str, typing.Any] = yaml.safe_load("""
 description: A schema with defaults
 type: object
 properties:
@@ -64,8 +63,7 @@ properties:
 
 required: [string0, bool0, int0, float0, intarr0, multi_type]
 additionalProperties: false
-"""
-        )
+""")
 
         self.validator = salobj.DefaultingValidator(schema=self.schema)
 

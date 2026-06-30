@@ -21,6 +21,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """An example of how to run a CSC"""
+
 from lsst.ts.salobj import run_test_csc
 
 run_test_csc()

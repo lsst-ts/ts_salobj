@@ -25,8 +25,7 @@ import typing
 import yaml
 
 # Config schema for TestCSC
-CONFIG_SCHEMA: dict[str, typing.Any] = yaml.safe_load(
-    """
+CONFIG_SCHEMA: dict[str, typing.Any] = yaml.safe_load("""
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_salobj/blob/main/python/lsst/ts/salobj/config_schema.py
 # title must end with one or more spaces followed by the schema version, which must begin with "v"
@@ -55,5 +54,4 @@ properties:
 
 required: [string0, bool0, int0, float0, intarr0, multi_type]
 additionalProperties: false
-"""
-)
+""")

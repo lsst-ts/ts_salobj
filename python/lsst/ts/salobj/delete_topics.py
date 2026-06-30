@@ -332,12 +332,10 @@ class DeleteTopics:
 
         topics_to_delete_msg = "\n".join(topics_to_delete)
         schema_to_delete_msg = "\n".join(schema_to_delete)
-        self.log.info(
-            f"""
+        self.log.info(f"""
 Deleting {len(topics_to_delete)} topics: {topics_to_delete_msg}.
 Deleting {len(schema_to_delete)} schemas: {schema_to_delete_msg}.
-            """
-        )
+            """)
 
         if args.dry:
             self.log.info("Running in dry mode, exiting. No topics were deleted.")

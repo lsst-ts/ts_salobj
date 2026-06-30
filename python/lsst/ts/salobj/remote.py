@@ -78,6 +78,12 @@ class Remote:
         Number of messages to consume in the read loop.
     consume_messages_timeout : `float`
         Timeout to wait for new messages to arrive in the read loop.
+    discard_out_of_order_telemetry : `bool`
+        If True, discard telemetry messages that arrive out of order. The
+        default is True.
+    discard_out_of_order_events : `bool`
+        If True, discard event messages that arrive out of order. The default
+        is True.
 
     Raises
     ------
@@ -150,6 +156,8 @@ class Remote:
         start: bool = True,
         num_messages: int = 1,
         consume_messages_timeout: float = 0.1,
+        discard_out_of_order_telemetry: bool = True,
+        discard_out_of_order_events: bool = True,
     ) -> None:
         if include is not None and exclude is not None:
             raise ValueError("Cannot specify both include and exclude")
@@ -165,6 +173,8 @@ class Remote:
             index=index,
             num_messages=num_messages,
             consume_messages_timeout=consume_messages_timeout,
+            discard_out_of_order_telemetry=discard_out_of_order_telemetry,
+            discard_out_of_order_events=discard_out_of_order_events,
         )
         try:
             if not readonly:
