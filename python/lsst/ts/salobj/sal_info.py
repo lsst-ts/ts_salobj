@@ -546,7 +546,8 @@ class SalInfo:
         if not self.isopen:
             return
         self.isopen = False
-        self._read_loop_task.cancel()
+        while not self._read_loop_task.done():
+            time.sleep(0.01)
         if self._consumer is not None:
             self._consumer.close()
         for reader in self._read_topics.values():
