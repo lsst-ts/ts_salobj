@@ -4,6 +4,7 @@ check-yaml: true
 clang-format: false
 flake8: true
 format-xmllint: false
+insert-license: true
 isort: true
 mypy: true
 ruff: false
