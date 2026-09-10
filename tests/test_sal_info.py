@@ -367,21 +367,21 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                         case 1:
                             # The first message should always be read.
                             await read_topics[topic].next(
-                                flush=True, timeout=TOPIC_READ_TIMEOUT
+                                flush=False, timeout=TOPIC_READ_TIMEOUT
                             )
                         case 2:
                             if topic in ["ack_ackcmd", "cmd_setScalars"]:
                                 # Too old command messages should always be
                                 # read.
                                 await read_topics[topic].next(
-                                    flush=True, timeout=TOPIC_READ_TIMEOUT
+                                    flush=False, timeout=TOPIC_READ_TIMEOUT
                                 )
                             else:
                                 # Too old event and telemetry data should be
                                 # discarded.
                                 with pytest.raises(TimeoutError):
                                     await read_topics[topic].next(
-                                        flush=True, timeout=TOPIC_READ_TIMEOUT
+                                        flush=False, timeout=TOPIC_READ_TIMEOUT
                                     )
 
     async def test_no_discard_out_of_order_topics(self) -> None:
@@ -417,5 +417,5 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                         topic_info=topic_info, data_dict=vars(ackcmd)
                     )
                     await read_topics[topic].next(
-                        flush=True, timeout=TOPIC_READ_TIMEOUT
+                        flush=False, timeout=TOPIC_READ_TIMEOUT
                     )
