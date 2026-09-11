@@ -487,6 +487,10 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         )
         assert self.csc.summary_state == sal_enums.State.DISABLED
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
+        software_versions = await self.assert_next_sample(
+            self.remote.evt_softwareVersions  # type: ignore
+        )
+        assert software_versions.cscVersion != "?", "cscVersion field should not be ?."
         await self.check_bad_commands(
             good_commands=("enable", "standby", "setLogLevel") + skip_commands
         )
