@@ -1,0 +1,1 @@
+Increased the interval between config change checks.
