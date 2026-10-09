@@ -181,7 +181,7 @@ class ConfigurableCsc(BaseCsc, abc.ABC):
 
         self.config_dir = config_dir
         # Interval between reading the config dir (seconds)
-        self.read_config_dir_interval = 1
+        self.read_config_dir_interval = float(os.environ.get("LSST_READ_CONFIG_DIR_INTERVAL", 30.0))
         self.read_config_dir_task = utils.make_done_future()
 
         super().__init__(
