@@ -24,6 +24,7 @@ import logging
 import unittest
 
 import pytest
+
 from lsst.ts import salobj
 
 
@@ -66,9 +67,7 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
             for start_index, end_index, use_min in itertools.product(
                 range(nthresh + 1), range(nthresh + 1), (False, True)
             ):
-                with self.subTest(
-                    queue_len=queue_len, start_index=start_index, end_index=end_index
-                ):
+                with self.subTest(queue_len=queue_len, start_index=start_index, end_index=end_index):
                     if end_index == start_index:
                         # This case is handled by check_nochange_values
                         continue
@@ -87,9 +86,7 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
                             continue
                         else:
                             nitems = qlc.warn_thresholds[end_index] - 1
-                        expected_log_level = (
-                            logging.WARNING if end_index < nthresh else logging.ERROR
-                        )
+                        expected_log_level = logging.WARNING if end_index < nthresh else logging.ERROR
                         with self.assertLogs(logger=qlc.log, level=expected_log_level):
                             did_log = qlc.check_nitems(nitems)
                         assert did_log
@@ -98,9 +95,7 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
                         else:
                             expected_warn_threshold = qlc.warn_thresholds[end_index]
                         assert qlc.warn_threshold == expected_warn_threshold
-                        expected_reset_threshold = (
-                            qlc.warn_thresholds[end_index - 1] // 2
-                        )
+                        expected_reset_threshold = qlc.warn_thresholds[end_index - 1] // 2
                         assert qlc.reset_threshold == expected_reset_threshold
                     else:
                         # Reset to a lower warning level
@@ -116,16 +111,12 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
                         expected_warn_threshold = qlc.warn_thresholds[end_index]
                         assert qlc.warn_threshold == expected_warn_threshold
                         if end_index > 0:
-                            expected_reset_threshold = (
-                                qlc.warn_thresholds[end_index - 1] // 2
-                            )
+                            expected_reset_threshold = qlc.warn_thresholds[end_index - 1] // 2
                         else:
                             expected_reset_threshold = None
                         assert qlc.reset_threshold == expected_reset_threshold
 
-    def make_checker(
-        self, queue_len: int, warn_index: int
-    ) -> salobj.topics.read_topic.QueueCapacityChecker:
+    def make_checker(self, queue_len: int, warn_index: int) -> salobj.topics.read_topic.QueueCapacityChecker:
         """Make a QueueCapacityChecker with specified warn_threshold.
 
         Parameters
@@ -137,17 +128,13 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
             or `None` if ``warn_index == len(warn_thresholds)``.
             then the initial warn_threshold is `None`
         """
-        qlc = salobj.topics.read_topic.QueueCapacityChecker(
-            descr="test", log=self.log, queue_len=queue_len
-        )
+        qlc = salobj.topics.read_topic.QueueCapacityChecker(descr="test", log=self.log, queue_len=queue_len)
         assert qlc.reset_threshold is None
         assert qlc.warn_threshold == qlc.warn_thresholds[0]
         nthresh = len(qlc.warn_thresholds)
         if warn_index > 0:
             nitems = qlc.warn_thresholds[warn_index - 1]
-            expected_log_level = (
-                logging.WARNING if warn_index < nthresh else logging.ERROR
-            )
+            expected_log_level = logging.WARNING if warn_index < nthresh else logging.ERROR
             with self.assertLogs(logger=qlc.log, level=expected_log_level):
                 did_log = qlc.check_nitems(nitems)
             assert did_log
@@ -162,17 +149,11 @@ class QueueCapacityCheckerTestCase(unittest.TestCase):
             assert qlc.reset_threshold == expected_reset_threshold
         return qlc
 
-    def check_nochange_values(
-        self, queue_len_checker: salobj.topics.read_topic.QueueCapacityChecker
-    ) -> None:
+    def check_nochange_values(self, queue_len_checker: salobj.topics.read_topic.QueueCapacityChecker) -> None:
         """Check that calling `check_nitems` does nothing for the full range
         of values that should not change anything.
         """
-        min_len = (
-            0
-            if queue_len_checker.reset_threshold is None
-            else queue_len_checker.reset_threshold + 1
-        )
+        min_len = 0 if queue_len_checker.reset_threshold is None else queue_len_checker.reset_threshold + 1
         max_len = (
             queue_len_checker.queue_len
             if queue_len_checker.warn_threshold is None
