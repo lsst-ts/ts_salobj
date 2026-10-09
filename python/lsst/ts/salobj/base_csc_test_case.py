@@ -215,9 +215,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                 index=self.csc.salinfo.index,
             )
             if self._broker_configuration is None:
-                self._broker_configuration = (
-                    self.csc.salinfo.get_broker_client_configuration()
-                )
+                self._broker_configuration = self.csc.salinfo.get_broker_client_configuration()
             if self._schema_registry_url is None:
                 self._schema_registry_url = self.csc.salinfo.schema_registry_url
 
@@ -335,9 +333,9 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
                     read_value = type(expected_value)(read_value)
                 except Exception:
                     pass
-            assert (
-                read_value == expected_value
-            ), f"Failed on field {field_name}: read {read_value!r} != expected {expected_value!r}"
+            assert read_value == expected_value, (
+                f"Failed on field {field_name}: read {read_value!r} != expected {expected_value!r}"
+            )
         return data
 
     async def check_bin_script(
@@ -402,9 +400,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             args += ["--override", override]
         args += cmdline_args
 
-        async with Domain() as domain, Remote(
-            domain=domain, name=name, index=index
-        ) as self.remote:
+        async with Domain() as domain, Remote(domain=domain, name=name, index=index) as self.remote:
             print("check_bin_script running:", " ".join(args))
             self.csc_start_time = utils.current_tai()
             process = await asyncio.create_subprocess_exec(
@@ -477,9 +473,7 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         # Start in STANDBY state.
         assert self.csc.summary_state == sal_enums.State.STANDBY
         await self.assert_next_summary_state(sal_enums.State.STANDBY)
-        await self.check_bad_commands(
-            good_commands=("start", "exitControl", "setLogLevel") + skip_commands
-        )
+        await self.check_bad_commands(good_commands=("start", "exitControl", "setLogLevel") + skip_commands)
 
         # Send start; new state is DISABLED.
         await self.remote.cmd_start.set_start(  # type: ignore
@@ -487,20 +481,14 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
         )
         assert self.csc.summary_state == sal_enums.State.DISABLED
         await self.assert_next_summary_state(sal_enums.State.DISABLED)
-        await self.check_bad_commands(
-            good_commands=("enable", "standby", "setLogLevel") + skip_commands
-        )
+        await self.check_bad_commands(good_commands=("enable", "standby", "setLogLevel") + skip_commands)
 
         # Send enable; new state is ENABLED.
         await self.remote.cmd_enable.start(timeout=timeout)  # type: ignore
         assert self.csc.summary_state == sal_enums.State.ENABLED
         await self.assert_next_summary_state(sal_enums.State.ENABLED)
-        all_enabled_commands = tuple(
-            sorted(set(("disable", "setLogLevel")) | set(enabled_commands))
-        )
-        await self.check_bad_commands(
-            good_commands=all_enabled_commands + skip_commands
-        )
+        all_enabled_commands = tuple(sorted(set(("disable", "setLogLevel")) | set(enabled_commands)))
+        await self.check_bad_commands(good_commands=all_enabled_commands + skip_commands)
 
         # Send disable; new state is DISABLED.
         await self.remote.cmd_disable.start(timeout=timeout)  # type: ignore
@@ -547,7 +535,5 @@ class BaseCscTestCase(metaclass=abc.ABCMeta):
             with self.subTest(command=command):  # type: ignore
                 cmd_attr = getattr(self.remote, f"cmd_{command}")
                 print(f"{command=}")
-                with testutils.assertRaisesAckError(
-                    ack=sal_enums.SalRetCode.CMD_FAILED
-                ):
+                with testutils.assertRaisesAckError(ack=sal_enums.SalRetCode.CMD_FAILED):
                     await cmd_attr.start(timeout=STD_TIMEOUT)

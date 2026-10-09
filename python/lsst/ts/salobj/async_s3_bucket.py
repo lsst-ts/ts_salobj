@@ -162,9 +162,7 @@ class AsyncS3Bucket:
                 raise ValueError(f"{argname}={arg} invalid")
         bucket_name = f"rubinobs-{s3category}-{s3instance}".lower()
         if len(bucket_name) > 63:
-            raise ValueError(
-                f"Bucket name {bucket_name!r} too long: len={len(bucket_name)} > 63 chars"
-            )
+            raise ValueError(f"Bucket name {bucket_name!r} too long: len={len(bucket_name)} > 63 chars")
         return bucket_name
 
     @staticmethod
@@ -295,13 +293,9 @@ class AsyncS3Bucket:
         """
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._sync_upload, fileobj, key, callback)
-        return (
-            f"{self.service_resource.meta.client.meta.endpoint_url}/{self.name}/{key}"
-        )
+        return f"{self.service_resource.meta.client.meta.endpoint_url}/{self.name}/{key}"
 
-    async def download(
-        self, key: str, callback: Callable[[int], None] | None = None
-    ) -> io.BytesIO:
+    async def download(self, key: str, callback: Callable[[int], None] | None = None) -> io.BytesIO:
         """Download a file-like object from the bucket.
 
         Parameters
@@ -369,9 +363,7 @@ class AsyncS3Bucket:
     ) -> None:
         self.bucket.upload_fileobj(Fileobj=fileobj, Key=key, Callback=callback)
 
-    def _sync_download(
-        self, key: str, callback: Callable[[int], None] | None
-    ) -> io.BytesIO:
+    def _sync_download(self, key: str, callback: Callable[[int], None] | None) -> io.BytesIO:
         fileobj = io.BytesIO()
         self.bucket.download_fileobj(Key=key, Fileobj=fileobj, Callback=callback)
         # Rewind the fileobj so read returns the data.
@@ -379,6 +371,4 @@ class AsyncS3Bucket:
         return fileobj
 
     def _sync_size(self, key: str) -> int:
-        return self.bucket.meta.client.head_object(Bucket=self.name, Key=key)[
-            "ContentLength"
-        ]
+        return self.bucket.meta.client.head_object(Bucket=self.name, Key=key)["ContentLength"]

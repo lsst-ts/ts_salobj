@@ -85,9 +85,7 @@ class ControllerCommand(read_topic.ReadTopic):
       then do the same as `ExpectedError` and also log a traceback.
     """
 
-    def __init__(
-        self, salinfo: SalInfo, name: str, queue_len: int = read_topic.DEFAULT_QUEUE_LEN
-    ) -> None:
+    def __init__(self, salinfo: SalInfo, name: str, queue_len: int = read_topic.DEFAULT_QUEUE_LEN) -> None:
         super().__init__(
             salinfo=salinfo,
             attr_name="cmd_" + name,
@@ -98,9 +96,7 @@ class ControllerCommand(read_topic.ReadTopic):
         if salinfo._ackcmd_writer is None:
             self.salinfo._ackcmd_writer = AckCmdWriter(salinfo=salinfo)
 
-    async def ack(
-        self, data: type_hints.BaseMsgType, ackcmd: type_hints.AckCmdDataType
-    ) -> None:
+    async def ack(self, data: type_hints.BaseMsgType, ackcmd: type_hints.AckCmdDataType) -> None:
         """Acknowledge a command by writing a new state.
 
         Parameters
@@ -130,9 +126,7 @@ class ControllerCommand(read_topic.ReadTopic):
             timeout=ackcmd.timeout,
         )
 
-    async def ack_in_progress(
-        self, data: type_hints.BaseMsgType, timeout: float, result: str = ""
-    ) -> None:
+    async def ack_in_progress(self, data: type_hints.BaseMsgType, timeout: float, result: str = "") -> None:
         """Ackowledge this command as "in progress".
 
         Parameters
@@ -192,9 +186,7 @@ class ControllerCommand(read_topic.ReadTopic):
         """
         return await super().next(flush=False, timeout=timeout)
 
-    async def _ack_if_running(
-        self, data: type_hints.BaseMsgType, ackcmd: type_hints.AckCmdDataType
-    ) -> None:
+    async def _ack_if_running(self, data: type_hints.BaseMsgType, ackcmd: type_hints.AckCmdDataType) -> None:
         """Wrapper around self.ack that logs a warning if not salinfo.running.
 
         This allows methods of this class to safely acknowledge commands,

@@ -33,6 +33,7 @@ from collections.abc import AsyncGenerator, Sequence
 
 import numpy as np
 import pytest
+
 from lsst.ts import salobj, utils
 
 # Long enough to perform any reasonable operation
@@ -89,9 +90,7 @@ class FailInReportFaultCsc(salobj.TestCsc):
             await super()._report_summary_state()
         if self.summary_state == salobj.State.FAULT:
             if self.doraise:
-                raise RuntimeError(
-                    "Intentionally raise an exception when going to the FAULT state"
-                )
+                raise RuntimeError("Intentionally raise an exception when going to the FAULT state")
             else:
                 await self.fault(
                     code=10934,
@@ -153,16 +152,12 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             assert not self.csc.check_if_duplicate
 
-            duplicate_csc = salobj.TestCsc(
-                index=self.csc.salinfo.index, check_if_duplicate=True
-            )
+            duplicate_csc = salobj.TestCsc(index=self.csc.salinfo.index, check_if_duplicate=True)
             try:
                 # Change origin so heartbeat private_origin differs.
                 duplicate_csc.salinfo.domain.origin += 1
                 assert duplicate_csc.check_if_duplicate
-                with pytest.raises(
-                    salobj.ExpectedError, match="found another instance"
-                ):
+                with pytest.raises(salobj.ExpectedError, match="found another instance"):
                     await asyncio.wait_for(duplicate_csc.done_task, timeout=STD_TIMEOUT)
             finally:
                 await duplicate_csc.close()
@@ -207,12 +202,15 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
         args = [exe_name, str(index), "--state", "standby"]
 
-        async with salobj.Domain() as domain, salobj.Remote(
-            domain=domain,
-            name="Test",
-            index=index,
-            include=["summaryState", "heartbeat"],
-        ) as self.remote:
+        async with (
+            salobj.Domain() as domain,
+            salobj.Remote(
+                domain=domain,
+                name="Test",
+                index=index,
+                include=["summaryState", "heartbeat"],
+            ) as self.remote,
+        ):
             process1 = await asyncio.create_subprocess_exec(
                 *args,
                 stderr=subprocess.PIPE,
@@ -235,9 +233,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     assert process2.returncode > 0
                     assert process2.stderr is not None  # make mypy happy
                     try:
-                        errbytes = await asyncio.wait_for(
-                            process2.stderr.read(), timeout=STD_TIMEOUT
-                        )
+                        errbytes = await asyncio.wait_for(process2.stderr.read(), timeout=STD_TIMEOUT)
                         assert b"found another instance" in errbytes
                     except asyncio.TimeoutError:
                         raise AssertionError("timed out trying to read process2 stderr")
@@ -252,9 +248,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                             print(std_out_bytes.decode())
 
                         if process2.stderr is not None:
-                            errbytes = await asyncio.wait_for(
-                                process2.stderr.read(), timeout=STD_TIMEOUT
-                            )
+                            errbytes = await asyncio.wait_for(process2.stderr.read(), timeout=STD_TIMEOUT)
                             print(errbytes.decode())
                     except asyncio.TimeoutError:
                         print("Timeout waiting for process2 std out and/or std err")
@@ -268,9 +262,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     # CSC 1 quit early; try to print stderr, then fail.
                     try:
                         assert process1.stderr is not None  # make mypy happy
-                        errbytes = await asyncio.wait_for(
-                            process1.stderr.read(), timeout=STD_TIMEOUT
-                        )
+                        errbytes = await asyncio.wait_for(process1.stderr.read(), timeout=STD_TIMEOUT)
                         print("Subprocess stderr: ", errbytes.decode())
                     except Exception as e:
                         print(f"Could not read subprocess stderr: {e}")
@@ -292,25 +284,19 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             stderr=subprocess.PIPE,
         )
         try:
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=STD_TIMEOUT
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=STD_TIMEOUT)
             assert stdout.decode()[:-1] == salobj.__version__
             await asyncio.wait_for(process.wait(), timeout=STD_TIMEOUT)
             assert process.returncode == 0
         finally:
             if process.returncode is None:
                 process.terminate()
-                warnings.warn(
-                    "Killed a process that was not properly terminated", RuntimeWarning
-                )
+                warnings.warn("Killed a process that was not properly terminated", RuntimeWarning)
 
     async def test_log_level(self) -> None:
         """Test that specifying a log level to make_csc works."""
         # If specified then log level is the value given.
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, log_level=logging.DEBUG
-        ):
+        async with self.make_csc(initial_state=salobj.State.STANDBY, log_level=logging.DEBUG):
             assert self.csc.log.getEffectiveLevel() == logging.DEBUG
             # Check that the remote has the same log
             # (and hence the same effective log level).
@@ -318,9 +304,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
         max_log_level = salobj.sal_info.MAX_LOG_LEVEL
         excessive_log_level = max_log_level + 5
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, log_level=excessive_log_level
-        ):
+        async with self.make_csc(initial_state=salobj.State.STANDBY, log_level=excessive_log_level):
             assert self.csc.log.getEffectiveLevel() == excessive_log_level
 
         # At this point log level is WARNING; now check that by default
@@ -341,19 +325,13 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
             # send the setArrays command with random data
             arrays_dict = self.csc.make_random_arrays_dict()
-            await self.remote.cmd_setArrays.set_start(
-                **arrays_dict, timeout=STD_TIMEOUT
-            )
+            await self.remote.cmd_setArrays.set_start(**arrays_dict, timeout=STD_TIMEOUT)
             cmd_data_sent = self.remote.cmd_setArrays.data
 
             # see if new data was broadcast correctly
-            evt_data = await self.remote.evt_arrays.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
+            evt_data = await self.remote.evt_arrays.next(flush=False, timeout=STD_TIMEOUT)
             self.csc.assert_arrays_equal(cmd_data_sent, evt_data)
-            tel_data = await self.remote.tel_arrays.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
+            tel_data = await self.remote.tel_arrays.next(flush=False, timeout=STD_TIMEOUT)
             self.csc.assert_arrays_equal(cmd_data_sent, tel_data)
 
             assert self.csc.evt_arrays.has_data
@@ -378,19 +356,13 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
             # send the setScalars command with random data
             scalars_dict = self.csc.make_random_scalars_dict()
-            await self.remote.cmd_setScalars.set_start(
-                **scalars_dict, timeout=STD_TIMEOUT
-            )
+            await self.remote.cmd_setScalars.set_start(**scalars_dict, timeout=STD_TIMEOUT)
             cmd_data_sent = self.remote.cmd_setScalars.data
 
             # see if new data is being broadcast correctly
-            evt_data = await self.remote.evt_scalars.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
+            evt_data = await self.remote.evt_scalars.next(flush=False, timeout=STD_TIMEOUT)
             self.csc.assert_scalars_equal(cmd_data_sent, evt_data)
-            tel_data = await self.remote.tel_scalars.next(
-                flush=False, timeout=STD_TIMEOUT
-            )
+            tel_data = await self.remote.tel_scalars.next(flush=False, timeout=STD_TIMEOUT)
             self.csc.assert_scalars_equal(cmd_data_sent, tel_data)
 
             assert self.csc.evt_scalars.has_data
@@ -426,9 +398,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                     # and check the state and error code.
                     await self.remote.cmd_fault.start(timeout=STD_TIMEOUT)
                     await self.assert_next_summary_state(salobj.State.FAULT)
-                    await self.assert_next_sample(
-                        topic=self.remote.evt_errorCode, errorCode=1
-                    )
+                    await self.assert_next_sample(topic=self.remote.evt_errorCode, errorCode=1)
 
                     # Issue the ``standby`` command to recover.
                     await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
@@ -441,9 +411,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         """Test BaseCsc.fault with and without optional arguments."""
         async with self.make_csc(initial_state=salobj.State.STANDBY):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            await self.assert_next_sample(
-                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
-            )
+            await self.assert_next_sample(topic=self.remote.evt_errorCode, errorCode=0, errorReport="")
 
             code = 52
             report = "Report for error code"
@@ -454,14 +422,10 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             await self.csc.fault(code="not a valid code", report=report)
             await self.assert_next_summary_state(salobj.State.FAULT)
             with pytest.raises(asyncio.TimeoutError):
-                await self.remote.evt_errorCode.next(
-                    flush=False, timeout=NO_DATA_TIMEOUT
-                )
+                await self.remote.evt_errorCode.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
-            await self.assert_next_sample(
-                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
-            )
+            await self.assert_next_sample(topic=self.remote.evt_errorCode, errorCode=0, errorReport="")
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             # if code is specified then errorReport is output;
@@ -482,9 +446,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
                 await self.remote.cmd_wait.set_start(duration=5, timeout=STD_TIMEOUT)
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
-            await self.assert_next_sample(
-                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
-            )
+            await self.assert_next_sample(topic=self.remote.evt_errorCode, errorCode=0, errorReport="")
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             await self.csc.fault(code=code, report="")
@@ -497,9 +459,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
             )
 
             await self.remote.cmd_standby.start(timeout=STD_TIMEOUT)
-            await self.assert_next_sample(
-                topic=self.remote.evt_errorCode, errorCode=0, errorReport=""
-            )
+            await self.assert_next_sample(topic=self.remote.evt_errorCode, errorCode=0, errorReport="")
             await self.remote.cmd_exitControl.start(timeout=STD_TIMEOUT)
 
     async def test_fault_problems(self) -> None:
@@ -507,26 +467,19 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         for doraise, report_first in itertools.product((False, True), (False, True)):
             with self.subTest(doraise=doraise, report_first=report_first):
                 index = self.next_index()
-                async with FailInReportFaultCsc(
-                    index=index, doraise=doraise, report_first=report_first
-                ) as csc, salobj.Remote(
-                    domain=csc.domain, name="Test", index=index
-                ) as remote:
-                    await self.assert_next_summary_state(
-                        salobj.State.ENABLED, remote=remote
-                    )
-                    await self.assert_next_sample(
-                        topic=remote.evt_errorCode, errorCode=0, errorReport=""
-                    )
+                async with (
+                    FailInReportFaultCsc(index=index, doraise=doraise, report_first=report_first) as csc,
+                    salobj.Remote(domain=csc.domain, name="Test", index=index) as remote,
+                ):
+                    await self.assert_next_summary_state(salobj.State.ENABLED, remote=remote)
+                    await self.assert_next_sample(topic=remote.evt_errorCode, errorCode=0, errorReport="")
 
                     code = 51
                     report = "Report for error code"
                     traceback = "Traceback for error code"
                     await csc.fault(code=code, report=report, traceback=traceback)
 
-                    await self.assert_next_summary_state(
-                        salobj.State.FAULT, remote=remote
-                    )
+                    await self.assert_next_summary_state(salobj.State.FAULT, remote=remote)
                     await self.assert_next_sample(
                         topic=remote.evt_errorCode,
                         errorCode=code,
@@ -536,13 +489,9 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
 
                     # make sure FAULT state and errorCode are only sent once
                     with pytest.raises(asyncio.TimeoutError):
-                        await remote.evt_summaryState.next(
-                            flush=False, timeout=NO_DATA_TIMEOUT
-                        )
+                        await remote.evt_summaryState.next(flush=False, timeout=NO_DATA_TIMEOUT)
                     with pytest.raises(asyncio.TimeoutError):
-                        await remote.evt_errorCode.next(
-                            flush=False, timeout=NO_DATA_TIMEOUT
-                        )
+                        await remote.evt_errorCode.next(flush=False, timeout=NO_DATA_TIMEOUT)
 
     async def test_make_csc_timeout(self) -> None:
         """Test that setting the timeout argument to make_csc works."""
@@ -564,9 +513,7 @@ class CommunicateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCa
         * standby: DISABLED or FAULT to STANDBY
         * exitControl: STANDBY to OFFLINE (quit)
         """
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR
-        ):
+        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=TEST_CONFIG_DIR):
             await self.check_standard_state_transitions(
                 enabled_commands=("setArrays", "setScalars", "wait"),
                 skip_commands=("fault",),

@@ -58,13 +58,10 @@ async def make_mock_write_topics(
     if not attr_names:
         raise ValueError("You must provide one or more topic attr_names")
 
-    async with Domain() as domain, SalInfo(
-        domain=domain, name=name, index=index
-    ) as salinfo:
+    async with Domain() as domain, SalInfo(domain=domain, name=name, index=index) as salinfo:
         if index is None:
             index = 1 if salinfo.indexed else 0
         topics_dict = {
-            attr_name: MockWriteTopic(salinfo=salinfo, attr_name=attr_name)
-            for attr_name in attr_names
+            attr_name: MockWriteTopic(salinfo=salinfo, attr_name=attr_name) for attr_name in attr_names
         }
         yield types.SimpleNamespace(**topics_dict)
