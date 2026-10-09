@@ -29,6 +29,7 @@ import unittest
 
 import pytest
 import yaml
+
 from lsst.ts import salobj, utils
 from lsst.ts.salobj.topics import ReadTopic, WriteTopic
 
@@ -62,9 +63,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                     salobj.SalInfo(domain=domain, name="Test", index=invalid_index)
 
             index = next(index_gen)
-            async with salobj.SalInfo(
-                domain=domain, name="Test", index=index
-            ) as salinfo:
+            async with salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo:
                 assert salinfo.name == "Test"
                 assert salinfo.index == index
                 assert not salinfo.start_task.done()
@@ -102,9 +101,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 ONE = 1
                 TWO = 2
 
-            async with salobj.SalInfo(
-                domain=domain, name="Script", index=SalIndex.ONE
-            ) as salinfo:
+            async with salobj.SalInfo(domain=domain, name="Script", index=SalIndex.ONE) as salinfo:
                 assert isinstance(salinfo.index, SalIndex)
                 assert salinfo.index == SalIndex.ONE
 
@@ -115,7 +112,6 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 num_messages=100,
                 consume_messages_timeout=0.01,
             ) as salinfo:
-
                 assert salinfo.num_messages == 100
                 assert salinfo.consume_messages_timeout == 0.01
 
@@ -163,12 +159,8 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert expected_telemetry == salinfo.telemetry_names
 
             expected_sal_topic_names = ["ackcmd"]
-            expected_sal_topic_names += [
-                f"command_{name}" for name in salinfo.command_names
-            ]
-            expected_sal_topic_names += [
-                f"logevent_{name}" for name in salinfo.event_names
-            ]
+            expected_sal_topic_names += [f"command_{name}" for name in salinfo.command_names]
+            expected_sal_topic_names += [f"logevent_{name}" for name in salinfo.event_names]
             expected_sal_topic_names += [name for name in salinfo.telemetry_names]
             assert sorted(expected_sal_topic_names) == list(salinfo.sal_topic_names)
 
@@ -180,9 +172,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
             assert not salinfo2.indexed
             assert salinfo2.name_index == "MTRotator"
 
-            assert (
-                salinfo.component_info.topic_subname == os.environ["LSST_TOPIC_SUBNAME"]
-            )
+            assert salinfo.component_info.topic_subname == os.environ["LSST_TOPIC_SUBNAME"]
 
     async def test_salinfo_component_info(self) -> None:
         """Test some of the component info in SalInfo.
@@ -209,13 +199,9 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 "tel_arrays",
                 "tel_scalars",
             )
-            assert set(some_expected_attr_names).issubset(
-                salinfo.component_info.topics.keys()
-            )
+            assert set(some_expected_attr_names).issubset(salinfo.component_info.topics.keys())
 
-    async def validate_max_history(
-        self, domain: salobj.Domain, expected_max_history: int
-    ) -> None:
+    async def validate_max_history(self, domain: salobj.Domain, expected_max_history: int) -> None:
         index = next(index_gen)
         async with salobj.SalInfo(domain=domain, name="Test", index=index) as salinfo:
             max_history = salinfo.get_max_history_for_indexed_component()
@@ -238,18 +224,14 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 # This should load the value set in the env var.
                 env_max_history = 750
                 os.environ["LSST_MAX_HISTORY_READ"] = f"{env_max_history}"
-                await self.validate_max_history(
-                    domain=domain, expected_max_history=env_max_history
-                )
+                await self.validate_max_history(domain=domain, expected_max_history=env_max_history)
 
                 # Now the config file is created so the value in there should
                 # be used.
                 config_max_history = 1000
                 with open(tmppath, "w") as fp:
                     yaml.safe_dump({"Test": config_max_history}, fp)
-                await self.validate_max_history(
-                    domain=domain, expected_max_history=config_max_history
-                )
+                await self.validate_max_history(domain=domain, expected_max_history=config_max_history)
 
     async def test_lsst_topic_subname_required(self) -> None:
         # Delete LSST_TOPIC_SUBNAME. This should prevent constructing
@@ -318,15 +300,11 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
         index = next(index_gen)
         async with (
             salobj.Domain() as domain,
-            salobj.SalInfo(
-                domain=domain, name="Test", index=index, write_only=True
-            ) as salinfo,
+            salobj.SalInfo(domain=domain, name="Test", index=index, write_only=True) as salinfo,
         ):
             # Cannot add a read topic to a write-only SalInfo
             with pytest.raises(RuntimeError):
-                salobj.topics.ReadTopic(
-                    salinfo=salinfo, attr_name="evt_summaryState", max_history=0
-                )
+                salobj.topics.ReadTopic(salinfo=salinfo, attr_name="evt_summaryState", max_history=0)
 
             # Check that starting a write-only SalInfo
             # does not start the read loop
@@ -343,9 +321,7 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
         ):
             for topic in ["ack_ackcmd", "cmd_setScalars", "evt_scalars", "tel_scalars"]:
                 WriteTopic(salinfo=salinfo, attr_name=topic)
-                read_topics[topic] = ReadTopic(
-                    salinfo=salinfo, attr_name=topic, max_history=10
-                )
+                read_topics[topic] = ReadTopic(salinfo=salinfo, attr_name=topic, max_history=10)
 
             await salinfo.start()
 
@@ -353,36 +329,26 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
                 message_num = 0
                 for value in 1000, 100:
                     message_num += 1
-                    ackcmd = salinfo.make_ackcmd(
-                        private_seqNum=value, ack=salobj.SalRetCode.CMD_COMPLETE
-                    )
+                    ackcmd = salinfo.make_ackcmd(private_seqNum=value, ack=salobj.SalRetCode.CMD_COMPLETE)
                     ackcmd.private_sndStamp = value
                     ackcmd.salIndex = index
                     topic_info = salinfo.component_info.topics[topic]
-                    await salinfo.write_data(
-                        topic_info=topic_info, data_dict=vars(ackcmd)
-                    )
+                    await salinfo.write_data(topic_info=topic_info, data_dict=vars(ackcmd))
 
                     match message_num:
                         case 1:
                             # The first message should always be read.
-                            await read_topics[topic].next(
-                                flush=False, timeout=TOPIC_READ_TIMEOUT
-                            )
+                            await read_topics[topic].next(flush=False, timeout=TOPIC_READ_TIMEOUT)
                         case 2:
                             if topic in ["ack_ackcmd", "cmd_setScalars"]:
                                 # Too old command messages should always be
                                 # read.
-                                await read_topics[topic].next(
-                                    flush=False, timeout=TOPIC_READ_TIMEOUT
-                                )
+                                await read_topics[topic].next(flush=False, timeout=TOPIC_READ_TIMEOUT)
                             else:
                                 # Too old event and telemetry data should be
                                 # discarded.
                                 with pytest.raises(TimeoutError):
-                                    await read_topics[topic].next(
-                                        flush=False, timeout=TOPIC_READ_TIMEOUT
-                                    )
+                                    await read_topics[topic].next(flush=False, timeout=TOPIC_READ_TIMEOUT)
 
     async def test_no_discard_out_of_order_topics(self) -> None:
         index = next(index_gen)
@@ -399,23 +365,15 @@ class SalInfoTestCase(unittest.IsolatedAsyncioTestCase):
         ):
             for topic in ["ack_ackcmd", "cmd_setScalars", "evt_scalars", "tel_scalars"]:
                 WriteTopic(salinfo=salinfo, attr_name=topic)
-                read_topics[topic] = ReadTopic(
-                    salinfo=salinfo, attr_name=topic, max_history=10
-                )
+                read_topics[topic] = ReadTopic(salinfo=salinfo, attr_name=topic, max_history=10)
 
             await salinfo.start()
 
             for topic in read_topics:
                 for value in 1000, 100:
-                    ackcmd = salinfo.make_ackcmd(
-                        private_seqNum=value, ack=salobj.SalRetCode.CMD_COMPLETE
-                    )
+                    ackcmd = salinfo.make_ackcmd(private_seqNum=value, ack=salobj.SalRetCode.CMD_COMPLETE)
                     ackcmd.private_sndStamp = value
                     ackcmd.salIndex = index
                     topic_info = salinfo.component_info.topics[topic]
-                    await salinfo.write_data(
-                        topic_info=topic_info, data_dict=vars(ackcmd)
-                    )
-                    await read_topics[topic].next(
-                        flush=False, timeout=TOPIC_READ_TIMEOUT
-                    )
+                    await salinfo.write_data(topic_info=topic_info, data_dict=vars(ackcmd))
+                    await read_topics[topic].next(flush=False, timeout=TOPIC_READ_TIMEOUT)

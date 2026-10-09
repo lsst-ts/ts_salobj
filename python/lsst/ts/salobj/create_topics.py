@@ -37,8 +37,7 @@ def create_topics() -> None:
     parser.add_argument(
         "components",
         nargs="*",
-        help="Names of SAL components, e.g. 'Script ScriptQueue'. "
-        "Ignored if --all is specified",
+        help="Names of SAL components, e.g. 'Script ScriptQueue'. Ignored if --all is specified",
     )
     parser.add_argument(
         "--all",

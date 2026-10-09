@@ -24,6 +24,7 @@ import pathlib
 import unittest
 
 import pytest
+
 from lsst.ts import salobj, utils
 
 # Long enough to perform any reasonable operation
@@ -59,9 +60,7 @@ class SetSummaryStateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
                 # set_summary_state cannot transition to FAULT state.
                 continue
             with self.subTest(initial_state=initial_state, final_state=final_state):
-                await self.check_set_summary_state(
-                    initial_state=initial_state, final_state=final_state
-                )
+                await self.check_set_summary_state(initial_state=initial_state, final_state=final_state)
 
     async def test_set_summary_state_invalid_state(self) -> None:
         """Test set_summary_state with invalid states."""
@@ -69,17 +68,13 @@ class SetSummaryStateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
             if initial_state in (salobj.State.OFFLINE, salobj.State.FAULT):
                 # TestCsc cannot start in OFFLINE or FAULT state.
                 continue
-            async with self.make_csc(
-                initial_state=initial_state, config_dir=TEST_CONFIG_DIR
-            ):
+            async with self.make_csc(initial_state=initial_state, config_dir=TEST_CONFIG_DIR):
                 for bad_final_state in (
                     min(salobj.State) - 1,
                     salobj.State.FAULT,
                     max(salobj.State) + 1,
                 ):
-                    with self.subTest(
-                        initial_state=initial_state, bad_final_state=bad_final_state
-                    ):
+                    with self.subTest(initial_state=initial_state, bad_final_state=bad_final_state):
                         with pytest.raises(ValueError):
                             await salobj.set_summary_state(
                                 remote=self.remote,
@@ -87,9 +82,7 @@ class SetSummaryStateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
                                 timeout=STD_TIMEOUT,
                             )
 
-    async def check_set_summary_state(
-        self, initial_state: salobj.State, final_state: salobj.State
-    ) -> None:
+    async def check_set_summary_state(self, initial_state: salobj.State, final_state: salobj.State) -> None:
         """Check set_summary_state for valid state transitions.
 
         Parameters
@@ -99,9 +92,7 @@ class SetSummaryStateTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTe
         final_state : `State`
             Final summary state.
         """
-        async with self.make_csc(
-            initial_state=initial_state, config_dir=TEST_CONFIG_DIR
-        ):
+        async with self.make_csc(initial_state=initial_state, config_dir=TEST_CONFIG_DIR):
             assert self.csc.summary_state == initial_state
             await self.assert_next_summary_state(initial_state)
 
