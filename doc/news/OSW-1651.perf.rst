@@ -1,0 +1,1 @@
+Moved conda dependencies from ts_conda_build to ts_salobj.

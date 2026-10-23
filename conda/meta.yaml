@@ -41,12 +41,13 @@ requirements:
     - moto >=5
     - numpy
     - python {{ python }}
-    - python-confluent-kafka >=2.0.2
+    - python-confluent-kafka =2.16
     - authlib
     - httpx
     - cachetools
     - orjson
     - pyyaml
+    - types-pyyaml =6
     - setuptools
     - setuptools_scm
     - ts-utils
