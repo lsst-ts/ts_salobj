@@ -79,9 +79,7 @@ def make_state_transition_dict() -> StateTransitionDictType:
 _STATE_TRANSITION_DICT = make_state_transition_dict()
 
 
-def get_expected_summary_states(
-    initial_state: State | int, final_state: State | int
-) -> list[State]:
+def get_expected_summary_states(initial_state: State | int, final_state: State | int) -> list[State]:
     """Return all summary states expected when transitioning from
     one state to another.
     """
@@ -163,9 +161,7 @@ async def set_summary_state(
             try:
                 await cmd.start(timeout=timeout)
             except Exception as e:
-                raise RuntimeError(
-                    f"Error on cmd=cmd_{command}, initial_state={current_state}: {e}"
-                ) from e
+                raise RuntimeError(f"Error on cmd=cmd_{command}, initial_state={current_state}: {e}") from e
             states.append(resulting_state)
     finally:
         remote.cmd_start.data.configurationOverride = old_override  # type: ignore

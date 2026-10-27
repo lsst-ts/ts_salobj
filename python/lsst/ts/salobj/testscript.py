@@ -26,6 +26,7 @@ import types
 import typing
 
 import yaml
+
 from lsst.ts import salobj
 
 from .base_script import BaseScript
@@ -121,9 +122,7 @@ class TestScript(BaseScript):
         self.log.info("Run started")
         await self.checkpoint("start")
         if self.config.fail_run:
-            raise salobj.ExpectedError(
-                f"Failed in run after wait: fail_run={self.config.fail_run}"
-            )
+            raise salobj.ExpectedError(f"Failed in run after wait: fail_run={self.config.fail_run}")
         await asyncio.sleep(self.config.wait_time)
         await self.checkpoint("end")
         self.log.info("Run succeeded")
@@ -131,7 +130,5 @@ class TestScript(BaseScript):
     async def cleanup(self) -> None:
         self.log.info("Cleanup started")
         if self.config.fail_cleanup:
-            raise salobj.ExpectedError(
-                f"Failed in cleanup: fail_cleanup={self.config.fail_cleanup}"
-            )
+            raise salobj.ExpectedError(f"Failed in cleanup: fail_cleanup={self.config.fail_cleanup}")
         self.log.info("Cleanup succeeded")

@@ -35,6 +35,7 @@ import warnings
 from collections.abc import Sequence
 
 import yaml
+
 from lsst.ts import utils
 from lsst.ts.xml import type_hints
 from lsst.ts.xml.enums.Script import (
@@ -385,9 +386,7 @@ class BaseScript(controller.Controller, abc.ABC):
         if self._run_task is None:
             raise RuntimeError("checkpoint error: state is RUNNING but no run_task")
         if self._run_task.done():
-            raise RuntimeError(
-                "checkpoint error: state is RUNNING but run_task is done"
-            )
+            raise RuntimeError("checkpoint error: state is RUNNING but run_task is done")
 
         self.num_checkpoints += 1
         self.last_checkpoint = name
@@ -507,9 +506,7 @@ class BaseScript(controller.Controller, abc.ABC):
             raise base.ExpectedError(f"Cannot {action}: script is exiting")
         if self.state.state not in states:
             states_str = ", ".join(s.name for s in states)
-            raise base.ExpectedError(
-                f"Cannot {action}: state={self.state_name} instead of {states_str}"
-            )
+            raise base.ExpectedError(f"Cannot {action}: state={self.state_name} instead of {states_str}")
 
     async def do_configure(self, data: type_hints.BaseMsgType) -> None:
         """Configure the currently loaded script.
@@ -545,8 +542,7 @@ class BaseScript(controller.Controller, abc.ABC):
             if self.config_validator is None:
                 if config_yaml:
                     raise RuntimeError(
-                        "This script has no configuration so "
-                        f"config={config_yaml} must be empty."
+                        f"This script has no configuration so config={config_yaml} must be empty."
                     )
                 config = types.SimpleNamespace()
             else:
@@ -802,7 +798,5 @@ class BaseScript(controller.Controller, abc.ABC):
         except Exception as e:
             if not isinstance(e, base.ExpectedError):
                 self.log.exception("Error in run")
-            await self.set_state(
-                ScriptState.FAILED, reason=f"failed in _exit: {e}", keep_old_reason=True
-            )
+            await self.set_state(ScriptState.FAILED, reason=f"failed in _exit: {e}", keep_old_reason=True)
             asyncio.create_task(self.close(exception=e))

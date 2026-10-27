@@ -25,6 +25,7 @@ import unittest
 
 import numpy as np
 import yaml
+
 from lsst.ts import salobj, utils, xml
 
 # Long enough to perform any reasonable operation
@@ -65,9 +66,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
     async def test_no_config_specified(self) -> None:
         config_dir = TEST_CONFIGS_ROOT / "good_with_site_file"
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=config_dir
-        ):
+        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=config_dir):
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             await self.remote.cmd_start.start(timeout=STD_TIMEOUT)
@@ -113,23 +112,17 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
 
     async def test_bad_config_dirs(self) -> None:
         for bad_config_dir in TEST_CONFIGS_ROOT.glob("bad_*"):
-            async with self.make_csc(
-                initial_state=salobj.State.STANDBY, config_dir=bad_config_dir
-            ):
+            async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=bad_config_dir):
                 await self.assert_next_summary_state(salobj.State.STANDBY)
                 with salobj.assertRaisesAckError():
-                    await self.remote.cmd_start.set_start(
-                        configurationOverride="", timeout=STD_TIMEOUT
-                    )
+                    await self.remote.cmd_start.set_start(configurationOverride="", timeout=STD_TIMEOUT)
 
     async def test_override_some_fields(self) -> None:
         """Test an override with some fields set to valid values."""
         config_dir = TEST_CONFIGS_ROOT / "good_no_site_file"
         override = "some_fields.yaml"
 
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=config_dir
-        ):
+        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=config_dir):
             await self.assert_next_summary_state(salobj.State.STANDBY)
 
             expected_overrides = ",".join(
@@ -151,9 +144,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
             )
             assert len(data.version) > 0
 
-            await self.remote.cmd_start.set_start(
-                configurationOverride=override, timeout=STD_TIMEOUT
-            )
+            await self.remote.cmd_start.set_start(configurationOverride=override, timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.DISABLED)
 
             config = self.csc.config
@@ -178,9 +169,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
         config_dir = TEST_CONFIGS_ROOT / "good_no_site_file"
         override = "some_fields.yaml"
 
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=config_dir
-        ):
+        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=config_dir):
             await self.assert_next_summary_state(salobj.State.STANDBY)
             await self.remote.cmd_start.set_start(
                 configurationOverride=f"{override}:HEAD", timeout=STD_TIMEOUT
@@ -206,9 +195,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
     async def test_minimal_config_dir(self) -> None:
         config_dir = TEST_CONFIGS_ROOT / "good_minimal"
 
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=config_dir
-        ):
+        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=config_dir):
             await self.assert_next_summary_state(salobj.State.STANDBY)
             expected_config_url = pathlib.Path(config_dir).resolve().as_uri()
             data = await self.assert_next_sample(
@@ -239,13 +226,9 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
         config_dir = TEST_CONFIGS_ROOT / "good_no_site_file"
         override = "all_fields.yaml"
 
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=config_dir
-        ):
+        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=config_dir):
             await self.assert_next_summary_state(salobj.State.STANDBY)
-            await self.remote.cmd_start.set_start(
-                configurationOverride=override, timeout=STD_TIMEOUT
-            )
+            await self.remote.cmd_start.set_start(configurationOverride=override, timeout=STD_TIMEOUT)
             await self.assert_next_summary_state(salobj.State.DISABLED)
             config = self.csc.config
             override_path = os.path.join(self.csc.config_dir, override)
@@ -263,9 +246,7 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
     async def test_invalid_configs(self) -> None:
         config_dir = TEST_CONFIGS_ROOT / "good_no_site_file"
 
-        async with self.make_csc(
-            initial_state=salobj.State.STANDBY, config_dir=config_dir
-        ):
+        async with self.make_csc(initial_state=salobj.State.STANDBY, config_dir=config_dir):
             await self.assert_next_summary_state(salobj.State.STANDBY)
             for name in ("all_bad_types", "bad_format", "one_bad_type", "extra_field"):
                 config_file = f"invalid_{name}.yaml"
@@ -279,8 +260,6 @@ class ConfigurationTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTest
                     assert data.summaryState == salobj.State.STANDBY
 
             # Make sure the CSC can still be started.
-            await self.remote.cmd_start.set_start(
-                configurationOverride="all_fields.yaml", timeout=10
-            )
+            await self.remote.cmd_start.set_start(configurationOverride="all_fields.yaml", timeout=10)
             assert self.csc.summary_state == salobj.State.DISABLED
             await self.assert_next_summary_state(salobj.State.DISABLED)

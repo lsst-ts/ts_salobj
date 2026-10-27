@@ -28,6 +28,7 @@ import typing
 from collections.abc import Sequence
 
 import numpy as np
+
 from lsst.ts.xml import type_hints
 
 from . import __version__
@@ -275,9 +276,7 @@ class TestCsc(ConfigurableCsc):
             if not np.array_equal(  # type: ignore
                 field_arr1, field_arr2, equal_nan=is_float
             ):
-                raise AssertionError(
-                    f"arrays1.{field} = {field_arr1} != {field_arr2} = arrays2.{field}"
-                )
+                raise AssertionError(f"arrays1.{field} = {field_arr1} != {field_arr2} = arrays2.{field}")
 
     def assert_scalars_equal(self, scalars1: typing.Any, scalars2: typing.Any) -> None:
         """Assert that two scalars data structs are equal.
@@ -299,9 +298,7 @@ class TestCsc(ConfigurableCsc):
             if not np.array_equal(  # type: ignore
                 field_val1, field_val2, equal_nan=is_float
             ):
-                raise AssertionError(
-                    f"scalars1.{field} = {field_val1} != {field_val2} = scalars2.{field}"
-                )
+                raise AssertionError(f"scalars1.{field} = {field_val1} != {field_val2} = scalars2.{field}")
 
     def make_random_arrays_dict(self) -> dict[str, typing.Any]:
         """Make a random arrays data dict."""
@@ -313,15 +310,11 @@ class TestCsc(ConfigurableCsc):
             field_type = self.field_type[field]
             nelts = len(getattr(blank_arrays_data, field))
             iinfo = np.iinfo(field_type)
-            arrays_dict[field] = np.random.randint(
-                iinfo.min, iinfo.max, size=(nelts,), dtype=field_type
-            )
+            arrays_dict[field] = np.random.randint(iinfo.min, iinfo.max, size=(nelts,), dtype=field_type)
         for field in ("float0", "double0"):
             field_type = self.field_type[field]
             nelts = len(getattr(blank_arrays_data, field))
-            arrays_dict[field] = np.array(
-                np.random.uniform(-1e5, 1e5, size=(nelts,)), dtype=field_type
-            )
+            arrays_dict[field] = np.array(np.random.uniform(-1e5, 1e5, size=(nelts,)), dtype=field_type)
         return arrays_dict
 
     def make_random_scalars_dict(self) -> dict[str, typing.Any]:
@@ -333,9 +326,7 @@ class TestCsc(ConfigurableCsc):
         for field in self.int_fields:
             field_type = self.field_type[field]
             iinfo = np.iinfo(field_type)
-            scalars_dict[field] = np.random.randint(
-                iinfo.min, iinfo.max, dtype=field_type
-            )
+            scalars_dict[field] = np.random.randint(iinfo.min, iinfo.max, dtype=field_type)
         for field in ("float0", "double0"):
             field_type = self.field_type[field]
             scalars_dict[field] = field_type(np.random.uniform(-1e5, 1e5))

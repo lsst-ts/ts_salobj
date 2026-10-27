@@ -19,7 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from lsst.ts.xml.sal_enums import SalRetCode  # noqa: F401
-from lsst.ts.xml.sal_enums import State  # noqa: F401
-from lsst.ts.xml.sal_enums import as_salRetCode  # noqa: F401
-from lsst.ts.xml.sal_enums import as_state  # noqa: F401; noqa: F401
+from lsst.ts.xml.sal_enums import (
+    SalRetCode,  # noqa: F401
+    State,  # noqa: F401
+    as_salRetCode,  # noqa: F401
+)
