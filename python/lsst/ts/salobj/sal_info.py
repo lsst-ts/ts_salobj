@@ -537,7 +537,7 @@ class SalInfo:
         subsequent calls wait until the SalInfo is closed.
         """
         if not self.isopen:
-            if self._closing:
+            if self._closing and not self.done_task.done():
                 await self.done_task
             return
         self.isopen = False
@@ -550,7 +550,7 @@ class SalInfo:
                 self._read_loop_task,
                 timeout=0.5,
             )
-        except Exception as e:
+        except BaseException as e:
             print(f"Read loop failed: {e!r}")
             self.log.exception("Exception waiting for read loop to finish.")
 
@@ -559,9 +559,9 @@ class SalInfo:
                 self._flush_loop_task,
                 timeout=0.5,
             )
-        except Exception as e:
+        except BaseException as e:
             print(f"Flush loop failed: {e!r}")
-            self.log.exception("Exception waiting for read loop to finish.")
+            self.log.exception("Exception waiting for flush loop to finish.")
 
         try:
             await asyncio.wait_for(
@@ -570,7 +570,7 @@ class SalInfo:
             )
         except asyncio.TimeoutError:
             pass
-        except Exception as e:
+        except BaseException as e:
             print(f"Run kafka loop failed: {e!r}")
             self.log.exception("Exception waiting for kafka loop to finish.")
 
